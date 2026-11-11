@@ -831,3 +831,111 @@ details[open] > summary .mk-plus {
   .gw-side::before { transition: top 450ms cubic-bezier(0.16, 1, 0.3, 1); }
 }
 @keyframes gw-open-r { from { clip-path: inset(0 100% 0 0); opacity: 0.6; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
+
+/* Version B: the 3D machine (?gears=3d, components/marketing/gear-workflow-3d.tsx). The slot has a fixed shape, so nothing below
+   it moves while the 3D loads; the labels over the canvas are plain HTML so they stay sharp and readable. */
+.gw3-slot {
+  position: relative;
+  aspect-ratio: 2.05 / 1;
+  border: 1px solid var(--mk-ink);
+  border-radius: 6px;
+  overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 35%, #1a2a44 0%, #0d1828 55%, #070e19 100%);
+  isolation: isolate;
+}
+@media (min-width: 900px) and (max-width: 1099px) { .gw3-slot { aspect-ratio: 1.6 / 1; } }
+@media (max-width: 899px) { .gw3-slot { aspect-ratio: 1.05 / 1; } }
+.gw3 { position: absolute; inset: 0; }
+.gw3-canvas { display: block; width: 100%; height: 100%; touch-action: pan-y; opacity: 0; transition: opacity 600ms ease; }
+.gw3[data-ready] .gw3-canvas { opacity: 1; }
+.gw3-load { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: #9fb0cc; }
+.gw3-head {
+  position: absolute;
+  inset: 0 0 auto;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: clamp(10px, 1.6vw, 18px) clamp(12px, 2vw, 22px);
+  pointer-events: none;
+}
+.gw3-head .mk-label, .gw3-foot .mk-label { color: #aebbd0; text-shadow: 0 1px 2px rgb(0 0 0 / 0.6); }
+.gw3-foot {
+  position: absolute;
+  inset: auto 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0 clamp(12px, 2vw, 22px);
+  background: linear-gradient(rgb(5 12 22 / 0), rgb(5 12 22 / 0.72));
+  pointer-events: none;
+}
+.gw3-foot button { pointer-events: auto; }
+.gw3-shot { display: inline-flex; align-items: center; gap: 1rem; margin-left: auto; }
+.gw3-link, .gw3-restart {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #e6edf7;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+.gw3-link:focus-visible, .gw3-restart:focus-visible { outline: 3px solid var(--gw-signal); outline-offset: 3px; }
+/* Below 1100px the stage image and its View full size link sit under the machine (.gw-mview), so the overlay keeps only the note. */
+@media (max-width: 1099px) { .gw3-foot, .gw3-head .mk-label:first-child { display: none; } }
+.gw3-reveal {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(52px, 6vw, 72px);
+  transform: translateX(-50%);
+  width: min(92%, 760px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  border-radius: 10px;
+  background: rgb(8 16 30 / 0.88);
+  backdrop-filter: blur(6px);
+  color: #e6edf7;
+  box-shadow: 0 24px 50px -18px rgb(0 0 0 / 0.75);
+}
+.gw3-reveal .mk-label { color: #9fb0cc; }
+.gw3-reveal-title { margin-top: 0.25rem; font-size: clamp(1.25rem, 2.2vw, 1.75rem); text-transform: uppercase; color: #fff; }
+.gw3-reveal-actions { display: flex; flex: none; align-items: center; gap: 1.25rem; }
+@media (max-width: 899px) {
+  .gw3-reveal { flex-direction: column; align-items: stretch; gap: 0.75rem; bottom: 10px; width: calc(100% - 20px); padding: 0.75rem; }
+  .gw3-reveal-actions { justify-content: space-between; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .gw3-reveal { animation: gw3-rise 500ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+}
+@keyframes gw3-rise { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+/* In 3D the stage chips are the keyboard and screen reader control at every width. */
+.gw-3d .gw-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+@media (max-width: 899px) { .gw-3d .gw-chips { flex-wrap: nowrap; } }
+
+/* The compare switch (?compare): fixed in a corner, small, out of the way. */
+.gw3-compare {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 60;
+  display: grid;
+  gap: 0.4rem;
+  max-width: min(340px, calc(100vw - 32px));
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--mk-ink);
+  background: #fff;
+  box-shadow: 0 12px 30px -12px rgb(11 22 38 / 0.45);
+}
+.gw3-compare-row { display: flex; gap: 0.4rem; }
+.gw3-compare a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 0.8rem; border: 1px solid var(--mk-ink); color: var(--mk-ink); font-weight: 600; text-decoration: none; }
+.gw3-compare a[aria-current="page"] { background: var(--mk-ink); color: #fff; }
+.gw3-compare-note { font-size: 0.8125rem; color: var(--mk-ink-2); }

@@ -3,7 +3,8 @@
  *
  * Inputs: FLOW_STEPS and PAIN_CARDS from lib/marketing.ts (the checked copy; this module never rewrites a caption or a record value).
  * Outputs: GEAR_STAGES (seven stages, one per gear, each with its image in public/marketing/workflow/), two gear layouts (wide and compact) with tooth paths, centres and meshing phases,
- * and pure helpers for selection (stepTo, clampStage) and rotation (gearAngle).
+ * pure helpers for selection (stepTo, clampStage) and rotation (gearAngle), and the version switch (?gears=, parseGearsParam) with the
+ * render tier for the 3D version (chooseTier). The switch defaults to the 2D drawing.
  * Must not change: the stage captions and example records come from FLOW_STEPS; the extra detail lines below describe only what the
  * app's code does today (migrations 081-083, the dashboard tiles, the FEATURES copy). No prices, numbers of hours, results or
  * integrations. Plain data and maths only: no React, no browser APIs, so the unit tests can read it.
@@ -307,3 +308,44 @@ export function gearAngle(gear: Pick<Gear, "phase" | "spin" | "teeth">, drive: n
 export function driveFor(steps: number): number {
   return steps * 3 * (360 / GEAR_STAGES[0].teeth);
 }
+
+/* ------------------------------------------------------------------------------------------------------------------------------ */
+/* Version B (3D): which version to show, and how much of it                                                                     */
+/* ------------------------------------------------------------------------------------------------------------------------------ */
+
+export type GearsMode = "2d" | "3d";
+
+/** Reads ?gears=2d|3d and ?compare from a location search string. Anything else means the 2D drawing, with no compare switch. */
+export function parseGearsParam(search: string): { mode: GearsMode; compare: boolean } {
+  const params = new URLSearchParams(search);
+  return { mode: params.get("gears") === "3d" ? "3d" : "2d", compare: params.has("compare") };
+}
+
+/** full: shadows, high pixel ratio, camera moves and pointer parallax. lite: phones and low-power devices. none: use the 2D drawing. */
+export type RenderTier = "full" | "lite" | "none";
+
+export type DeviceSignals = {
+  webgl: boolean;
+  reducedMotion: boolean;
+  /** Width of the viewport, CSS pixels. */
+  width: number;
+  /** navigator.hardwareConcurrency and navigator.deviceMemory where the browser reports them. */
+  cores?: number;
+  memory?: number;
+};
+
+export function chooseTier(d: DeviceSignals): RenderTier {
+  if (!d.webgl || d.reducedMotion) return "none";
+  if (d.width < 900) return "lite";
+  if ((d.cores !== undefined && d.cores <= 4) || (d.memory !== undefined && d.memory <= 4)) return "lite";
+  return "full";
+}
+
+/** What the version switch says (the 3D scene's own words are in lib/marketing/gear-scene.ts). */
+export const VERSION_COPY = {
+  loading: "Setting up the machine",
+  compare: "Compare versions",
+  versionA: "A · Current",
+  versionB: "B · 3D",
+  fallback: "3D isn't available on this device, or reduced motion is on, so this is version A.",
+} as const;
