@@ -17,7 +17,7 @@ import { DEMO_MODE } from "@/lib/demo";
 import { fmtDate } from "@/lib/dates";
 import { loadNcrRegister } from "@/lib/jobs/load-ncr-register";
 import {
-  buildNcrRows, defaultRange, filterNcrRows, ncrCsv, NCR_CONFIRMED_TYPES, splitByClass, summariseNcrRows,
+  buildNcrRows, countConcessions, defaultRange, filterNcrRows, ncrCsv, NCR_CONFIRMED_TYPES, splitByClass, summariseNcrRows,
   type NcrRow, type NcrSources, type NcrStatusFilter, type NcrType,
 } from "@/lib/jobs/ncr-register";
 import { NCR_REGISTER_OFF_NOTICE, ncrRegisterEnabled } from "@/lib/jobs/ncr-register-switch";
@@ -80,7 +80,7 @@ function NcrRegisterBody() {
     ["Total", String(summary.total)],
     ["Open", String(summary.open)],
     ["Closed", String(summary.closed)],
-    ["Closed on concession (inspections)", String(summary.concessions)],
+    ["Concession inspections (by inspection date)", String(sources ? countConcessions(sources, range) : 0)],
     ["Failed inspections, no linked rework (legacy)", String(summary.notLinked)],
     ...NCR_CONFIRMED_TYPES.map((t): [string, string] => [t, String(summary.byType[t])]),
     ["Quantity scrapped", String(summary.quantityScrapped)],

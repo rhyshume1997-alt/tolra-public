@@ -6,6 +6,8 @@
  * is folded into its root, and a concession that closed a rework is not a separate record. A fail with no rework row (rows older than
  * 037, or inspection_id SET NULL) is shown as "Not linked", outside the open and closed counts.
  *
+ * The Concessions tile counts concession INSPECTIONS by their own inspection date (countConcessions), not by any record's raised date.
+ *
  * Inputs: raw rows as the loader (load-ncr-register.ts) reads them, a date range, filters and "today". Outputs: register rows, the
  * summary tiles and the CSV text. There are no official NCR numbers: a row is identified by its job number, type and date ("Record").
  * Must not change: the open/closed rules per type, the inclusive local-date range, or the CSV formula guard (lib/spreadsheet toCsv).
@@ -251,13 +253,43 @@ export function filterNcrRows(rows: NcrRow[], f: NcrFilters): NcrRow[] {
 /** Confirmed-NCR totals only: "Not linked" legacy rows are counted apart (notLinked) and in none of the other figures. */
 export type NcrSummary = {
   total: number; open: number; closed: number; notLinked: number; byType: Record<NcrType, number>;
-  /** Concession inspections (initial and reinspection), each counted once even if it closed several reworks. */
-  concessions: number;
   quantityScrapped: number;
   /** Mean calendar days from raised to closed, closed records only; null when none are closed. One decimal place. */
   averageDaysToClose: number | null;
   hours: number; materialCost: number;
 };
+
+/** The concession inspections in the sources, each once: standalone (initial) ones and those that closed reworks (reinspection), by inspection date. */
+export function concessionInspections(src: Pick<NcrSources, "reworks" | "inspections">): { key: string; date: string }[] {
+  const found = new Map<string, string>();
+  for (const i of src.inspections) if (i.result === "concession") found.set(`${i.job_id}|${Date.parse(i.inspected_at)}`, toDateInput(i.inspected_at));
+  for (const r of src.reworks) if (r.closed_how === "concession" && r.closed_at) found.set(`${r.job_id}|${Date.parse(r.closed_at)}`, toDateInput(r.closed_at));
+  return [...found].map(([key, date]) => ({ key, date }));
+}
+
+/**
+ * The Concessions tile: distinct concession INSPECTIONS whose inspected_at (UK local date) is in the range, inclusive. It counts by the
+ * inspection date, independent of any record's raised date (a rework raised before the range and conceded inside it counts here, while
+ * the record itself is still listed by its raised date). One inspection that closed several reworks counts once.
+ */
+export function countConcessions(src: Pick<NcrSources, "reworks" | "inspections">, range: { from: string; to: string }): number {
+  return concessionInspections(src).filter((c) => (!range.from || c.date >= range.from) && (!range.to || c.date <= range.to)).length;
+}
+
+/**
+ * What a chain read still has to ask for, given the reworks held and what has already been asked (loader). Empty on every list means
+ * the chains are complete; the loader reports a truncated read if its round cap ends with any of these non-empty.
+ */
+export function pendingReworkReads(held: RawRework[], asked: { children: Set<string>; superseded: Set<string>; raised: Set<string> }) {
+  const ids = new Set(held.map((r) => r.id));
+  return {
+    children: held.filter((r) => !asked.children.has(r.id)),
+    parents: [...new Set(held.map((r) => r.follow_up_of).filter((id): id is string => Boolean(id) && !ids.has(id as string)))],
+    supers: held.filter((r) => r.closed_how === "superseded" && r.closed_at && !asked.superseded.has(r.id)),
+    raised: held.filter((r) => !asked.raised.has(r.id)),
+  };
+}
+export const hasPendingReads = (p: ReturnType<typeof pendingReworkReads>) => Boolean(p.children.length || p.parents.length || p.supers.length || p.raised.length);
 
 export function splitByClass(rows: NcrRow[]): { confirmed: NcrRow[]; notLinked: NcrRow[] } {
   return { confirmed: rows.filter((r) => !r.notLinked), notLinked: rows.filter((r) => r.notLinked) };
@@ -266,11 +298,9 @@ export function splitByClass(rows: NcrRow[]): { confirmed: NcrRow[]; notLinked: 
 export function summariseNcrRows(rows: NcrRow[]): NcrSummary {
   const byType = Object.fromEntries(NCR_TYPES.map((t) => [t, 0])) as Record<NcrType, number>;
   const { confirmed, notLinked } = splitByClass(rows);
-  const concessions = new Set<string>();
   let open = 0, scrapped = 0, hours = 0, costPence = 0, closedDays = 0, closed = 0;
   for (const r of confirmed) {
     byType[r.type] += 1;
-    r.concessionKeys.forEach((k) => concessions.add(k));
     scrapped += r.scrapped ?? 0;
     hours += r.hours ?? 0;
     costPence += toPence(r.materialCost ?? 0);
@@ -278,7 +308,7 @@ export function summariseNcrRows(rows: NcrRow[]): NcrSummary {
     else { closed += 1; closedDays += r.daysOpen ?? 0; }
   }
   return {
-    total: confirmed.length, open, closed, notLinked: notLinked.length, byType, concessions: concessions.size, quantityScrapped: scrapped,
+    total: confirmed.length, open, closed, notLinked: notLinked.length, byType, quantityScrapped: scrapped,
     averageDaysToClose: closed ? Math.round((closedDays / closed) * 10) / 10 : null,
     hours: Math.round(hours * 100) / 100, materialCost: costPence / 100,
   };

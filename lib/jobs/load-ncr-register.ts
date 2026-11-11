@@ -7,7 +7,7 @@
 import { fetchAll } from "@/lib/fetch-all";
 import { supabase } from "@/lib/supabase";
 
-import type { NcrSources, RawEntry, RawEntryValue, RawInspection, RawJob, RawProblem, RawRework } from "@/lib/jobs/ncr-register";
+import { hasPendingReads, pendingReworkReads, type NcrSources, RawEntry, RawEntryValue, RawInspection, RawJob, RawProblem, RawRework } from "@/lib/jobs/ncr-register";
 
 export type NcrLoad = { ok: true; sources: NcrSources; truncated: boolean } | { ok: false };
 
@@ -35,29 +35,28 @@ export async function loadNcrRegister(range: { from: string; to: string }): Prom
     // concession), then the replacement reworks of every rework held and the roots of every replacement held, until nothing new.
     const REWORK_COLS = "id, job_id, inspection_id, status, reason, instructions, affects_all, quantity_affected, quantity_scrapped, quantity_remade, raised_at, closed_at, closed_how, follow_up_of, sales_order_line_id";
     const byId = new Map<string, RawRework>(reworks.rows.map((r) => [r.id, r]));
+    let anyTruncated = false;
+    const seen = <T,>(r: { rows: T[]; truncated: boolean }): T[] => { if (r.truncated) anyTruncated = true; return r.rows; };
     const add = (rows: RawRework[]) => { for (const r of rows) byId.set(r.id, r); };
-    add((await fetchAll<RawRework>((from, to) => ranged(db.from("job_rework").select(REWORK_COLS).eq("closed_how", "concession"), "closed_at").order("id").range(from, to) as never)).rows);
-    const askedChildren = new Set<string>();
-    const askedSuperseded = new Set<string>();
-    const askedRaised = new Set<string>();
-    let chainCapped = true; // stays true only if the 10-round cap is reached with links still unread
+    add(seen(await fetchAll<RawRework>((from, to) => ranged(db.from("job_rework").select(REWORK_COLS).eq("closed_how", "concession"), "closed_at").order("id").range(from, to) as never)));
+    const asked = { children: new Set<string>(), superseded: new Set<string>(), raised: new Set<string>() };
     for (let round = 0; round < 10; round++) {
-      const held = [...byId.values()];
-      const children = held.map((r) => r.id).filter((id) => !askedChildren.has(id));
-      const parents = [...new Set(held.map((r) => r.follow_up_of).filter((id): id is string => Boolean(id) && !byId.has(id as string)))];
+      const pending = pendingReworkReads([...byId.values()], asked);
+      if (!hasPendingReads(pending)) break;
+      const { parents, supers, raised } = pending;
+      const children = pending.children.map((r) => r.id);
+      children.forEach((id) => asked.children.add(id));
+      supers.forEach((r) => asked.superseded.add(r.id));
+      raised.forEach((r) => asked.raised.add(r.id));
       // A repeated failure supersedes a finished rework and raises the new one at the same instant (037 fail_job_inspection): read the
       // continuations of every superseded rework held (raised_at = its closed_at) and the superseded reworks before every rework held.
-      const supers = held.filter((r) => r.closed_how === "superseded" && r.closed_at && !askedSuperseded.has(r.id));
-      const raised = held.filter((r) => !askedRaised.has(r.id));
-      if (!children.length && !parents.length && !supers.length && !raised.length) { chainCapped = false; break; }
-      children.forEach((id) => askedChildren.add(id));
-      supers.forEach((r) => askedSuperseded.add(r.id));
-      raised.forEach((r) => askedRaised.add(r.id));
-      for (const ids of chunks(children)) add((await fetchAll<RawRework>((from, to) => db.from("job_rework").select(REWORK_COLS).in("follow_up_of", ids).order("id").range(from, to) as never)).rows);
-      for (const ids of chunks(parents)) add((await fetchAll<RawRework>((from, to) => db.from("job_rework").select(REWORK_COLS).in("id", ids).order("id").range(from, to) as never)).rows);
-      for (const times of chunks([...new Set(supers.map((r) => r.closed_at as string))])) add((await fetchAll<RawRework>((from, to) => db.from("job_rework").select(REWORK_COLS).in("raised_at", times).order("id").range(from, to) as never)).rows);
-      for (const times of chunks([...new Set(raised.map((r) => r.raised_at))])) add((await fetchAll<RawRework>((from, to) => db.from("job_rework").select(REWORK_COLS).eq("closed_how", "superseded").in("closed_at", times).order("id").range(from, to) as never)).rows);
+      for (const ids of chunks(children)) add(seen(await fetchAll<RawRework>((from, to) => db.from("job_rework").select(REWORK_COLS).in("follow_up_of", ids).order("id").range(from, to) as never)));
+      for (const ids of chunks(parents)) add(seen(await fetchAll<RawRework>((from, to) => db.from("job_rework").select(REWORK_COLS).in("id", ids).order("id").range(from, to) as never)));
+      for (const times of chunks([...new Set(supers.map((r) => r.closed_at as string))])) add(seen(await fetchAll<RawRework>((from, to) => db.from("job_rework").select(REWORK_COLS).in("raised_at", times).order("id").range(from, to) as never)));
+      for (const times of chunks([...new Set(raised.map((r) => r.raised_at))])) add(seen(await fetchAll<RawRework>((from, to) => db.from("job_rework").select(REWORK_COLS).eq("closed_how", "superseded").in("closed_at", times).order("id").range(from, to) as never)));
     }
+    // Capped only if the round limit ended with links still unread (recomputed after the last round).
+    const chainCapped = hasPendingReads(pendingReworkReads([...byId.values()], asked));
     const allReworks = [...byId.values()];
     const reworkIds = allReworks.map((r) => r.id);
     const jobIds = [...new Set([...allReworks, ...inspections.rows, ...problems.rows].map((r) => r.job_id))];
@@ -66,7 +65,7 @@ export async function loadNcrRegister(range: { from: string; to: string }): Prom
     const jobs: RawJob[] = [];
     for (const ids of chunks(reworkIds)) {
       const got = await fetchAll<RawEntry>((from, to) => db.from("job_rework_entries").select("id, rework_id, kind, hours").in("rework_id", ids).order("id").range(from, to) as never);
-      entries.push(...got.rows);
+      entries.push(...seen(got));
     }
     for (const ids of chunks(entries.filter((e) => e.kind === "material").map((e) => e.id))) {
       const { data, error } = await db.from("job_rework_entry_values").select("entry_id, material_cost").in("entry_id", ids);
@@ -78,7 +77,7 @@ export async function loadNcrRegister(range: { from: string; to: string }): Prom
       if (error) throw error;
       jobs.push(...((data ?? []) as RawJob[]));
     }
-    return { ok: true, truncated: reworks.truncated || inspections.truncated || problems.truncated || chainCapped, sources: { reworks: allReworks, inspections: inspections.rows, problems: problems.rows, entries, entryValues, jobs } };
+    return { ok: true, truncated: reworks.truncated || inspections.truncated || problems.truncated || chainCapped || anyTruncated, sources: { reworks: allReworks, inspections: inspections.rows, problems: problems.rows, entries, entryValues, jobs } };
   } catch {
     return { ok: false };
   }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  buildNcrRows, daysBetween, splitByClass, groupReworkChains, defaultRange, filterNcrRows, ncrCsv, summariseNcrRows,
+  buildNcrRows, concessionInspections, countConcessions, daysBetween, hasPendingReads, pendingReworkReads, splitByClass, groupReworkChains, defaultRange, filterNcrRows, ncrCsv, summariseNcrRows,
   type NcrSources, type RawInspection, type RawProblem, type RawRework,
 } from "@/lib/jobs/ncr-register";
 
@@ -250,12 +250,13 @@ describe("PM rules: reinspection, repeated failures, concessions, legacy fails",
 
   it("rule 3: initial concession + a reinspection concession closing two reworks = 2 concession inspections", () => {
     const at = "2026-10-12T10:00:00Z";
-    const rows = buildNcrRows(src({
+    const src2 = src({
       reworks: [done("r1", { closed_at: at, closed_how: "concession" }), done("r2", { closed_at: at, closed_how: "concession", raised_at: "2026-10-11T09:00:00Z" })],
       inspections: [insp({ id: "c0", result: "concession", concession_reason: "first look", inspected_at: "2026-10-15T10:00:00Z" }), insp({ id: "c1", result: "concession", concession_reason: "reinspect", inspected_at: at })],
-    }), NOW);
+    });
+    const rows = buildNcrRows(src2, NOW);
     expect(rows).toHaveLength(3);
-    expect(summariseNcrRows(rows).concessions).toBe(2);
+    expect(countConcessions(src2, { from: "", to: "" })).toBe(2);
     expect(rows.find((r) => r.key === "rework:r1")!.closedHow).toBe("Closed on concession");
     expect(rows.find((r) => r.key === "concession:c0")!.closedHow).toBe("Closed on concession");
   });
@@ -272,5 +273,41 @@ describe("PM rules: reinspection, repeated failures, concessions, legacy fails",
     expect(lines[0]).toContain("Record class,Record");
     expect(lines.filter((l) => l.startsWith("Confirmed NCR,"))).toHaveLength(1);
     expect(lines.filter((l) => l.startsWith("Not linked,"))).toHaveLength(1);
+  });
+});
+
+describe("Concessions tile counts by inspection date", () => {
+  it("a rework raised 2 Oct and conceded 5 Nov counts in a November range, while the record follows its raised date", () => {
+    const s = src({ reworks: [rework({ id: "r", status: "closed", closed_how: "concession", raised_at: "2026-10-02T09:00:00Z", closed_at: "2026-11-05T10:00:00Z" })] });
+    expect(countConcessions(s, { from: "2026-11-01", to: "2026-11-30" })).toBe(1);
+    expect(countConcessions(s, { from: "2026-10-01", to: "2026-10-31" })).toBe(0);
+    const rows = buildNcrRows(s, "2026-11-20T12:00:00Z");
+    expect(filterNcrRows(rows, { from: "2026-11-01", to: "2026-11-30", type: "all", status: "all" })).toHaveLength(0);
+    expect(filterNcrRows(rows, { from: "2026-10-01", to: "2026-10-31", type: "all", status: "all" })).toHaveLength(1);
+  });
+  it("counts each inspection once, inclusive at the boundaries, whether standalone or closing several reworks", () => {
+    const at = "2026-11-30T23:30:00Z";
+    const s = src({
+      reworks: [rework({ id: "a", status: "closed", closed_how: "concession", closed_at: at }), rework({ id: "b", status: "closed", closed_how: "concession", closed_at: at })],
+      inspections: [insp({ id: "c", result: "concession", concession_reason: "x", inspected_at: at }), insp({ id: "d", result: "concession", concession_reason: "y", inspected_at: "2026-11-01T00:30:00Z" })],
+    });
+    expect(concessionInspections(s)).toHaveLength(2);
+    expect(countConcessions(s, { from: "2026-11-01", to: "2026-11-30" })).toBe(2);
+    expect(countConcessions(s, { from: "2026-11-02", to: "2026-11-30" })).toBe(1);
+  });
+});
+
+describe("chain read cap", () => {
+  const empty = () => ({ children: new Set<string>(), superseded: new Set<string>(), raised: new Set<string>() });
+  it("has pending reads for unasked reworks, missing parents and unasked supersedes, and none when all are asked", () => {
+    const held = [rework({ id: "a", follow_up_of: "gone" }), rework({ id: "b", status: "closed", closed_how: "superseded", closed_at: "2026-10-04T09:00:00Z" })];
+    const asked = empty();
+    const p = pendingReworkReads(held, asked);
+    expect([p.children.length, p.parents, p.supers.length, p.raised.length]).toEqual([2, ["gone"], 1, 2]);
+    expect(hasPendingReads(p)).toBe(true);
+    held.forEach((r) => { asked.children.add(r.id); asked.superseded.add(r.id); asked.raised.add(r.id); });
+    expect(hasPendingReads(pendingReworkReads([held[1]], asked))).toBe(false);
+    expect(hasPendingReads(pendingReworkReads(held, asked))).toBe(true); // the missing parent is still unread
+    expect(hasPendingReads(pendingReworkReads([...held, rework({ id: "gone" })], asked))).toBe(true); // the newly read rework is unasked
   });
 });
