@@ -21,8 +21,8 @@
 #     whose code changed until integration has run and passed, so `ready` is required before merging.
 #   * `guardrails` (pull requests only, a few seconds): scripts/check-test-weakening.mjs compares tests/ at the pull request's head
 #     with its merge base. A deleted test file, a new .skip / .only, fewer test cases in a file or a raised page-size ceiling fails
-#     it, and `ci-gate` with it, unless the pull request carries the `tests-change-approved` label (Rhys adds it; adding it starts a
-#     new run). It fails closed: if the comparison can't be made, it fails.
+#     it, and `ci-gate` with it. No label or setting lets a finding through: an intended removal needs Rhys himself. It fails
+#     closed: if the comparison can't be made, it fails.
 name: CI
 
 # Public repository: the workflow token is read-only for every job (no job writes to the repo, issues or checks).
@@ -416,7 +416,7 @@ jobs:
         if: always()
         run: npm run test:backend:stop
 
-  # Tests are not removed, skipped or loosened without approval (see the top). Reads git only: no install, nothing from the
+  # Tests are not removed, skipped or loosened (see the top). Reads git only: no install, nothing from the
   # pull request is executed except this repository's own script at the checked-out commit.
   guardrails:
     if: ${{ github.event_name == 'pull_request' }}
@@ -426,11 +426,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Tests not removed, skipped or loosened without the tests-change-approved label
+      - name: Tests not removed, skipped or loosened (no label or setting allows it)
         env:
           PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          TESTS_CHANGE_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'tests-change-approved') }}
         run: node scripts/check-test-weakening.mjs "$PR_BASE_SHA" "$PR_HEAD_SHA"
 
   # The one check to require in branch protection. A skipped job counts as passed, so requiring the jobs above directly

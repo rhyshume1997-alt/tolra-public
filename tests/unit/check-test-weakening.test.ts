@@ -1,6 +1,5 @@
 /**
- * BOUNDARY: unit tests for the CI guardrail scripts/check-test-weakening.mjs (tests are not removed, skipped or loosened without
- * approval). Input: synthetic file changes, and a throwaway git repository in the OS temp directory. Output: pass / fail only.
+ * BOUNDARY: unit tests for the CI guardrail scripts/check-test-weakening.mjs (tests are not removed, skipped or loosened). Input: synthetic file changes, and a throwaway git repository in the OS temp directory. Output: pass / fail only.
  * Must not be changed: every case here describes a finding or a pass the guardrail promises; removing one needs Rhys's approval.
  */
 import { execFileSync } from "node:child_process";
@@ -150,9 +149,9 @@ describe("against a real git history (throwaway repository)", () => {
     return { dir, git, write, commit, base: commit("base") };
   }
 
-  const check = (dir: string, base: string, head: string, approved = false) => {
+  const check = (dir: string, base: string, head: string, extra: Record<string, unknown> = {}) => {
     const lines: string[] = [];
-    const code = run({ cwd: dir, base, head, approved, log: (line: string) => lines.push(line) });
+    const code = run({ cwd: dir, base, head, ...extra, log: (line: string) => lines.push(line) });
     return { code, text: lines.join("\n") };
   };
 
@@ -190,39 +189,42 @@ describe("against a real git history (throwaway repository)", () => {
     expect(check(r.dir, newBase, head)).toMatchObject({ code: 0 });
   });
 
-  it("the approval label lets the same findings through, still printed", () => {
+  it("nothing lets a finding through: no approved flag, no label-style setting, no extra argument", () => {
     const r = repo();
     r.git("rm", "-q", "tests/unit/vat.test.ts");
-    const head = r.commit("approved removal");
-    expect(check(r.dir, r.base, head).code).toBe(1);
-    const approved = check(r.dir, r.base, head, true);
-    expect(approved.code).toBe(0);
-    expect(approved.text).toContain("deleted: tests/unit/vat.test.ts");
-    expect(approved.text).toContain("APPROVED");
+    const head = r.commit("removal");
+    for (const extra of [{}, { approved: true }, { approved: "true" }, { label: "tests-change-approved" }, { labels: ["tests-change-approved"] }]) {
+      const result = check(r.dir, r.base, head, extra);
+      expect({ extra, code: result.code }).toEqual({ extra, code: 1 });
+      expect(result.text).toContain("deleted: tests/unit/vat.test.ts");
+      expect(result.text).not.toContain("APPROVED");
+    }
   });
 
-  it("fails closed: a commit that can't be found, or missing arguments, fail even when approved", () => {
+  it("fails closed: a commit that can't be found, or missing arguments, fail", () => {
     const r = repo();
-    expect(check(r.dir, "0123456789012345678901234567890123456789", r.base, true).code).toBe(1);
-    expect(check(r.dir, "", r.base, true).code).toBe(1);
-    expect(check(r.dir, r.base, "", true).code).toBe(1);
+    expect(check(r.dir, "0123456789012345678901234567890123456789", r.base).code).toBe(1);
+    expect(check(r.dir, "", r.base).code).toBe(1);
+    expect(check(r.dir, r.base, "").code).toBe(1);
   });
 
-  it("the command line exits 1 on a finding and 0 with TESTS_CHANGE_APPROVED=true", () => {
+  it("the command line exits 1 on a finding whatever the environment or extra arguments say, and 0 on a clean change", () => {
     const r = repo();
     r.git("rm", "-q", "tests/unit/vat.test.ts");
     const head = r.commit("removal");
     const script = path.resolve(__dirname, "../../scripts/check-test-weakening.mjs");
-    const cli = (env: Record<string, string>) => {
+    const cli = (env: Record<string, string>, from = r.base, extraArgs: string[] = []) => {
       try {
-        execFileSync(process.execPath, [script, r.base, head], { cwd: r.dir, env: { ...process.env, ...env }, stdio: "pipe" });
+        execFileSync(process.execPath, [script, from, head, ...extraArgs], { cwd: r.dir, env: { ...process.env, ...env }, stdio: "pipe" });
         return 0;
       } catch (error) {
         return (error as { status: number }).status;
       }
     };
-    expect(cli({ TESTS_CHANGE_APPROVED: "" })).toBe(1);
-    expect(cli({ TESTS_CHANGE_APPROVED: "true" })).toBe(0);
+    expect(cli({})).toBe(1);
+    expect(cli({ TESTS_CHANGE_APPROVED: "true", APPROVED: "true", CI: "false" })).toBe(1);
+    expect(cli({}, r.base, ["--approved", "true"])).toBe(1);
+    expect(cli({}, head)).toBe(0);
   });
 });
 
@@ -233,7 +235,8 @@ describe("ci.yml runs it on every pull request and the gate requires it", () => 
     const job = ci.split("\n  guardrails:\n")[1]?.split("\n  # The one check to require")[0] ?? "";
     expect(job).toContain("if: ${{ github.event_name == 'pull_request' }}");
     expect(job).toContain("fetch-depth: 0");
-    expect(job).toContain("TESTS_CHANGE_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'tests-change-approved') }}");
+    // No label, input or variable reaches the script: only the two commits.
+    expect(job).not.toMatch(/labels|APPROVED|inputs\.|vars\.|secrets\./);
     expect(job).toContain('run: node scripts/check-test-weakening.mjs "$PR_BASE_SHA" "$PR_HEAD_SHA"');
     expect(job).not.toContain("continue-on-error");
   });

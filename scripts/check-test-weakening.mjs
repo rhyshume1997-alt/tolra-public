@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * BOUNDARY (CI guardrail: tests are not removed, skipped or loosened without approval).
+ * BOUNDARY (CI guardrail: tests are not removed, skipped or loosened).
  *
  *   node scripts/check-test-weakening.mjs <base-sha> <head-sha>
  *
  * Input: two commits. Everything under tests/ that changed between their merge base and <head-sha> is read from git (nothing is
- * executed, the working tree is not read). Output: every finding printed, exit 1 when there is one and the change is not approved.
+ * executed, the working tree is not read). Output: every finding printed, and exit 1 when there is one.
  *
  * A finding is:
  *   - a test file deleted, renamed to a name no suite collects, or moved to another suite's directory;
@@ -19,8 +19,9 @@
  *   - a ceiling raised, or a page dropped, in tests/unit/page-size-budget.test.ts.
  * Adding tests, renaming a file within its suite, renaming a title and lowering a ceiling all pass.
  *
- * Approval: TESTS_CHANGE_APPROVED=true (CI sets it from the pull request's `tests-change-approved` label). Findings are still
- * printed. Fails closed: a commit that cannot be resolved, a failed git command or missing arguments exit 1, approved or not.
+ * No approval switch: nothing in a pull request (a label, its description, an environment variable, an argument) lets a finding
+ * through. An intended removal needs Rhys himself until an approval that can be verified as his exists. Fails closed: a commit
+ * that cannot be resolved, a failed git command or missing arguments also exit 1.
  *
  * Must not be changed without Rhys's approval: the list of findings may grow, never shrink; the fail-closed exits stay.
  */
@@ -164,7 +165,7 @@ export function collectChanges(cwd, base, head) {
 }
 
 /** Returns the process exit code. */
-export function run({ cwd, base, head, approved, log = console.log }) {
+export function run({ cwd, base, head, log = console.log }) {
   if (!base || !head) {
     log("check-test-weakening: usage: node scripts/check-test-weakening.mjs <base-sha> <head-sha>. Refusing (fail closed).");
     return 1;
@@ -180,14 +181,10 @@ export function run({ cwd, base, head, approved, log = console.log }) {
   log(`check-test-weakening: ${changes.length} changed file${changes.length === 1 ? "" : "s"} under tests/, ${findings.length} finding${findings.length === 1 ? "" : "s"}.`);
   for (const finding of findings) log(`  ${finding.kind}: ${finding.file}: ${finding.detail}`);
   if (!findings.length) return 0;
-  if (approved) {
-    log("APPROVED: the pull request carries the tests-change-approved label, so these are allowed.");
-    return 0;
-  }
-  log("FAIL: tests were removed, skipped or loosened. Restore them, or ask Rhys to add the tests-change-approved label to this pull request.");
+  log("FAIL: tests were removed, skipped or loosened. Restore them. No label or setting allows this: an intended removal needs Rhys himself.");
   return 1;
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  process.exit(run({ cwd: process.cwd(), base: process.argv[2], head: process.argv[3], approved: process.env.TESTS_CHANGE_APPROVED === "true" }));
+  process.exit(run({ cwd: process.cwd(), base: process.argv[2], head: process.argv[3] }));
 }
