@@ -1,0 +1,4 @@
+2026-11-05T08:30:32.6148639Z event=pull_request ready=false changes=success code=true integration_needed=true
+2026-11-05T08:30:32.6149546Z web=success integration=skipped
+2026-11-05T08:30:32.6150983Z WAITING: code changed but the full integration suite hasn't run. Add the ready label to run it; this check passes once it does.
+2026-11-05T08:30:32.6171792Z ##[error]Process completed with exit code 1.

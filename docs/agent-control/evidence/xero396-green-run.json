@@ -1,0 +1,24 @@
+{
+  "run": 41993566379,
+  "head": "638a12c5fcd494597e1e99da95d77bb430256195",
+  "web": {
+    "passed": 5126,
+    "failed": 0,
+    "skipped": 0
+  },
+  "database": {
+    "passed": 1628,
+    "failed": 0,
+    "skipped": 7
+  },
+  "upgrade": {
+    "passed": 23,
+    "failed": 0,
+    "skipped": 2
+  },
+  "browser": {
+    "passed": 582,
+    "failed": 0,
+    "skipped": 0
+  }
+}
