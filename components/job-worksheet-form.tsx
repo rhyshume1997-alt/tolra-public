@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { AlertTriangle, Download, Upload } from "lucide-react";
 
 import { CustomerSignOff } from "@/components/customer-signoff";
+import { PlannedVsActualPanel } from "@/components/jobs/planned-vs-actual-panel";
 import { JobSignOff } from "@/components/job-signoff";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -361,6 +362,8 @@ export function JobWorksheetForm({ job, onSaved, onDirtyChange }: {
         <Bar className={overrun ? "bg-[#fde2e2] text-[#c00000]" : BG.blueGrey}>{overrun ? <AlertTriangle className="size-4" /> : null}Reasons for Overrun / Delays{overrun ? ` - taken ${ws.job_time_taken_hr} hr vs quoted ${ws.job_time_quoted_hr} hr` : ""}</Bar>
         <Textarea readOnly={!canEdit} value={ws.overrun_reasons} onChange={(event) => set("overrun_reasons", event.target.value)} className={`min-h-16 ${SHEET_TEXT} ${overrun ? "border-2 border-t-0 border-[#c00000]" : "border-black"}`} placeholder={overrun ? "Job has overrun - please explain why." : ""} />
       </div>
+
+      <PlannedVsActualPanel jobId={job.id} />
 
       {customerPos.length ? (
         <div className="border border-black px-2 py-1.5" aria-label="Customer PO">
