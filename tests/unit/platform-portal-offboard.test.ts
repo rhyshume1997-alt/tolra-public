@@ -113,6 +113,19 @@ describe("POST /api/platform/portal-offboard", () => {
     expect(state.adminUsed).toBe(0);
   });
 
+  it("logs actor, company, action, timestamp and reason but no IP address", async () => {
+    const info = vi.mocked(console.info);
+    const res = await POST(new Request("http://localhost/api/platform/portal-offboard", { method: "POST", headers: { "content-type": "application/json", origin: "http://localhost", host: "localhost", "x-forwarded-for": "203.0.113.77", "x-real-ip": "203.0.113.78" }, body: JSON.stringify({ organizationId: ORG, reason: "Left the platform" }) }));
+    expect(res.status).toBe(200);
+    const logged = [...info.mock.calls, ...vi.mocked(console.error).mock.calls].map((c) => c.join(" ")).join("\n");
+    expect(logged).not.toMatch(/203\.0\.113\.|"ip"|\b\d{1,3}(\.\d{1,3}){3}\b/);
+    const record = JSON.parse(String(info.mock.calls.at(-1)?.[0]));
+    expect(record).toMatchObject({ event: "platform.portal_offboarded", action: "portal_offboard", actor: "u1", organization_id: ORG, reason: "Left the platform" });
+    expect(Number.isNaN(Date.parse(record.at))).toBe(false);
+    expect(Object.keys(record)).not.toContain("ip");
+    expect(offboardCalls()[0].args).toEqual({ p_org: ORG, p_reason: "Left the platform" });
+  });
+
   it("passes another company's id to the database, which is the one that decides (unknown company -> 404)", async () => {
     state.rpcError = { code: "P0002", message: "Company not found. secret-detail", hint: "company_not_found" };
     const res = await post({ organizationId: OTHER_ORG, reason: "left" });

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { recentSecondStep } from "@/lib/mfa-policy";
 import { checkOffboardInput, offboardRefusal, parseOffboardResult } from "@/lib/platform/portal-offboard";
-import { clientIp, isErrorResponse, jsonError, mfaRecentRequired, readJson } from "@/lib/server/auth";
+import { isErrorResponse, jsonError, mfaRecentRequired, readJson } from "@/lib/server/auth";
 import { requirePlatformOwner } from "@/lib/server/platform";
 
 // The platform owner removes ONE company's customer-portal links and portal switch: POST { organizationId, reason }.
@@ -36,6 +36,7 @@ export async function POST(request: Request) {
   const result = parseOffboardResult(data);
   if (!result) return jsonError("Couldn't confirm the removal. Check the company's audit log before trying again.", 500);
 
-  console.info(JSON.stringify({ event: "platform.portal_offboarded", actor: user.id, organization_id: organizationId, removed_links: result.removedLinks, ip: clientIp(request) }));
+  // No raw IP address in this record (PM ruling). Keeps actor, company, action, timestamp and reason.
+  console.info(JSON.stringify({ event: "platform.portal_offboarded", action: "portal_offboard", actor: user.id, organization_id: organizationId, reason, removed_links: result.removedLinks, at: new Date().toISOString() }));
   return NextResponse.json({ ok: true, removedLinks: result.removedLinks, removedSwitch: result.removedSwitch, organizationId: result.organizationId }, { headers: { "Cache-Control": "no-store" } });
 }
