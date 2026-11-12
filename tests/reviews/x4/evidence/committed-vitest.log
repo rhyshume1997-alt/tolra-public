@@ -1,0 +1,34 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/queue-x4
+
+ ✓ tests/reviews/x4/marpet.test.ts (20 tests) 20995ms
+   ✓ JNR cannot read, update, delete or move a Marpet row in customers under the selected real RLS policies 798ms
+   ✓ JNR cannot read, update, delete or move a Marpet row in suppliers under the selected real RLS policies 783ms
+   ✓ JNR cannot read, update, delete or move a Marpet row in stock under the selected real RLS policies 807ms
+   ✓ JNR cannot read, update, delete or move a Marpet row in quotes under the selected real RLS policies 807ms
+   ✓ JNR cannot read, update, delete or move a Marpet row in quote_line_items under the selected real RLS policies 799ms
+   ✓ JNR cannot read, update, delete or move a Marpet row in quote_attachments under the selected real RLS policies 810ms
+   ✓ JNR cannot read, update, delete or move a Marpet row in rfqs under the selected real RLS policies 796ms
+   ✓ JNR cannot read, update, delete or move a Marpet row in purchase_orders under the selected real RLS policies 785ms
+   ✓ JNR cannot read, update, delete or move a Marpet row in email_history under the selected real RLS policies 782ms
+   ✓ JNR cannot read, update, delete or move a Marpet row in invoices under the selected real RLS policies 771ms
+   ✓ JNR cannot read, update, delete or move a Marpet row in invoice_line_items under the selected real RLS policies 809ms
+   ✓ JNR cannot read, update, delete or move a Marpet row in sales_orders under the selected real RLS policies 784ms
+   ✓ JNR cannot read, update, delete or move a Marpet row in jobs under the selected real RLS policies 810ms
+   ✓ JNR cannot read, update, delete or move a Marpet row in delivery_notes under the selected real RLS policies 791ms
+   ✓ JNR cannot read, update, delete or move a Marpet row in delivery_note_items under the selected real RLS policies 818ms
+   ✓ JNR cannot read, update, delete or move a Marpet row in machines under the selected real RLS policies 805ms
+   ✓ JNR cannot read or change either company’s private numbering hold 841ms
+   ✓ forging a company choice without membership does not grant Marpet access 395ms
+   ✓ a fixture-only JNR purge leaves all sampled Marpet rows and BOTH numbering holds byte-identical 1018ms
+   ✓ detects a bad global wipe and rolls the attempted change back 606ms
+stdout | tests/reviews/x4/marpet.test.ts
+X4 evidence: /tmp/tolra-x4-53a7b4be-de61-4640-b7aa-2e4e56a9be88
+
+
+ Test Files  1 passed (1)
+      Tests  20 passed (20)
+   Start at  02:37:22
+   Duration  21.24s (transform 42ms, setup 0ms, collect 52ms, tests 21.00s, environment 0ms, prepare 55ms)
+
