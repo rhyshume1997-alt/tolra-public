@@ -1,0 +1,17 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/queue-ai-finish
+
+ ✓ tests/unit/ai-helper-routes.test.ts (46 tests) 106ms
+ ✓ tests/unit/ai-assistant.test.ts (27 tests) 51ms
+ ✓ tests/unit/ai-helper.test.ts (31 tests) 29ms
+ ✓ tests/unit/ai-finance-check-route.test.ts (35 tests) 102ms
+ ✓ tests/unit/ai-finance-check.test.ts (34 tests) 38ms
+ ✓ tests/unit/ai-master-switch.test.ts (14 tests) 38ms
+ ✓ tests/unit/ai-helper-101-header.test.ts (3 tests) 5ms
+
+ Test Files  7 passed (7)
+      Tests  190 passed (190)
+   Start at  07:15:50
+   Duration  3.34s (transform 639ms, setup 0ms, collect 1.84s, tests 369ms, environment 1ms, prepare 329ms)
+
