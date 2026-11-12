@@ -15,6 +15,7 @@
  * Pure (no React, no I/O).
  */
 import { toDateInput } from "@/lib/dates";
+import type { Period } from "@/lib/numbers";
 import { PROBLEM_REASONS } from "@/lib/job-problems";
 import { toPence } from "@/lib/money";
 import { CLOSED_LABELS, REWORK_STATUS_LABELS, type ReworkRecord } from "@/lib/rework";
@@ -312,6 +313,29 @@ export function summariseNcrRows(rows: NcrRow[]): NcrSummary {
     averageDaysToClose: closed ? Math.round((closedDays / closed) * 10) / 10 : null,
     hours: Math.round(hours * 100) / 100, materialCost: costPence / 100,
   };
+}
+
+/** One London month of NCR counts for reports. Confirmed = not "Not linked"; open/closed/byType/scrapped count confirmed rows only. */
+export type NcrMonth = { confirmed: number; open: number; closed: number; byType: Record<string, number>; scrapped: number; notLinked: number };
+
+/**
+ * NCR counts per London month of each row's raised date (the field filterNcrRows uses), with the same confirmed / not-linked split and
+ * scrapped rule as summariseNcrRows (scrapped null counts 0). Every period key is present (zeros); rows outside the periods are ignored.
+ * Does not change buildNcrRows, filterNcrRows, summariseNcrRows or countConcessions.
+ */
+export function ncrByMonth(rows: NcrRow[], periods: Period[]): Map<string, NcrMonth> {
+  const months = new Map<string, NcrMonth>(periods.map((p) => [p.key, { confirmed: 0, open: 0, closed: 0, byType: Object.fromEntries(NCR_TYPES.map((t) => [t, 0])), scrapped: 0, notLinked: 0 }]));
+  for (const r of rows) {
+    const month = months.get(r.raisedDate.slice(0, 7));
+    if (!month) continue;
+    if (r.notLinked) { month.notLinked += 1; continue; }
+    month.confirmed += 1;
+    month.byType[r.type] = (month.byType[r.type] ?? 0) + 1;
+    month.scrapped += r.scrapped ?? 0;
+    if (r.open) month.open += 1;
+    else month.closed += 1;
+  }
+  return months;
 }
 
 /** CSV columns. Text is formula-guarded and quoted by lib/spreadsheet toCsv; dates are ISO. Money is GBP pounds. */

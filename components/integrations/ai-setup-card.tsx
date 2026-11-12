@@ -11,11 +11,12 @@ import { Input } from "@/components/ui/input";
 import {
   ANTHROPIC_KEYS_URL, KEY_SHAPE_MESSAGE, TOLRA_LIMIT_NOTE, type AiProvider, limitRequest, parseLimit, buildAiSetup, effectiveProvider, keyChangeNotice, keyLooksRight, postJson, requestJson, safeMessage, switchRequest,
 } from "@/lib/integrations/ai-setup";
+import { SHARED_TOLRA_AI_ACTIVE } from "@/lib/ai-helper/shared-ai-deactivation";
 import { sendWithCode } from "@/lib/mfa-step-up";
 
 /**
  * Admin > Integrations > AI: guided setup in the shared SetupCard frame.
- *   1. choose who provides the AI (Anthropic with the company's own key, or Tolra-provided);
+ *   1. the AI is provided by Anthropic with the company's own key (the Tolra-provided choice is hidden while SHARED_TOLRA_AI_ACTIVE is false);
  *   2. get a key (plain link to the Anthropic Console, opens in a new tab);
  *   3. paste the key (password field) and save it: sent once to /api/ai-helper/key, which encrypts it. It is never shown again, the field is
  *      emptied the moment Save is pressed, and only "saved" and the last four characters come back;
@@ -170,10 +171,10 @@ export function AiSetupPanel(props: {
               <input type="radio" name="ai-provider" value="anthropic" checked={provider === "anthropic"} onChange={() => setPicked("anthropic")} />
               <span>Anthropic, with your company&apos;s own key</span>
             </label>
-            <label className="flex items-start gap-2">
+            {SHARED_TOLRA_AI_ACTIVE ? <label className="flex items-start gap-2">
               <input type="radio" name="ai-provider" value="tolra" checked={provider === "tolra"} onChange={() => setPicked("tolra")} />
               <span>Tolra-provided AI (Tolra&apos;s account, with a monthly allowance for your company){status?.tolra_available ? "" : " (not available)"}</span>
-            </label>
+            </label> : null}
             {model.on === true ? <p className="text-xs text-slate-500">Turn AI off to change who provides it.</p> : null}
           </fieldset>
           {model.capLine ? <p data-testid="ai-cap-line">{model.capLine}</p> : null}
@@ -194,7 +195,7 @@ export function AiSetupPanel(props: {
               <p className="text-xs text-slate-500">Replacing or removing the key switches AI off. You turn it on again with the switch above.</p>
             </form>
           ) : null}
-          {provider === "tolra" ? <p className="text-xs text-slate-500" data-testid="ai-limit-tolra-note">{TOLRA_LIMIT_NOTE}</p> : null}
+          {SHARED_TOLRA_AI_ACTIVE && provider === "tolra" ? <p className="text-xs text-slate-500" data-testid="ai-limit-tolra-note">{TOLRA_LIMIT_NOTE}</p> : null}
           {provider === "anthropic" && canManage ? (
             <form onSubmit={(event) => void saveLimit(event)} className="grid gap-2" aria-label="Monthly limit">
               <label htmlFor="ai-limit" className="font-medium">Monthly limit (£)</label>

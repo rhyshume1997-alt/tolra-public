@@ -283,8 +283,8 @@ describe("RFQ email to draft quote", () => {
     expect(body.suggestion.lines[0]).toMatchObject({ description: "Bracket", partNumber: "BR-100", quantity: 25, review: ["price"] });
     expect(body.suggestion.lines[1].review).toEqual(["material", "finish", "due_date", "price"]);
     expect(JSON.stringify(body)).not.toMatch(/price"\s*:\s*\d|unit_price|total/);
-    expect(db.rpcs.map((r) => r.fn)).toEqual(["ai_helper_status", "ai_helper_reserve", "ai_helper_settle"]);
-    const reserve = db.rpcs[1].args;
+    expect(db.rpcs.map((r) => r.fn)).toEqual(["ai_helper_status", "ai_helper_status", "ai_helper_reserve", "ai_helper_settle"]);
+    const reserve = db.rpcs[2].args;
     expect(reserve).toMatchObject({ p_feature: "rfq" });
     expect(reserve.p_input_digest).toMatch(/^[0-9a-f]{64}$/);
     expect(JSON.stringify(reserve)).not.toContain("Bracket"); // the text itself never reaches the database
@@ -449,7 +449,7 @@ describe("RFQ email to draft quote", () => {
     expect(body.suggestion.suspicious).toBe(true);
     const text = JSON.stringify(body);
     for (const word of ["issue_invoice", "record_payment", "unit_price", "QUO-9999", "tool_call"]) expect(text).not.toContain(word);
-    expect(db.rpcs.map((r) => r.fn)).toEqual(["ai_helper_status", "ai_helper_reserve", "ai_helper_settle"]);
+    expect(db.rpcs.map((r) => r.fn)).toEqual(["ai_helper_status", "ai_helper_status", "ai_helper_reserve", "ai_helper_settle"]);
     expect(JSON.stringify(settleCall()?.p_output)).not.toMatch(/issue_invoice|unit_price|record_payment/);
   });
 
@@ -584,8 +584,8 @@ describe("round-up", () => {
     expect(attention.roles).toEqual(["office"]);
     expect(body.facts.sections[0].count).toBe(3);
     expect(body.summary).toBe("3 things need attention. Most urgent: Draft or sent quotes past their valid-until date (3).");
-    expect(db.rpcs.map((r) => r.fn)).toEqual(["ai_helper_status", "ai_helper_reserve", "ai_helper_settle"]);
-    expect(db.rpcs[1].args.p_feature).toBe("roundup");
+    expect(db.rpcs.map((r) => r.fn)).toEqual(["ai_helper_status", "ai_helper_status", "ai_helper_reserve", "ai_helper_settle"]);
+    expect(db.rpcs[2].args.p_feature).toBe("roundup");
     expect(settleCall()?.p_model).toBe("claude-sonnet-5-5");
     // No customer name or detail text in what the model was sent (the stored output holds titles and counts only).
     expect(JSON.stringify(settleCall())).not.toContain("Acme");

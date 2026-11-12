@@ -13,16 +13,16 @@ it('distinguishes missing setup, mapping and last failures without inferring a c
  expect(accountingStatuses({...input(),overview:{...overview,unmapped:['account:sales']},last:{status:'failed'}})[0]).toMatchObject({mapping:'Mapping outstanding',lastTransfer:'Failed'});
  expect(accountingStatuses({...input(),lastReadOk:false})[0].lastTransfer).toBe('Unknown');
 });
-it('Sage says file export only with no live link, and is never ready or transferred',()=>{
- const sage=accountingStatuses(input())[1];
- expect(sage).toMatchObject({name:'Sage',readiness:'File export only, no live link',lastTransfer:'No online transfers',connection:'Unknown'});
- expect(accountingStatuses({...input(),sage:{...overview,provider:'sage',status:'not_connected'}})[1].connection).toBe('Not connected');
- expect(accountingStatuses({...input(),sage:{...overview,provider:'sage'}})[1].connection).toBe('Connected (read-only payment checks)');
+it('the file-export row names no Sage or QuickBooks, claims no connection, and is never ready or transferred',()=>{
+ const rows=accountingStatuses(input());
+ expect(rows.map(r=>r.id)).toEqual(['xero','file-export']);
+ expect(rows[1]).toMatchObject({name:'File export (CSV / Excel)',readiness:'File export only, no live link',lastTransfer:'No online transfers',connection:'Not applicable',transfers:'Not applicable'});
+ expect(JSON.stringify(rows)).not.toMatch(/sage|quickbooks|read-only payment/i);
 });
-it('QuickBooks has its own row that says not built and never claims transfers',()=>{
- const qb=accountingStatuses({...input(),quickbooks:{...overview,provider:'quickbooks',status:'not_connected'}})[2];
- expect(qb).toMatchObject({id:'quickbooks',name:'QuickBooks',available:false,connection:'Not connected',readiness:'Not built: no invoices are sent',lastTransfer:'No online transfers'});
- expect(accountingStatuses(input())[2].connection).toBe('Unknown');
+it('Sage and QuickBooks inputs are ignored: no provider row is ever produced for them',()=>{
+ const rows=accountingStatuses({...input(),sage:{...overview,provider:'sage'},quickbooks:{...overview,provider:'quickbooks'}} as never);
+ expect(rows.some(r=>r.id==='quickbooks'||r.id==='sage-files')).toBe(false);
+ expect(rows).toHaveLength(2);
 });
 it('Xero transfers are On, Off or Unknown separately from Connected',()=>{
  expect(accountingStatuses(input())[0]).toMatchObject({connection:'Connected',transfers:'On'});
@@ -42,6 +42,7 @@ vi.mock('@/lib/server/auth',()=>({requireProfile:async()=>state.allowed?{profile
 import {GET} from '@/app/api/integrations/accounting-status/route';
 beforeEach(()=>{state.allowed=true;state.support=false;state.filters=[];state.rpc.mockReset().mockImplementation(async(fn:string)=>({data:fn==='integration_overview'?overview:{enabled:false},error:null}));});
 it('admin status route scopes transfer reads to current company and exposes no tokens',async()=>{
- const result=await (await GET()).json();expect(state.filters).toContainEqual(['organization_id','synthetic-A']);expect(result.providers[0]).toMatchObject({readiness:'Transfers OFF',transfers:'Off'});expect(result.providers.map((p:{id:string})=>p.id)).toEqual(['xero','sage-files','quickbooks']);expect(state.filters).toContainEqual(['status',['failed','needs_check']]);expect(JSON.stringify(result)).not.toContain('token');
+ const result=await (await GET()).json();expect(state.filters).toContainEqual(['organization_id','synthetic-A']);expect(result.providers[0]).toMatchObject({readiness:'Transfers OFF',transfers:'Off'});expect(result.providers.map((p:{id:string})=>p.id)).toEqual(['xero','file-export']);expect(state.filters).toContainEqual(['status',['failed','needs_check']]);expect(JSON.stringify(result)).not.toContain('token');
 });
 it('refuses non-admin and support reads',async()=>{state.allowed=false;expect((await GET()).status).toBe(403);state.allowed=true;state.support=true;expect((await GET()).status).toBe(403);expect(state.rpc).not.toHaveBeenCalled();});
+it('status route reads only the Xero overview, never sage or quickbooks',async()=>{await GET();expect(state.rpc.mock.calls.every((c:unknown[])=>(c[1] as {p_provider?:string}|undefined)?.p_provider!=='sage'&&(c[1] as {p_provider?:string}|undefined)?.p_provider!=='quickbooks')).toBe(true);});

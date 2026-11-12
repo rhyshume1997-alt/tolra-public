@@ -7,6 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { anthropicProvider } from "@/lib/ai-helper/anthropic";
 import { AI_HELPER_EFFORT, AI_HELPER_MODELS, AI_REQUEST_TIMEOUT_MS, type AiHelperFeature, MAX_OUTPUT_TOKENS, actualPence, estimatePence } from "@/lib/ai-helper/limits";
 import { mockProvider } from "@/lib/ai-helper/mock";
+import { SHARED_TOLRA_AI_ACTIVE } from "@/lib/ai-helper/shared-ai-deactivation";
 import { type AiFailure, type AiHelperProvider, AiProviderError, type AiUsage } from "@/lib/ai-helper/provider";
 import { decryptSecret } from "@/lib/integrations/crypto";
 import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
@@ -79,6 +80,16 @@ export async function runAiHelper<T>(input: RunInput<T>): Promise<RunOutcome<T>>
     console.error("[ai-helper] service role not configured");
     return { kind: "unavailable" };
   }
+  // C4: no shared Tolra key. The company's mode is read first (ai_helper_status, the caller's own read that the routes already make; no new
+  // SQL). A company in shared mode is refused here: nothing is reserved, no key is read, no provider is called. An unreadable status refuses too.
+  if (!SHARED_TOLRA_AI_ACTIVE) {
+    const { data: mode, error: modeError } = await input.supabase.rpc("ai_helper_status");
+    if (modeError) {
+      console.error("[ai-helper] mode read refused", modeError.code ?? "error");
+      return { kind: "unavailable" };
+    }
+    if ((mode as { tolra_enabled?: boolean } | null)?.tolra_enabled === true) return { kind: "unavailable" };
+  }
   const reserveArgs = { p_estimate_pence: estimate, p_input_digest: digest(input.data), p_input_bytes: Buffer.byteLength(input.data, "utf8") };
   // The assistant (G3) reserves through its own function (migration 134: 133's reserve rules for the one feature), so 133's
   // ai_helper_reserve stays exactly as it is.
@@ -104,6 +115,11 @@ export async function runAiHelper<T>(input: RunInput<T>): Promise<RunOutcome<T>>
     return !settleError;
   };
   const none = { inputTokens: 0, outputTokens: 0 };
+  // C4 backstop for the race (mode switched on between the read above and the reservation): settle at 0 and read no key.
+  if (answer.key_source === "tolra" && !SHARED_TOLRA_AI_ACTIVE) {
+    await settle("failed", "unavailable", none, null, null, 0);
+    return { kind: "unavailable" };
+  }
 
   let apiKey: string;
   try {

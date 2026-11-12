@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   buildNcrRows, concessionInspections, countConcessions, daysBetween, hasPendingReads, pendingReworkReads, splitByClass, groupReworkChains, defaultRange, filterNcrRows, ncrCsv, summariseNcrRows,
@@ -309,5 +309,103 @@ describe("chain read cap", () => {
     expect(hasPendingReads(pendingReworkReads([held[1]], asked))).toBe(false);
     expect(hasPendingReads(pendingReworkReads(held, asked))).toBe(true); // the missing parent is still unread
     expect(hasPendingReads(pendingReworkReads([...held, rework({ id: "gone" })], asked))).toBe(true); // the newly read rework is unasked
+  });
+});
+
+// ---- Added for reports (3b): ncrByMonth and loadNcrRegister's optional client -------------------------------------------------------
+import { loadNcrRegister } from "@/lib/jobs/load-ncr-register";
+import { ncrByMonth } from "@/lib/jobs/ncr-register";
+import { londonMonthsEnding } from "@/lib/numbers";
+
+const holder = vi.hoisted(() => ({ supabase: null as unknown }));
+vi.mock("@/lib/supabase", () => ({ get supabase() { return holder.supabase; } }));
+
+describe("ncrByMonth", () => {
+  const periods = londonMonthsEnding(new Date("2026-10-20T12:00:00Z"), 3); // Aug, Sep, Oct 2026
+  const rowsOf = (s: NcrSources) => buildNcrRows(s, NOW);
+  const total = (m: Map<string, import("@/lib/jobs/ncr-register").NcrMonth>) => [...m.values()].reduce((t, x) => ({ confirmed: t.confirmed + x.confirmed, open: t.open + x.open, closed: t.closed + x.closed, scrapped: t.scrapped + x.scrapped, notLinked: t.notLinked + x.notLinked }), { confirmed: 0, open: 0, closed: 0, scrapped: 0, notLinked: 0 });
+
+  it("has every period key with zeros when there are no rows", () => {
+    const m = ncrByMonth([], periods);
+    expect([...m.keys()]).toEqual(["2026-08", "2026-09", "2026-10"]);
+    for (const v of m.values()) expect(v).toMatchObject({ confirmed: 0, open: 0, closed: 0, scrapped: 0, notLinked: 0 });
+    expect(ncrByMonth([], []).size).toBe(0);
+  });
+
+  it("puts a row in its London raised month across BST and GMT edges", () => {
+    const rows = rowsOf(src({ problems: [
+      problem({ id: "a", reported_at: "2026-08-31T23:30:00Z" }),  // 00:30 BST on 1 Sep -> September
+      problem({ id: "b", reported_at: "2026-09-30T22:59:00Z" }),  // 23:59 BST on 30 Sep -> September
+      problem({ id: "c", reported_at: "2026-09-30T23:00:00Z" }),  // 00:00 BST on 1 Oct -> October
+      problem({ id: "d", reported_at: "2026-08-31T22:59:00Z" }),  // 23:59 BST on 31 Aug -> August
+    ] }));
+    const m = ncrByMonth(rows, periods);
+    expect([m.get("2026-08")!.confirmed, m.get("2026-09")!.confirmed, m.get("2026-10")!.confirmed]).toEqual([1, 2, 1]);
+    const winter = londonMonthsEnding(new Date("2026-12-20T12:00:00Z"), 2); // Nov, Dec (GMT)
+    const w = ncrByMonth(rowsOf(src({ problems: [problem({ id: "e", reported_at: "2026-11-30T23:59:00Z" }), problem({ id: "f", reported_at: "2026-12-01T00:00:00Z" })] })), winter);
+    expect([w.get("2026-11")!.confirmed, w.get("2026-12")!.confirmed]).toEqual([1, 1]);
+  });
+
+  it("keeps not-linked apart, counts scrapped (null as 0), open/closed and types", () => {
+    const rows = rowsOf(src({
+      reworks: [
+        rework({ id: "r1", quantity_scrapped: 3 }),
+        rework({ id: "r2", status: "closed", closed_how: "passed", closed_at: "2026-10-11T09:00:00Z", quantity_scrapped: 2, raised_at: "2026-10-09T09:00:00Z" }),
+      ],
+      inspections: [insp({ id: "i1", inspected_at: "2026-10-05T09:00:00Z" }), insp({ id: "c1", result: "concession", concession_reason: "OK", inspected_at: "2026-09-15T09:00:00Z" })],
+      problems: [problem({ id: "p1" })],
+    }));
+    const oct = ncrByMonth(rows, periods).get("2026-10")!;
+    expect(oct).toMatchObject({ confirmed: 3, open: 2, closed: 1, scrapped: 5, notLinked: 1 });
+    expect(oct.byType).toMatchObject({ Rework: 2, Problem: 1, Concession: 0 });
+    const sep = ncrByMonth(rows, periods).get("2026-09")!;
+    expect(sep).toMatchObject({ confirmed: 1, closed: 1, scrapped: 0, notLinked: 0 });
+    expect(sep.byType.Concession).toBe(1);
+  });
+
+  it("totals over the periods equal summariseNcrRows over the same rows", () => {
+    const rows = rowsOf(src({
+      reworks: [rework({ id: "r1", quantity_scrapped: 4 }), rework({ id: "r2", raised_at: "2026-09-02T09:00:00Z", status: "closed", closed_how: "passed", closed_at: "2026-09-03T09:00:00Z", quantity_scrapped: 1 })],
+      inspections: [insp({ id: "i1" }), insp({ id: "c2", result: "concession", inspected_at: "2026-08-20T09:00:00Z" })],
+      problems: [problem({ id: "p1", reported_at: "2026-08-12T09:00:00Z" })],
+    }));
+    const summary = summariseNcrRows(rows);
+    const t = total(ncrByMonth(rows, periods));
+    expect(t).toEqual({ confirmed: summary.total, open: summary.open, closed: summary.closed, scrapped: summary.quantityScrapped, notLinked: summary.notLinked });
+    const types: Record<string, number> = {};
+    for (const v of ncrByMonth(rows, periods).values()) for (const [k, n] of Object.entries(v.byType)) types[k] = (types[k] ?? 0) + n;
+    expect(types).toEqual(summary.byType);
+  });
+});
+
+describe("loadNcrRegister client", () => {
+  /** Empty tables; records which client was asked. */
+  const emptyClient = (used: string[], tag: string) => ({
+    from: (table: string) => {
+      used.push(`${tag}:${table}`);
+      const q: Record<string, unknown> = {};
+      for (const m of ["select", "gte", "lt", "eq", "in", "order", "range"]) q[m] = () => q;
+      q.then = (ok: (v: unknown) => unknown, bad?: (e: unknown) => unknown) => Promise.resolve({ data: [], error: null }).then(ok, bad);
+      return q;
+    },
+  });
+
+  it("uses the client given and not the singleton", async () => {
+    const used: string[] = [];
+    holder.supabase = emptyClient(used, "singleton");
+    const load = await loadNcrRegister({ from: "2026-10-01", to: "2026-10-31" }, emptyClient(used, "given"));
+    expect(load).toMatchObject({ ok: true, truncated: false });
+    expect(used.length).toBeGreaterThan(0);
+    expect(used.every((u) => u.startsWith("given:"))).toBe(true);
+  });
+
+  it("uses the browser singleton when no client is given, and is not ok when there is none", async () => {
+    const used: string[] = [];
+    holder.supabase = emptyClient(used, "singleton");
+    expect(await loadNcrRegister({ from: "2026-10-01", to: "2026-10-31" })).toMatchObject({ ok: true });
+    expect(used.every((u) => u.startsWith("singleton:"))).toBe(true);
+    expect(used.length).toBeGreaterThan(0);
+    holder.supabase = null;
+    expect(await loadNcrRegister({ from: "2026-10-01", to: "2026-10-31" })).toEqual({ ok: false });
   });
 });
