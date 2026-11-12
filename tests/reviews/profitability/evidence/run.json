@@ -1,0 +1,15 @@
+{
+  "requirement": "PR378 independent review",
+  "code_commit": "86e6d079345885fd8c412918961f230fddf74480",
+  "reviewed_commit": "ccd74ea513307c5584a11f7cd368f38b742ce769",
+  "environment": "local Node/Vitest, synthetic in-memory inputs, no SQL",
+  "sql_hash": null,
+  "time_utc": "2026-11-05T07:05:47.518049+00:00",
+  "exit_code": 1,
+  "counts": {
+    "passed": 34,
+    "failed": 2,
+    "skipped": 0
+  },
+  "log_sha256": "308d3a39789b6b528046598b82815ced9935d8916aa45b682a22c55ffa79678b"
+}
