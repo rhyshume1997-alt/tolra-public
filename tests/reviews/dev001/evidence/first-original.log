@@ -1,0 +1,85 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/queue-dev001
+
+ ❯ tests/reviews/dev001/held-alert.test.ts (6 tests | 4 failed) 134ms
+   × DEV-001-01 real 147 hold hint gives plain staff wording, not Nothing was saved 18ms
+     → expected 'Couldn\'t create the delivery note. N…' to be 'Delivery notes are paused while the n…' // Object.is equality
+   × DEV-001-02 explicit whole-company hold gives a distinct safe instruction 3ms
+     → expected 'You don\'t have permission to do that.' to be 'Work for this company is paused. Ask …' // Object.is equality
+   × DEV-001-03 a known hold must not expose raw database or another company’s text 2ms
+     → expected 'Couldn\'t create the delivery note. N…' to be 'Delivery notes are paused while the n…' // Object.is equality
+   × DEV-001-05 held save displays an accessible staff alert with the requested instruction 93ms
+     → expected 'Couldn\'t create the delivery note. N…' to be 'Delivery notes are paused while the n…' // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/reviews/dev001/held-alert.test.ts > DEV-001-01 real 147 hold hint gives plain staff wording, not Nothing was saved
+AssertionError: expected 'Couldn\'t create the delivery note. N…' to be 'Delivery notes are paused while the n…' // Object.is equality
+
+Expected: "Delivery notes are paused while the next number is checked. Ask the office for help. Your note has not been saved."
+Received: "Couldn't create the delivery note. Nothing was saved."
+
+ ❯ tests/reviews/dev001/held-alert.test.ts:17:110
+     15| afterEach(()=>{act(()=>root.unmount());host.remove();vi.restoreAllMock…
+     16| it('DEV-001-01 real 147 hold hint gives plain staff wording, not Nothi…
+     17|  expect(friendlyError({code:'55000',hint:'dln_numbering_not_set',messa…
+       |                                                                                                              ^
+     18| });
+     19| it('DEV-001-02 explicit whole-company hold gives a distinct safe instr…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  tests/reviews/dev001/held-alert.test.ts > DEV-001-02 explicit whole-company hold gives a distinct safe instruction
+AssertionError: expected 'You don\'t have permission to do that.' to be 'Work for this company is paused. Ask …' // Object.is equality
+
+Expected: "Work for this company is paused. Ask your supervisor or the office before trying again. Your changes have not been saved."
+Received: "You don't have permission to do that."
+
+ ❯ tests/reviews/dev001/held-alert.test.ts:21:131
+     19| it('DEV-001-02 explicit whole-company hold gives a distinct safe instr…
+     20|  // Proposed typed signal: Code must implement/verify its authenticate…
+     21|  expect(friendlyError({code:'42501',hint:'company_on_hold',message:'pe…
+       |                                                                                                                                   ^
+     22| });
+     23| it('DEV-001-03 a known hold must not expose raw database or another co…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  tests/reviews/dev001/held-alert.test.ts > DEV-001-03 a known hold must not expose raw database or another company’s text
+AssertionError: expected 'Couldn\'t create the delivery note. N…' to be 'Delivery notes are paused while the n…' // Object.is equality
+
+Expected: "Delivery notes are paused while the next number is checked. Ask the office for help. Your note has not been saved."
+Received: "Couldn't create the delivery note. Nothing was saved."
+
+ ❯ tests/reviews/dev001/held-alert.test.ts:25:18
+     23| it('DEV-001-03 a known hold must not expose raw database or another co…
+     24|  const message=friendlyError({code:'55000',hint:'dln_numbering_not_set…
+     25|  expect(message).toBe(DLN);expect(message).not.toContain('synthetic_ot…
+       |                  ^
+     26| });
+     27| it('DEV-001-04 unknown errors do not falsely claim the company is held…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  tests/reviews/dev001/held-alert.test.ts > DEV-001-05 held save displays an accessible staff alert with the requested instruction
+AssertionError: expected 'Couldn\'t create the delivery note. N…' to be 'Delivery notes are paused while the n…' // Object.is equality
+
+Expected: "Delivery notes are paused while the next number is checked. Ask the office for help. Your note has not been saved."
+Received: "Couldn't create the delivery note. Nothing was saved."
+
+ ❯ tests/reviews/dev001/held-alert.test.ts:41:122
+     39| }
+     40| it('DEV-001-05 held save displays an accessible staff alert with the r…
+     41|  await refusedForm();expect(mock.rpc).toHaveBeenCalledTimes(1);expect(…
+       |                                                                                                                          ^
+     42| });
+     43| it('DEV-001-06 refusal preserves entered work and never reports succes…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 2 passed (6)
+   Start at  06:57:24
+   Duration  1.04s (transform 110ms, setup 0ms, collect 261ms, tests 134ms, environment 460ms, prepare 54ms)
+
