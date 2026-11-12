@@ -15,7 +15,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import {
-  DocumentLinkError, linkDocumentCustomer, linkDocumentCustomerNameOverride, retireDocumentCustomerLinks, setCustomerPortalEnabled,
+  DocumentLinkError, VERIFY_BATCH_MAX, linkDocumentCustomer, linkDocumentCustomerNameOverride, retireDocumentCustomerLinks, setCustomerPortalEnabled,
   unlinkDocumentCustomer, verifyDocumentCustomerLinks,
 } from "@/lib/customers/document-links";
 import { type LinkAction, type RefusalCategory, logLinkRefusal, securityRefusalCategory } from "@/lib/customers/document-link-refusal";
@@ -28,7 +28,7 @@ const kind = z.enum(["job", "quote"]);
 const bodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("link"), kind, documentId: id, customerId: id, reason }).strict(),
   z.object({ action: z.literal("override"), kind, documentId: id, customerId: id, reason, identityConfirmed: z.boolean() }).strict(),
-  z.object({ action: z.literal("verify"), linkIds: z.array(z.string().min(1).max(64)).max(1000), reason }).strict(),
+  z.object({ action: z.literal("verify"), linkIds: z.array(id).min(1).max(VERIFY_BATCH_MAX), reason }).strict(),
   z.object({ action: z.literal("unlink"), kind, documentId: id, reason }).strict(),
   z.object({ action: z.literal("retire"), targetKind: z.enum(["job", "quote", "customer"]), targetId: id, reason }).strict(),
   z.object({ action: z.literal("portal_set"), enabled: z.boolean(), reason }).strict(),

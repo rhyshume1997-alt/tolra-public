@@ -155,6 +155,19 @@ describe("customer document-link route", () => {
     expect(db.rpcs).toEqual([{ fn: "link_document_customer", args: { p_kind: "job", p_document: JOB, p_customer: CUST, p_reason: REASON } }]);
     expect(logged()).toEqual([]);
   });
+  it("verify: ids must be 1..200 UUIDs; malformed input is 400, unlogged, and never reaches the database", async () => {
+    const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+    const verify = (linkIds: unknown) => ({ action: "verify", linkIds, reason: "checked" });
+    expect((await post(verify(["not-a-uuid"]))).status).toBe(400);
+    expect((await post(verify([]))).status).toBe(400);
+    expect((await post(verify(Array.from({ length: 201 }, (_, i) => uuid(i))))).status).toBe(400);
+    expect(db.rpcs).toEqual([]);
+    expect(logged()).toEqual([]);
+    const ok = Array.from({ length: 200 }, (_, i) => uuid(i));
+    expect((await post(verify(ok))).status).toBe(200);
+    expect(db.rpcs).toHaveLength(1);
+    expect(db.rpcs[0].fn).toBe("verify_document_customer_links");
+  });
   it("portal OFF needs no fresh code (admin); portal ON does", async () => {
     signIn("admin");
     db.mfa = { currentLevel: "aal2", currentAuthenticationMethods: [] };
