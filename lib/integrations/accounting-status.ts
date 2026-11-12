@@ -34,7 +34,6 @@ export function accountingStatuses(input: {
   configured: boolean | null; overview: IntegrationOverview | null; enabled: boolean | null;
   last: SendRow; lastReadOk: boolean;
   lastFailure?: SendRow; failureReadOk?: boolean;
-  sage?: IntegrationOverview | null; quickbooks?: IntegrationOverview | null;
 }): AccountingStatus[] {
   const o = input.overview;
   const connected = o?.status === "connected";
@@ -54,16 +53,10 @@ export function accountingStatuses(input: {
       updatedAt: input.last?.updated_at ?? null,
     },
     {
-      id: "sage-files", name: "Sage", available: true, configuration: "No invoice transfer is built",
-      connection: input.sage === undefined ? "Unknown" : connectionLabel(input.sage) === "Connected" ? "Connected (read-only payment checks)" : connectionLabel(input.sage),
-      mapping: "Accountant checks file mapping", transfers: "Not applicable", readiness: "File export only, no live link",
-      lastTransfer: "No online transfers", failures: "Not applicable", updatedAt: null,
-    },
-    {
-      id: "quickbooks", name: "QuickBooks", available: false, configuration: "No invoice transfer is built",
-      connection: input.quickbooks === undefined ? "Unknown" : connectionLabel(input.quickbooks) === "Connected" ? "Connected (read-only payment checks)" : connectionLabel(input.quickbooks),
-      mapping: "Not built", transfers: "Not applicable", readiness: "Not built: no invoices are sent",
-      lastTransfer: "No online transfers", failures: "Not applicable", updatedAt: null,
+      // Genuine generic CSV / Excel exports only (invoices page, Xero summary). Not a Sage or QuickBooks connection or import layout.
+      id: "file-export", name: "File export (CSV / Excel)", available: true, configuration: "No invoice transfer is built",
+      connection: "Not applicable", mapping: "Accountant checks file mapping", transfers: "Not applicable",
+      readiness: "File export only, no live link", lastTransfer: "No online transfers", failures: "Not applicable", updatedAt: null,
     },
   ];
 }
