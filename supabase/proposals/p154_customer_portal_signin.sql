@@ -35,12 +35,21 @@
 --   reason, code, reference, token or hash). Full invite and revoke reasons stay only in the contact row (no API grant).
 -- NAMES: no 154 function is named customer_portal% or %document_customer% (153's verify counts those). 153's rollback refuses while
 --   customer_portal_contacts, customer_portal_sessions or portal_session_resolve(text) exists.
--- RETENTION POLICY (PM 16:15: documented and enforced before activation; no automatic purge in this release; portal stays OFF):
---   codes     usable 10 minutes, once, 5 wrong tries (enforced); the code hash is cleared when used or burnt; the row (ids, times,
---             ref hash) is kept as sign-in evidence. Sessions: 30 minutes idle, 8 hours absolute (enforced at the next call); the row is
---             kept with its end reason. Contacts: kept while the customer exists (revoked ones stay as the record of who had access).
---             Refusal log: 180 days (as 151). Proposed for the later purge release (PM to confirm the periods): code and session rows
---             180 days after expiry or end, revoked contacts 180 days after revocation. Until then nothing is deleted (DELETE is refused).
+-- RETENTION POLICY (PM ruling 12 Nov 2026: "180 day cleanup applies only to expired authentication codes and sessions. Do not
+--   automatically purge source documents, financial records, live authorisations or required audit evidence. Preserve investigation
+--   holds and company isolation." No automatic purge in this release; portal stays OFF):
+--   ENFORCED NOW: a sign-in code works once and for 10 minutes (5 wrong tries then burnt; its hash is cleared when used or burnt); a
+--     session ends after 30 minutes idle or 8 hours absolute (at the next call; the row keeps its end reason). Until the later cleanup
+--     release nothing in the three portal tables is deleted (DELETE and TRUNCATE are refused by the guard triggers).
+--   PLANNED LATER CLEANUP (a separate release, not this one): expired or used sign-in codes (customer_portal_signin_codes) and ended
+--     sessions (customer_portal_sessions), 180 days after expiry or end; run per company, never across companies; any record under an
+--     investigation or legal hold is skipped.
+--   NOT PURGED AUTOMATICALLY: revoked portal contacts (customer_portal_contacts; kept as the record of who had access), the portal
+--     refusal log (security_audit.customer_portal_refusals), source documents, financial records, live authorisations and required
+--     audit evidence.
+--   PORTAL REFUSAL LOG: keeps release 151's behaviour unchanged (151's security_audit.integration_invite_refusals): keep 180 days; the
+--     database owner / platform operator purges by hand with DELETE ... WHERE created_at < now() - interval '180 days'; no scheduled
+--     purge; no API role (not even the service role) can read, write or delete it.
 -- KNOWN BUG CLASSES CHECKED: no text || "char" (every "char" column is cast ::TEXT first); no parameter used with two deduced types.
 -- =====================================================================================================
 BEGIN;
