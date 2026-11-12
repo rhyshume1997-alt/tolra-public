@@ -25,6 +25,8 @@ const FIXED_ROLES: Array<[string, UserRole[]]> = [
   ["/ai-helper", ["admin", "office"]],
   // The daily job sheet and weekly hours (050 to 052): not a hideable section (no member_section_keys() entry).
   ["/time", ["admin", "office", "workshop"]],
+  // Operations reports: admin and office only (the sidebar also needs the Reports switch on, see reportsEnabled).
+  ["/reports", ["admin", "office"]],
 ];
 
 export type DestinationAccess = {
