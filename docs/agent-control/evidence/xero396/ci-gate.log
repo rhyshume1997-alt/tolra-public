@@ -1,0 +1,69 @@
+﻿2026-11-05T07:24:54.3319708Z Current runner version: '2.338.2'
+2026-11-05T07:24:54.3340557Z ##[group]Runner Image Provisioner
+2026-11-05T07:24:54.3341254Z Hosted Compute Agent
+2026-11-05T07:24:54.3341815Z Version: 20261021.618
+2026-11-05T07:24:54.3342340Z Commit: 21505ad2541d5be6135ed84fc33697146cf75b8e
+2026-11-05T07:24:54.3342944Z Build Date: 2026-10-21T00:45:21Z
+2026-11-05T07:24:54.3343544Z Worker ID: {dca2b6e4-439c-4cb3-bf1f-abab81d7bf06}
+2026-11-05T07:24:54.3344157Z Region: westus2
+2026-11-05T07:24:54.3344693Z Cloud: Azure
+2026-11-05T07:24:54.3345131Z ##[endgroup]
+2026-11-05T07:24:54.3346460Z ##[group]Operating System
+2026-11-05T07:24:54.3347014Z Ubuntu
+2026-11-05T07:24:54.3347697Z 26.04.1
+2026-11-05T07:24:54.3348251Z LTS
+2026-11-05T07:24:54.3348676Z ##[endgroup]
+2026-11-05T07:24:54.3349112Z ##[group]Runner Image
+2026-11-05T07:24:54.3349656Z Image: ubuntu-26.04
+2026-11-05T07:24:54.3350153Z Version: 20261025.179.1
+2026-11-05T07:24:54.3351236Z Included Software: https://github.com/actions/runner-images/blob/ubuntu26/20261025.179/images/ubuntu/Ubuntu2604-Readme.md
+2026-11-05T07:24:54.3352421Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu26%2F20261025.179
+2026-11-05T07:24:54.3353281Z ##[endgroup]
+2026-11-05T07:24:54.3354167Z ##[group]GITHUB_TOKEN Permissions
+2026-11-05T07:24:54.3355958Z Contents: read
+2026-11-05T07:24:54.3356440Z Metadata: read
+2026-11-05T07:24:54.3356960Z ##[endgroup]
+2026-11-05T07:24:54.3358924Z Secret source: Actions
+2026-11-05T07:24:54.3359728Z Cache mode: write
+2026-11-05T07:24:54.3360630Z Prepare workflow directory
+2026-11-05T07:24:54.3617159Z Prepare all required actions
+2026-11-05T07:24:54.3698562Z Complete job name: ci-gate
+2026-11-05T07:24:54.4572186Z ##[group]Run echo "event=$EVENT ready=$READY changes=$CHANGES code=$CODE integration_needed=$INTEGRATION_NEEDED"
+2026-11-05T07:24:54.4573526Z [36;1mecho "event=$EVENT ready=$READY changes=$CHANGES code=$CODE integration_needed=$INTEGRATION_NEEDED"[0m
+2026-11-05T07:24:54.4574392Z [36;1mecho "web=$WEB integration=$INTEGRATION"[0m
+2026-11-05T07:24:54.4575142Z [36;1mfail=0[0m
+2026-11-05T07:24:54.4575819Z [36;1mdocs_only=false; [ "$CHANGES" = success ] && [ "$CODE" = false ] && docs_only=true[0m
+2026-11-05T07:24:54.4576628Z [36;1mfor job in "web:$WEB"; do[0m
+2026-11-05T07:24:54.4577193Z [36;1m  name="${job%%:*}"; result="${job#*:}"[0m
+2026-11-05T07:24:54.4578195Z [36;1m  if [ "$result" = success ] || { [ "$result" = skipped ] && [ "$docs_only" = true ]; }; then[0m
+2026-11-05T07:24:54.4578952Z [36;1m    echo "OK: $name $result"[0m
+2026-11-05T07:24:54.4579498Z [36;1m  else[0m
+2026-11-05T07:24:54.4580026Z [36;1m    echo "FAIL: $name $result"; fail=1[0m
+2026-11-05T07:24:54.4580646Z [36;1m  fi[0m
+2026-11-05T07:24:54.4581140Z [36;1mdone[0m
+2026-11-05T07:24:54.4581650Z [36;1mif [ "$INTEGRATION" = success ]; then[0m
+2026-11-05T07:24:54.4582292Z [36;1m  echo "OK: integration passed"[0m
+2026-11-05T07:24:54.4583141Z [36;1melif [ "$INTEGRATION" = skipped ] && [ "$CHANGES" = success ] && [ "$INTEGRATION_NEEDED" = false ]; then[0m
+2026-11-05T07:24:54.4584088Z [36;1m  echo "OK: integration skipped (only docs or tests/live changed)"[0m
+2026-11-05T07:24:54.4584983Z [36;1melif [ "$INTEGRATION" = skipped ] && [ "$EVENT" = pull_request ] && [ "$READY" != true ]; then[0m
+2026-11-05T07:24:54.4586199Z [36;1m  echo "WAITING: code changed but the full integration suite hasn't run. Add the ready label to run it; this check passes once it does."; fail=1[0m
+2026-11-05T07:24:54.4587213Z [36;1melse[0m
+2026-11-05T07:24:54.4587914Z [36;1m  echo "FAIL: integration $INTEGRATION"; fail=1[0m
+2026-11-05T07:24:54.4588576Z [36;1mfi[0m
+2026-11-05T07:24:54.4589060Z [36;1mexit $fail[0m
+2026-11-05T07:24:54.5186618Z shell: /usr/bin/bash -e {0}
+2026-11-05T07:24:54.5187309Z env:
+2026-11-05T07:24:54.5187818Z   EVENT: pull_request
+2026-11-05T07:24:54.5188210Z   READY: false
+2026-11-05T07:24:54.5188559Z   CHANGES: success
+2026-11-05T07:24:54.5188921Z   CODE: true
+2026-11-05T07:24:54.5189286Z   INTEGRATION_NEEDED: true
+2026-11-05T07:24:54.5189678Z   WEB: success
+2026-11-05T07:24:54.5190328Z   INTEGRATION: skipped
+2026-11-05T07:24:54.5190705Z ##[endgroup]
+2026-11-05T07:24:54.5339996Z event=pull_request ready=false changes=success code=true integration_needed=true
+2026-11-05T07:24:54.5341092Z web=success integration=skipped
+2026-11-05T07:24:54.5341747Z OK: web success
+2026-11-05T07:24:54.5342924Z WAITING: code changed but the full integration suite hasn't run. Add the ready label to run it; this check passes once it does.
+2026-11-05T07:24:54.5361717Z ##[error]Process completed with exit code 1.
+2026-11-05T07:24:54.5499277Z Cleaning up orphan processes
