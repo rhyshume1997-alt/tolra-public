@@ -36,7 +36,8 @@ export async function POST(request: Request) {
   const result = parseOffboardResult(data);
   if (!result) return jsonError("Couldn't confirm the removal. Check the company's audit log before trying again.", 500);
 
-  // No raw IP address in this record (PM ruling). Keeps actor, company, action, timestamp and reason.
-  console.info(JSON.stringify({ event: "platform.portal_offboarded", action: "portal_offboard", actor: user.id, organization_id: organizationId, reason, removed_links: result.removedLinks, at: new Date().toISOString() }));
+  // PM ruling: server logs carry only a safe reason category (same constant release 153 writes to the audit event), never the free-text
+  // reason (kept only in the restricted platform-admin snapshot table) and never a raw IP address.
+  console.info(JSON.stringify({ event: "platform.portal_offboarded", action: "portal_offboard", actor: user.id, organization_id: organizationId, reason_category: "company_offboarding", removed_links: result.removedLinks, at: new Date().toISOString() }));
   return NextResponse.json({ ok: true, removedLinks: result.removedLinks, removedSwitch: result.removedSwitch, organizationId: result.organizationId }, { headers: { "Cache-Control": "no-store" } });
 }
