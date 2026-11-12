@@ -11,13 +11,16 @@ const calls: string[] = [];
 let state: { role: boolean | null; roleError: boolean; hiddenNav: string[] | null; row: boolean; error: boolean; client: boolean } = { role: true, roleError: false, hiddenNav: [], row: true, error: false, client: true };
 
 vi.mock("@/lib/server/auth", () => ({
-  createSupabaseServerClient: async () => {
-    if (!state.client) return null;
+  isErrorResponse: (v: unknown) => (v as { refused?: boolean })?.refused === true,
+  requireProfile: async (roles: string[]) => {
+    calls.push(`requireProfile:${roles.join("+")}`);
+    if (!state.client || state.roleError || !state.role) return { refused: true };
     return {
-      rpc: async (name: string) => { calls.push(`rpc:${name}`); return { data: state.role, error: state.roleError ? { code: "x" } : null }; },
-      from: (table: string) => ({
-        select: () => ({ maybeSingle: async () => { calls.push(`from:${table}`); return { data: state.row ? { hidden_nav: state.hiddenNav } : null, error: state.error ? { code: "x" } : null }; } }),
-      }),
+      supabase: {
+        from: (table: string) => ({
+          select: () => ({ maybeSingle: async () => { calls.push(`from:${table}`); return { data: state.row ? { hidden_nav: state.hiddenNav } : null, error: state.error ? { code: "x" } : null }; } }),
+        }),
+      },
     };
   },
 }));
@@ -55,7 +58,7 @@ describe("layouts stop before any report data is read when OFF or refused", () =
     ["switch off", { hiddenNav: [] }],
     ["no company row", { row: false }],
     ["read error", { error: true }],
-    ["no session client", { client: false }],
+    ["no session or refused profile", { client: false }],
     ["workshop or viewer", { role: false, hiddenNav: ["reports:on", "reports-revenue:on"] }],
     ["role check error", { roleError: true, hiddenNav: ["reports:on", "reports-revenue:on"] }],
   ];
@@ -89,7 +92,7 @@ describe("layouts stop before any report data is read when OFF or refused", () =
   it("only ever reads organization_settings and the role check", async () => {
     set({ hiddenNav: ["reports:on"] });
     await ReportsOperationsLayout({ children: CHILD });
-    expect(calls).toEqual(["rpc:has_org_role", "from:organization_settings"]);
+    expect(calls).toEqual(["requireProfile:admin+office", "from:organization_settings"]);
   });
 });
 
