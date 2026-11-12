@@ -151,3 +151,26 @@ export function plannedVsActual(input: {
     truncated,
   };
 }
+
+export type MachineTotal = { machineId: string; label: string; planned: number; actual: number };
+
+/**
+ * Per-machine planned and actual hours over many jobs' results, for reports. Bench is left out. A machine that ran but was not on a job's plan
+ * counts with 0 planned for that job (its "Not on plan" step), so unplanned time never lands on a planned machine of the same job. Hours are summed
+ * from each step's figures and rounded to 2 dp once at the end. Sorted by label, then machine id. Does not change plannedVsActual().
+ */
+export function sumStepsByMachine(results: Iterable<PlannedVsActual>): MachineTotal[] {
+  const by = new Map<string, { label: string; planned: number; actual: number }>();
+  const suffix = ` (${NOT_ON_PLAN_SUFFIX})`;
+  for (const result of results) {
+    for (const step of result.steps) {
+      if (step.isBench || step.machineId === null) continue;
+      const total = by.get(step.machineId) ?? { label: step.label.endsWith(suffix) ? step.label.slice(0, -suffix.length) : step.label, planned: 0, actual: 0 };
+      total.planned += step.plannedHours ?? 0;
+      total.actual += step.actualHours;
+      by.set(step.machineId, total);
+    }
+  }
+  return [...by].map(([machineId, t]) => ({ machineId, label: t.label, planned: round2(t.planned), actual: round2(t.actual) }))
+    .sort((a, b) => (a.label < b.label ? -1 : a.label > b.label ? 1 : a.machineId < b.machineId ? -1 : a.machineId > b.machineId ? 1 : 0));
+}
