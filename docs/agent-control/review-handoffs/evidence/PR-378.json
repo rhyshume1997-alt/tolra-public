@@ -1,0 +1,50 @@
+{
+  "number": 378,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/378",
+  "title": "Add optional actual labour and machine job costing, disabled by default",
+  "branch": "codex/job-profitability-actuals",
+  "observed_head": "ccd74ea513307c5584a11f7cd368f38b742ce769",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:01Z",
+  "files": [
+    "components/bought-in-profit.tsx",
+    "components/job-profitability-actuals.tsx",
+    "docs/features/JOB-PROFITABILITY-ACTUALS.md",
+    "lib/job-profitability-actuals.ts",
+    "scripts/test-job-costing-db.mjs",
+    "supabase/migrations/148_job_profitability_actuals.sql",
+    "supabase/release/148_job_profitability_actuals.release.sql",
+    "supabase/release/148_job_profitability_actuals.rollback.sql",
+    "supabase/verify/job_profitability_actuals_148.sql",
+    "supabase/verify/release_preflight.sql",
+    "tests/fixtures/job-costing/checks.sql",
+    "tests/fixtures/job-costing/setup.sql",
+    "tests/unit/job-profitability-actuals.test.ts",
+    "tests/unit/job-profitability-ui.test.ts"
+  ],
+  "migration_verification_rollback_paths": [
+    "supabase/migrations/148_job_profitability_actuals.sql",
+    "supabase/release/148_job_profitability_actuals.release.sql",
+    "supabase/release/148_job_profitability_actuals.rollback.sql",
+    "supabase/verify/job_profitability_actuals_148.sql",
+    "supabase/verify/release_preflight.sql"
+  ],
+  "public_pr_body": "Adds an optional job profitability panel using net issued invoices less issued credits, existing supplier PO allocations, recorded workshop labour and machine runs, and optional company overheads. The existing bought-in/profit figure and overview calculations remain unchanged. Missing rates, hours, open timers or ambiguous allocations show Costing incomplete. Costs use integer pence with half-up rounding; overlapping time is unioned and machine-inclusive labour/overheads are deducted only for matching recorded coverage.\n\nCompany rates need an admin approval before enabling. Rate saves enforce company identity, financial sections, existing MFA rules, read-only restrictions and revision conflicts. Job estimates use existing planned machine hours plus explicit additional labour, supplier and overhead estimates; no payroll logic or employee pay rates change. Rate revisions recalculate earlier job views and are retained in a private history.\n\n- [x] Branched only from main 68f89ca; head ccd74ea513307c5584a11f7cd368f38b742ce769. No edits to either protected candidate branch or #359.\n- [x] 81 focused Vitest tests passed (calculation/UI plus unchanged supplier-profit and overview regressions); TypeScript, lint, migration checker and diff checks passed.\n- [x] Migration 148 passed synthetic disposable PostgreSQL checks for permissions, isolation, stale saves, complete financial inputs, unchanged original records, rollback and re-release. Container identity checked before SQL; original logs and commit/environment/SQL hash/time/exit-code records retained locally under /tmp/tolra-costing-cc04bf53-a291-452d-ad31-c4c81bd0d2ef.\n- [ ] Full Supabase/Auth/PostgREST/browser integration remains a release gate. Local full-stack startup was blocked by registry access; the focused PostgreSQL test uses synthetic prerequisite access helpers and does not claim that coverage.\n\nMigration numbering: main's highest migration is 137. This PR uses 148, leaving 138\u2013147 for pending work including delivery-note release 147 in #359. Recheck availability before release. Includes matching release SQL, read-only verification SQL, rollback SQL and instructions in docs/features/JOB-PROFITABILITY-ACTUALS.md. No SQL applied to any real database.\n\nJohn must agree the company labour costing rate, each machine rate and its includes_labour/includes_overhead flags, and any extra overhead rate/basis before the admin enables costing. Explicit zero rates and no-labour/no-machine declarations need agreement. The new feature is off by default.\n\nOne push only; no CI label or manual dispatch, no merge or deployment.",
+  "historical_test_claims": [
+    "- [x] 81 focused Vitest tests passed (calculation/UI plus unchanged supplier-profit and overview regressions); TypeScript, lint, migration checker and diff checks passed.",
+    "- [x] Migration 148 passed synthetic disposable PostgreSQL checks for permissions, isolation, stale saves, complete financial inputs, unchanged original records, rollback and re-release. Container identity checked before SQL; original logs and commit/environment/SQL hash/time/exit-code records retained locally under /tmp/tolra-costing-cc04bf53-a291-452d-ad31-c4c81bd0d2ef.",
+    "- [ ] Full Supabase/Auth/PostgREST/browser integration remains a release gate. Local full-stack startup was blocked by registry access; the focused PostgreSQL test uses synthetic prerequisite access helpers and does not claim that coverage."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41935932778,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41935932778",
+      "head_sha": "ccd74ea513307c5584a11f7cd368f38b742ce769",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

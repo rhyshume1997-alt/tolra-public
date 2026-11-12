@@ -1,0 +1,27 @@
+{
+  "number": 354,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/354",
+  "title": "L10 / G9-C6: John's real SliQ header-mapping template",
+  "branch": "codex/b6-l10-sliq-header-map",
+  "observed_head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:04Z",
+  "files": [
+    "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md: sixteen report sections and all 125 existing importer/reconciliation canonical fields, with actual headers, private samples, format/join meaning and Code-review blanks. Includes file/tab/filter/hash identity, absent/empty-report proof, statuses/VAT/sign/discount/date rules, accountant WIP COST, next numbers and practice/final verification gates.\n\nReal headers are deliberately blank. The six comparison-only kinds remain labelled; no automatic jobs/orders/deliveries import or confirmed profile is promised. Filling the form resolves the information gap only after original files/mapping/no-write reconciliation are verified by John/Code and the original importer owner.\n\nChecks: every current canonical/extra key/type/minimum exactly once, sixteen kinds/125 fields, blank headers, gate/whitespace review pass. Handover embedded. No profile flag, importer, actual export, write or runtime proof changed; one independent draft, no main merge, production SQL, deployment or Ready label.",
+  "historical_test_claims": [],
+  "workflow_runs": [
+    {
+      "id": 41872571667,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41872571667",
+      "head_sha": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

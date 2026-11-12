@@ -1,0 +1,29 @@
+{
+  "number": 300,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/300",
+  "title": "CT: explain and map the 35, 60 and 64 manual-check revisions",
+  "branch": "codex/ct-manual-count-map",
+  "observed_head": "49097c56f05e690b811872e24ff9b159b774f334",
+  "base_sha": "ecbf38f36bd4a57a9a93916bb51849b96e239cd5",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:10Z",
+  "files": [
+    "tests/validation/MANUAL-35-VS-64.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds tests/validation/MANUAL-35-VS-64.md with exact counts from actual file revisions and one table mapping all 64 expanded IDs to immutable original/refreshed/expanded file lines. Original #248 has 35 G01\u2013G08 rows; Code f76a5b84 has 60 after G00/G09\u2013G14 additions; builder #289 has 64 after four G15 transfer gates. All original IDs remain.\n\nExplains the user's 35/64 references without inventing Rhys's signed scope choice or treating the readable 60-row refresh as 64. Manual counts are distinct from VSR protocol counts. Missing Operations Pack and unsigned scope remain visible; choosing a form does not waive cutover conditions.\n\nChecks: 35/60/64 unique IDs, subset relationships, exact additions and all 64 immutable source-line links verified. Documentation only; no runtime/approval, docs/signoff duplicate, SQL, main merge or Ready label.\n\n- [x] Count discrepancy explained and every expanded row mapped\n- [ ] Rhys/Code record approved exact revision and actual results",
+  "historical_test_claims": [
+    "Adds tests/validation/MANUAL-35-VS-64.md with exact counts from actual file revisions and one table mapping all 64 expanded IDs to immutable original/refreshed/expanded file lines. Original #248 has 35 G01\u2013G08 rows; Code f76a5b84 has 60 after G00/G09\u2013G14 additions; builder #289 has 64 after four G15 transfer gates. All original IDs remain."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41834921405,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41834921405",
+      "head_sha": "49097c56f05e690b811872e24ff9b159b774f334",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

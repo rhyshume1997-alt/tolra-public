@@ -1,0 +1,29 @@
+{
+  "number": 299,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/299",
+  "title": "CS: exact-line VSR evidence index for Code's f76a5b84 refresh",
+  "branch": "codex/cs-vsr-evidence-index",
+  "observed_head": "ecbf38f36bd4a57a9a93916bb51849b96e239cd5",
+  "base_sha": "08fd1d1d406529b5bceb4a51f30d9da2d3ca6c60",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:10Z",
+  "files": [
+    "tests/validation/EVIDENCE-INDEX.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds tests/validation/EVIDENCE-INDEX.md mapping all 41 fillable VSR cells and eight restriction proposals to immutable exact source file/line links at f76a5b84da1f01626cc81d17150e08e6069ef794. Distinguishes diagnostic pack identity from its declared application 9c3f5c6; uses the refreshed 6 IQ / 14 OQ / 8 PQ counts rather than older 6/15/9.\n\nEvery absent actual report, identity, acceptance and signature is marked NOT VISIBLE. CURRENT-RESULTS.md returned 404 at this head; no dated result folder or private rounding reconciliation was visible. Declared CI references are not promoted to completed protocols. Refreshed R1\u2013R8 are defined restriction proposals, distinct from old audit labels; none is accepted.\n\nChecks: every emitted line link resolves to captured source; all 41 fields and eight restriction rows accounted for. Documentation only, no template filled, no diagnostic-branch merge, no docs/signoff duplication, production SQL, main merge or Ready label.\n\n- [x] Exact source-line index and explicit missing evidence\n- [ ] Code supplies actual final-version artifacts; Rhys/reviewer complete decisions",
+  "historical_test_claims": [
+    "Adds tests/validation/EVIDENCE-INDEX.md mapping all 41 fillable VSR cells and eight restriction proposals to immutable exact source file/line links at f76a5b84da1f01626cc81d17150e08e6069ef794. Distinguishes diagnostic pack identity from its declared application 9c3f5c6; uses the refreshed 6 IQ / 14 OQ / 8 PQ counts rather than older 6/15/9."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41834666089,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41834666089",
+      "head_sha": "ecbf38f36bd4a57a9a93916bb51849b96e239cd5",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

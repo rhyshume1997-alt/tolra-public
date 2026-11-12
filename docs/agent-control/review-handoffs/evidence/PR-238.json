@@ -1,0 +1,30 @@
+{
+  "number": 238,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/238",
+  "title": "P: Add Rhys-only AI cap and reviewer manual checks",
+  "branch": "codex/p-reviewer-manual-checks",
+  "observed_head": "ad17969b9453163e8c46a57e32114f2b84395522",
+  "base_sha": "32fc9ef93c8217d52469ad332331477e0441e488",
+  "github_state": "merged",
+  "merged_at": "2026-11-03T18:37:55Z",
+  "observed_at": "2026-11-05T07:22:16Z",
+  "files": [
+    "tests/MANUAL-CHECKS-N1-N6.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Update Rhys's existing N1\u2013N6 checklist with plain click steps for #232's company-specific Tolra-provided AI cap, set by Rhys only. Covers A/B limits and modes, owner/MFA refusals, hidden keys, usage floor/maximum and near-limit contention; distinguishes the two-tab exercise from the real two-connection DB proof.\n\nAdd the reviewer conditions for #233 chase approval/edit/double-send/unknown delivery, #221/#230 accounting encryption/provider/company isolation, #222 own-admin progress policy, #223 old wording/read-only saving/exact reviewed text, and side-by-side paid/unpaid hours. Correct the inherited eight-hour unpaid example to 7h15 under its explicit 30+15-minute rule; preserve the requirement that timesheets and planned hours agree.\n\nBased on #227's codex2/n1-n6-browser-checks, so this PR changes ONLY tests/MANUAL-CHECKS-N1-N6.md and does not pull the browser feature into main. All steps remain unticked; public evidence contains no keys or real customer records.\n\nValidation: manual content/link review and git diff check passed. No code changes; unit/DB/browser checks not rerun for this checklist edit. No SQL applied, test data modified, deployment, Ready label or merge. Database/proposal/concurrency/provider checks stay open until their own runtime evidence exists.\n",
+  "historical_test_claims": [
+    "Based on #227's codex2/n1-n6-browser-checks, so this PR changes ONLY tests/MANUAL-CHECKS-N1-N6.md and does not pull the browser feature into main. All steps remain unticked; public evidence contains no keys or real customer records.",
+    "Validation: manual content/link review and git diff check passed. No code changes; unit/DB/browser checks not rerun for this checklist edit. No SQL applied, test data modified, deployment, Ready label or merge. Database/proposal/concurrency/provider checks stay open until their own runtime evidence exists."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41680028656,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41680028656",
+      "head_sha": "ad17969b9453163e8c46a57e32114f2b84395522",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

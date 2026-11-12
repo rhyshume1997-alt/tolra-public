@@ -1,0 +1,30 @@
+{
+  "number": 282,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/282",
+  "title": "CG CK: named AI and accounting evidence with untested conditions",
+  "branch": "codex/cg-ck-evidence",
+  "observed_head": "b80b274b0f2b8b12444915152383564cc1b9bf52",
+  "base_sha": "ff29ca191879ec954e305ec0eb200501789a5bcf",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:12Z",
+  "files": [
+    "tests/GO-NO-GO-EVIDENCE.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "CG/CK maps every available go/no-go item to a test or manual-check file in tests/GO-NO-GO-EVIDENCE.md: 28 gates, 64 manual rows, 18 pinned CW checks, six releases, 30 validation steps and 15 URS mappings. Retains 22 named N2 AI/key/cap and N3 accounting-provider mappings and explicit missing runtime evidence.\n\nExact head: b80b274b0f2b8b12444915152383564cc1b9bf52. Inventory/path mapping checks pass; documentation only, no suite rerun. CI run 41826333766: success; this is not DB/browser/restore evidence. The authoritative Operations Pack is missing, so undisclosed-pack coverage cannot be certified. NO GO remains.\n\nRetains updated upstream CJ evidence. No new scope, held owner branch changes, main merge or production SQL. Final heads, commands and unfinished work are in tests/HANDOVER-BUILDER-3.md on coordination #271.\n\n- [x] Explicit proof-file mappings, including N2/N3\n- [ ] Operations Pack reconciliation and actual final-head runtime evidence",
+  "historical_test_claims": [
+    "CG/CK maps every available go/no-go item to a test or manual-check file in tests/GO-NO-GO-EVIDENCE.md: 28 gates, 64 manual rows, 18 pinned CW checks, six releases, 30 validation steps and 15 URS mappings. Retains 22 named N2 AI/key/cap and N3 accounting-provider mappings and explicit missing runtime evidence.",
+    "Retains updated upstream CJ evidence. No new scope, held owner branch changes, main merge or production SQL. Final heads, commands and unfinished work are in tests/HANDOVER-BUILDER-3.md on coordination #271."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41826333766,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41826333766",
+      "head_sha": "b80b274b0f2b8b12444915152383564cc1b9bf52",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

@@ -1,0 +1,54 @@
+{
+  "number": 240,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/240",
+  "title": "Q: Prove cross-company accounting reads stay isolated",
+  "branch": "codex/q-accounting-company-read-tests",
+  "observed_head": "3692debaa9a724762f230412eff17aa911a85ba2",
+  "base_sha": "86eda4bd48b1237b42140dbd72ace7cb73442f4b",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:16Z",
+  "files": [
+    "tests/unit/accounting-token-isolation.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Q found a missing explicit cross-company read case in #221/#230: token/provider tests stayed in Company A. Add a DB-free test through the real routes and connection adapters: connect fake Sage/QBO for A, switch to B, supply A's company/tenant IDs in status/check requests. B gets no connection name or balance, makes no provider/token-lease call, and cannot change either encrypted connection.\n\nReset the existing fixture's company/person before each case so tests cannot depend on execution order. No existing assertion changed or weakened and no application/SQL changes.\n\nBased on final accounting O #237 (codex/o-accounting-combined), including R's fix. Diff ONLY tests/unit/accounting-token-isolation.test.ts.\n\nValidation: 9 accounting route/isolation unit tests passed, typecheck and targeted ESLint passed. No database, SQL, browser, live provider, deployment, merge or Ready label. Actual PostgreSQL isolation/encrypted-storage and replay conditions still require their own disposable-DB evidence.\n\n\nQ coverage audit: two previously missing explicit cases were setup ordinary/support access (#239: 12 setup units passed including the new policy/UI cases) and Company B reading A's new-provider status/balance (#240: 9 accounting units passed). Remaining conditions already have tests: chase-approve/chase-approval-ui on #233 passed 48; tolra-ai, ai-mode-key-isolation, tolra-ai-caps, tolra-ai-caps-ui and tolra-ai-controls-ui on #234 passed 43. N's 5,138-test run includes legacy email round-trips, read-only editor behaviour and paid-break/timesheet comparisons. The actual near-limit race is covered by tests/db/tolra-ai-cap-concurrency.test.ts (two independently blocked connections), but was NOT RUN. The existing setup DB test covers cross-company admins; the new role/support contract tests do not claim live PostgreSQL policy execution. No remaining listed condition is wholly without a test; runtime DB/browser/provider proof remains open.\n",
+  "historical_test_claims": [
+    "Q found a missing explicit cross-company read case in #221/#230: token/provider tests stayed in Company A. Add a DB-free test through the real routes and connection adapters: connect fake Sage/QBO for A, switch to B, supply A's company/tenant IDs in status/check requests. B gets no connection name or balance, makes no provider/token-lease call, and cannot change either encrypted connection.",
+    "Reset the existing fixture's company/person before each case so tests cannot depend on execution order. No existing assertion changed or weakened and no application/SQL changes.",
+    "Based on final accounting O #237 (codex/o-accounting-combined), including R's fix. Diff ONLY tests/unit/accounting-token-isolation.test.ts.",
+    "Validation: 9 accounting route/isolation unit tests passed, typecheck and targeted ESLint passed. No database, SQL, browser, live provider, deployment, merge or Ready label. Actual PostgreSQL isolation/encrypted-storage and replay conditions still require their own disposable-DB evidence.",
+    "Q coverage audit: two previously missing explicit cases were setup ordinary/support access (#239: 12 setup units passed including the new policy/UI cases) and Company B reading A's new-provider status/balance (#240: 9 accounting units passed). Remaining conditions already have tests: chase-approve/chase-approval-ui on #233 passed 48; tolra-ai, ai-mode-key-isolation, tolra-ai-caps, tolra-ai-caps-ui and tolra-ai-controls-ui on #234 passed 43. N's 5,138-test run includes legacy email round-trips, read-only editor behaviour and paid-break/timesheet comparisons. The actual near-limit race is covered by tests/db/tolra-ai-cap-concurrency.test.ts (two independently blocked connections), but was NOT RUN. The existing setup DB test covers cross-company admins; the new role/support contract tests do not claim live PostgreSQL policy execution. No remaining listed condition is wholly without a test; runtime DB/browser/provider proof remains open."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41715390074,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41715390074",
+      "head_sha": "3692debaa9a724762f230412eff17aa911a85ba2",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 41713082355,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41713082355",
+      "head_sha": "3692debaa9a724762f230412eff17aa911a85ba2",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "id": 41695640741,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41695640741",
+      "head_sha": "3692debaa9a724762f230412eff17aa911a85ba2",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "id": 41680866846,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41680866846",
+      "head_sha": "3692debaa9a724762f230412eff17aa911a85ba2",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

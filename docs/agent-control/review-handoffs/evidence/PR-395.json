@@ -1,0 +1,31 @@
+{
+  "number": 395,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/395",
+  "title": "C: verify existing real AI provider and workflow gates",
+  "branch": "codex/ai-existing-provider-verification",
+  "observed_head": "0d6ef488e7ec9c35f60c1cf30a075df7d34dc866",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:21:59Z",
+  "files": [
+    "docs/agent-control/ai-existing-provider-verification.md",
+    "tests/reviews/ai-finish/evidence/focused.log"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "The existing Anthropic SDK adapter is real, not null/placeholder: default provider selection invokes it; deployed mock selection deliberately returns null. Existing panels/routes, reservation-before-key/provider, validation/settlement, company switches, request logging and safe credential messages reviewed without rebuilding.\n\n190 focused tests passed, 0 failed/skipped across seven existing suites, all mocked SDK/DB dependencies. No live AI call, keys, SQL or activation. RLS source is identified; final-sha database/browser/model acceptance and production configuration remain unproven. Existing provided-mode 1000p #387 and legacy own-key 500p are explicitly distinguished. Production must stay OFF until authorised.\n\nDocs/test evidence only. No merge, private files, #359/go-live edits or John messages.",
+  "historical_test_claims": [
+    "190 focused tests passed, 0 failed/skipped across seven existing suites, all mocked SDK/DB dependencies. No live AI call, keys, SQL or activation. RLS source is identified; final-sha database/browser/model acceptance and production configuration remain unproven. Existing provided-mode 1000p #387 and legacy own-key 500p are explicitly distinguished. Production must stay OFF until authorised.",
+    "Docs/test evidence only. No merge, private files, #359/go-live edits or John messages."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41986146809,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41986146809",
+      "head_sha": "0d6ef488e7ec9c35f60c1cf30a075df7d34dc866",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

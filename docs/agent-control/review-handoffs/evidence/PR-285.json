@@ -1,0 +1,31 @@
+{
+  "number": 285,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/285",
+  "title": "CM: fix costing proposal setup TS2559 without changing costing behaviour",
+  "branch": "codex/cm-costing-typecheck",
+  "observed_head": "a4c89af3723703ba5e284bb6500553d42975f925",
+  "base_sha": "6431e60284a4591ab6c9552de5bc0dd0468973f3",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:12Z",
+  "files": [
+    "tests/support/costing-proposal-setup.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Fixes TS2559 on the held codex/costing-sql-test-plan branch by explicitly passing its two existing environment options as the default argument. Both values are still read at call time; acknowledgement, isolation, install and cleanup behaviour are unchanged. One source line changed. No costing engine, rates, golden answers, SQL or assertions changed.\n\nReproduced before fix: `npx tsc --noEmit` exited 2 with tests/support/costing-proposal-setup.ts(20,46) TS2559. After fix: `npx tsc --noEmit` exits 0. `npx eslint app components lib tests/support/costing-proposal-setup.ts tests/unit/costing-proposal-setup.test.ts` exits 0, zero errors and three existing warnings (job-photos/rework-dialog/outbox). `npx vitest run tests/unit/costing-proposal-setup.test.ts`: 9 passed, zero failures/skips.\n\nLocal validation used the held source reconstructed exactly from local 039529b plus the four-file remote delta to 6431e602, with shared preinstalled dependencies; no clean install or DB/runtime claim. Draft targets the held branch; Claude Code can apply after review. No main merge, production SQL, Ready label or broad audit.\n\n- [x] TS2559 reproduced and fixed; typecheck/lint and 9 setup tests pass\n- [ ] Independent review and exact-head CI",
+  "historical_test_claims": [
+    "Fixes TS2559 on the held codex/costing-sql-test-plan branch by explicitly passing its two existing environment options as the default argument. Both values are still read at call time; acknowledgement, isolation, install and cleanup behaviour are unchanged. One source line changed. No costing engine, rates, golden answers, SQL or assertions changed.",
+    "Reproduced before fix: `npx tsc --noEmit` exited 2 with tests/support/costing-proposal-setup.ts(20,46) TS2559. After fix: `npx tsc --noEmit` exits 0. `npx eslint app components lib tests/support/costing-proposal-setup.ts tests/unit/costing-proposal-setup.test.ts` exits 0, zero errors and three existing warnings (job-photos/rework-dialog/outbox). `npx vitest run tests/unit/costing-proposal-setup.test.ts`: 9 passed, zero failures/skips.",
+    "- [x] TS2559 reproduced and fixed; typecheck/lint and 9 setup tests pass"
+  ],
+  "workflow_runs": [
+    {
+      "id": 41827875158,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41827875158",
+      "head_sha": "a4c89af3723703ba5e284bb6500553d42975f925",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

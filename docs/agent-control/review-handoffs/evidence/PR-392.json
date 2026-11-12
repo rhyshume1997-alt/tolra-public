@@ -1,0 +1,48 @@
+{
+  "number": 392,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/392",
+  "title": "Compare JNR and Marpet ISO drafts; add blank record supplements",
+  "branch": "codex/iso-pack-gap-supplements",
+  "observed_head": "7c8b62ee72ed354ac75beae4f2d5b1ea530fd2dd",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:21:59Z",
+  "files": [
+    "docs/iso9001/review-supplements/CALIBRATION-CHECK-RECORD.md",
+    "docs/iso9001/review-supplements/INTERNAL-AUDIT-RECORD.md",
+    "docs/iso9001/review-supplements/JNR-AUDITOR-RETRIEVAL-SHEET.md",
+    "docs/iso9001/review-supplements/MAINTENANCE-RECORD.md",
+    "docs/iso9001/review-supplements/MANAGEMENT-REVIEW-MINUTES.md",
+    "docs/iso9001/review-supplements/MARPET-AUDITOR-RETRIEVAL-SHEET.md",
+    "docs/iso9001/review-supplements/QUALITY-ISSUE-RECORD.md",
+    "docs/iso9001/review-supplements/README.md",
+    "docs/iso9001/review-supplements/SUPPLIER-REVIEW-RECORD.md",
+    "docs/iso9001/review-supplements/TRAINING-COMPETENCE-RECORD.md",
+    "docs/iso9001/review-supplements/public-source-index.json",
+    "docs/iso9001/review-supplements/word-parity.json",
+    "docs/iso9001/review-supplements/word/ISO-QUALITY-RECORDS-EVIDENCE-MAP.docx",
+    "docs/iso9001/review-supplements/word/QUALITY-RECORDS-EXPORT-CHECKLIST.docx",
+    "docs/iso9001/review-supplements/word/WHAT-JOHN-MUST-DECIDE.docx",
+    "tests/reviews/iso-pack/evidence/checks.log",
+    "tests/reviews/iso-pack/evidence/run.json",
+    "tests/reviews/iso-pack/supplements_test.py"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Compared the requested public ISO set against #371 Marpet and #372 JNR: both already have 28 core draft documents. #337 is a wipe-day runbook, not an ISO pack. Exact public source SHAs/paths/hashes are inventoried. No private/company records inspected and no Code-owned pack files changed.\n\nAdds seven shared blank record forms, separate JNR/Marpet auditor retrieval sheets, and source-text Word copies missing for #360/#361/#363. Word text preserves the source lines/Markdown table syntax; print typesetting remains unverified. These are optional draft supplements, not newly approved QMS numbers or certification evidence. Every new record carries requirement, expected/actual, evidence, tester, date and approval fields; actual results are NOT EXECUTED and signatures blank.\n\nThree offline document checks passed, zero failed/skipped; run metadata and log hash retained. Company adoption, operating records, real retrieval, effectiveness and certification readiness remain unproven. Marpet's actual Tolra use remains NOT VERIFIED. Management/adviser decisions cannot be filled in by Codex.\n\nDocs/tests-only branch from main. No code, SQL, real data, private files, merges, #359/go-live changes or messages to John.",
+  "historical_test_claims": [
+    "Adds seven shared blank record forms, separate JNR/Marpet auditor retrieval sheets, and source-text Word copies missing for #360/#361/#363. Word text preserves the source lines/Markdown table syntax; print typesetting remains unverified. These are optional draft supplements, not newly approved QMS numbers or certification evidence. Every new record carries requirement, expected/actual, evidence, tester, date and approval fields; actual results are NOT EXECUTED and signatures blank.",
+    "Three offline document checks passed, zero failed/skipped; run metadata and log hash retained. Company adoption, operating records, real retrieval, effectiveness and certification readiness remain unproven. Marpet's actual Tolra use remains NOT VERIFIED. Management/adviser decisions cannot be filled in by Codex.",
+    "Docs/tests-only branch from main. No code, SQL, real data, private files, merges, #359/go-live changes or messages to John."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41985244211,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41985244211",
+      "head_sha": "7c8b62ee72ed354ac75beae4f2d5b1ea530fd2dd",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

@@ -1,0 +1,65 @@
+{
+  "number": 245,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/245",
+  "title": "V: Add reviewer Playwright cases and matching click checks",
+  "branch": "codex/v-reviewer-browser-conditions",
+  "observed_head": "2b4bd18390efc468a01b449dae70c844ee204a05",
+  "base_sha": "75897fd8c1fac016bebe41bd743831af2bdb0484",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:15Z",
+  "files": [
+    ".github/workflows/ci.yml",
+    "playwright.config.ts",
+    "playwright.n1-n6.config.ts",
+    "playwright.reviewer.config.ts",
+    "tests/BLOCKED-DATABASE-CHECKS.md",
+    "tests/MANUAL-CHECKS-N1-N6.md",
+    "tests/e2e/email-templates.spec.ts",
+    "tests/e2e/n1-n6/n2-tolra-ai.spec.ts",
+    "tests/e2e/n1-n6/n5-setup.spec.ts",
+    "tests/e2e/n1-n6/n6-editor.spec.ts",
+    "tests/e2e/reviewer/README.md",
+    "tests/e2e/reviewer/accounting.spec.ts",
+    "tests/e2e/reviewer/ai-support.spec.ts",
+    "tests/e2e/reviewer/chase.spec.ts",
+    "tests/e2e/reviewer/setup-email-hours.spec.ts",
+    "tests/e2e/template-editor-controls.ts",
+    "tests/support/optional-browser-database.ts",
+    "tests/support/reviewer-provider-mocks.cjs",
+    "tests/unit/optional-browser-database.test.ts",
+    "tests/unit/reviewer-ci.test.ts",
+    "tests/unit/reviewer-provider-mocks.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "AG: reviewer browser PR now targets the #247 candidate branch so its application and 145/146 release setup are present. Local combination had no conflicts. Diff against the new base contains browser/support tests, configs, manual steps and CI wiring, not application feature changes. Assumption: reviewing against the actual candidate is safer than keeping an un-runnable feature-less #227 base. No GitHub merge.\n\nThe integration job runs exactly:\n\n```sh\nREVIEWER_REQUIRE_DATABASE=1 E2E_SKIP_BUILD=1 npx playwright test -c playwright.reviewer.config.ts\n```\n\nAll 10 cases collect. The ordinary runner delegates reviewer/ to this explicit step with its provider mocks; the reviewer config clears the ignore. Required-database mode fails without a backend instead of skipping green. Integration trigger/Ready-label policy unchanged; no label added or workflow dispatched.\n\n12 targeted unit tests, typecheck and targeted lint passed. Collection lists 10 tests/4 files; required mode correctly refuses the absent backend. Runtime browser/DB checks NOT RUN here, no SQL applied or real provider called. Read tests/e2e/reviewer/README.md for the full conditions and prerequisites.",
+  "historical_test_claims": [
+    "AG: reviewer browser PR now targets the #247 candidate branch so its application and 145/146 release setup are present. Local combination had no conflicts. Diff against the new base contains browser/support tests, configs, manual steps and CI wiring, not application feature changes. Assumption: reviewing against the actual candidate is safer than keeping an un-runnable feature-less #227 base. No GitHub merge.",
+    "REVIEWER_REQUIRE_DATABASE=1 E2E_SKIP_BUILD=1 npx playwright test -c playwright.reviewer.config.ts",
+    "12 targeted unit tests, typecheck and targeted lint passed. Collection lists 10 tests/4 files; required mode correctly refuses the absent backend. Runtime browser/DB checks NOT RUN here, no SQL applied or real provider called. Read tests/e2e/reviewer/README.md for the full conditions and prerequisites."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41710831188,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41710831188",
+      "head_sha": "2b4bd18390efc468a01b449dae70c844ee204a05",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "id": 41709377847,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41709377847",
+      "head_sha": "2b4bd18390efc468a01b449dae70c844ee204a05",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "id": 41709375585,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41709375585",
+      "head_sha": "2b4bd18390efc468a01b449dae70c844ee204a05",
+      "status": "completed",
+      "conclusion": "cancelled"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

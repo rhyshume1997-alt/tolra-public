@@ -1,0 +1,29 @@
+{
+  "number": 384,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/384",
+  "title": "G20: add the external integrations launch register",
+  "branch": "codex/g20-integrations-register",
+  "observed_head": "7484f9135a1399924f9a368b59a07ec8e667c2e5",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:01Z",
+  "files": [
+    "docs/audit/G20-EXTERNAL-INTEGRATIONS-REGISTER.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds one docs/audit register for Xero, Microsoft 365, email delivery, AI provider and manual SliQ exports. Each has a blank owner, data sent, proposed launch state and practical failure fallback. A per-service verification record includes requirement/expected/actual/evidence/tester/date/approval; actual state remains NOT EXECUTED/NOT VERIFIED and approvals stay blank.\n\nReuses #375's security review; adds the missing operational register rather than claiming deployment settings have been checked. Proposed automatic services OFF is an approval proposal, not an observation; manual email/export decisions remain explicit. Calls out uncertain send/retry duplicates, the unresolved AI cap finding and source references. No service was called, connected or enabled.\n\nG20: register ready; actual launch state/owners/approvals pending. Separate branch from main 68f89ca, docs only. Source/required-field and git diff --check review only; no runtime result claimed. No production SQL/data, merge, #359/candidate edits, Ready label or message to John.",
+  "historical_test_claims": [
+    "Adds one docs/audit register for Xero, Microsoft 365, email delivery, AI provider and manual SliQ exports. Each has a blank owner, data sent, proposed launch state and practical failure fallback. A per-service verification record includes requirement/expected/actual/evidence/tester/date/approval; actual state remains NOT EXECUTED/NOT VERIFIED and approvals stay blank."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41957652607,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41957652607",
+      "head_sha": "7484f9135a1399924f9a368b59a07ec8e667c2e5",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

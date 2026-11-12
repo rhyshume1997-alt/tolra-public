@@ -1,0 +1,33 @@
+{
+  "number": 274,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/274",
+  "title": "CC: read-only JNR import and preservation reconciliation",
+  "branch": "codex/cc-jnr-reconcile",
+  "observed_head": "d88f06333556e5c2a80e183a5067c5f7117562fa",
+  "base_sha": "ff13614fcd8bd37d989faec74d387371ef7ac378",
+  "github_state": "closed (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:13Z",
+  "files": [
+    "scripts/jnr-reconcile/check.mjs",
+    "scripts/jnr-reconcile/cli.mjs",
+    "tests/JNR-RECONCILIATION.md",
+    "tests/unit/jnr-reconcile.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds a read-only, offline comparison for JNR source and post-import snapshots, with stable identities, exact integer pence, customer balances, payment allocation checks, jobs, numbering and complete supplied Marpet/preservation comparisons. No importer or application behaviour changes.\n\nAssumption: CC supplements the existing owner's reconciliation/import tools; a reviewer supplies complete independently extracted snapshots. Half-to-even is provided for calculated rational source values, never to round imported invoice totals. Missing exports, negative invoice allocations and incomplete protected inventories refuse rather than guessing.\n\nChecks: 35 focused unit tests pass, 0 failures, 0 skips; typecheck and changed-file ESLint pass. No real data, SQL, database, browser or cutover proof. Snapshot origin and completeness, live isolation and next-number safety still require independent evidence. Coordination and handover: #271. Draft only.\n\n- [x] CC offline comparison and fake-data tests\n- [ ] Independent extraction/completeness and real rehearsal evidence\n- [ ] Rhys/reviewer decision\n",
+  "historical_test_claims": [
+    "Checks: 35 focused unit tests pass, 0 failures, 0 skips; typecheck and changed-file ESLint pass. No real data, SQL, database, browser or cutover proof. Snapshot origin and completeness, live isolation and next-number safety still require independent evidence. Coordination and handover: #271. Draft only.",
+    "- [x] CC offline comparison and fake-data tests"
+  ],
+  "workflow_runs": [
+    {
+      "id": 41811157505,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41811157505",
+      "head_sha": "d88f06333556e5c2a80e183a5067c5f7117562fa",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

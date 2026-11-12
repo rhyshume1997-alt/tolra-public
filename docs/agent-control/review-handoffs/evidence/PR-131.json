@@ -1,0 +1,31 @@
+{
+  "number": 131,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/131",
+  "title": "Reject bank statements containing unclosed CSV quotes",
+  "branch": "codex/bank-csv-quotes",
+  "observed_head": "0a6b970ababe6b5c8e0f449084e1e81159fa68dd",
+  "base_sha": "aa520be8946d564f0841c55eb15ce9775335a767",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:20Z",
+  "files": [
+    "lib/bank/match-statement.ts",
+    "tests/unit/bank-match-statement.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "An unclosed quoted amount such as `\"100.00` was accepted as a \u00a3100 transaction with no error. Reject the structurally broken statement before returning any transactions, including valid rows preceding the broken field. Valid escaped quotes and multiline fields remain supported.\n\nFollow-up to #109/#120, stacked on #120 to reuse its existing regression tests. Original branches untouched; ownership handoff authorised by Rhys and published in #130, with atomic claim claims/pr109-csv-quotes.\n\nValidation: four new regressions failed before the fix; all 44 bank tests pass after it and again on commit 72b3e22. TypeScript, targeted ESLint and git diff --check pass. No database, payment write, migration or deployment changes. Integration CI remains to be verified.",
+  "historical_test_claims": [
+    "Follow-up to #109/#120, stacked on #120 to reuse its existing regression tests. Original branches untouched; ownership handoff authorised by Rhys and published in #130, with atomic claim claims/pr109-csv-quotes.",
+    "Validation: four new regressions failed before the fix; all 44 bank tests pass after it and again on commit 72b3e22. TypeScript, targeted ESLint and git diff --check pass. No database, payment write, migration or deployment changes. Integration CI remains to be verified."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41587787672,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41587787672",
+      "head_sha": "0a6b970ababe6b5c8e0f449084e1e81159fa68dd",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

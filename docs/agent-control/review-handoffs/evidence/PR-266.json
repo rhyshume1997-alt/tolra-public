@@ -1,0 +1,29 @@
+{
+  "number": 266,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/266",
+  "title": "AX: pinned review packets for open Codex changes",
+  "branch": "codex/ax-review-packets",
+  "observed_head": "4fae060450fdfaa180acb073950153a27d6a2cf0",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:14Z",
+  "files": [
+    "tests/REVIEW-PACKETS-NEXT.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds thirteen paste-ready review packets for open PRs changed by this worker, including the newly published queue follow-ups. Each names its full head, evidence and gaps. #185 is omitted because GitHub confirms merged. Historical evidence stays attributed to the tracker and stale heads require rechecking.\n\nSelf-review packet (kept here to avoid a self-referencing document hash):\nReview https://github.com/rhyshume1997-alt/tolra-public/pull/266\nFull head SHA: 4fae060450fdfaa180acb073950153a27d6a2cf0\nWhat changed: review packets only; no application behaviour.\nTests and counts: 13 SHA/question pairs and diff check passed; zero runtime tests required. Previous document head CI passed; final-head CI pending.\nNOT proved: database/browser/integration checks, external reviewer verdicts or release permission. Packet snapshots must be checked against current GitHub heads.\nQuestion: Is this exact change SAFE, SAFE WITH CONDITIONS or NOT SAFE? Name every condition and required proof.\n\nAssumption: read-only inspections and other workers' changes are not this worker's modified PRs. No SQL, Ready label, merge or deployment.",
+  "historical_test_claims": [
+    "Tests and counts: 13 SHA/question pairs and diff check passed; zero runtime tests required. Previous document head CI passed; final-head CI pending."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41803584072,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41803584072",
+      "head_sha": "4fae060450fdfaa180acb073950153a27d6a2cf0",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

@@ -1,0 +1,31 @@
+{
+  "number": 307,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/307",
+  "title": "B17: Turn admin sign-in codes fully on and prove them",
+  "branch": "codex/b4-signoff-b17",
+  "observed_head": "8877aed34d009c7dc1c348d81932ffe103190805",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:09Z",
+  "files": [
+    "docs/signoff/B17-ADMIN-SIGN-IN-CODES.md",
+    "docs/signoff/HANDOVER-B17.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "B17: Turn admin sign-in codes fully on and prove them. Adds `docs/signoff/B17-ADMIN-SIGN-IN-CODES.md` and a job handover. Plain words, blank choices/checks, expected results where relevant and signature/evidence lines for the actual named people.\n\nValidation: source/control/example review and `git diff --check`. Documentation only; no artificial text tests added. Actual decisions/signatures, portal terms/free-tier eligibility and operator/manual/provider/database actions remain NOT RUN. PAID-ROUND is paid working time, confirmed by Rhys. Domain checks come before app callbacks.\n\nPrepared for build/test by Friday 6 November and conditional go-live Thursday 12 November 2026. Draft only, no Ready label, main merge, production SQL, deployment, live account change, app registration, purchase or send.\n",
+  "historical_test_claims": [
+    "Validation: source/control/example review and `git diff --check`. Documentation only; no artificial text tests added. Actual decisions/signatures, portal terms/free-tier eligibility and operator/manual/provider/database actions remain NOT RUN. PAID-ROUND is paid working time, confirmed by Rhys. Domain checks come before app callbacks.",
+    "Prepared for build/test by Friday 6 November and conditional go-live Thursday 12 November 2026. Draft only, no Ready label, main merge, production SQL, deployment, live account change, app registration, purchase or send."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41835260208,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41835260208",
+      "head_sha": "8877aed34d009c7dc1c348d81932ffe103190805",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

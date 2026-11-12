@@ -1,0 +1,56 @@
+{
+  "number": 376,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/376",
+  "title": "G25: adversarial claim-evidence tests without financial write methods",
+  "branch": "codex/b5-g25-claims-review",
+  "observed_head": "35d53468ad961cf5f45935f7d21b69cc73a8ce5d",
+  "base_sha": "31f965e7f0cbb2d9caf336b0a2067411bec8fb45",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:02Z",
+  "files": [
+    "tests/reviews/b5-g25/B5-G25-REVIEW.md",
+    "tests/reviews/b5-g25/evidence-sha256.json",
+    "tests/reviews/b5-g25/evidence/2026-11-04T21-45-05.698840+00-00-empty-stack-start-412e86/original.log",
+    "tests/reviews/b5-g25/evidence/2026-11-04T21-45-05.698840+00-00-empty-stack-start-412e86/run.json",
+    "tests/reviews/b5-g25/evidence/2026-11-04T21-45-05.698840+00-00-empty-stack-start-412e86/sql-inputs.json",
+    "tests/reviews/b5-g25/evidence/2026-11-04T21-45-07.017329+00-00-security-units-6c3e1d/original.log",
+    "tests/reviews/b5-g25/evidence/2026-11-04T21-45-07.017329+00-00-security-units-6c3e1d/run.json",
+    "tests/reviews/b5-g25/evidence/2026-11-04T21-45-07.017329+00-00-security-units-6c3e1d/sql-inputs.json",
+    "tests/reviews/b5-g25/evidence/2026-11-04T21-50-27.747510+00-00-adversarial-security-05c333/original.log",
+    "tests/reviews/b5-g25/evidence/2026-11-04T21-50-27.747510+00-00-adversarial-security-05c333/run.json",
+    "tests/reviews/b5-g25/evidence/2026-11-04T21-50-27.747510+00-00-adversarial-security-05c333/sql-inputs.json",
+    "tests/reviews/b5-g25/evidence/2026-11-04T21-51-26.929456+00-00-adversarial-security-ready-8b7b17/original.log",
+    "tests/reviews/b5-g25/evidence/2026-11-04T21-51-26.929456+00-00-adversarial-security-ready-8b7b17/run.json",
+    "tests/reviews/b5-g25/evidence/2026-11-04T21-51-26.929456+00-00-adversarial-security-ready-8b7b17/sql-inputs.json",
+    "tests/reviews/b5-g25/evidence/2026-11-04T21-52-14.610616+00-00-changed-types-e9e6d5/original.log",
+    "tests/reviews/b5-g25/evidence/2026-11-04T21-52-14.610616+00-00-changed-types-e9e6d5/run.json",
+    "tests/reviews/b5-g25/evidence/2026-11-04T21-52-14.610616+00-00-changed-types-e9e6d5/sql-inputs.json",
+    "tests/reviews/b5-g25/evidence/2026-11-04T21-53-05.289564+00-00-changed-lint-04f1f7/original.log",
+    "tests/reviews/b5-g25/evidence/2026-11-04T21-53-05.289564+00-00-changed-lint-04f1f7/run.json",
+    "tests/reviews/b5-g25/evidence/2026-11-04T21-53-05.289564+00-00-changed-lint-04f1f7/sql-inputs.json",
+    "tests/reviews/b5-g25/evidence/2026-11-04T21-57-40.504882+00-00-committed-payment-claims-4e12da/original.log",
+    "tests/reviews/b5-g25/evidence/2026-11-04T21-57-40.504882+00-00-committed-payment-claims-4e12da/run.json",
+    "tests/reviews/b5-g25/evidence/2026-11-04T21-57-40.504882+00-00-committed-payment-claims-4e12da/sql-inputs.json",
+    "tests/unit/b5-g25-evidence-only.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Nine independent tests pass on committed reviewer code 1fb3eddd: seven hostile/ambiguous/future/question/refund/cross-company message cases call only the company-bound evidence RPC, and both claim-resolution outcomes call only resolve_payment_claim. Service doubles expose no financial table writes and each financial-control argument is separately forbidden. No real email, payment or customer record used.\n\nReviewed intake and 138 claim/resolution SQL: claim evidence and its resolution are separate from Record payment. Existing baseline inbound/chase tests also passed. Full actual-DB invoice/payment/balance invariance remains NOT EXECUTED because the identified full stack is blocked by registry policy. Unit evidence is not promoted to end-to-end financial proof. All original combined logs (including unrelated G27 failures), hashes/time/exit/environment and exact committed rerun retained.\n\nHandover: tests/reviews/b5-g25/B5-G25-REVIEW.md.\n\n- [x] Separate owned reviewer branch; original failures retained; source/lint/type/whitespace checks scoped in report. Raw logs kept byte-for-byte, including original whitespace.\n- [ ] Independent owner assessment, actual final-candidate runtime evidence and authorised acceptance remain open.\n\nExplicit Rhys overnight allocation. New b5 test/tool/review files only; no Claude-owned source/test edits, #359 branch modification, ISO pack work, Ready label, main merge, production migrations/wipe/import/counter change, deployment, live AI/automated email or message to John. PRs targeting #359\u2019s branch are review follow-ups only; no merge is requested. Production actions remain subject to Rhys\u2019s separate approval.",
+  "historical_test_claims": [
+    "Nine independent tests pass on committed reviewer code 1fb3eddd: seven hostile/ambiguous/future/question/refund/cross-company message cases call only the company-bound evidence RPC, and both claim-resolution outcomes call only resolve_payment_claim. Service doubles expose no financial table writes and each financial-control argument is separately forbidden. No real email, payment or customer record used.",
+    "Reviewed intake and 138 claim/resolution SQL: claim evidence and its resolution are separate from Record payment. Existing baseline inbound/chase tests also passed. Full actual-DB invoice/payment/balance invariance remains NOT EXECUTED because the identified full stack is blocked by registry policy. Unit evidence is not promoted to end-to-end financial proof. All original combined logs (including unrelated G27 failures), hashes/time/exit/environment and exact committed rerun retained.",
+    "Handover: tests/reviews/b5-g25/B5-G25-REVIEW.md.",
+    "- [x] Separate owned reviewer branch; original failures retained; source/lint/type/whitespace checks scoped in report. Raw logs kept byte-for-byte, including original whitespace.",
+    "Explicit Rhys overnight allocation. New b5 test/tool/review files only; no Claude-owned source/test edits, #359 branch modification, ISO pack work, Ready label, main merge, production migrations/wipe/import/counter change, deployment, live AI/automated email or message to John. PRs targeting #359\u2019s branch are review follow-ups only; no merge is requested. Production actions remain subject to Rhys\u2019s separate approval."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41921306472,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41921306472",
+      "head_sha": "35d53468ad961cf5f45935f7d21b69cc73a8ce5d",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

@@ -1,0 +1,28 @@
+{
+  "number": 338,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/338",
+  "title": "I3: Add blank JNR quality policy and objectives templates",
+  "branch": "codex/b5-i3-iso9001",
+  "observed_head": "77c8cc34639dfa72d1d96509c27cded7098b039d",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:06Z",
+  "files": [
+    "docs/iso9001/QUALITY-OBJECTIVES-SHEET.md",
+    "docs/iso9001/QUALITY-POLICY-TEMPLATE.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds a blank quality policy and objectives working sheet with clearly separate examples. John chooses actual wording, targets, owners and dates; nothing is signed or adopted.\n\nTolra supports JNR\u2019s quality work. Software/documents cannot certify JNR; JNR is audited.\n\n- [x] Source review and git diff --check; documentation only.\n- [ ] John appoints owners, reviews/adopts controls and supplies real evidence.\n\nBuilder 5 claim claims/I3. Independent draft on main 68f89ca7; all files under docs/iso9001/. Builders 3 and 4 untouched. No runtime validation, main merge, Ready label, production SQL, deployment or new feature. Handover: docs/iso9001/BUILDER-5-HANDOVER.md on I7.",
+  "historical_test_claims": [],
+  "workflow_runs": [
+    {
+      "id": 41845115762,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41845115762",
+      "head_sha": "77c8cc34639dfa72d1d96509c27cded7098b039d",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

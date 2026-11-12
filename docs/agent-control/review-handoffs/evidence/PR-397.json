@@ -1,0 +1,29 @@
+{
+  "number": 397,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/397",
+  "title": "E: three-line Cloudflare skills assessment, no installation",
+  "branch": "codex/cloudflare-skills-assessment",
+  "observed_head": "f4a6ea619586bb1cec78fcc36c69e4cca3036d54",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:21:59Z",
+  "files": [
+    "docs/agent-control/cloudflare-skills-assessment.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Read the requested public Cloudflare skills README (blob 4a5c4a8b2af4268630c6e050908dccad270dd57e). web-perf could be useful; turnstile-spin only for separately requested bot checks. Recommend NO installation for this completion queue; keep Vercel and Supabase.\n\nExactly three lines; source-read only, 0 tests run, 0 skipped. No performance/platform checks claimed, nothing installed or moved. No SQL, merge, private files, #359/go-live edits or John messages.",
+  "historical_test_claims": [
+    "Exactly three lines; source-read only, 0 tests run, 0 skipped. No performance/platform checks claimed, nothing installed or moved. No SQL, merge, private files, #359/go-live edits or John messages."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41986567696,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41986567696",
+      "head_sha": "f4a6ea619586bb1cec78fcc36c69e4cca3036d54",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

@@ -1,0 +1,39 @@
+{
+  "number": 220,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/220",
+  "title": "Add plain-language validation pack under tests",
+  "branch": "codex/validation-pack",
+  "observed_head": "fb8a262060a1a33c87cbe1b548b181b78d4d6ef7",
+  "base_sha": "717ac725f832023a1c3c64bda91f4e734dc360fe",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:16Z",
+  "files": [
+    "tests/validation/IQ.md",
+    "tests/validation/OQ.md",
+    "tests/validation/PQ.md",
+    "tests/validation/README.md",
+    "tests/validation/RISK-ASSESSMENT.md",
+    "tests/validation/TRACEABILITY.md",
+    "tests/validation/URS.md",
+    "tests/validation/VSR-TEMPLATE.md",
+    "tests/validation/check-pack.mjs",
+    "tests/validation/manifest.json"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Add a plain-language validation pack for a company's quality process: ten numbered URS requirements, linked risks, IQ/OQ/PQ protocols with expected results and blank pass/fail/evidence columns, traceability matrix and VSR template. It records evidence; it does not claim ISO certification or completed operator validation.\n\nPut the pack in tests/validation/ so no docs/ files enter this public code PR. A runnable checker verifies IDs, links, mapped test paths and protocol columns; --run-unit runs only ten named existing unit suites. No database, migration, deploy or provider-send command is invoked.\n\nClaim: N4. Searched main/open PRs; no equivalent pack found.\n\nValidation: pack checker passed; 119 mapped unit tests passed (10 files); script ESLint passed. Browser/database checks and company IQ/OQ/PQ execution not run; evidence templates remain blank. No SQL applied.\n",
+  "historical_test_claims": [
+    "Put the pack in tests/validation/ so no docs/ files enter this public code PR. A runnable checker verifies IDs, links, mapped test paths and protocol columns; --run-unit runs only ten named existing unit suites. No database, migration, deploy or provider-send command is invoked.",
+    "Validation: pack checker passed; 119 mapped unit tests passed (10 files); script ESLint passed. Browser/database checks and company IQ/OQ/PQ execution not run; evidence templates remain blank. No SQL applied."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41650914555,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41650914555",
+      "head_sha": "fb8a262060a1a33c87cbe1b548b181b78d4d6ef7",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

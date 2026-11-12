@@ -1,0 +1,67 @@
+{
+  "number": 207,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/207",
+  "title": "Combine reviewed chase sends, recovery and UI coverage on the #161 line",
+  "branch": "codex/chase-combined",
+  "observed_head": "8a7daaedebc03c5640bc214c49c2089702998a46",
+  "base_sha": "d5bcebc34ab60e8f9f08f0210e44c6ddd4710665",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:18Z",
+  "files": [
+    "app/(dashboard)/approval/page.tsx",
+    "app/(dashboard)/invoices/page.tsx",
+    "app/api/chase/approve/route.ts",
+    "components/chase/connected-approval.tsx",
+    "components/chase/connected-settings.tsx",
+    "components/chase/customer-says-paid.tsx",
+    "lib/chase/steps.ts",
+    "lib/chase/ui-store.ts",
+    "lib/email/chase/approve.ts",
+    "lib/email/chase/run.ts",
+    "lib/email/send-company-email.ts",
+    "package-lock.json",
+    "package.json",
+    "scripts/test-atomic-proposals.mjs",
+    "supabase/proposals/builder2_atomic_settings.rollback.sql",
+    "supabase/proposals/builder2_chase_settings_atomic.sql",
+    "supabase/proposals/builder2_costing_settings_atomic.sql",
+    "tests/postgres/atomic-settings-fixture.sql",
+    "tests/postgres/atomic-settings.test.mjs",
+    "tests/unit/chase-approval-ui.test.ts",
+    "tests/unit/chase-approve.test.ts",
+    "tests/unit/chase-customer-review.test.ts",
+    "tests/unit/chase-draft-customer-match.test.ts",
+    "tests/unit/chase-more.test.ts",
+    "tests/unit/chase-run.test.ts",
+    "tests/unit/chase-steps.test.ts",
+    "tests/unit/chase-ui-wiring.test.ts",
+    "tests/unit/chase-wording.test.ts",
+    "tests/unit/company-email.test.ts",
+    "tests/unit/customer-says-paid-ui.test.ts",
+    "tests/unit/email-schedules-reminders.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Combine #191 and #199 with the #161 line that already contains merged #203/#204/#205. Resolve reviewed-text API field-name conflicts consistently with expected_subject/expected_body; retain the approval-button snapshot test, stale/missing-snapshot checks, strict subject preservation, atomic claim, retryable definite failures and Needs checking for uncertain results. Retain all test assertions from both sides; a no-rewrite assertion permits status-only claims and still forbids subject/body rewriting.\n\nBase is chatgpt2/e2e-chasing-code-only (#161's branch), not main. Existing base documentation is unchanged so this code PR has no docs diff. No SQL applied. This remains an integration draft, not release approval; atomic settings proposals still require isolated database verification.\n\nValidation: all 5,129 unit tests across 378 files passed. Typecheck passed; ESLint passed with three existing warnings and zero errors. Live browser/database tests and production build were not run. A separate follow-up resolves the existing settings-card layout conflict with main.\n",
+  "historical_test_claims": [
+    "Combine #191 and #199 with the #161 line that already contains merged #203/#204/#205. Resolve reviewed-text API field-name conflicts consistently with expected_subject/expected_body; retain the approval-button snapshot test, stale/missing-snapshot checks, strict subject preservation, atomic claim, retryable definite failures and Needs checking for uncertain results. Retain all test assertions from both sides; a no-rewrite assertion permits status-only claims and still forbids subject/body rewriting.",
+    "Validation: all 5,129 unit tests across 378 files passed. Typecheck passed; ESLint passed with three existing warnings and zero errors. Live browser/database tests and production build were not run. A separate follow-up resolves the existing settings-card layout conflict with main."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41662906134,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41662906134",
+      "head_sha": "8a7daaedebc03c5640bc214c49c2089702998a46",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "id": 41645526409,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41645526409",
+      "head_sha": "8a7daaedebc03c5640bc214c49c2089702998a46",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

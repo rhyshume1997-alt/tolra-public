@@ -1,0 +1,70 @@
+{
+  "number": 199,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/199",
+  "title": "Recover failed chase sends and hold uncertain outcomes",
+  "branch": "codex/chase-send-recovery",
+  "observed_head": "b900aa36f5e0980a132c97f39d403b01d329b381",
+  "base_sha": "12dce0957b411131449cd1d22feb3cb111d075f9",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:19Z",
+  "files": [
+    "app/(dashboard)/approval/page.tsx",
+    "app/(dashboard)/invoices/page.tsx",
+    "app/api/chase/approve/route.ts",
+    "components/chase/approval-card.tsx",
+    "components/chase/connected-approval.tsx",
+    "components/chase/connected-settings.tsx",
+    "components/chase/customer-says-paid.tsx",
+    "components/chase/settings-card.tsx",
+    "components/email-schedules/settings-card.tsx",
+    "lib/chase/steps.ts",
+    "lib/chase/ui-store.ts",
+    "lib/email/chase/approve.ts",
+    "lib/email/chase/run.ts",
+    "lib/email/send-company-email.ts",
+    "package-lock.json",
+    "package.json",
+    "scripts/test-atomic-proposals.mjs",
+    "supabase/proposals/builder2_atomic_settings.rollback.sql",
+    "supabase/proposals/builder2_chase_settings_atomic.sql",
+    "supabase/proposals/builder2_costing_settings_atomic.sql",
+    "tests/postgres/atomic-settings-fixture.sql",
+    "tests/postgres/atomic-settings.test.mjs",
+    "tests/unit/chase-approval-ui.test.ts",
+    "tests/unit/chase-approve.test.ts",
+    "tests/unit/chase-customer-review.test.ts",
+    "tests/unit/chase-draft-customer-match.test.ts",
+    "tests/unit/chase-more.test.ts",
+    "tests/unit/chase-run.test.ts",
+    "tests/unit/chase-steps.test.ts",
+    "tests/unit/chase-ui-wiring.test.ts",
+    "tests/unit/chase-wording.test.ts",
+    "tests/unit/company-email.test.ts",
+    "tests/unit/customer-says-paid-ui.test.ts",
+    "tests/unit/email-schedules-reminders.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "A failed Approve and send could leave the reviewed draft permanently claimed as sending. Definite failures now release the claim for a reviewed retry; uncertain outcomes and thrown sends become Needs checking and cannot send again automatically. Concurrent approvals still claim once, edits invalidate approval, and subjects the mailer would transform are refused.\n\nValidation: 61 targeted approval/mailer tests passed. No database changes were applied. Targets `claude/chase-steps`, the same base as #191. Includes the existing #191 integration work plus the recovery fix.\n",
+  "historical_test_claims": [
+    "A failed Approve and send could leave the reviewed draft permanently claimed as sending. Definite failures now release the claim for a reviewed retry; uncertain outcomes and thrown sends become Needs checking and cannot send again automatically. Concurrent approvals still claim once, edits invalidate approval, and subjects the mailer would transform are refused.",
+    "Validation: 61 targeted approval/mailer tests passed. No database changes were applied. Targets `claude/chase-steps`, the same base as #191. Includes the existing #191 integration work plus the recovery fix."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41637024689,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41637024689",
+      "head_sha": "b900aa36f5e0980a132c97f39d403b01d329b381",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "id": 41634246337,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41634246337",
+      "head_sha": "b900aa36f5e0980a132c97f39d403b01d329b381",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

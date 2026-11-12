@@ -1,0 +1,31 @@
+{
+  "number": 265,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/265",
+  "title": "AV: named rollback checks preserve business records or safely refuse",
+  "branch": "codex/av-rollback-tests",
+  "observed_head": "fcb4e9bac74447aef90f9c2d1d1333536024c6f4",
+  "base_sha": "41c685c416305637d86b580324fff9e6cda037ff",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:14Z",
+  "files": [
+    "tests/db/tolra-provided-ai.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds named real-database tests for packaged releases 138, 144, 145 and 146 in the existing ordered post-144 proof file. Each creates fake company/customer/invoice positive controls, snapshots business tables, attempts the reviewed rollback inside an outer transaction and checks retained rows exactly. Only documented P0001 safety refusals are accepted, with unchanged snapshots; other errors fail. Every test restores its outer transaction.\n\nAssumptions: feature-owned data intentionally removed by 138 (chase/claim fields) and 145 (setup ticks) is NOT called retained. Claim metadata is excluded from the business-row comparison because 138 deliberately removes its columns. These tests are not a claim that those rollbacks preserve all data or a substitute for backup/export proof. 140-143 have no files on this candidate. Tests stay in the sequencer's existing post-release file, so no baseline ordering or catalogue checks are weakened.\n\nTypeScript and changed-file ESLint passed; diff check passed. Real SQL tests NOT RUN under the explicit no-SQL rule; separately authorised disposable rehearsal required. No release applied, Ready label, merge, deployment, credentials or docs/ files.",
+  "historical_test_claims": [
+    "Adds named real-database tests for packaged releases 138, 144, 145 and 146 in the existing ordered post-144 proof file. Each creates fake company/customer/invoice positive controls, snapshots business tables, attempts the reviewed rollback inside an outer transaction and checks retained rows exactly. Only documented P0001 safety refusals are accepted, with unchanged snapshots; other errors fail. Every test restores its outer transaction.",
+    "Assumptions: feature-owned data intentionally removed by 138 (chase/claim fields) and 145 (setup ticks) is NOT called retained. Claim metadata is excluded from the business-row comparison because 138 deliberately removes its columns. These tests are not a claim that those rollbacks preserve all data or a substitute for backup/export proof. 140-143 have no files on this candidate. Tests stay in the sequencer's existing post-release file, so no baseline ordering or catalogue checks are weakened.",
+    "TypeScript and changed-file ESLint passed; diff check passed. Real SQL tests NOT RUN under the explicit no-SQL rule; separately authorised disposable rehearsal required. No release applied, Ready label, merge, deployment, credentials or docs/ files."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41801232365,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41801232365",
+      "head_sha": "fcb4e9bac74447aef90f9c2d1d1333536024c6f4",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

@@ -1,0 +1,29 @@
+{
+  "number": 361,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/361",
+  "title": "I9: Tolra evidence map for quality records",
+  "branch": "codex/b5-i9-iso9001",
+  "observed_head": "d6df86bc57e2e77379998c29bcc4a6d972318ffb",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:03Z",
+  "files": [
+    "docs/iso9001/ISO-QUALITY-RECORDS-EVIDENCE-MAP.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Short source-linked map of existing quality-record support, with honest limits for history, document control, permissions, job/material links, problems/inspection, delivery and suppliers. Dedicated complaint and full corrective-action workflows are marked as gaps.\n\nTolra supports JNR\u2019s quality work; software/documents cannot certify JNR. JNR is audited.\n\n- [x] Source and whitespace checks; published tree matches local commit.\n- [ ] John/Rhys reviews actual installed system, company decisions and evidence.\n\nBuilder 5 / I9, explicit Rhys assignment; atomic claim claims/I9. One document under docs/iso9001/, independent of other drafts. No runtime tests or live exports run. No feature build, Ready label, main merge or production SQL. Builders 3/4 unchanged. Handover and remaining decisions are recorded in the document; existing I1\u2013I7 drafts remain unchanged.",
+  "historical_test_claims": [
+    "Builder 5 / I9, explicit Rhys assignment; atomic claim claims/I9. One document under docs/iso9001/, independent of other drafts. No runtime tests or live exports run. No feature build, Ready label, main merge or production SQL. Builders 3/4 unchanged. Handover and remaining decisions are recorded in the document; existing I1\u2013I7 drafts remain unchanged."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41887071886,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41887071886",
+      "head_sha": "d6df86bc57e2e77379998c29bcc4a6d972318ffb",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

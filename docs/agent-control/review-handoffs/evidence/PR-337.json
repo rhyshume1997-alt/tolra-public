@@ -1,0 +1,29 @@
+{
+  "number": 337,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/337",
+  "title": "WIPE-DAY: gated Saturday 7 November JNR wipe runbook",
+  "branch": "codex/b4-q4-wipe-day",
+  "observed_head": "ad59e3b62a355d1241357eb53e3d24385c4ec6ed",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:06Z",
+  "files": [
+    "docs/runbooks/BUILDER-4-QUEUE-4-OWNERSHIP.md",
+    "docs/runbooks/HANDOVER-BUILDER-4-QUEUE-4.md",
+    "docs/runbooks/WIPE-DAY-SATURDAY-7-NOVEMBER.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds Rhys's gated Saturday 7 November JNR wipe procedure, with pre-checks, CW-01\u2013CW-18, KEEP/WIPE scope, dry-before-commit, expected output and firm stop points. Includes the queue 4 ownership record and final handover.\n\nValidation: documentation/source comparison and staged whitespace checks. No SQL or production operations executed. #250 remains NOT SAFE until real combined-kit proofs and independent review are complete; this guide does not change that verdict. All other live results and signatures remain NOT RUN/blank.\n\nSeparate draft only; no main merge, deployment, Ready label or new functionality.\n",
+  "historical_test_claims": [],
+  "workflow_runs": [
+    {
+      "id": 41845126579,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41845126579",
+      "head_sha": "ad59e3b62a355d1241357eb53e3d24385c4ec6ed",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

@@ -1,0 +1,33 @@
+{
+  "number": 215,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/215",
+  "title": "Run E13 schedule checks without a database",
+  "branch": "codex/e13-offline-schedule",
+  "observed_head": "1671a07d096f66821b1538eaf8778d1950b4fb49",
+  "base_sha": "14eedfed30a82b4a8cf83a5db00ec498a768556f",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:17Z",
+  "files": [
+    "package.json",
+    "tests/TIMESHEET-OFFLINE.md",
+    "tests/unit/timesheet-schedule-offline.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Add `npm run test:timesheet-schedule`: 84 real scheduling/form tests with no database, Supabase client, mail credentials or Docker. Include explicit impossible seconds (08:00:99/60), all ISO weekdays, empty days, off-by-default behavior and both UK daylight-saving boundaries.\n\nKeep the existing #192 tests and source behavior intact. Document the checks that genuinely require a database in tests/TIMESHEET-OFFLINE.md: RLS/persistence, migration 142, concurrent claims/idempotency, ledger writes and live cron/browser delivery.\n\nBase: codex2/e13-more-tests (#192). Validation: all 84 offline tests passed; typecheck and targeted ESLint passed. Live database/provider checks were not run and no SQL applied.\n",
+  "historical_test_claims": [
+    "Add `npm run test:timesheet-schedule`: 84 real scheduling/form tests with no database, Supabase client, mail credentials or Docker. Include explicit impossible seconds (08:00:99/60), all ISO weekdays, empty days, off-by-default behavior and both UK daylight-saving boundaries.",
+    "Keep the existing #192 tests and source behavior intact. Document the checks that genuinely require a database in tests/TIMESHEET-OFFLINE.md: RLS/persistence, migration 142, concurrent claims/idempotency, ledger writes and live cron/browser delivery.",
+    "Base: codex2/e13-more-tests (#192). Validation: all 84 offline tests passed; typecheck and targeted ESLint passed. Live database/provider checks were not run and no SQL applied."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41648568689,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41648568689",
+      "head_sha": "1671a07d096f66821b1538eaf8778d1950b4fb49",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}
