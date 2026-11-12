@@ -1,0 +1,24 @@
+{
+  "source_commit": "9d580c6dafc26a31df35c1f4aaf6eea6ec7e1946",
+  "environment": {
+    "os": "Linux-6.18.57-x86_64-with-glibc2.41",
+    "python": "3.12.14",
+    "node": "v24.22.1"
+  },
+  "start_utc": "2026-11-04T21:57:40.488542+00:00",
+  "command": [
+    "node",
+    "tests/scripts/b5-provenance.test.mjs"
+  ],
+  "sql_manifest_sha256": "16c38f0f2ca8e9ed1c605ebf54c75abfd42a81c7d2fde85bc7cc45a04c5f33dc",
+  "sql_files": 365,
+  "database_identity": "NOT_CONNECTED unless identity evidence is explicitly supplied by the test",
+  "profile": "synthetic-only",
+  "working_directory": "/workspace/tolra-public/work/overnight/g18",
+  "working_tree_status": [],
+  "command_file_hashes": {},
+  "exit_code": 0,
+  "end_utc": "2026-11-04T21:57:40.774762+00:00",
+  "duration_seconds": 0.215,
+  "log_sha256": "33c22144284eb9fb74fce41f8cc78ae3f8ccacdc9218897412b96165b8a26f6c"
+}
