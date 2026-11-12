@@ -29,6 +29,9 @@ const walk = (dir: string): string[] => readdirSync(path.join(root, dir)).flatMa
   if (n === "node_modules" || n === ".next") return [];
   return statSync(path.join(root, rel)).isDirectory() ? walk(rel) : /\.(ts|tsx|mjs|js)$/.test(n) ? [rel] : [];
 });
+const rootFiles = () => readdirSync(root).filter((n) => /\.(ts|tsx|mjs|cjs|js)$/.test(n) && statSync(path.join(root, n)).isFile());
+/** Everything that can run in production or at build time: app, lib, components, scripts and the root-level files (middleware, instrumentation, next.config). */
+const productionFiles = () => [...walk("app"), ...walk("lib"), ...walk("components"), ...walk("scripts"), ...rootFiles()];
 const GBP = /pricing-gbp|ai-helper\/fx|estimatePenceGbp|actualPenceGbp|priceForGbp|\brateFor\b|USD_GBP_RATES/;
 
 describe("the GBP path is not reachable from the live code (source)", () => {
@@ -38,9 +41,23 @@ describe("the GBP path is not reachable from the live code (source)", () => {
     for (const f of files) expect(readFileSync(path.join(root, f), "utf8"), f).not.toMatch(GBP);
   });
 
-  it("no production file at all (app, lib, components) references it, apart from the two files themselves", () => {
-    const own = new Set(["lib/ai-helper/pricing-gbp.ts", "lib/ai-helper/fx.ts"]);
-    const hits = [...walk("app"), ...walk("lib"), ...walk("components")].filter((f) => !own.has(f) && GBP.test(readFileSync(path.join(root, f), "utf8")));
+  const own = new Set(["lib/ai-helper/pricing-gbp.ts", "lib/ai-helper/fx.ts"]);
+
+  it("no production file at all (app, lib, components, scripts, root files) references it, apart from the two files themselves", () => {
+    const files = productionFiles();
+    expect(files).toEqual(expect.arrayContaining(["scripts/check-test-weakening.mjs", "next.config.ts"].filter((f) => statSync(path.join(root, f), { throwIfNoEntry: false })?.isFile())));
+    const hits = files.filter((f) => !own.has(f) && GBP.test(readFileSync(path.join(root, f), "utf8")));
+    expect(hits).toEqual([]);
+  });
+
+  it("no file that mentions pricing, gbp or fx builds a dynamic import() or require() from a string, so the check above cannot be evaded", () => {
+    // A dynamic import/require whose argument is not a plain quoted string literal (a variable, concatenation or template).
+    const dynamic = /\b(?:import|require)\s*\(\s*(?!(?:"[^"\n]*"|'[^'\n]*')\s*[,)])/;
+    const hits = productionFiles().filter((f) => {
+      if (own.has(f)) return false;
+      const text = readFileSync(path.join(root, f), "utf8");
+      return /pricing|gbp|fx/i.test(text) && dynamic.test(text);
+    });
     expect(hits).toEqual([]);
   });
 
