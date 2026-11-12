@@ -14,8 +14,12 @@ export type NcrLoad = { ok: true; sources: NcrSources; truncated: boolean } | { 
 const day = (date: string, offset: number) => new Date(Date.parse(`${date}T00:00:00Z`) + offset * 86_400_000).toISOString();
 const chunks = <T,>(items: T[], size = 100) => Array.from({ length: Math.ceil(items.length / size) }, (_, i) => items.slice(i * size, i * size + size));
 
-export async function loadNcrRegister(range: { from: string; to: string }): Promise<NcrLoad> {
-  const db = supabase;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ReadClient = { from: (table: string) => any };
+
+/** `client` is optional: omitted, the browser supabase singleton is used exactly as before. */
+export async function loadNcrRegister(range: { from: string; to: string }, client?: ReadClient): Promise<NcrLoad> {
+  const db = (client ?? supabase) as typeof supabase;
   if (!db) return { ok: false };
   const lo = range.from ? day(range.from, -1) : null;
   const hi = range.to ? day(range.to, 2) : null;

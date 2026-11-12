@@ -10,6 +10,8 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+// AI-E (C4): the shared Tolra key is switched off by default; this test models the dormant Tolra reservation, so it turns the constant on.
+vi.mock("@/lib/ai-helper/shared-ai-deactivation", () => ({ SHARED_TOLRA_AI_ACTIVE: true }));
 
 vi.mock("server-only", () => ({}));
 
