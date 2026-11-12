@@ -39,6 +39,10 @@ Break work into these. Agents own one module at a time. Cross-module changes req
 - Allowed: `supabase/**` ONLY when task explicitly says "migration allowed" and lists the file.
 - Goal: Versioned, verified, never broken. Agents do not invent SQL.
 
+## 9. ISO templates (PM-approved 6a)
+- Allowed: `app/(dashboard)/admin/iso/**`, `components/iso/**`, `lib/iso/**`
+- Goal: Admin-only, off by default, downloadable draft templates. No AI, no SQL, no saved documents. Outputs need company review and are not certification evidence.
+
 ## Shared
 - `lib/utils.ts`, types, zod schemas: only if the task lists them.
 - Prefer new files under `lib/<module>/` or `components/<module>/` for extractions.
