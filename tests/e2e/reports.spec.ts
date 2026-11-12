@@ -49,7 +49,9 @@ const setSwitch = (on: boolean) => withDb(async (db) => {
 test.beforeAll(async () => {
   org = w.tenants.alpha.id;
   otherOrg = w.tenants.beta.id;
-  millName = `Mill ${w.runId.slice(0, 6)}`;
+  // Unique to this spec: the alpha company is shared by the whole browser suite and other specs
+  // create machines named "<prefix> Mill <run>", so the machine-hours row is matched by exact label.
+  millName = `Reports Mill ${w.runId}`;
   otherMillName = `Beta Mill ${w.runId.slice(0, 6)}`;
   otherJobNo = `J-RPT-BETA-${w.runId}`;
   const admin = adminClient();
@@ -177,7 +179,7 @@ test("switch on: admin and office see the seeded figures, nothing of another com
     expect([await band("0-7"), await band("15-30"), await band("31-60"), await band("61+")]).toEqual(before.others);
     await removeOpenJobs();
     // Machine hours: the mill, planned 2.00, actual 2.50, +0.50, over plan.
-    const mill = p.getByTestId("machine-row").filter({ hasText: millName });
+    const mill = p.getByTestId("machine-row").filter({ has: p.getByRole("cell", { name: millName, exact: true }) });
     await expect(mill).toHaveCount(1);
     const m = await cellTexts(mill);
     expect([m[2], m[3], m[4], m[6]]).toEqual(["2.00", "2.50", "+0.50", "Over plan"]);
