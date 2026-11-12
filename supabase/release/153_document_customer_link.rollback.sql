@@ -3,10 +3,10 @@
 -- changed none). Audit rows are never deleted: security_audit.audit_log is append-only.
 -- REFUSES (nothing changed; the transaction is rolled back) whenever removal would lose a person's recorded decision or break something:
 --   * 153 is not installed (a second run);
---   * release 154 (AI own-key providers, which requires 153) is installed: 154 must be rolled back BEFORE 153 (PM ruling (e), 12 Nov
---     2026). Its objects, as 154's own one-time guard names them: column public.ai_helper_secrets.provider, function
---     public.ai_helper_set_provider_key(text,text,text), constraints ai_helper_tolra_control_deactivated_154 and
---     ai_helper_tolra_companies_deactivated_154. Any one of them present refuses;
+--   * release 154 (customer portal sign-in, which requires 153) is installed: 154 must be rolled back BEFORE 153 (PM ruling (e), 12 Nov
+--     2026; portal sign-in is release 154, PM ruling 12 Nov 2026 15:10). Its objects, as 154's own guard and marker name them: tables
+--     public.customer_portal_contacts and public.customer_portal_sessions, function public.portal_session_resolve(text). Any one of
+--     them present refuses;
 --   * any link was made by a person (manual or name_override), any link was verified, or any link was unlinked;
 --   * any company has a portal switch row (ON or OFF: each one is an admin's decision with a reason);
 --   * any links were ever retired or any company offboarded (a DOCUMENT_CUSTOMER_LINKS_RETIRED or CUSTOMER_PORTAL_OFFBOARDED event exists,
@@ -29,10 +29,10 @@ BEGIN
   IF to_regclass('public.document_customer_links') IS NULL THEN
     RAISE EXCEPTION '153 rollback: release 153 is not installed';
   END IF;
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ai_helper_secrets' AND column_name = 'provider')
-     OR to_regprocedure('public.ai_helper_set_provider_key(text,text,text)') IS NOT NULL
-     OR EXISTS (SELECT 1 FROM pg_constraint WHERE conname IN ('ai_helper_tolra_control_deactivated_154', 'ai_helper_tolra_companies_deactivated_154')) THEN
-    RAISE EXCEPTION '153 rollback: release 154 (AI own-key providers) is installed and requires 153. Nothing was changed. Roll back 154 first.';
+  IF to_regclass('public.customer_portal_contacts') IS NOT NULL
+     OR to_regclass('public.customer_portal_sessions') IS NOT NULL
+     OR to_regprocedure('public.portal_session_resolve(text)') IS NOT NULL THEN
+    RAISE EXCEPTION '153 rollback: release 154 (customer portal sign-in) is installed and requires 153. Nothing was changed. Roll back 154 first.';
   END IF;
   IF EXISTS (SELECT 1 FROM public.document_customer_links WHERE source <> 'backfill' OR verified_at IS NOT NULL OR unlinked_at IS NOT NULL) THEN
     RAISE EXCEPTION '153 rollback: a person has linked, verified or unlinked documents; removing the table would lose those recorded decisions. Nothing was changed. Keep 153.';

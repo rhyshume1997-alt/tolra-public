@@ -13,7 +13,7 @@
  * guard; retire; the audit chain; the portal switch (status, on / off, the switch-on race, its guard and row audit).
  * Fixes of 12 Nov 2026 (PM rulings d, e and the live guard proof): the platform owner's company offboarding (who, second step, fresh code,
  * read-only support refused, every link and the switch row removed with one event and a row audit each, nothing else touched); the
- * rollback refuses while any release 154 object exists and after any offboarding; the verify file's release-order row; and the 17 guards'
+ * rollback refuses while any release 154 (customer portal sign-in) object exists and after any offboarding; the verify file's release-order row; and the 17 guards'
  * full definitions and the triggers that run them, read from this database's catalogue, identical at 152 and with 153 installed.
  * PM merge condition of 12 Nov 2026: 153's own events name documents, customers and links by id, never by name (override, retire,
  * offboarding); the audit readers: office, workshop, viewer, another company's admin and anon read none of 153's audit rows (table, view,
@@ -270,7 +270,7 @@ describe("release 153 document customer links", () => {
     D.l1 = await linkOf(D.j1); D.l2 = await linkOf(D.j2); D.lq1 = await linkOf(D.q1); D.lq2 = await linkOf(D.q2); D.lB = await linkOf(D.jB);
   });
 
-  it("rollback refuses each unsafe state on its own (nothing changed): person link, override, verified, unlinked, a switch row, a retire, an offboarding (event or snapshot), a dependent, any 154 object", async () => {
+  it("rollback refuses each unsafe state on its own (nothing changed): person link, override, verified, unlinked, a switch row, a retire, an offboarding (event or snapshot), a dependent, any portal-154 object", async () => {
     const rb = body(ROLLBACK);
     const refused = (setup: (db: PoolClient) => Promise<unknown>) => rolledBack(async (db) => {
       await setup(db);
@@ -298,18 +298,15 @@ describe("release 153 document customer links", () => {
     expect(await refused((db) => db.query(`insert into document_customer_offboarding_snapshots (organization_id, offboarded_by, reason, link_count, link_rows, switch_row)
       values ($1, $2, 'r', 0, '[]'::jsonb, '{}'::jsonb)`, [orgA, support])))
       .toMatch(/153 rollback: the platform owner has offboarded/);
-    // PM ruling (e): 154 must be rolled back before 153. Each of the objects 154's own guard names, alone, refuses (and the verify row
-    // still reads true: 153 is whole).
+    // PM ruling (e): 154 (customer portal sign-in, PM ruling 12 Nov 15:10) must be rolled back before 153. Each of the objects 154's
+    // own guard and marker name, alone, refuses (and the verify row still reads true: 153 is whole).
     const with154 = (setup: string) => refused(async (db) => {
       await db.query(setup);
       expect((await verifyRows(db)).filter((r) => r.ok !== true).map((r) => r.check_name)).toEqual([]);
     });
-    expect(await with154("create function public.ai_helper_set_provider_key(text, text, text) returns integer language sql as $$ select 1 $$"))
-      .toMatch(/153 rollback: release 154 .* is installed and requires 153/);
-    expect(await with154("alter table public.ai_helper_secrets add column provider text")).toMatch(/153 rollback: release 154 .* is installed and requires 153/);
-    expect(await with154("alter table public.ai_helper_tolra_control add constraint ai_helper_tolra_control_deactivated_154 check (not enabled) not valid"))
-      .toMatch(/153 rollback: release 154 .* is installed and requires 153/);
-    expect(await with154("alter table public.ai_helper_tolra_companies add constraint ai_helper_tolra_companies_deactivated_154 check (not enabled) not valid"))
+    expect(await with154("create table public.customer_portal_contacts (id uuid)")).toMatch(/153 rollback: release 154 .* is installed and requires 153/);
+    expect(await with154("create table public.customer_portal_sessions (id uuid)")).toMatch(/153 rollback: release 154 .* is installed and requires 153/);
+    expect(await with154("create function public.portal_session_resolve(text) returns jsonb language sql as $$ select '{}'::jsonb $$"))
       .toMatch(/153 rollback: release 154 .* is installed and requires 153/);
     expect(await refused((db) => db.query("create function public.p153_test_dependent() returns bigint language sql as $$ select count(*) from public.document_customer_links $$")))
       .toMatch(/153 rollback: something outside 153 depends/);

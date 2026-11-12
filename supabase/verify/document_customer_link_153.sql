@@ -6,7 +6,7 @@
 -- private functions are callable by no API role; the verified view runs as its caller, shows seven columns, none of them money, and never
 -- shows an unverified link; every person-made link carries who and why and was verified when made; the portal is never on without an
 -- admin and a reason; every issued-document guard is still byte-for-byte the body 153 was reviewed against, on its tables, enabled; and
--- the release order holds: release 154 (which requires 153) is never present without every 153 object (154 is rolled back before 153);
+-- the release order holds: release 154 (customer portal sign-in, which requires 153) is never present without every 153 object (154 is rolled back before 153);
 -- and (PM ruling, 12 Nov 2026 14:55) the offboarding snapshot table is readable only by platform admins at aal2, append-only and never
 -- row-audited into the shared log, the offboarding's DELETEs alone skip the row audit, and every CUSTOMER_PORTAL_OFFBOARDED marker in the
 -- shared log is non-sensitive (no rows, names or free-text reason) and names its company's snapshot.
@@ -172,10 +172,10 @@ UNION ALL SELECT 'document tables untouched in shape: no column, user trigger or
                   AND (coalesce(qual, '') || coalesce(with_check, '')) LIKE '%document_customer%')
   AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name IN ('jobs', 'quotes', 'invoices', 'credit_notes', 'customers')
                   AND (column_name LIKE '%document_customer%' OR column_name LIKE '%portal%'))
-UNION ALL SELECT 'release order: release 154 (which requires 153) is never present without every 153 object; 154 is rolled back before 153',
-  NOT (EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ai_helper_secrets' AND column_name = 'provider')
-       OR to_regprocedure('public.ai_helper_set_provider_key(text,text,text)') IS NOT NULL
-       OR EXISTS (SELECT 1 FROM pg_constraint WHERE conname IN ('ai_helper_tolra_control_deactivated_154', 'ai_helper_tolra_companies_deactivated_154')))
+UNION ALL SELECT 'release order: release 154 (customer portal sign-in, which requires 153) is never present without every 153 object; 154 is rolled back before 153',
+  NOT (to_regclass('public.customer_portal_contacts') IS NOT NULL
+       OR to_regclass('public.customer_portal_sessions') IS NOT NULL
+       OR to_regprocedure('public.portal_session_resolve(text)') IS NOT NULL)
   OR (to_regclass('public.document_customer_links') IS NOT NULL AND to_regclass('public.document_customer_links_verified') IS NOT NULL
       AND to_regclass('public.customer_portal_switch') IS NOT NULL AND to_regclass('public.document_customer_offboarding_snapshots') IS NOT NULL
       AND to_regprocedure('public.link_document_customer(text,uuid,uuid,text)') IS NOT NULL
