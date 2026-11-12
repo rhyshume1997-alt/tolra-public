@@ -16,12 +16,9 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { pinClock, unpinClock } from "../support/fixed-price-clock";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-beforeAll(pinClock);
-afterAll(unpinClock);
 
 const ORG = "00000000-0000-4000-8000-0000000000a1";
 const REQ = "33333333-3333-4333-8333-333333333333";

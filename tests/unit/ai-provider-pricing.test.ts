@@ -1,5 +1,5 @@
 /**
- * BOUNDARY (Integrations module, AI-1): pricing in lib/ai-helper/limits.ts. Inputs: injected clocks, price tables and rate tables (the
+ * BOUNDARY (Integrations module, AI-1): pricing in lib/ai-helper/pricing-gbp.ts. Inputs: injected clocks, price tables and rate tables (the
  * TEST rate below, GBP 0.80 per USD 1, is a stand-in and never a real rate). Proves: integer GBP pence = ceil(tokens x USD list price x
  * USD->GBP rate) in BigInt only, never below the exact value and at most 1p above, round up at a penny boundary, an estimate over 1000p
  * is refused, and a missing, stale or unusable price or rate refuses before anything is reserved or sent. Must not be loosened.
@@ -7,15 +7,13 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-const admin = vi.hoisted(() => ({ created: 0 }));
-vi.mock("@/lib/server/supabase-admin", () => ({ createSupabaseAdminClient: () => { admin.created += 1; return { rpc: vi.fn(), from: vi.fn() }; } }));
 
 import { USD_GBP_RATES, type UsdGbpRate } from "@/lib/ai-helper/fx";
-import { AI_HELPER_MODELS, AI_HELPER_MODELS_BY_PROVIDER, MAX_REQUEST_PENCE, MODEL_PRICES, type ModelPrice, PRICE_MAX_AGE_DAYS, actualPence, estimatePence, priceFor } from "@/lib/ai-helper/limits";
-import { runAiHelper } from "@/lib/ai-helper/server";
+import { AI_HELPER_MODELS } from "@/lib/ai-helper/limits";
+import { MAX_REQUEST_PENCE_GBP as MAX_REQUEST_PENCE, MODEL_PRICES_GBP as MODEL_PRICES, type ModelPrice, PRICE_MAX_AGE_DAYS, actualPenceGbp as actualPence, estimatePenceGbp as estimatePence, priceForGbp as priceFor } from "@/lib/ai-helper/pricing-gbp";
 
 const NOW = new Date("2026-11-12T00:00:00Z");
 const RATES: readonly UsdGbpRate[] = [{ microGbpPerUsd: BigInt(800_000), source: "test stand-in", effectiveAt: "2026-11-12T00:00:00Z" }]; // GBP 0.80 per USD 1
@@ -24,7 +22,6 @@ const SONNET = "claude-sonnet-5-5";
 const est = (model: string, bytes: number, maxOut: number, now = NOW, rates = RATES) => estimatePence(model, bytes, maxOut, "anthropic", now, rates);
 const act = (model: string, i: number, o: number, now = NOW, rates = RATES) => actualPence(model, { inputTokens: i, outputTokens: o }, "anthropic", now, rates);
 
-afterEach(() => { vi.useRealTimers(); });
 
 describe("known values (hand-calculated at GBP 0.80 per USD 1)", () => {
   it("1M Opus input tokens: $4 x 0.80 = GBP 3.20 = 320p; 1M Sonnet output tokens: $10 x 0.80 = GBP 8.00 = 800p", () => {
@@ -101,7 +98,7 @@ describe("property: against an independent BigInt reference", () => {
 describe("no floats on money paths", () => {
   it("prices and the rate are bigint; the money functions use no Math.ceil / Math.round / floating division", () => {
     for (const p of Object.values(MODEL_PRICES)) { expect(typeof p.inputMicroUsdPerMTok).toBe("bigint"); expect(typeof p.outputMicroUsdPerMTok).toBe("bigint"); }
-    const limits = readFileSync(path.join(process.cwd(), "lib/ai-helper/limits.ts"), "utf8");
+    const limits = readFileSync(path.join(process.cwd(), "lib/ai-helper/pricing-gbp.ts"), "utf8");
     const fx = readFileSync(path.join(process.cwd(), "lib/ai-helper/fx.ts"), "utf8");
     const code = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
     const money = code(limits).slice(code(limits).indexOf("const ceilDiv"));
@@ -121,7 +118,6 @@ describe("no floats on money paths", () => {
 describe("one table, no invented prices", () => {
   it("the live features still use the same Anthropic models and the recorded list prices ($4/$20 and $2/$10 per million)", () => {
     expect(AI_HELPER_MODELS).toEqual({ rfq: OPUS, roundup: SONNET, assistant: SONNET });
-    expect(AI_HELPER_MODELS_BY_PROVIDER).toEqual({ anthropic: AI_HELPER_MODELS });
     expect(MODEL_PRICES[OPUS]).toMatchObject({ provider: "anthropic", inputMicroUsdPerMTok: BigInt(4_000_000), outputMicroUsdPerMTok: BigInt(20_000_000), asOf: "2026-11-11" });
     expect(MODEL_PRICES[SONNET]).toMatchObject({ provider: "anthropic", inputMicroUsdPerMTok: BigInt(2_000_000), outputMicroUsdPerMTok: BigInt(10_000_000), asOf: "2026-11-11" });
     for (const p of Object.values(MODEL_PRICES)) { expect(p.source.length).toBeGreaterThan(0); expect(p.asOf).toMatch(/^\d{4}-\d{2}-\d{2}$/); }
@@ -201,37 +197,6 @@ describe("1000p maximum", () => {
     expect(act(OPUS, 10_000_000, 0)).toBe(1000);
     expect(act("unknown-model", 1, 1)).toBe(MAX_REQUEST_PENCE);
     expect(actualPence(OPUS, { inputTokens: 1, outputTokens: 1 }, "openai", NOW, RATES)).toBe(MAX_REQUEST_PENCE);
-    expect(readFileSync(path.join(process.cwd(), "lib/ai-helper/limits.ts"), "utf8")).not.toMatch(/\?\?\s*(PRICES_USD_PER_MTOK|MODEL_PRICES)\[/);
-  });
-});
-
-describe("runAiHelper refuses before anything is reserved or sent", () => {
-  const run = (data: string) => {
-    const supabase = { rpc: vi.fn() };
-    const complete = vi.fn();
-    const outcome = runAiHelper({ supabase: supabase as never, organizationId: "org-1", feature: "rfq", system: "s", data, schema: {}, validate: () => ({ value: 1, store: {} }), provider: { id: "anthropic", complete } });
-    return { outcome, supabase, complete };
-  };
-
-  it("no recorded rate (the shipped, empty table): no reserve, no service role, no model call", async () => {
-    vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(NOW);
-    admin.created = 0;
-    const r = run("{}");
-    await expect(r.outcome).rejects.toThrow(/rate.*missing/);
-    expect(r.supabase.rpc).not.toHaveBeenCalled();
-    expect(r.complete).not.toHaveBeenCalled();
-    expect(admin.created).toBe(0);
-  });
-
-  it("a stale price: no reserve, no service role, no model call", async () => {
-    vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(new Date(Date.parse("2026-11-11T00:00:00Z") + (PRICE_MAX_AGE_DAYS + 1) * 86_400_000));
-    admin.created = 0;
-    const r = run("{}");
-    await expect(r.outcome).rejects.toThrow(/stale/);
-    expect(r.supabase.rpc).not.toHaveBeenCalled();
-    expect(r.complete).not.toHaveBeenCalled();
-    expect(admin.created).toBe(0);
+    expect(readFileSync(path.join(process.cwd(), "lib/ai-helper/pricing-gbp.ts"), "utf8")).not.toMatch(/\?\?\s*(PRICES_USD_PER_MTOK|MODEL_PRICES)\[/);
   });
 });

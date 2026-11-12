@@ -13,12 +13,9 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { pinClock, unpinClock } from "../support/fixed-price-clock";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-beforeAll(pinClock);
-afterAll(unpinClock);
 
 import Anthropic from "@anthropic-ai/sdk";
 

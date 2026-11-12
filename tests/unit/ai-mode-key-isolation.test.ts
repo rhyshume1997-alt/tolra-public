@@ -1,11 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
-import { afterAll, afterEach, beforeAll, expect, it, vi } from "vitest";
-import { pinClock, unpinClock } from "../support/fixed-price-clock";
+import { afterEach, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-beforeAll(pinClock);
-afterAll(unpinClock);
 const db = vi.hoisted(() => ({
   org: "00000000-0000-4000-8000-0000000000a1", tolra: false, enabled: true,
   ownCipher: "", tolraCipher: "", requests: 0,
