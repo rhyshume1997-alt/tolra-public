@@ -6,13 +6,17 @@
 -- private functions are callable by no API role; the verified view runs as its caller, shows seven columns, none of them money, and never
 -- shows an unverified link; every person-made link carries who and why and was verified when made; the portal is never on without an
 -- admin and a reason; every issued-document guard is still byte-for-byte the body 153 was reviewed against, on its tables, enabled; and
--- the release order holds: release 154 (which requires 153) is never present without every 153 object (154 is rolled back before 153).
+-- the release order holds: release 154 (which requires 153) is never present without every 153 object (154 is rolled back before 153);
+-- and (PM ruling, 12 Nov 2026 14:55) the offboarding snapshot table is readable only by platform admins at aal2, append-only and never
+-- row-audited into the shared log, the offboarding's DELETEs alone skip the row audit, and every CUSTOMER_PORTAL_OFFBOARDED marker in the
+-- shared log is non-sensitive (no rows, names or free-text reason) and names its company's snapshot.
 -- Invariants only: each row stays true after people link, verify, unlink, retire or switch the portal (the release-time "all off",
 -- "only unverified backfill rows" and "nothing shown yet" checks are in the release's own self-check).
-SELECT 'tables: document_customer_links and customer_portal_switch exist with row security' AS check_name,
-  coalesce((SELECT bool_and(c.relrowsecurity) AND count(*) = 2 FROM pg_class c
-            WHERE c.oid IN (to_regclass('public.document_customer_links'), to_regclass('public.customer_portal_switch'))), false) AS ok
-UNION ALL SELECT 'API: links, verified view and switch readable by signed-in users, never writable; nothing for anon or the service role',
+SELECT 'tables: document_customer_links, customer_portal_switch and document_customer_offboarding_snapshots exist with row security' AS check_name,
+  coalesce((SELECT bool_and(c.relrowsecurity) AND count(*) = 3 FROM pg_class c
+            WHERE c.oid IN (to_regclass('public.document_customer_links'), to_regclass('public.customer_portal_switch'),
+                            to_regclass('public.document_customer_offboarding_snapshots'))), false) AS ok
+UNION ALL SELECT 'API: links, verified view, switch and offboarding snapshots readable by signed-in users (row security decides), never writable; nothing for anon or the service role',
   coalesce(has_table_privilege('authenticated', 'public.document_customer_links', 'SELECT')
     AND NOT has_table_privilege('authenticated', 'public.document_customer_links', 'INSERT,UPDATE,DELETE,TRUNCATE')
     AND has_table_privilege('authenticated', 'public.customer_portal_switch', 'SELECT')
@@ -24,7 +28,11 @@ UNION ALL SELECT 'API: links, verified view and switch readable by signed-in use
     AND NOT has_table_privilege('anon', 'public.document_customer_links_verified', 'SELECT')
     AND NOT has_table_privilege('service_role', 'public.document_customer_links', 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE')
     AND NOT has_table_privilege('service_role', 'public.customer_portal_switch', 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE')
-    AND NOT has_table_privilege('service_role', 'public.document_customer_links_verified', 'SELECT'), false)
+    AND NOT has_table_privilege('service_role', 'public.document_customer_links_verified', 'SELECT')
+    AND has_table_privilege('authenticated', 'public.document_customer_offboarding_snapshots', 'SELECT')
+    AND NOT has_table_privilege('authenticated', 'public.document_customer_offboarding_snapshots', 'INSERT,UPDATE,DELETE,TRUNCATE')
+    AND NOT has_table_privilege('anon', 'public.document_customer_offboarding_snapshots', 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE')
+    AND NOT has_table_privilege('service_role', 'public.document_customer_offboarding_snapshots', 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE'), false)
 UNION ALL SELECT 'jobs and quotes only: the kind check allows job and quote and nothing else; no invoice or credit note column',
   coalesce((SELECT pg_get_constraintdef(c.oid) LIKE '%''job''%' AND pg_get_constraintdef(c.oid) LIKE '%''quote''%'
                    AND pg_get_constraintdef(c.oid) NOT LIKE '%invoice%' AND pg_get_constraintdef(c.oid) NOT LIKE '%credit%'
@@ -38,18 +46,49 @@ UNION ALL SELECT 'references: the job, quote and customer are foreign keys with 
 UNION ALL SELECT 'one live link per document: the two partial unique indexes exist, and no document has two live links',
   (SELECT count(*) = 2 FROM pg_index i WHERE i.indrelid = to_regclass('public.document_customer_links') AND i.indisunique AND i.indpred IS NOT NULL)
   AND NOT EXISTS (SELECT 1 FROM public.document_customer_links WHERE unlinked_at IS NULL GROUP BY doc_kind, coalesce(job_id, quote_id) HAVING count(*) > 1)
-UNION ALL SELECT 'triggers: guard, same company (job, quote, customer), row audit and no-truncate are on; the switch has its guard, no-truncate and row audit',
-  (SELECT count(*) = 6 FROM pg_trigger t WHERE t.tgrelid = to_regclass('public.document_customer_links') AND NOT t.tgisinternal AND t.tgenabled = 'O'
+UNION ALL SELECT 'triggers: guard, same company (job, quote, customer), row audit (insert / update, and delete) and no-truncate are on; the switch has its guard, no-truncate and row audit (insert / update, and delete)',
+  (SELECT count(*) = 7 FROM pg_trigger t WHERE t.tgrelid = to_regclass('public.document_customer_links') AND NOT t.tgisinternal AND t.tgenabled = 'O'
      AND (t.tgname, t.tgfoid) IN (('document_customer_links_guard', to_regprocedure('public.document_customer_links_guard()')),
                                   ('document_customer_links_no_truncate', to_regprocedure('public.document_customer_links_no_truncate()')),
                                   ('audit_document_customer_links_changes', to_regprocedure('security_audit.log_row_change()')),
+                                  ('audit_document_customer_links_deletes', to_regprocedure('security_audit.log_row_change()')),
                                   ('zz_same_org_job_id', to_regprocedure('public.enforce_same_org_parent()')),
                                   ('zz_same_org_quote_id', to_regprocedure('public.enforce_same_org_parent()')),
                                   ('zz_same_org_customer_id', to_regprocedure('public.enforce_same_org_parent()'))))
-  AND (SELECT count(*) = 3 FROM pg_trigger t WHERE t.tgrelid = to_regclass('public.customer_portal_switch') AND NOT t.tgisinternal AND t.tgenabled = 'O'
+  AND (SELECT count(*) = 4 FROM pg_trigger t WHERE t.tgrelid = to_regclass('public.customer_portal_switch') AND NOT t.tgisinternal AND t.tgenabled = 'O'
      AND (t.tgname, t.tgfoid) IN (('customer_portal_switch_guard', to_regprocedure('public.customer_portal_switch_guard()')),
                                   ('customer_portal_switch_no_truncate', to_regprocedure('public.customer_portal_switch_no_truncate()')),
-                                  ('audit_customer_portal_switch_changes', to_regprocedure('security_audit.log_row_change()'))))
+                                  ('audit_customer_portal_switch_changes', to_regprocedure('security_audit.log_row_change()')),
+                                  ('audit_customer_portal_switch_deletes', to_regprocedure('security_audit.log_row_change()'))))
+UNION ALL SELECT 'row audit: insert and update always; delete always except the platform offboarding''s own (its flag for that row''s company), on both tables; nothing else skips it',
+  (SELECT count(*) = 4 FROM pg_trigger t WHERE NOT t.tgisinternal AND t.tgfoid = to_regprocedure('security_audit.log_row_change()')
+     AND ((t.tgrelid, t.tgname, t.tgtype) IN ((to_regclass('public.document_customer_links'), 'audit_document_customer_links_changes', 21::SMALLINT),
+                                              (to_regclass('public.customer_portal_switch'), 'audit_customer_portal_switch_changes', 21::SMALLINT))
+          AND t.tgqual IS NULL
+       OR (t.tgrelid, t.tgname, t.tgtype) IN ((to_regclass('public.document_customer_links'), 'audit_document_customer_links_deletes', 9::SMALLINT),
+                                              (to_regclass('public.customer_portal_switch'), 'audit_customer_portal_switch_deletes', 9::SMALLINT))
+          AND pg_get_triggerdef(t.oid) LIKE '%WHEN ((COALESCE(current_setting(''tolra.'
+              || CASE t.tgname WHEN 'audit_document_customer_links_deletes' THEN 'document_customer_link_removal' ELSE 'customer_portal_switch_write' END
+              || '''::text, true), ''''::text) <> (''offboard:''::text || (old.organization_id)::text)))%'))
+UNION ALL SELECT 'offboarding snapshots (PM ruling, 12 Nov 2026 14:55): read only by a platform admin at aal2; append-only (guard on update, delete, truncate); never row-audited; no reference that could block a company''s removal',
+  (SELECT count(*) = 1 FROM pg_policies p WHERE p.schemaname = 'public' AND p.tablename = 'document_customer_offboarding_snapshots')
+  AND coalesce((SELECT p.cmd = 'SELECT' AND p.permissive = 'PERMISSIVE' AND p.roles = '{authenticated}'::NAME[]
+                       AND p.qual LIKE '%is_platform_admin()%' AND p.qual LIKE '%''aal''::text%' AND p.qual LIKE '%''aal2''::text%'
+                       AND p.qual NOT LIKE '%organization_id%'
+                FROM pg_policies p WHERE p.schemaname = 'public' AND p.tablename = 'document_customer_offboarding_snapshots'), false)
+  AND (SELECT count(*) = 2 FROM pg_trigger t WHERE t.tgrelid = to_regclass('public.document_customer_offboarding_snapshots') AND NOT t.tgisinternal
+         AND t.tgenabled = 'O' AND t.tgfoid = to_regprocedure('public.document_customer_offboarding_snapshots_guard()')
+         AND (t.tgname, t.tgtype) IN (('document_customer_offboarding_snapshots_guard', 27::SMALLINT), ('document_customer_offboarding_snapshots_no_truncate', 34::SMALLINT)))
+  AND NOT EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = to_regclass('public.document_customer_offboarding_snapshots') AND NOT t.tgisinternal
+                    AND t.tgfoid <> to_regprocedure('public.document_customer_offboarding_snapshots_guard()'))
+  AND NOT EXISTS (SELECT 1 FROM pg_constraint c WHERE c.contype = 'f' AND to_regclass('public.document_customer_offboarding_snapshots') IN (c.conrelid, c.confrelid))
+UNION ALL SELECT 'offboarding marker: every CUSTOMER_PORTAL_OFFBOARDED row in the shared audit log carries no rows, switch row or free-text reason, and names a snapshot of its own company',
+  NOT EXISTS (SELECT 1 FROM security_audit.audit_log a WHERE a.action = 'CUSTOMER_PORTAL_OFFBOARDED'
+                AND (a.old_data IS NOT NULL OR a.new_data IS NOT NULL
+                     OR EXISTS (SELECT 1 FROM jsonb_object_keys(a.metadata) k
+                                WHERE k NOT IN ('source', 'snapshot_id', 'count', 'switch_removed', 'reason_category', 'actor'))
+                     OR NOT EXISTS (SELECT 1 FROM public.document_customer_offboarding_snapshots s
+                                    WHERE s.id::TEXT = a.metadata ->> 'snapshot_id' AND s.organization_id = a.organization_id)))
 UNION ALL SELECT 'same company: every link names a document and a customer of its own company, of the kind it says',
   NOT EXISTS (SELECT 1 FROM public.document_customer_links l
               LEFT JOIN public.jobs j ON j.id = l.job_id LEFT JOIN public.quotes q ON q.id = l.quote_id
@@ -80,11 +119,11 @@ UNION ALL SELECT 'functions: only link, name-override link, verify, unlink, reti
                      to_regprocedure('public.platform_offboard_document_customer_links(uuid,text)')))
   AND NOT EXISTS (SELECT 1 FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND (p.proname LIKE '%document_customer%' OR p.proname LIKE 'customer_portal%')
                   AND (has_function_privilege('anon', p.oid, 'EXECUTE') OR has_function_privilege('service_role', p.oid, 'EXECUTE')))
-UNION ALL SELECT 'private: the backfill, the actor and reason checks and the four trigger functions are callable by no API role',
-  (SELECT count(*) = 7 FROM pg_proc p WHERE p.oid IN (to_regprocedure('public._document_customer_link_backfill(uuid)'), to_regprocedure('public._document_customer_link_actor(text[],boolean)'),
+UNION ALL SELECT 'private: the backfill, the actor and reason checks and the five trigger functions are callable by no API role',
+  (SELECT count(*) = 8 FROM pg_proc p WHERE p.oid IN (to_regprocedure('public._document_customer_link_backfill(uuid)'), to_regprocedure('public._document_customer_link_actor(text[],boolean)'),
                      to_regprocedure('public._document_customer_link_reason(text)'), to_regprocedure('public.document_customer_links_guard()'),
                      to_regprocedure('public.document_customer_links_no_truncate()'), to_regprocedure('public.customer_portal_switch_guard()'),
-                     to_regprocedure('public.customer_portal_switch_no_truncate()'))
+                     to_regprocedure('public.customer_portal_switch_no_truncate()'), to_regprocedure('public.document_customer_offboarding_snapshots_guard()'))
      AND NOT has_function_privilege('authenticated', p.oid, 'EXECUTE') AND NOT has_function_privilege('anon', p.oid, 'EXECUTE')
      AND NOT has_function_privilege('service_role', p.oid, 'EXECUTE'))
 UNION ALL SELECT 'verified view: runs as its caller and shows exactly seven columns, none of them a cost, margin, balance, total, status or approval; never an unverified or unlinked link',
@@ -138,7 +177,7 @@ UNION ALL SELECT 'release order: release 154 (which requires 153) is never prese
        OR to_regprocedure('public.ai_helper_set_provider_key(text,text,text)') IS NOT NULL
        OR EXISTS (SELECT 1 FROM pg_constraint WHERE conname IN ('ai_helper_tolra_control_deactivated_154', 'ai_helper_tolra_companies_deactivated_154')))
   OR (to_regclass('public.document_customer_links') IS NOT NULL AND to_regclass('public.document_customer_links_verified') IS NOT NULL
-      AND to_regclass('public.customer_portal_switch') IS NOT NULL
+      AND to_regclass('public.customer_portal_switch') IS NOT NULL AND to_regclass('public.document_customer_offboarding_snapshots') IS NOT NULL
       AND to_regprocedure('public.link_document_customer(text,uuid,uuid,text)') IS NOT NULL
       AND to_regprocedure('public.retire_document_customer_links(text,uuid,text)') IS NOT NULL
       AND to_regprocedure('public.platform_offboard_document_customer_links(uuid,text)') IS NOT NULL);

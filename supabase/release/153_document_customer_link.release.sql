@@ -262,10 +262,19 @@ CREATE TRIGGER document_customer_links_no_truncate BEFORE TRUNCATE ON public.doc
   FOR EACH STATEMENT EXECUTE FUNCTION public.document_customer_links_no_truncate();
 
 -- Every row change (backfill, link, verify, unlink, retire, rollback) is a row in the append-only, hash-chained security_audit.audit_log
--- (000/006: prevent_audit_mutation refuses UPDATE and DELETE there). No support_read_only / admin_mfa statement triggers on this table:
+-- (000/006: prevent_audit_mutation refuses UPDATE and DELETE there), written by the shared security_audit.log_row_change, unchanged.
+-- One exception (PM ruling, 12 Nov 2026 14:55: sensitive offboarding snapshots to authorised platform administrators only): a DELETE
+-- made by the platform offboarding (the transaction-local flag is 'offboard:' and that row's own company, which only
+-- platform_offboard_document_customer_links sets) writes no row audit, because company admins read their company's shared audit rows.
+-- Those removed rows are kept whole in public.document_customer_offboarding_snapshots (platform admins only, section 10a) and the shared
+-- log gets one CUSTOMER_PORTAL_OFFBOARDED marker without rows, names or free text. The WHEN test runs as each row is deleted, so retire
+-- and rollback DELETEs (their own flags) are row-audited as before. No support_read_only / admin_mfa statement triggers on this table:
 -- the functions check both themselves.
-CREATE TRIGGER audit_document_customer_links_changes AFTER INSERT OR UPDATE OR DELETE ON public.document_customer_links
+CREATE TRIGGER audit_document_customer_links_changes AFTER INSERT OR UPDATE ON public.document_customer_links
   FOR EACH ROW EXECUTE FUNCTION security_audit.log_row_change();
+CREATE TRIGGER audit_document_customer_links_deletes AFTER DELETE ON public.document_customer_links
+  FOR EACH ROW WHEN (coalesce(current_setting('tolra.document_customer_link_removal', TRUE), '') <> ('offboard:' || OLD.organization_id::TEXT))
+  EXECUTE FUNCTION security_audit.log_row_change();
 
 -- ---- 2. What may be shown: verified links only ---------------------------------------------------------------------------------------
 -- Live, VERIFIED (a person verified it, or a person made it), and neither the document's customer text nor the customer's name has
@@ -308,9 +317,10 @@ GRANT SELECT ON public.customer_portal_switch TO authenticated;
 
 -- Only customer_portal_set_enabled writes the switch: it sets the transaction-local tolra.customer_portal_switch_write to its own company
 -- first. Any other INSERT or UPDATE is refused, the owner too. A switch row is never emptied, and is deleted only by the platform owner's
--- company offboarding (platform_offboard_document_customer_links sets the same flag to 'offboard:' and that company; its event keeps the
--- row). Each row is an admin's decision with a reason; 153's rollback refuses while any exists or after any offboarding. Every change is
--- also a security_audit.audit_log row (the id column exists for security_audit.log_row_change, which records each row by id).
+-- company offboarding (platform_offboard_document_customer_links sets the same flag to 'offboard:' and that company; its platform-only
+-- snapshot keeps the row). Each row is an admin's decision with a reason; 153's rollback refuses while any exists or after any
+-- offboarding. Every change is also a security_audit.audit_log row (the id column exists for security_audit.log_row_change, which records
+-- each row by id), except the offboarding's DELETE (as for the links, section 1: kept in the platform-only snapshot instead).
 CREATE FUNCTION public.customer_portal_switch_guard()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -350,8 +360,11 @@ $$;
 REVOKE ALL ON FUNCTION public.customer_portal_switch_no_truncate() FROM PUBLIC, anon, authenticated, service_role;
 CREATE TRIGGER customer_portal_switch_no_truncate BEFORE TRUNCATE ON public.customer_portal_switch
   FOR EACH STATEMENT EXECUTE FUNCTION public.customer_portal_switch_no_truncate();
-CREATE TRIGGER audit_customer_portal_switch_changes AFTER INSERT OR UPDATE OR DELETE ON public.customer_portal_switch
+CREATE TRIGGER audit_customer_portal_switch_changes AFTER INSERT OR UPDATE ON public.customer_portal_switch
   FOR EACH ROW EXECUTE FUNCTION security_audit.log_row_change();
+CREATE TRIGGER audit_customer_portal_switch_deletes AFTER DELETE ON public.customer_portal_switch
+  FOR EACH ROW WHEN (coalesce(current_setting('tolra.customer_portal_switch_write', TRUE), '') <> ('offboard:' || OLD.organization_id::TEXT))
+  EXECUTE FUNCTION security_audit.log_row_change();
 
 -- ---- 4. Who may act (internal) ---------------------------------------------------------------------------------------------------------
 -- A signed-in member of the session's company in one of p_roles: 033's second step where the company asks for it (assert_privileged_aal);
@@ -718,17 +731,62 @@ GRANT EXECUTE ON FUNCTION public.link_document_customer(TEXT, UUID, UUID, TEXT),
 
 -- ---- 10a. Company offboarding (PLATFORM OWNER only; second step; fresh code; reason): PM ruling (d), 12 Nov 2026 --------------------------
 -- 153 must not block a company's removal for ever. This removes, for ONE company, every document link row (live, verified, unlinked or
--- backfill; each removal is its own row-audit DELETE) and its portal switch row (a row-audit DELETE too), and in the same transaction
--- writes one CUSTOMER_PORTAL_OFFBOARDED event in that company's own audit chain holding exactly the removed rows, taken from the DELETEs
--- themselves (DELETE ... RETURNING, as retire; as there, without the two name texts, which stay in each row's own row-audit DELETE; the
--- switch snapshot names no customer). Nothing references a link or switch row, so nothing is orphaned. It does NOT delete the
--- company, a document, a customer or any audit row, and changes nothing else: deleting the company stays outside 153 under its own rules
+-- backfill) and its portal switch row. PM ruling of 12 Nov 2026 14:55 (sensitive offboarding snapshots to authorised platform
+-- administrators only; no shared audit policy, trigger function or audit reader changes): exactly the removed rows, whole (the two name
+-- texts and every reason included), taken from the DELETEs themselves (DELETE ... RETURNING), go into ONE row of
+-- public.document_customer_offboarding_snapshots (below), which only a platform admin at aal2 can read; those DELETEs write no row audit
+-- (the WHEN test of 153's own delete triggers, sections 1 and 3); and the company's shared audit chain gets one CUSTOMER_PORTAL_OFFBOARDED
+-- marker that company admins may read: the snapshot id, the link count, whether a switch row was removed, the reason category and the
+-- actor (the time is the audit row's own), never a row, a name or the free-text reason. Nothing references a link or switch row, so
+-- nothing is orphaned. It does NOT delete the company, a document, a customer or any audit row, and changes nothing else: deleting the
+-- company stays outside 153 under its own rules
 -- (security_audit.audit_log's reference to organizations, 000, still keeps a company with audit history; audit evidence never cascades).
 -- Who: the platform owner pattern of 036 / 039 / 107 (is_platform_admin, then assert_platform_aal: aal2 always), never a read-only support
 -- session, plus an authenticator code from the last 15 minutes (the fresh-code test of _document_customer_link_actor, 136, 149) because it
 -- removes admins' recorded decisions. Both tables are locked (SHARE ROW EXCLUSIVE, as the rollback locks before its checks) so no link,
 -- verify, unlink, retire or switch can commit between the removal and the event. Refused (nothing written) when the company has nothing
 -- to remove. After any offboarding the 153 rollback refuses (re-applying 153 would backfill that company again).
+--
+-- The offboarding snapshots: one row per offboarding, written only by the function below (no API role may write). No reference to
+-- organizations: like audit evidence it must never block the company's removal. Readable ONLY by a platform admin whose token passed the
+-- second step (is_platform_admin and aal2, as 036's support-membership test); never a company role (admin included), another company,
+-- anon or the service role. Append-only: UPDATE, DELETE and TRUNCATE are refused, the owner too. Deliberately NO
+-- security_audit.log_row_change trigger here: that would copy the snapshot back into the shared audit log that company admins read.
+-- 153's rollback drops it, and refuses once any offboarding has happened.
+CREATE TABLE public.document_customer_offboarding_snapshots (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id  UUID NOT NULL,
+  offboarded_by    UUID NOT NULL,
+  offboarded_at    TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+  reason           TEXT NOT NULL,
+  link_count       INT NOT NULL,
+  link_rows        JSONB NOT NULL,
+  switch_row       JSONB,
+  CONSTRAINT document_customer_offboarding_snapshots_reason CHECK (length(btrim(reason)) BETWEEN 1 AND 500),
+  CONSTRAINT document_customer_offboarding_snapshots_rows CHECK (jsonb_typeof(link_rows) = 'array' AND jsonb_array_length(link_rows) = link_count
+    AND (switch_row IS NULL OR jsonb_typeof(switch_row) = 'object') AND (link_count > 0 OR switch_row IS NOT NULL))
+);
+CREATE INDEX document_customer_offboarding_snapshots_org ON public.document_customer_offboarding_snapshots (organization_id);
+ALTER TABLE public.document_customer_offboarding_snapshots ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "document_customer_offboarding_snapshots platform select" ON public.document_customer_offboarding_snapshots FOR SELECT TO authenticated
+  USING ((SELECT public.is_platform_admin()) AND coalesce((SELECT auth.jwt()) ->> 'aal', '') = 'aal2');
+REVOKE ALL ON public.document_customer_offboarding_snapshots FROM PUBLIC, anon, authenticated, service_role;
+GRANT SELECT ON public.document_customer_offboarding_snapshots TO authenticated;
+CREATE FUNCTION public.document_customer_offboarding_snapshots_guard()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public
+AS $$
+BEGIN
+  RAISE EXCEPTION 'An offboarding snapshot is a record: it can''t be changed, removed or emptied.' USING ERRCODE = '42501', HINT = 'snapshot_immutable';
+END
+$$;
+REVOKE ALL ON FUNCTION public.document_customer_offboarding_snapshots_guard() FROM PUBLIC, anon, authenticated, service_role;
+CREATE TRIGGER document_customer_offboarding_snapshots_guard BEFORE UPDATE OR DELETE ON public.document_customer_offboarding_snapshots
+  FOR EACH ROW EXECUTE FUNCTION public.document_customer_offboarding_snapshots_guard();
+CREATE TRIGGER document_customer_offboarding_snapshots_no_truncate BEFORE TRUNCATE ON public.document_customer_offboarding_snapshots
+  FOR EACH STATEMENT EXECUTE FUNCTION public.document_customer_offboarding_snapshots_guard();
+
 CREATE FUNCTION public.platform_offboard_document_customer_links(p_org UUID, p_reason TEXT)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -737,12 +795,13 @@ SECURITY DEFINER
 SET search_path = pg_catalog, public, security_audit
 AS $$
 DECLARE
-  v_uid    UUID := auth.uid();
-  v_now    NUMERIC := extract(epoch FROM now());
-  v_reason TEXT;
-  v_links  JSONB;
-  v_n      INT;
-  v_switch JSONB;
+  v_uid      UUID := auth.uid();
+  v_now      NUMERIC := extract(epoch FROM now());
+  v_reason   TEXT;
+  v_links    JSONB;
+  v_n        INT;
+  v_switch   JSONB;
+  v_snapshot UUID;
 BEGIN
   IF v_uid IS NULL OR NOT public.is_platform_admin() THEN
     RAISE EXCEPTION 'Platform access only' USING ERRCODE = '42501', HINT = 'platform_required';
@@ -766,7 +825,7 @@ BEGIN
   WITH gone AS (
     DELETE FROM public.document_customer_links l WHERE l.organization_id = p_org RETURNING l.*
   )
-  SELECT jsonb_agg(to_jsonb(g) - 'document_customer_text' - 'customer_name_at_link' ORDER BY g.linked_at, g.id), count(*) INTO v_links, v_n FROM gone g;
+  SELECT jsonb_agg(to_jsonb(g) ORDER BY g.linked_at, g.id), count(*) INTO v_links, v_n FROM gone g;
   PERFORM set_config('tolra.document_customer_link_removal', '', TRUE);
   PERFORM set_config('tolra.customer_portal_switch_write', 'offboard:' || p_org::TEXT, TRUE);
   WITH gone AS (
@@ -777,9 +836,13 @@ BEGIN
   IF coalesce(v_n, 0) = 0 AND v_switch IS NULL THEN
     RAISE EXCEPTION 'That company has no document links or portal switch to remove.' USING ERRCODE = 'P0002', HINT = 'nothing_to_offboard';
   END IF;
+  INSERT INTO public.document_customer_offboarding_snapshots (organization_id, offboarded_by, reason, link_count, link_rows, switch_row)
+  VALUES (p_org, v_uid, v_reason, coalesce(v_n, 0), coalesce(v_links, '[]'::JSONB), v_switch)
+  RETURNING id INTO v_snapshot;
   PERFORM security_audit.log_named_event(p_org, 'CUSTOMER_PORTAL_OFFBOARDED', 'document_customer_links', p_org::TEXT,
-    jsonb_build_object('rows', coalesce(v_links, '[]'::JSONB), 'count', coalesce(v_n, 0), 'switch', v_switch, 'reason', v_reason, 'actor', v_uid));
-  RETURN jsonb_build_object('removed_links', coalesce(v_n, 0), 'removed_switch', v_switch IS NOT NULL, 'organization_id', p_org);
+    jsonb_build_object('snapshot_id', v_snapshot, 'count', coalesce(v_n, 0), 'switch_removed', v_switch IS NOT NULL,
+                       'reason_category', 'company_offboarding', 'actor', v_uid));
+  RETURN jsonb_build_object('removed_links', coalesce(v_n, 0), 'removed_switch', v_switch IS NOT NULL, 'organization_id', p_org, 'snapshot_id', v_snapshot);
 END
 $$;
 REVOKE ALL ON FUNCTION public.platform_offboard_document_customer_links(UUID, TEXT) FROM PUBLIC, anon, authenticated, service_role;
@@ -866,8 +929,9 @@ BEGIN
      OR EXISTS (SELECT * FROM pg_temp.p153_fingerprint() EXCEPT SELECT * FROM _p153_before) THEN
     RAISE EXCEPTION '153 self-check: an issued-document guard, or a trigger, policy, column, grant or row of the document or customer tables, changed';
   END IF;
-  IF NOT coalesce((SELECT bool_and(c.relrowsecurity) AND count(*) = 2 FROM pg_class c
-                   WHERE c.oid IN (to_regclass('public.document_customer_links'), to_regclass('public.customer_portal_switch'))), FALSE)
+  IF NOT coalesce((SELECT bool_and(c.relrowsecurity) AND count(*) = 3 FROM pg_class c
+                   WHERE c.oid IN (to_regclass('public.document_customer_links'), to_regclass('public.customer_portal_switch'),
+                                   to_regclass('public.document_customer_offboarding_snapshots'))), FALSE)
      OR NOT coalesce((SELECT 'security_invoker=true' = ANY (c.reloptions) FROM pg_class c WHERE c.oid = to_regclass('public.document_customer_links_verified')), FALSE) THEN
     RAISE EXCEPTION '153 self-check: the tables or the verified view are not as reviewed';
   END IF;
@@ -898,6 +962,11 @@ BEGIN
   END IF;
   IF EXISTS (SELECT 1 FROM public.customer_portal_switch) THEN
     RAISE EXCEPTION '153 self-check: the customer portal must start OFF for every company';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.document_customer_offboarding_snapshots)
+     OR EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = to_regclass('public.document_customer_offboarding_snapshots')
+                  AND t.tgfoid = to_regprocedure('security_audit.log_row_change()')) THEN
+    RAISE EXCEPTION '153 self-check: the offboarding snapshots must start empty and must never be copied into the shared audit log';
   END IF;
 END
 $p153_self_check$;
