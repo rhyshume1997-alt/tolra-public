@@ -26,9 +26,15 @@ async function render(node: ReturnType<typeof createElement>) {
 const t = (host: HTMLElement, id: string) => host.querySelector(`[data-testid="${id}"]`)?.textContent ?? null;
 const sw = (host: HTMLElement) => host.querySelector('[role="switch"]') as HTMLButtonElement;
 const badge = (host: HTMLElement) => t(host, "activation-badge-xero");
+const dialogButton = (label: string) => Array.from(document.body.querySelectorAll('[role="dialog"] button')).find((b) => b.textContent === label) as HTMLButtonElement | undefined;
+/** Flip the switch ON: the confirm dialog names the organisation; confirming sends the request. */
+const turnOn = async (host: HTMLElement) => {
+  await act(async () => { sw(host).click(); await new Promise((r) => setTimeout(r, 0)); });
+  await act(async () => { dialogButton("Turn on transfers")!.click(); await new Promise((r) => setTimeout(r, 0)); });
+};
 const settle = () => act(async () => { await new Promise((r) => setTimeout(r, 0)); });
 
-type Posted = { enabled: boolean };
+type Posted = { enabled: boolean; confirmTenantId?: string };
 /** A server with a transfer switch: GET reads it, POST sets it (or answers what the test says). */
 function server(opts: { enabled?: boolean; readStatus?: number; post?: Array<{ status: number; body: unknown }> } = {}) {
   let enabled = opts.enabled ?? false;
@@ -38,7 +44,7 @@ function server(opts: { enabled?: boolean; readStatus?: number; post?: Array<{ s
     if (path === "/api/integrations/status") return { ok: true, status: 200, json: async () => ({ db107: true, xero: { configured: true }, microsoft: { configured: false } }) };
     if (path === "/api/integrations/xero/launch" && (init?.method ?? "GET") === "GET") {
       const status = opts.readStatus ?? 200;
-      return { ok: status < 400, status, json: async () => ({ enabled, connected: true, mapped: true, status: "connected" }) };
+      return { ok: status < 400, status, json: async () => ({ enabled, connected: true, mapped: true, status: "connected", organisation: { tenantId: "t-a", name: "Org A Ltd" } }) };
     }
     if (path === "/api/integrations/xero/launch") {
       const body = JSON.parse(String(init?.body)) as Posted; posts.push(body);
@@ -104,10 +110,10 @@ describe("turning it on and off", () => {
     const s = server({ enabled: false, post: [{ status: 403, body: { code: "mfa_recent_required", error: "fresh code" } }] });
     requestCode.mockResolvedValue(true);
     const { host, done } = await render(createElement(XeroSetupCard, { outcome: null }));
-    await act(async () => { sw(host).click(); await new Promise((r) => setTimeout(r, 0)); });
+    await turnOn(host);
     await settle();
     expect(requestCode).toHaveBeenCalledOnce();
-    expect(s.posts).toEqual([{ enabled: true }, { enabled: true }]);
+    expect(s.posts).toEqual([{ enabled: true, confirmTenantId: "t-a" }, { enabled: true, confirmTenantId: "t-a" }]);
     expect(badge(host)).toBe("transfers: On");
     expect(t(host, "xero-behaviour")).toBe(TRANSFERS_ON_TEXT);
     await done();
@@ -116,9 +122,9 @@ describe("turning it on and off", () => {
     const s = server({ enabled: false, post: [{ status: 403, body: { code: "mfa_recent_required" } }] });
     requestCode.mockResolvedValue(false);
     const { host, done } = await render(createElement(XeroSetupCard, { outcome: null }));
-    await act(async () => { sw(host).click(); await new Promise((r) => setTimeout(r, 0)); });
+    await turnOn(host);
     await settle();
-    expect(s.posts).toEqual([{ enabled: true }]);
+    expect(s.posts).toEqual([{ enabled: true, confirmTenantId: "t-a" }]);
     expect(badge(host)).toBe("transfers: Off");
     expect(t(host, "xero-action-error")).toBe("Cancelled. Nothing was changed.");
     await done();
@@ -126,11 +132,25 @@ describe("turning it on and off", () => {
   it("the server's refusal is shown as it came and the switch stays Off", async () => {
     server({ enabled: false, post: [{ status: 409, body: { error: "Finish the Xero mapping first." } }] });
     const { host, done } = await render(createElement(XeroSetupCard, { outcome: null }));
-    await act(async () => { sw(host).click(); await new Promise((r) => setTimeout(r, 0)); });
+    await turnOn(host);
     await settle();
     expect(requestCode).not.toHaveBeenCalled();
     expect(t(host, "xero-action-error")).toBe("Finish the Xero mapping first.");
     expect(badge(host)).toBe("transfers: Off");
+    await done();
+  });
+  it("ON opens a dialog naming the organisation first and sends nothing until it is confirmed; cancelling sends nothing and the switch stays Off", async () => {
+    const s = server({ enabled: false });
+    const { host, done } = await render(createElement(XeroSetupCard, { outcome: null }));
+    await act(async () => { sw(host).click(); await new Promise((r) => setTimeout(r, 0)); });
+    expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain("Turn on transfers to Xero organisation Org A Ltd?");
+    expect(s.posts).toEqual([]);
+    await act(async () => { dialogButton("Cancel")!.click(); await new Promise((r) => setTimeout(r, 0)); });
+    await settle();
+    expect(s.posts).toEqual([]);
+    expect(requestCode).not.toHaveBeenCalled();
+    expect(badge(host)).toBe("transfers: Off");
+    expect(document.body.querySelector('[role="dialog"]')).toBeNull();
     await done();
   });
   it("OFF is one click, no code prompt", async () => {
