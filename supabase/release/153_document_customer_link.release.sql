@@ -261,20 +261,16 @@ REVOKE ALL ON FUNCTION public.document_customer_links_no_truncate() FROM PUBLIC,
 CREATE TRIGGER document_customer_links_no_truncate BEFORE TRUNCATE ON public.document_customer_links
   FOR EACH STATEMENT EXECUTE FUNCTION public.document_customer_links_no_truncate();
 
--- Every row change (backfill, link, verify, unlink, retire, rollback) is a row in the append-only, hash-chained security_audit.audit_log
--- (000/006: prevent_audit_mutation refuses UPDATE and DELETE there), written by the shared security_audit.log_row_change, unchanged.
--- One exception (PM ruling, 12 Nov 2026 14:55: sensitive offboarding snapshots to authorised platform administrators only): a DELETE
--- made by the platform offboarding (the transaction-local flag is 'offboard:' and that row's own company, which only
--- platform_offboard_document_customer_links sets) writes no row audit, because company admins read their company's shared audit rows.
--- Those removed rows are kept whole in public.document_customer_offboarding_snapshots (platform admins only, section 10a) and the shared
--- log gets one CUSTOMER_PORTAL_OFFBOARDED marker without rows, names or free text. The WHEN test runs as each row is deleted, so retire
--- and rollback DELETEs (their own flags) are row-audited as before. No support_read_only / admin_mfa statement triggers on this table:
--- the functions check both themselves.
-CREATE TRIGGER audit_document_customer_links_changes AFTER INSERT OR UPDATE ON public.document_customer_links
-  FOR EACH ROW EXECUTE FUNCTION security_audit.log_row_change();
-CREATE TRIGGER audit_document_customer_links_deletes AFTER DELETE ON public.document_customer_links
-  FOR EACH ROW WHEN (coalesce(current_setting('tolra.document_customer_link_removal', TRUE), '') <> ('offboard:' || OLD.organization_id::TEXT))
-  EXECUTE FUNCTION security_audit.log_row_change();
+-- Audit (PM ruling, 12 Nov 2026 16:15, option A: fixed safe reason categories in audit events; complete reasons only in authorised
+-- restricted records): NO security_audit.log_row_change trigger on this table. The shared row audit copies whole rows (the two name
+-- texts and the three free-text reasons) into the log every company admin reads, so, as 149's xero_transfer_hold and this release's own
+-- offboarding, every change is instead a named event in the append-only, hash-chained security_audit.audit_log (000/006/077) that
+-- names the link, document and customer by id and carries a fixed reason_category, never a name text or a free-text reason: the
+-- backfill (DOCUMENT_CUSTOMER_LINK_BACKFILL, with the ids it inserted), link, name override, verify, unlink, retire and the offboarding
+-- (sections 5-11), and the rollback (DOCUMENT_CUSTOMER_LINK_ROLLBACK, with the ids it removes). The complete reasons stay only in this
+-- row's own link_reason / verify_reason / unlink_reason (the policy above: own company, admin and office, a section they may see; no
+-- API role writes; the guard keeps them unchanged), and, once retired or offboarded, in the platform-admin-only snapshot table
+-- (section 10a). No support_read_only / admin_mfa statement triggers on this table: the functions check both themselves.
 
 -- ---- 2. What may be shown: verified links only ---------------------------------------------------------------------------------------
 -- Live, VERIFIED (a person verified it, or a person made it), and neither the document's customer text nor the customer's name has
@@ -319,8 +315,10 @@ GRANT SELECT ON public.customer_portal_switch TO authenticated;
 -- first. Any other INSERT or UPDATE is refused, the owner too. A switch row is never emptied, and is deleted only by the platform owner's
 -- company offboarding (platform_offboard_document_customer_links sets the same flag to 'offboard:' and that company; its platform-only
 -- snapshot keeps the row). Each row is an admin's decision with a reason; 153's rollback refuses while any exists or after any
--- offboarding. Every change is also a security_audit.audit_log row (the id column exists for security_audit.log_row_change, which records
--- each row by id), except the offboarding's DELETE (as for the links, section 1: kept in the platform-only snapshot instead).
+-- offboarding. Every change is a named event (CUSTOMER_PORTAL_SWITCH_CHANGED: on / off, what it was, a fixed reason_category and the
+-- actor; CUSTOMER_PORTAL_OFFBOARDED for the offboarding's DELETE), never a row audit (as for the links, section 1): the admin's
+-- free-text reason stays only in this row's reason column, which only the company's admins read (the policy above); the offboarding
+-- keeps the removed row whole in the platform-only snapshot.
 CREATE FUNCTION public.customer_portal_switch_guard()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -360,11 +358,6 @@ $$;
 REVOKE ALL ON FUNCTION public.customer_portal_switch_no_truncate() FROM PUBLIC, anon, authenticated, service_role;
 CREATE TRIGGER customer_portal_switch_no_truncate BEFORE TRUNCATE ON public.customer_portal_switch
   FOR EACH STATEMENT EXECUTE FUNCTION public.customer_portal_switch_no_truncate();
-CREATE TRIGGER audit_customer_portal_switch_changes AFTER INSERT OR UPDATE ON public.customer_portal_switch
-  FOR EACH ROW EXECUTE FUNCTION security_audit.log_row_change();
-CREATE TRIGGER audit_customer_portal_switch_deletes AFTER DELETE ON public.customer_portal_switch
-  FOR EACH ROW WHEN (coalesce(current_setting('tolra.customer_portal_switch_write', TRUE), '') <> ('offboard:' || OLD.organization_id::TEXT))
-  EXECUTE FUNCTION security_audit.log_row_change();
 
 -- ---- 4. Who may act (internal) ---------------------------------------------------------------------------------------------------------
 -- A signed-in member of the session's company in one of p_roles: 033's second step where the company asks for it (assert_privileged_aal);
@@ -467,7 +460,7 @@ BEGIN
     RAISE EXCEPTION 'This % is already linked to a customer (verified or waiting): verify or unlink that link first.', p_kind USING ERRCODE = '55000', HINT = 'already_linked';
   END;
   PERFORM security_audit.log_named_event(v_org, 'DOCUMENT_CUSTOMER_LINKED', 'document_customer_links', v_link::TEXT,
-    jsonb_build_object('doc_kind', p_kind, 'document_id', p_document, 'customer_id', p_customer, 'reason', v_reason, 'actor', v_uid));
+    jsonb_build_object('doc_kind', p_kind, 'document_id', p_document, 'customer_id', p_customer, 'reason_category', 'manual_link_names_match', 'actor', v_uid));
   RETURN jsonb_build_object('link_id', v_link, 'doc_kind', p_kind, 'document_id', p_document, 'customer_id', p_customer, 'source', 'manual');
 END
 $$;
@@ -475,7 +468,8 @@ $$;
 -- ---- 6. Link with a different name (PM answer 1: ADMIN only; identity confirmed; fresh code; reason; its own audit event) -------------
 -- For a document whose customer text can't be corrected (for example a sent quote with a typo). Refused when the names already match
 -- (use the ordinary link), when the identity was not confirmed, or when the document has no customer text at all. Its event names the
--- document, customer and link by id only (no name texts: both are in the link row's own row-audit INSERT).
+-- document, customer and link by id only, with a fixed reason_category: the two name texts and the admin's reason for the override stay
+-- only in the link row itself (section 1's read policy), the restricted record of why the names differ.
 CREATE FUNCTION public.link_document_customer_name_override(p_kind TEXT, p_document UUID, p_customer UUID, p_reason TEXT, p_identity_confirmed BOOLEAN)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -534,7 +528,8 @@ BEGIN
     RAISE EXCEPTION 'This % is already linked to a customer (verified or waiting): verify or unlink that link first.', p_kind USING ERRCODE = '55000', HINT = 'already_linked';
   END;
   PERFORM security_audit.log_named_event(v_org, 'DOCUMENT_CUSTOMER_LINKED_NAME_OVERRIDE', 'document_customer_links', v_link::TEXT,
-    jsonb_build_object('doc_kind', p_kind, 'document_id', p_document, 'customer_id', p_customer, 'identity_confirmed', TRUE, 'reason', v_reason, 'actor', v_uid));
+    jsonb_build_object('doc_kind', p_kind, 'document_id', p_document, 'customer_id', p_customer, 'identity_confirmed', TRUE,
+                       'reason_category', 'name_override_identity_confirmed', 'actor', v_uid));
   RETURN jsonb_build_object('link_id', v_link, 'doc_kind', p_kind, 'document_id', p_document, 'customer_id', p_customer, 'source', 'name_override');
 END
 $$;
@@ -571,7 +566,7 @@ BEGIN
     UPDATE public.document_customer_links l SET verified_by = v_uid, verify_reason = v_reason, verified_at = v_at WHERE l.id = v_row.id;
     PERFORM security_audit.log_named_event(v_org, 'DOCUMENT_CUSTOMER_LINK_VERIFIED', 'document_customer_links', v_row.id::TEXT,
       jsonb_build_object('doc_kind', v_row.doc_kind, 'document_id', coalesce(v_row.job_id, v_row.quote_id), 'customer_id', v_row.customer_id,
-                         'reason', v_reason, 'actor', v_uid, 'batch_size', cardinality(v_ids)));
+                         'reason_category', 'backfill_link_verified', 'actor', v_uid, 'batch_size', cardinality(v_ids)));
     v_n := v_n + 1;
   END LOOP;
   IF v_n <> cardinality(v_ids) THEN
@@ -613,17 +608,18 @@ BEGIN
   UPDATE public.document_customer_links l SET unlinked_at = v_at, unlinked_by = v_uid, unlink_reason = v_reason WHERE l.id = v_link.id;
   PERFORM security_audit.log_named_event(v_org, 'DOCUMENT_CUSTOMER_UNLINKED', 'document_customer_links', v_link.id::TEXT,
     jsonb_build_object('doc_kind', p_kind, 'document_id', p_document, 'customer_id', v_link.customer_id, 'was_source', v_link.source,
-                       'was_verified', v_link.verified_at IS NOT NULL, 'reason', v_reason, 'actor', v_uid));
+                       'was_verified', v_link.verified_at IS NOT NULL, 'reason_category', 'link_unlinked', 'actor', v_uid));
   RETURN jsonb_build_object('link_id', v_link.id, 'unlinked_at', v_at);
 END
 $$;
 
 -- ---- 9. Retire (ADMIN only; fresh code; reason): the controlled way a document or customer with link history can later be deleted -------
--- Removes every link row of that job, quote or customer (each removal is its own row-audit DELETE) and, in the same transaction, writes
--- one DOCUMENT_CUSTOMER_LINKS_RETIRED event holding exactly the removed rows, taken from the DELETE itself (DELETE ... RETURNING:
--- no row can be added or changed between reading and removing), so the audit trail says what was removed, by whom and why. The event keeps
--- ids, stamps and reasons but not the two name texts (document_customer_text, customer_name_at_link): each row's full content is already
--- in its own row-audit DELETE (PM merge condition, 12 Nov 2026: stable ids, not names, where names aren't needed). Does NOT delete
+-- Removes every link row of that job, quote or customer and, in the same transaction, from the DELETE itself (DELETE ... RETURNING: no
+-- row can be added or changed between reading and removing): (a) one row of the platform-admin-only snapshot table (section 10a, kind
+-- 'retire') holding exactly the removed rows, whole (the two name texts and every reason, so why a link was made or overridden is not
+-- lost), with the admin's retire reason; (b) one DOCUMENT_CUSTOMER_LINKS_RETIRED event in the shared log holding the removed rows by id
+-- and stamp only (no name text, no free-text reason: PM ruling, 12 Nov 2026 16:15, option A), a fixed reason_category, the count, the
+-- actor and the snapshot id. So the audit trail says what was removed, by whom and when. Does NOT delete
 -- the document or the customer: that stays the existing route, under its own rules (jobs: admin; quotes and customers: admin or
 -- office; 082 customers_in_use_guard still refuses a customer that is named on a record) and its own retention rule.
 CREATE FUNCTION public.retire_document_customer_links(p_target_kind TEXT, p_target UUID, p_reason TEXT)
@@ -637,8 +633,10 @@ DECLARE
   v_org      UUID := public._document_customer_link_actor(ARRAY['admin'], TRUE);
   v_uid      UUID := auth.uid();
   v_reason   TEXT;
+  v_rows     JSONB;
   v_snapshot JSONB;
   v_n        INT;
+  v_snap_id  UUID;
 BEGIN
   IF p_target_kind IS NULL OR p_target_kind NOT IN ('job', 'quote', 'customer') THEN
     RAISE EXCEPTION 'Retire the links of a job, a quote or a customer.' USING ERRCODE = '22023', HINT = 'invalid_kind';
@@ -651,13 +649,22 @@ BEGIN
       AND CASE p_target_kind WHEN 'job' THEN l.job_id = p_target WHEN 'quote' THEN l.quote_id = p_target ELSE l.customer_id = p_target END
     RETURNING l.*
   )
-  SELECT jsonb_agg(to_jsonb(g) - 'document_customer_text' - 'customer_name_at_link' ORDER BY g.linked_at, g.id), count(*) INTO v_snapshot, v_n FROM gone g;
+  SELECT jsonb_agg(to_jsonb(g) ORDER BY g.linked_at, g.id),
+         jsonb_agg(jsonb_build_object('id', g.id, 'doc_kind', g.doc_kind, 'job_id', g.job_id, 'quote_id', g.quote_id, 'customer_id', g.customer_id,
+                                      'source', g.source, 'linked_by', g.linked_by, 'linked_at', g.linked_at, 'verified_by', g.verified_by,
+                                      'verified_at', g.verified_at, 'unlinked_by', g.unlinked_by, 'unlinked_at', g.unlinked_at) ORDER BY g.linked_at, g.id),
+         count(*)
+    INTO v_rows, v_snapshot, v_n FROM gone g;
   PERFORM set_config('tolra.document_customer_link_removal', '', TRUE);
   IF coalesce(v_n, 0) = 0 THEN
     RAISE EXCEPTION 'That % has no links to retire.', p_target_kind USING ERRCODE = 'P0002', HINT = 'not_linked';
   END IF;
+  INSERT INTO public.document_customer_offboarding_snapshots (kind, organization_id, offboarded_by, reason, link_count, link_rows, switch_row)
+  VALUES ('retire', v_org, v_uid, v_reason, v_n, v_rows, NULL)
+  RETURNING id INTO v_snap_id;
   PERFORM security_audit.log_named_event(v_org, 'DOCUMENT_CUSTOMER_LINKS_RETIRED', 'document_customer_links', p_target::TEXT,
-    jsonb_build_object('target_kind', p_target_kind, 'target_id', p_target, 'rows', v_snapshot, 'count', v_n, 'reason', v_reason, 'actor', v_uid));
+    jsonb_build_object('target_kind', p_target_kind, 'target_id', p_target, 'rows', v_snapshot, 'count', v_n,
+                       'reason_category', 'links_retired_before_delete', 'snapshot_id', v_snap_id, 'actor', v_uid));
   RETURN jsonb_build_object('retired', v_n, 'target_kind', p_target_kind, 'target_id', p_target);
 END
 $$;
@@ -714,7 +721,8 @@ BEGIN
     ON CONFLICT (organization_id) DO UPDATE SET enabled = EXCLUDED.enabled, changed_by = EXCLUDED.changed_by,
       changed_at = EXCLUDED.changed_at, reason = EXCLUDED.reason;
     PERFORM security_audit.log_named_event(v_org, 'CUSTOMER_PORTAL_SWITCH_CHANGED', 'customer_portal_switch', v_org::TEXT,
-      jsonb_build_object('enabled', p_enabled, 'was', v_was, 'reason', v_reason, 'actor', v_uid));
+      jsonb_build_object('enabled', p_enabled, 'was', v_was,
+                         'reason_category', CASE WHEN p_enabled THEN 'portal_switched_on' ELSE 'portal_switched_off' END, 'actor', v_uid));
   END IF;
   PERFORM set_config('tolra.customer_portal_switch_write', '', TRUE);
   RETURN jsonb_build_object('enabled', p_enabled, 'changed_at', CASE WHEN v_was IS DISTINCT FROM p_enabled THEN v_at END);
@@ -734,8 +742,8 @@ GRANT EXECUTE ON FUNCTION public.link_document_customer(TEXT, UUID, UUID, TEXT),
 -- backfill) and its portal switch row. PM ruling of 12 Nov 2026 14:55 (sensitive offboarding snapshots to authorised platform
 -- administrators only; no shared audit policy, trigger function or audit reader changes): exactly the removed rows, whole (the two name
 -- texts and every reason included), taken from the DELETEs themselves (DELETE ... RETURNING), go into ONE row of
--- public.document_customer_offboarding_snapshots (below), which only a platform admin at aal2 can read; those DELETEs write no row audit
--- (the WHEN test of 153's own delete triggers, sections 1 and 3); and the company's shared audit chain gets one CUSTOMER_PORTAL_OFFBOARDED
+-- public.document_customer_offboarding_snapshots (below), which only a platform admin at aal2 can read; neither table has a row audit
+-- (sections 1 and 3); and the company's shared audit chain gets one CUSTOMER_PORTAL_OFFBOARDED
 -- marker that company admins may read: the snapshot id, the link count, whether a switch row was removed, the reason category and the
 -- actor (the time is the audit row's own), never a row, a name or the free-text reason. Nothing references a link or switch row, so
 -- nothing is orphaned. It does NOT delete the company, a document, a customer or any audit row, and changes nothing else: deleting the
@@ -747,14 +755,18 @@ GRANT EXECUTE ON FUNCTION public.link_document_customer(TEXT, UUID, UUID, TEXT),
 -- verify, unlink, retire or switch can commit between the removal and the event. Refused (nothing written) when the company has nothing
 -- to remove. After any offboarding the 153 rollback refuses (re-applying 153 would backfill that company again).
 --
--- The offboarding snapshots: one row per offboarding, written only by the function below (no API role may write). No reference to
+-- The offboarding snapshots: one row per offboarding (kind 'offboarding') and, under PM ruling 12 Nov 2026 16:15 (option A: complete
+-- reasons only in authorised restricted records), one row per retire (kind 'retire', section 9: the removed rows whole, with the admin's
+-- retire reason; no switch row), written only by those two functions (no API role may write). No reference to
 -- organizations: like audit evidence it must never block the company's removal. Readable ONLY by a platform admin whose token passed the
 -- second step (is_platform_admin and aal2, as 036's support-membership test); never a company role (admin included), another company,
 -- anon or the service role. Append-only: UPDATE, DELETE and TRUNCATE are refused, the owner too. Deliberately NO
 -- security_audit.log_row_change trigger here: that would copy the snapshot back into the shared audit log that company admins read.
--- 153's rollback drops it, and refuses once any offboarding has happened.
+-- offboarded_by / offboarded_at are who removed the rows and when (for a retire: the company admin who retired them). 153's rollback
+-- drops it, and refuses once any offboarding or retire has happened.
 CREATE TABLE public.document_customer_offboarding_snapshots (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  kind             TEXT NOT NULL,
   organization_id  UUID NOT NULL,
   offboarded_by    UUID NOT NULL,
   offboarded_at    TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
@@ -762,6 +774,7 @@ CREATE TABLE public.document_customer_offboarding_snapshots (
   link_count       INT NOT NULL,
   link_rows        JSONB NOT NULL,
   switch_row       JSONB,
+  CONSTRAINT document_customer_offboarding_snapshots_kind CHECK (kind IN ('offboarding', 'retire') AND (kind = 'offboarding' OR (switch_row IS NULL AND link_count > 0))),
   CONSTRAINT document_customer_offboarding_snapshots_reason CHECK (length(btrim(reason)) BETWEEN 1 AND 500),
   CONSTRAINT document_customer_offboarding_snapshots_rows CHECK (jsonb_typeof(link_rows) = 'array' AND jsonb_array_length(link_rows) = link_count
     AND (switch_row IS NULL OR jsonb_typeof(switch_row) = 'object') AND (link_count > 0 OR switch_row IS NOT NULL))
@@ -836,8 +849,8 @@ BEGIN
   IF coalesce(v_n, 0) = 0 AND v_switch IS NULL THEN
     RAISE EXCEPTION 'That company has no document links or portal switch to remove.' USING ERRCODE = 'P0002', HINT = 'nothing_to_offboard';
   END IF;
-  INSERT INTO public.document_customer_offboarding_snapshots (organization_id, offboarded_by, reason, link_count, link_rows, switch_row)
-  VALUES (p_org, v_uid, v_reason, coalesce(v_n, 0), coalesce(v_links, '[]'::JSONB), v_switch)
+  INSERT INTO public.document_customer_offboarding_snapshots (kind, organization_id, offboarded_by, reason, link_count, link_rows, switch_row)
+  VALUES ('offboarding', p_org, v_uid, v_reason, coalesce(v_n, 0), coalesce(v_links, '[]'::JSONB), v_switch)
   RETURNING id INTO v_snapshot;
   PERFORM security_audit.log_named_event(p_org, 'CUSTOMER_PORTAL_OFFBOARDED', 'document_customer_links', p_org::TEXT,
     jsonb_build_object('snapshot_id', v_snapshot, 'count', coalesce(v_n, 0), 'switch_removed', v_switch IS NOT NULL,
@@ -853,7 +866,7 @@ GRANT EXECUTE ON FUNCTION public.platform_offboard_document_customer_links(UUID,
 -- trimmed, lower-case customer text matches exactly ONE customer of its own company (archived customers count: archiving never changes
 -- the customer row, 100). Zero matches, two or more (an active and an archived one included), or no name: NOT inserted, only counted.
 -- Never across companies. A second run inserts nothing new. Writes one DOCUMENT_CUSTOMER_LINK_BACKFILL event per company with the counts;
--- every inserted row is also its own audit row (the trigger above). Never touches a job, quote or customer row.
+-- the event also lists the ids of the rows it inserted (no row audit on the table, section 1). Never touches a job, quote or customer row.
 CREATE FUNCTION public._document_customer_link_backfill(p_org UUID)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -863,6 +876,7 @@ SET search_path = pg_catalog, public, security_audit
 AS $$
 DECLARE
   v_result JSONB;
+  v_ids    JSONB;
 BEGIN
   IF auth.uid() IS NOT NULL THEN
     RAISE EXCEPTION 'The backfill is run by the release, not by a signed-in user.' USING ERRCODE = '42501';
@@ -890,7 +904,7 @@ BEGIN
     INSERT INTO public.document_customer_links (organization_id, doc_kind, job_id, quote_id, customer_id, source, document_customer_text, customer_name_at_link)
     SELECT p_org, c.kind, CASE WHEN c.kind = 'job' THEN c.id END, CASE WHEN c.kind = 'quote' THEN c.id END, c.only_id, 'backfill', c.doc_text, c.only_name
     FROM classified c WHERE c.outcome = 'link'
-    RETURNING doc_kind
+    RETURNING id, doc_kind
   )
   SELECT jsonb_build_object(
     'jobs', jsonb_build_object('linked_unverified', (SELECT count(*) FROM ins WHERE ins.doc_kind = 'job'),
@@ -902,10 +916,11 @@ BEGIN
                                  'ambiguous', count(*) FILTER (WHERE kind = 'quote' AND outcome = 'ambiguous'),
                                  'unmatched', count(*) FILTER (WHERE kind = 'quote' AND outcome = 'unmatched'),
                                  'no_name', count(*) FILTER (WHERE kind = 'quote' AND outcome = 'no_name'),
-                                 'already', count(*) FILTER (WHERE kind = 'quote' AND outcome = 'already')))
-  INTO v_result FROM classified;
+                                 'already', count(*) FILTER (WHERE kind = 'quote' AND outcome = 'already'))),
+         (SELECT coalesce(jsonb_agg(ins.id ORDER BY ins.id), '[]'::JSONB) FROM ins)
+  INTO v_result, v_ids FROM classified;
   PERFORM security_audit.log_named_event(p_org, 'DOCUMENT_CUSTOMER_LINK_BACKFILL', 'document_customer_links', p_org::TEXT,
-    v_result || jsonb_build_object('actor', 'release 153', 'reason', 'release 153 backfill (unverified links only)'));
+    v_result || jsonb_build_object('link_ids', v_ids, 'actor', 'release 153', 'reason', 'release 153 backfill (unverified links only)'));
   RETURN v_result;
 END
 $$;
@@ -964,9 +979,10 @@ BEGIN
     RAISE EXCEPTION '153 self-check: the customer portal must start OFF for every company';
   END IF;
   IF EXISTS (SELECT 1 FROM public.document_customer_offboarding_snapshots)
-     OR EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = to_regclass('public.document_customer_offboarding_snapshots')
+     OR EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid IN (to_regclass('public.document_customer_offboarding_snapshots'),
+                                                              to_regclass('public.document_customer_links'), to_regclass('public.customer_portal_switch'))
                   AND t.tgfoid = to_regprocedure('security_audit.log_row_change()')) THEN
-    RAISE EXCEPTION '153 self-check: the offboarding snapshots must start empty and must never be copied into the shared audit log';
+    RAISE EXCEPTION '153 self-check: the offboarding snapshots must start empty, and no 153 table may be copied into the shared audit log (whole rows: names and free-text reasons)';
   END IF;
 END
 $p153_self_check$;

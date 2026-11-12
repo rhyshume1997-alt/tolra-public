@@ -23,6 +23,10 @@
  * platform admin at aal2 reads and no company role (admin included), other company or anon does; the offboarding's DELETEs write no row
  * audit; the shared log gets one marker without rows, names or free text; company admins still read their company's other audit rows
  * (table, view, Activity) as before; the rollback refuses while any snapshot exists and drops the table otherwise.
+ * PM ruling of 12 Nov 2026 16:15 (option A, audit privacy): no 153 table is row-audited; every 153 named event carries a fixed
+ * reason_category and ids, never a free-text reason, a name text or a customer e-mail or address (each reason below carries a distinctive
+ * marker, and the last case scans every audit row of both companies for it and for every customer name, e-mail and address); the
+ * complete reasons are only in the link and switch rows and, once retired or offboarded, in the platform-admin-only snapshot table.
  * Must not change: this file proves; it never edits a release, verify or guard file to make itself pass.
  */
 import { randomBytes, randomUUID } from "node:crypto";
@@ -48,6 +52,9 @@ const VERIFY = "supabase/verify/document_customer_link_153.sql";
 const GUARDS = "supabase/verify/document_customer_link_153_guards.sql";
 const PREFLIGHT = "supabase/verify/release_preflight.sql";
 const MARKER = "post-144 marker 153 document_customer_link";
+/** A distinctive marker in every free-text reason this proof sends (PM ruling 12 Nov 16:15: it must never reach the audit log). */
+const WHY = `why153-${runId}`;
+const why = (text: string) => `${text} [${WHY}]`;
 
 let pool: Pool;
 type Row = Record<string, unknown>;
@@ -207,6 +214,9 @@ describe("release 153 document customer links", () => {
     D.q3 = await quote(orgA, "Twin Co");
     D.q4 = await quote(orgA, "Typo Acme");
     D.jB = await job(orgB, "Acme Ltd");
+    // Customer contact details (personal data) that must never reach the audit log either.
+    await q(`update customers set email = 'c' || left(id::text, 8) || '.' || $2 || '@example.test', address = 'Unit ' || left(id::text, 4) || ', Marker Road ' || $2
+             where organization_id = any($1::uuid[])`, [[orgA, orgB], runId]);
   });
 
   afterAll(async () => {
@@ -221,7 +231,7 @@ describe("release 153 document customer links", () => {
   it("installed: marker applied, every verify row true, the 17 guard fingerprints read true, and nothing person-made exists yet", async () => {
     expect((await preflightRows()).find((r) => r.check === MARKER)?.value).toBe("applied");
     const v = await verifyRows();
-    expect(v).toHaveLength(20);
+    expect(v).toHaveLength(21);
     expect(v.filter((r) => r.ok !== true).map((r) => r.check_name)).toEqual([]);
     const g = await guardRows();
     expect(g).toHaveLength(17);
@@ -262,12 +272,15 @@ describe("release 153 document customer links", () => {
     const ev = await events(orgA, "DOCUMENT_CUSTOMER_LINK_BACKFILL");
     expect(ev).toHaveLength(1);
     expect(ev[0].metadata).toMatchObject({ actor: "release 153", jobs: { linked_unverified: 2 }, quotes: { linked_unverified: 2 } });
-    expect(await rowAudits(orgA, "document_customer_links", "INSERT")).toBe(4);
+    // No row audit (PM ruling 12 Nov 16:15): the backfill event lists the ids it inserted instead (checked below).
+    expect(await rowAudits(orgA, "document_customer_links", "INSERT")).toBe(0);
     const [again] = await q<{ r: Row }>("select public._document_customer_link_backfill($1::uuid) as r", [orgA]);
     expect(again.r).toMatchObject({ jobs: { linked_unverified: 0, already: 2 }, quotes: { linked_unverified: 0, already: 2 } });
     expect(await q("select 1 from document_customer_links where organization_id = $1", [orgA])).toHaveLength(4);
     expect(await readAs(as(P.admin), "select * from document_customer_links_verified")).toEqual([]);
     D.l1 = await linkOf(D.j1); D.l2 = await linkOf(D.j2); D.lq1 = await linkOf(D.q1); D.lq2 = await linkOf(D.q2); D.lB = await linkOf(D.jB);
+    expect(ev[0].metadata.link_ids).toEqual([D.l1, D.l2, D.lq1, D.lq2].sort());
+    expect((await events(orgB, "DOCUMENT_CUSTOMER_LINK_BACKFILL"))[0].metadata.link_ids).toEqual([D.lB]);
   });
 
   it("rollback refuses each unsafe state on its own (nothing changed): person link, override, verified, unlinked, a switch row, a retire, an offboarding (event or snapshot), a dependent, any portal-154 object", async () => {
@@ -295,8 +308,8 @@ describe("release 153 document customer links", () => {
     expect(await refused((db) => db.query("select security_audit.log_named_event($1::uuid, 'CUSTOMER_PORTAL_OFFBOARDED', 'document_customer_links', $1::uuid::text, '{}'::jsonb)", [orgA])))
       .toMatch(/153 rollback: the platform owner has offboarded/);
     // A snapshot row alone (the only copy of an offboarding's removed rows) refuses too: the drop would lose it.
-    expect(await refused((db) => db.query(`insert into document_customer_offboarding_snapshots (organization_id, offboarded_by, reason, link_count, link_rows, switch_row)
-      values ($1, $2, 'r', 0, '[]'::jsonb, '{}'::jsonb)`, [orgA, support])))
+    expect(await refused((db) => db.query(`insert into document_customer_offboarding_snapshots (kind, organization_id, offboarded_by, reason, link_count, link_rows, switch_row)
+      values ('offboarding', $1, $2, 'r', 0, '[]'::jsonb, '{}'::jsonb)`, [orgA, support])))
       .toMatch(/153 rollback: the platform owner has offboarded/);
     // PM ruling (e): 154 (customer portal sign-in, PM ruling 12 Nov 15:10) must be rolled back before 153. Each of the objects 154's
     // own guard and marker name, alone, refuses (and the verify row still reads true: 153 is whole).
@@ -326,8 +339,9 @@ describe("release 153 document customer links", () => {
       const ev = (await db.query("select metadata from security_audit.audit_log where organization_id = $1 and action = 'DOCUMENT_CUSTOMER_LINK_ROLLBACK'", [orgA])).rows;
       expect(ev).toHaveLength(1);
       expect(ev[0].metadata).toMatchObject({ removed_unverified_backfill_links: 4, link_ids: before, actor: "release 153 rollback" });
+      // No row audit (PM ruling 12 Nov 16:15): the rollback event's link_ids above are the record of the removed rows.
       const del = (await db.query("select entity_id from security_audit.audit_log where organization_id = $1 and entity_table = 'document_customer_links' and action = 'DELETE'", [orgA])).rows;
-      expect(del.map((r: { entity_id: string }) => r.entity_id).sort()).toEqual(before);
+      expect(del).toEqual([]);
 
       // The go-live gate (A5): with 153 absent its row reads portal-only, and check 1a is exactly as it was with 153 installed.
       const pre = await preflightRows(db);
@@ -378,7 +392,7 @@ describe("release 153 document customer links", () => {
   });
 
   it("verify: admin and office with a fresh code; batches 1..200, each once; all or nothing; stale refused; one event per link", async () => {
-    const v = (who: Who, ids: string[], reason = "checked against the order") => call(who, "public.verify_document_customer_links($1::uuid[], $2)", [ids, reason]);
+    const v = (who: Who, ids: string[], reason = why("checked against the order")) => call(who, "public.verify_document_customer_links($1::uuid[], $2)", [ids, reason]);
     for (const who of [as(P.workshop), as(P.viewer)]) expect(await v(who, [D.l1])).toMatchObject({ code: "42501", hint: "admin_or_office_required" });
     expect((await v({ claims: claims(support, "fresh", { session_id: supportSession }) }, [D.l1])).code).toBe("42501");
     expect((await v(anon, [D.l1])).code).toBe("42501");
@@ -408,12 +422,18 @@ describe("release 153 document customer links", () => {
     const ev = await events(orgA, "DOCUMENT_CUSTOMER_LINK_VERIFIED");
     expect(ev.map((e) => e.entity_id).sort()).toEqual([D.l1, D.lq1].sort());
     expect(ev.map((e) => e.actor_user_id).sort()).toEqual([P.admin, P.office].sort());
-    expect(await rowAudits(orgA, "document_customer_links", "UPDATE", [D.l1, D.lq1])).toBe(2);
+    // A fixed reason category in the event; the complete reason only in the link row (admin and office read it), no row audit.
+    for (const e of ev) {
+      expect(e.metadata).toMatchObject({ reason_category: "backfill_link_verified" });
+      expect(e.metadata).not.toHaveProperty("reason");
+    }
+    expect(await rowAudits(orgA, "document_customer_links", "UPDATE", [D.l1, D.lq1])).toBe(0);
+    expect(await readAs(as(P.office), "select verify_reason from document_customer_links where id = $1", [D.l1])).toEqual([{ verify_reason: why("checked against the order") }]);
   });
 
   it("manual link: admin or office, fresh code, reason, names must match; refused across companies, sections, kinds and internal jobs", async () => {
     C.nobody = await customer(orgA, "Nobody Ltd");
-    const link = (who: Who, kind: string, doc: string, cust: string, reason = "customer picked by id") =>
+    const link = (who: Who, kind: string, doc: string, cust: string, reason = why("customer picked by id")) =>
       call(who, "public.link_document_customer($1, $2::uuid, $3::uuid, $4)", [kind, doc, cust, reason]);
     expect(await link(as(P.office, "none"), "job", D.j4, C.nobody)).toMatchObject({ hint: "mfa_recent_required" });
     expect(await link(as(P.office, "stale"), "job", D.j4, C.nobody)).toMatchObject({ hint: "mfa_recent_required" });
@@ -434,12 +454,15 @@ describe("release 153 document customer links", () => {
     const [row] = await q("select linked_by::text, verified_by::text, verified_at = linked_at as same from document_customer_links where id = $1", [D.l4]);
     expect(row).toEqual({ linked_by: P.office, verified_by: P.office, same: true });
     expect((await readAs<{ id: string }>(as(P.office), "select id::text from document_customer_links_verified where id = $1", [D.l4]))).toHaveLength(1);
-    expect((await events(orgA, "DOCUMENT_CUSTOMER_LINKED")).map((e) => e.entity_id)).toEqual([D.l4]);
+    const ev = await events(orgA, "DOCUMENT_CUSTOMER_LINKED");
+    expect(ev.map((e) => e.entity_id)).toEqual([D.l4]);
+    expect(ev[0].metadata).toMatchObject({ reason_category: "manual_link_names_match", actor: P.office });
+    expect(ev[0].metadata).not.toHaveProperty("reason");
   });
 
   it("name override: admin only, identity confirmed, names must differ; its own event; hidden again once the document text changes", async () => {
     const ov = (who: Who, kind: string, doc: string, cust: string, confirmed: boolean | null = true) =>
-      call(who, "public.link_document_customer_name_override($1, $2::uuid, $3::uuid, $4, $5)", [kind, doc, cust, "typo on the sent quote; customer confirmed by phone", confirmed]);
+      call(who, "public.link_document_customer_name_override($1, $2::uuid, $3::uuid, $4, $5)", [kind, doc, cust, why("typo on the sent quote; customer confirmed by phone"), confirmed]);
     expect(await ov(as(P.office), "quote", D.q4, C.target)).toMatchObject({ hint: "admin_required" });
     expect(await ov(as(P.admin, "stale"), "quote", D.q4, C.target)).toMatchObject({ hint: "mfa_recent_required" });
     expect(await ov(as(P.admin), "quote", D.q4, C.target, false)).toMatchObject({ hint: "identity_not_confirmed" });
@@ -452,15 +475,19 @@ describe("release 153 document customer links", () => {
     D.lq4 = String(ok.data!.link_id);
     const ev = await events(orgA, "DOCUMENT_CUSTOMER_LINKED_NAME_OVERRIDE");
     expect(ev).toHaveLength(1);
-    expect(ev[0].metadata).toMatchObject({ doc_kind: "quote", document_id: D.q4, customer_id: C.target, identity_confirmed: true, actor: P.admin });
-    // PM merge condition (12 Nov): the event names the document, customer and link by id, never by name; the name texts stay in the link
-    // row's own row-audit INSERT (the shared log_row_change records whole rows).
+    expect(ev[0].metadata).toMatchObject({ doc_kind: "quote", document_id: D.q4, customer_id: C.target, identity_confirmed: true, actor: P.admin,
+      reason_category: "name_override_identity_confirmed" });
+    // PM merge condition (12 Nov): the event names the document, customer and link by id, never by name. PM ruling 12 Nov 16:15: a fixed
+    // reason category, never the free text; no row audit. The name texts and the override's reason stay only in the link row, which the
+    // company's admin (and office) read.
     expect(ev[0].entity_id).toBe(D.lq4);
     expect(ev[0].metadata).not.toHaveProperty("document_customer_text");
     expect(ev[0].metadata).not.toHaveProperty("customer_name");
-    expect(JSON.stringify(ev[0].metadata)).not.toMatch(/Typo Acme|Override Target/);
-    const [ins] = await q<{ new_data: Row }>("select new_data from security_audit.audit_log where organization_id = $1 and entity_table = 'document_customer_links' and action = 'INSERT' and entity_id = $2", [orgA, D.lq4]);
-    expect(ins.new_data).toMatchObject({ document_customer_text: "Typo Acme", customer_name_at_link: "Override Target Ltd" });
+    expect(ev[0].metadata).not.toHaveProperty("reason");
+    expect(JSON.stringify(ev[0].metadata)).not.toMatch(/Typo Acme|Override Target|typo on the sent quote/);
+    expect(await rowAudits(orgA, "document_customer_links", "INSERT", [D.lq4])).toBe(0);
+    expect(await readAs(as(P.admin), "select document_customer_text, customer_name_at_link, link_reason from document_customer_links where id = $1", [D.lq4]))
+      .toEqual([{ document_customer_text: "Typo Acme", customer_name_at_link: "Override Target Ltd", link_reason: why("typo on the sent quote; customer confirmed by phone") }]);
     const shown = async () => (await readAs<{ id: string }>(as(P.admin), "select id::text from document_customer_links_verified where id = $1", [D.lq4])) as { id: string }[];
     expect(await shown()).toHaveLength(1);
     await q("update quotes set customer = 'Typo Acme Ltd' where id = $1", [D.q4]);
@@ -468,14 +495,16 @@ describe("release 153 document customer links", () => {
   });
 
   it("unlink: admin or office, once, with a reason; the row stays as history; no other change is possible", async () => {
-    const un = (who: Who, kind: string, doc: string) => call(who, "public.unlink_document_customer($1, $2::uuid, $3)", [kind, doc, "wrong customer"]);
+    const un = (who: Who, kind: string, doc: string) => call(who, "public.unlink_document_customer($1, $2::uuid, $3)", [kind, doc, why("wrong customer")]);
     expect(await un(as(P.viewer), "job", D.j2)).toMatchObject({ hint: "admin_or_office_required" });
     expect(await un(as(P.office, "none"), "job", D.j2)).toMatchObject({ hint: "mfa_recent_required" });
     expect((await un(as(P.office), "job", D.j2)).data).toMatchObject({ link_id: D.l2 });
     expect(await un(as(P.office), "job", D.j2)).toMatchObject({ hint: "not_linked" });
     const [row] = await q("select unlinked_by::text, unlink_reason, unlinked_at is not null as gone from document_customer_links where id = $1", [D.l2]);
-    expect(row).toEqual({ unlinked_by: P.office, unlink_reason: "wrong customer", gone: true });
-    expect((await events(orgA, "DOCUMENT_CUSTOMER_UNLINKED"))[0].metadata).toMatchObject({ was_source: "backfill", was_verified: false });
+    expect(row).toEqual({ unlinked_by: P.office, unlink_reason: why("wrong customer"), gone: true });
+    const [unl] = await events(orgA, "DOCUMENT_CUSTOMER_UNLINKED");
+    expect(unl.metadata).toMatchObject({ was_source: "backfill", was_verified: false, reason_category: "link_unlinked" });
+    expect(unl.metadata).not.toHaveProperty("reason");
     expect(await ownerTry("update document_customer_links set unlinked_at = now() where id = $1", [D.l2])).toBe("42501/link_immutable");
     expect(await ownerTry("update document_customer_links set customer_id = $2 where id = $1", [D.l1, C.nobody])).toBe("42501/link_immutable");
     expect(await ownerTry("insert into document_customer_links (organization_id, doc_kind, job_id, customer_id, source, document_customer_text, customer_name_at_link, verified_by, verify_reason, verified_at) values ($1, 'job', $2, $3, 'backfill', 'Twin Co', 'Twin Co', $4, 'r', now())", [orgA, D.j3, C.twin1, P.admin])).toBe("42501/link_immutable");
@@ -501,7 +530,7 @@ describe("release 153 document customer links", () => {
   });
 
   it("retire: admin only, fresh code, reason; snapshot of exactly the removed rows; each removal audited; then the document or customer can go", async () => {
-    const rt = (who: Who, kind: string, id: string) => call(who, "public.retire_document_customer_links($1, $2::uuid, $3)", [kind, id, "job cancelled; record retention reviewed"]);
+    const rt = (who: Who, kind: string, id: string) => call(who, "public.retire_document_customer_links($1, $2::uuid, $3)", [kind, id, why("job cancelled; record retention reviewed")]);
     expect(await rt(as(P.office), "job", D.j2)).toMatchObject({ hint: "admin_required" });
     expect(await rt(as(P.admin, "stale"), "job", D.j2)).toMatchObject({ hint: "mfa_recent_required" });
     expect(await rt(as(P.admin), "invoice", D.j2)).toMatchObject({ hint: "invalid_kind" });
@@ -513,19 +542,27 @@ describe("release 153 document customer links", () => {
     expect(ev).toHaveLength(1);
     const rows = ev[0].metadata.rows as Row[];
     expect(rows.map((r) => r.id)).toEqual([D.l2]);
-    expect(rows[0]).toMatchObject({ job_id: D.j2, customer_id: C.acme, unlink_reason: "wrong customer", source: "backfill" });
-    // Ids, stamps and reasons, not the name texts (PM merge condition, 12 Nov); the row's own row-audit DELETE keeps its full content.
-    expect(rows[0]).not.toHaveProperty("document_customer_text");
-    expect(rows[0]).not.toHaveProperty("customer_name_at_link");
-    const [del] = await q<{ old_data: Row }>("select old_data from security_audit.audit_log where organization_id = $1 and entity_table = 'document_customer_links' and action = 'DELETE' and entity_id = $2", [orgA, D.l2]);
-    expect(del.old_data).toMatchObject({ id: D.l2, document_customer_text: " acme ltd ", customer_name_at_link: "Acme Ltd" });
-    expect(ev[0].metadata).toMatchObject({ count: 1, actor: P.admin });
-    expect(await rowAudits(orgA, "document_customer_links", "DELETE", [D.l2])).toBe(1);
+    expect(rows[0]).toMatchObject({ job_id: D.j2, customer_id: C.acme, source: "backfill", unlinked_by: P.office });
+    // Ids and stamps only (PM merge condition, 12 Nov; PM ruling 12 Nov 16:15): no name text, no free-text reason in the shared log.
+    expect(Object.keys(rows[0]).sort()).toEqual(["customer_id", "doc_kind", "id", "job_id", "linked_at", "linked_by", "quote_id", "source", "unlinked_at",
+      "unlinked_by", "verified_at", "verified_by"]);
+    expect(ev[0].metadata).toMatchObject({ count: 1, actor: P.admin, reason_category: "links_retired_before_delete", snapshot_id: expect.any(String) });
+    expect(ev[0].metadata).not.toHaveProperty("reason");
+    // The complete removed row (name texts and every reason) and the admin's retire reason: only in the platform-admin-only snapshot.
+    const snap = await q<{ kind: string; offboarded_by: string; reason: string; link_count: number; link_rows: Row[]; switch_row: Row | null }>(
+      "select kind, offboarded_by::text, reason, link_count, link_rows, switch_row from document_customer_offboarding_snapshots where id = $1", [ev[0].metadata.snapshot_id]);
+    expect(snap).toHaveLength(1);
+    expect(snap[0]).toMatchObject({ kind: "retire", offboarded_by: P.admin, reason: why("job cancelled; record retention reviewed"), link_count: 1, switch_row: null });
+    expect(snap[0].link_rows[0]).toMatchObject({ id: D.l2, document_customer_text: " acme ltd ", customer_name_at_link: "Acme Ltd", unlink_reason: why("wrong customer") });
+    expect(await readAs(as(P.admin), "select id from document_customer_offboarding_snapshots")).toEqual([]);
+    expect(await rowAudits(orgA, "document_customer_links", "DELETE", [D.l2])).toBe(0);
     expect(await q("select 1 from document_customer_links where id = $1", [D.l2])).toHaveLength(0);
     await q("delete from jobs where id = $1", [D.j2]);
 
     expect((await rt(as(P.admin), "customer", C.target)).data).toMatchObject({ retired: 1 });
-    expect(await rowAudits(orgA, "document_customer_links", "DELETE", [D.lq4])).toBe(1);
+    expect(await rowAudits(orgA, "document_customer_links", "DELETE", [D.lq4])).toBe(0);
+    const [ovSnap] = await q<{ link_rows: Row[] }>("select link_rows from document_customer_offboarding_snapshots where kind = 'retire' and link_rows @> $1::jsonb", [JSON.stringify([{ id: D.lq4 }])]);
+    expect(ovSnap.link_rows[0]).toMatchObject({ id: D.lq4, source: "name_override", link_reason: why("typo on the sent quote; customer confirmed by phone") });
     await q("delete from customers where id = $1", [C.target]);
 
     // 077: company A's audit chain still verifies (links and hashes) after the link, verify, unlink, override and retire rows.
@@ -546,7 +583,7 @@ describe("release 153 document customer links", () => {
   });
 
   it("portal switch: admin only; ON needs a fresh code, OFF never waits; two switch-ons at once log one change; only the setting writes it; audited", async () => {
-    const set = (who: Who, on: boolean | null, reason = "portal pilot") => call(who, "public.customer_portal_set_enabled($1, $2)", [on, reason]);
+    const set = (who: Who, on: boolean | null, reason = why("portal pilot")) => call(who, "public.customer_portal_set_enabled($1, $2)", [on, reason]);
     expect(await call(as(P.office), "public.customer_portal_status()")).toMatchObject({ hint: "admin_required" });
     expect((await call({ claims: claims(support, "fresh", { session_id: supportSession }) }, "public.customer_portal_status()")).code).toBe("42501");
     expect((await call(as(P.admin, "none"), "public.customer_portal_status()")).data).toEqual({ enabled: false, changed_at: null });
@@ -562,8 +599,8 @@ describe("release 153 document customer links", () => {
     const b = await pool.connect();
     try {
       for (const db of [a, b]) { await db.query("begin"); await setClaims(db, as(P.admin)); }
-      const first = (await a.query("select public.customer_portal_set_enabled(true, 'race one') as r")).rows[0].r;
-      const second = b.query("select public.customer_portal_set_enabled(true, 'race two') as r");
+      const first = (await a.query("select public.customer_portal_set_enabled(true, $1) as r", [why("race one")])).rows[0].r;
+      const second = b.query("select public.customer_portal_set_enabled(true, $1) as r", [why("race two")]);
       await new Promise((r) => setTimeout(r, 300));
       await a.query("commit");
       const late = (await second).rows[0].r;
@@ -576,24 +613,30 @@ describe("release 153 document customer links", () => {
       a.release();
       b.release();
     }
-    expect((await events(orgA, "CUSTOMER_PORTAL_SWITCH_CHANGED")).map((e) => e.metadata)).toEqual([expect.objectContaining({ enabled: true, was: false, reason: "race one" })]);
+    const swEv = (await events(orgA, "CUSTOMER_PORTAL_SWITCH_CHANGED")).map((e) => e.metadata);
+    expect(swEv).toEqual([expect.objectContaining({ enabled: true, was: false, reason_category: "portal_switched_on", actor: P.admin })]);
+    expect(swEv[0]).not.toHaveProperty("reason");
+    expect(await readAs(as(P.admin), "select reason from customer_portal_switch")).toEqual([{ reason: why("race one") }]);
     expect((await call(as(P.admin, "none"), "public.customer_portal_status()")).data).toMatchObject({ enabled: true });
-    expect((await set(as(P.admin, "none"), false, "pilot paused")).data).toMatchObject({ enabled: false });
-    expect(await events(orgA, "CUSTOMER_PORTAL_SWITCH_CHANGED")).toHaveLength(2);
+    expect((await set(as(P.admin, "none"), false, why("pilot paused"))).data).toMatchObject({ enabled: false });
+    const swEv2 = await events(orgA, "CUSTOMER_PORTAL_SWITCH_CHANGED");
+    expect(swEv2).toHaveLength(2);
+    expect(swEv2[1].metadata).toMatchObject({ enabled: false, was: true, reason_category: "portal_switched_off" });
 
     expect(await ownerTry("update customer_portal_switch set enabled = true where organization_id = $1", [orgA])).toBe("42501/switch_immutable");
     expect(await ownerTry("delete from customer_portal_switch where organization_id = $1", [orgA])).toBe("42501/switch_immutable");
     expect(await ownerTry("truncate customer_portal_switch")).toBe("42501/switch_immutable");
     expect(await ownerTry("insert into customer_portal_switch (organization_id, enabled, changed_by, reason) values ($1, true, $2, 'r')", [orgB, P.adminB])).toBe("42501/switch_immutable");
-    expect(await rowAudits(orgA, "customer_portal_switch", "INSERT")).toBe(1);
-    expect(await rowAudits(orgA, "customer_portal_switch", "UPDATE")).toBeGreaterThanOrEqual(2);
+    // No row audit (PM ruling 12 Nov 16:15): the two named events above are the record; the reason stays in the admin-only row.
+    expect(await rowAudits(orgA, "customer_portal_switch", "INSERT")).toBe(0);
+    expect(await rowAudits(orgA, "customer_portal_switch", "UPDATE")).toBe(0);
     expect((await readAs<Row>(as(P.office), "select * from customer_portal_switch"))).toEqual([]);
 
     // Every verify row stays true after people linked, verified, unlinked, retired and switched.
     expect((await verifyRows()).filter((r) => r.ok !== true).map((r) => r.check_name)).toEqual([]);
   });
   it("offboarding (PM ruling d; snapshot ruling 12 Nov 14:55): platform owner only, second step, fresh code, never read-only support; every link and the switch row of one company removed into one platform-only snapshot, one non-sensitive marker, no row audit; nothing else touched", async () => {
-    const off = (who: Who, org: string, reason = "company offboarded at its request") =>
+    const off = (who: Who, org: string, reason = why("company offboarded at its request")) =>
       call(who, "public.platform_offboard_document_customer_links($1::uuid, $2)", [org, reason]);
     const owner = (mfa: Mfa = "fresh", extra: Record<string, unknown> = {}) => ({ claims: claims(support, mfa, extra) });
     expect(await off(as(P.admin), orgA)).toMatchObject({ code: "42501", hint: "platform_required" });
@@ -631,9 +674,9 @@ describe("release 153 document customer links", () => {
     const snapshotId = String(res.data?.snapshot_id);
     // The sensitive snapshot (PM ruling, 12 Nov 14:55): exactly the removed rows and the switch row, whole, in the platform-only table.
     const snaps = await q<{ id: string; organization_id: string; offboarded_by: string; reason: string; link_count: number; link_rows: Row[]; switch_row: Row }>(
-      "select id::text, organization_id::text, offboarded_by::text, reason, link_count, link_rows, switch_row from document_customer_offboarding_snapshots where organization_id = $1", [orgA]);
+      "select id::text, organization_id::text, offboarded_by::text, reason, link_count, link_rows, switch_row from document_customer_offboarding_snapshots where organization_id = $1 and kind = 'offboarding'", [orgA]);
     expect(snaps).toHaveLength(1);
-    expect(snaps[0]).toMatchObject({ id: snapshotId, organization_id: orgA, offboarded_by: support, reason: "company offboarded at its request", link_count: linksA.length });
+    expect(snaps[0]).toMatchObject({ id: snapshotId, organization_id: orgA, offboarded_by: support, reason: why("company offboarded at its request"), link_count: linksA.length });
     expect(snaps[0].link_rows).toEqual(linksFull);
     expect(snaps[0].link_rows.map((r) => String(r.id)).sort()).toEqual(linksA);
     expect(snaps[0].link_rows.every((r) => typeof r.document_customer_text === "string" && typeof r.customer_name_at_link === "string")).toBe(true);
@@ -661,7 +704,7 @@ describe("release 153 document customer links", () => {
     // Nothing left: refused, nothing written.
     expect(await off(owner(), orgA)).toMatchObject({ hint: "nothing_to_offboard" });
     expect(await events(orgA, "CUSTOMER_PORTAL_OFFBOARDED")).toHaveLength(1);
-    expect(await q("select 1 from document_customer_offboarding_snapshots where organization_id = $1", [orgA])).toHaveLength(1);
+    expect(await q("select 1 from document_customer_offboarding_snapshots where organization_id = $1 and kind = 'offboarding'", [orgA])).toHaveLength(1);
     expect((await verifyRows()).filter((r) => r.ok !== true).map((r) => r.check_name)).toEqual([]);
   });
 
@@ -672,8 +715,8 @@ describe("release 153 document customer links", () => {
     const offboarded = (await events(orgA, "CUSTOMER_PORTAL_OFFBOARDED"));
     expect(offboarded).toHaveLength(1);
     const [offId] = (await q<{ id: string }>("select id::text from security_audit.audit_log where organization_id = $1 and action = 'CUSTOMER_PORTAL_OFFBOARDED'", [orgA])).map((r) => r.id);
-    // Link DELETE row audits exist (retire's); the offboarding wrote none, so the switch row's removal has no row audit.
-    expect(await rowAudits(orgA, "document_customer_links", "DELETE")).toBeGreaterThan(0);
+    // No row audit of either table at all (PM ruling 12 Nov 16:15): retire and offboarding wrote named events and snapshots only.
+    expect(await rowAudits(orgA, "document_customer_links", "DELETE")).toBe(0);
     expect(await rowAudits(orgA, "customer_portal_switch", "DELETE")).toBe(0);
     expect(ids153.length).toBeGreaterThan(5);
     const direct = (who: Who) => readAs<{ id: string }>(who, "select id::text from security_audit.audit_log where id = any($1::uuid[])", [ids153]);
@@ -729,7 +772,7 @@ describe("release 153 document customer links", () => {
   });
 
   it("offboarding snapshot readers (PM ruling, 12 Nov 14:55): only a platform admin at aal2 reads it; company A's admin, office, workshop, viewer, another company's admin, the platform admin at aal1 and anon read none; no API role writes it", async () => {
-    const [mine] = await q<{ id: string }>("select id::text from document_customer_offboarding_snapshots where organization_id = $1", [orgA]);
+    const [mine] = await q<{ id: string }>("select id::text from document_customer_offboarding_snapshots where organization_id = $1 and kind = 'offboarding'", [orgA]);
     expect(mine).toBeTruthy();
     const snap = (who: Who) => readAs<{ id: string }>(who, "select id::text from public.document_customer_offboarding_snapshots");
     const ids = async (who: Who) => { const r = await snap(who); return typeof r === "string" ? r : r.map((x) => x.id); };
@@ -747,6 +790,38 @@ describe("release 153 document customer links", () => {
       expect(await readAs(who, "update public.document_customer_offboarding_snapshots set reason = 'x'")).toBe("42501");
       expect(await readAs(who, "delete from public.document_customer_offboarding_snapshots")).toBe("42501");
     }
-    expect(await q("select 1 from document_customer_offboarding_snapshots where id = $1 and reason = 'company offboarded at its request'", [mine.id])).toHaveLength(1);
+    expect(await q("select 1 from document_customer_offboarding_snapshots where id = $1 and reason = $2", [mine.id, why("company offboarded at its request")])).toHaveLength(1);
+  });
+
+  it("audit privacy (PM ruling, 12 Nov 16:15, option A): no audit row of either company, named or row-change, carries a free-text reason marker or a customer name, e-mail or address; the complete reasons are only in the restricted records", async () => {
+    // Every audit row of both companies (old_data, new_data and metadata) as text: the reason marker reached none of them.
+    const all = await q<{ id: string; action: string; entity_table: string; body: string }>(`select id::text, action, entity_table,
+      coalesce(old_data::text, '') || ' ' || coalesce(new_data::text, '') || ' ' || coalesce(metadata::text, '') as body
+      from security_audit.audit_log where organization_id = any($1::uuid[])`, [[orgA, orgB]]);
+    expect(all.length).toBeGreaterThan(10);
+    expect(all.filter((r) => r.body.includes(WHY)).map((r) => `${r.action} ${r.entity_table}`)).toEqual([]);
+    // 153's own audit rows (both tables, every 153 event): no row-change row at all, and no customer name, e-mail or address, nor any
+    // document's customer text (the customers' own row audits of the shared trigger are outside 153 and unchanged).
+    const mine = all.filter((r) => ["document_customer_links", "customer_portal_switch", "document_customer_offboarding_snapshots"].includes(r.entity_table)
+      || r.action.startsWith("DOCUMENT_CUSTOMER") || r.action.startsWith("CUSTOMER_PORTAL"));
+    expect(new Set(mine.map((r) => r.action))).toEqual(new Set(["DOCUMENT_CUSTOMER_LINK_BACKFILL", "DOCUMENT_CUSTOMER_LINK_VERIFIED", "DOCUMENT_CUSTOMER_LINKED",
+      "DOCUMENT_CUSTOMER_LINKED_NAME_OVERRIDE", "DOCUMENT_CUSTOMER_UNLINKED", "DOCUMENT_CUSTOMER_LINKS_RETIRED", "CUSTOMER_PORTAL_SWITCH_CHANGED", "CUSTOMER_PORTAL_OFFBOARDED"]));
+    const personal = (await q<{ v: string }>(`select v from (
+        select name as v from customers where organization_id = any($1::uuid[]) union select email from customers where organization_id = any($1::uuid[])
+        union select address from customers where organization_id = any($1::uuid[]) union select customer from jobs where organization_id = any($1::uuid[])
+        union select customer from quotes where organization_id = any($1::uuid[])) x where btrim(coalesce(v, '')) <> ''`, [[orgA, orgB]]))
+      .map((r) => r.v.trim().toLowerCase());
+    expect(personal.filter((v) => v.includes(runId)).length).toBeGreaterThan(5); // the e-mails and addresses set in beforeAll
+    for (const r of mine) {
+      // The backfill event's only reason is the release's own fixed text (no person writes it).
+      const text = r.body.toLowerCase().replace('"reason": "release 153 backfill (unverified links only)"', "");
+      expect(personal.filter((v) => text.includes(v)), r.action).toEqual([]);
+      expect(text, r.action).not.toMatch(/document_customer_text|customer_name|link_reason|verify_reason|unlink_reason|"reason":/);
+    }
+    // The complete reasons are kept, but only in the restricted records: the link rows of company B (company B's admin), the snapshots
+    // (platform admin at aal2: both retire snapshots and the offboarding snapshot of company A hold the marker).
+    const snaps = await readAs<{ kind: string; n: number }>({ claims: claims(support, "fresh") },
+      "select kind, count(*)::int as n from public.document_customer_offboarding_snapshots where organization_id = $1 and (reason like $2 or link_rows::text like $2) group by kind order by kind", [orgA, `%${WHY}%`]);
+    expect(snaps).toEqual([{ kind: "offboarding", n: 1 }, { kind: "retire", n: 2 }]);
   });
 });

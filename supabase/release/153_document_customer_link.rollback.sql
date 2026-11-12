@@ -10,12 +10,13 @@
 --   * any link was made by a person (manual or name_override), any link was verified, or any link was unlinked;
 --   * any company has a portal switch row (ON or OFF: each one is an admin's decision with a reason);
 --   * any links were ever retired or any company offboarded (a DOCUMENT_CUSTOMER_LINKS_RETIRED or CUSTOMER_PORTAL_OFFBOARDED event exists,
---     or any offboarding snapshot row exists): re-applying 153 would backfill those documents again, and dropping the snapshot table
---     would lose the only copy of the removed rows;
+--     or any snapshot row, offboarding or retire, exists): re-applying 153 would backfill those documents again, and dropping the
+--     snapshot table would lose the only copy of the removed rows;
 --   * anything outside 153 depends on its tables, view or functions (a later release such as the portal: roll that back first).
 -- Otherwise (only unverified, live backfill rows exist, which nothing has ever shown): it first writes one DOCUMENT_CUSTOMER_LINK_ROLLBACK
--- event per company with the count and the ids it removes, then removes those rows one by one through the guard (each removal is its
--- own row-audit DELETE), so the audit trail explains every row 153 inserted. Then it drops 153's objects WITHOUT CASCADE.
+-- event per company with the count and the ids it removes, then removes those rows through the guard (153 writes no row audit, PM ruling
+-- 12 Nov 2026 16:15: this event's ids, as the backfill event's, are the record), so the audit trail explains every row 153 inserted.
+-- Then it drops 153's objects WITHOUT CASCADE.
 -- IF IT REFUSES: do NOT delete link rows by hand (the guard refuses it anyway). Keep 153 installed (preferred: it is additive and nothing
 -- outside Tolra reads it while the portal is off). Only with Rhys's approval.
 BEGIN;

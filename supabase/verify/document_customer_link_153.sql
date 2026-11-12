@@ -1,15 +1,17 @@
 -- Read only: after release 153 (document customer link v2; registered in supabase/release-plan.json as phase 153, after 152), every row must say true.
 -- What it proves: the link table and the portal switch exist with row security, are readable (never writable) by signed-in users and
 -- nothing for anon or the service role; only jobs and quotes can be linked; the job, quote and customer references are ON DELETE RESTRICT
--- (never cascade) and every link stays inside its company; at most one live link per document; the guard, same-company, audit and
+-- (never cascade) and every link stays inside its company; at most one live link per document; the guard, same-company and
 -- no-truncate triggers are on; only the eight reviewed functions are callable (signed-in only, SECURITY DEFINER, pinned search_path); the
 -- private functions are callable by no API role; the verified view runs as its caller, shows seven columns, none of them money, and never
 -- shows an unverified link; every person-made link carries who and why and was verified when made; the portal is never on without an
 -- admin and a reason; every issued-document guard is still byte-for-byte the body 153 was reviewed against, on its tables, enabled; and
 -- the release order holds: release 154 (customer portal sign-in, which requires 153) is never present without every 153 object (154 is rolled back before 153);
 -- and (PM ruling, 12 Nov 2026 14:55) the offboarding snapshot table is readable only by platform admins at aal2, append-only and never
--- row-audited into the shared log, the offboarding's DELETEs alone skip the row audit, and every CUSTOMER_PORTAL_OFFBOARDED marker in the
--- shared log is non-sensitive (no rows, names or free-text reason) and names its company's snapshot.
+-- row-audited into the shared log, and every CUSTOMER_PORTAL_OFFBOARDED marker in the shared log is non-sensitive (no rows, names or
+-- free-text reason) and names its company's snapshot; and (PM ruling, 12 Nov 2026 16:15, option A) no 153 table is row-audited (the
+-- shared log_row_change copies whole rows: name texts and free-text reasons), and every 153 named event a person causes carries a fixed
+-- reason_category and no free-text reason, the retire event's rows by id and stamp only, naming its retire snapshot.
 -- Invariants only: each row stays true after people link, verify, unlink, retire or switch the portal (the release-time "all off",
 -- "only unverified backfill rows" and "nothing shown yet" checks are in the release's own self-check).
 SELECT 'tables: document_customer_links, customer_portal_switch and document_customer_offboarding_snapshots exist with row security' AS check_name,
@@ -46,32 +48,31 @@ UNION ALL SELECT 'references: the job, quote and customer are foreign keys with 
 UNION ALL SELECT 'one live link per document: the two partial unique indexes exist, and no document has two live links',
   (SELECT count(*) = 2 FROM pg_index i WHERE i.indrelid = to_regclass('public.document_customer_links') AND i.indisunique AND i.indpred IS NOT NULL)
   AND NOT EXISTS (SELECT 1 FROM public.document_customer_links WHERE unlinked_at IS NULL GROUP BY doc_kind, coalesce(job_id, quote_id) HAVING count(*) > 1)
-UNION ALL SELECT 'triggers: guard, same company (job, quote, customer), row audit (insert / update, and delete) and no-truncate are on; the switch has its guard, no-truncate and row audit (insert / update, and delete)',
-  (SELECT count(*) = 7 FROM pg_trigger t WHERE t.tgrelid = to_regclass('public.document_customer_links') AND NOT t.tgisinternal AND t.tgenabled = 'O'
+UNION ALL SELECT 'triggers: guard, same company (job, quote, customer) and no-truncate are on; the switch has its guard and no-truncate; nothing else',
+  (SELECT count(*) = 5 FROM pg_trigger t WHERE t.tgrelid = to_regclass('public.document_customer_links') AND NOT t.tgisinternal AND t.tgenabled = 'O'
      AND (t.tgname, t.tgfoid) IN (('document_customer_links_guard', to_regprocedure('public.document_customer_links_guard()')),
                                   ('document_customer_links_no_truncate', to_regprocedure('public.document_customer_links_no_truncate()')),
-                                  ('audit_document_customer_links_changes', to_regprocedure('security_audit.log_row_change()')),
-                                  ('audit_document_customer_links_deletes', to_regprocedure('security_audit.log_row_change()')),
                                   ('zz_same_org_job_id', to_regprocedure('public.enforce_same_org_parent()')),
                                   ('zz_same_org_quote_id', to_regprocedure('public.enforce_same_org_parent()')),
                                   ('zz_same_org_customer_id', to_regprocedure('public.enforce_same_org_parent()'))))
-  AND (SELECT count(*) = 4 FROM pg_trigger t WHERE t.tgrelid = to_regclass('public.customer_portal_switch') AND NOT t.tgisinternal AND t.tgenabled = 'O'
+  AND (SELECT count(*) = 5 FROM pg_trigger t WHERE t.tgrelid = to_regclass('public.document_customer_links') AND NOT t.tgisinternal)
+  AND (SELECT count(*) = 2 FROM pg_trigger t WHERE t.tgrelid = to_regclass('public.customer_portal_switch') AND NOT t.tgisinternal AND t.tgenabled = 'O'
      AND (t.tgname, t.tgfoid) IN (('customer_portal_switch_guard', to_regprocedure('public.customer_portal_switch_guard()')),
-                                  ('customer_portal_switch_no_truncate', to_regprocedure('public.customer_portal_switch_no_truncate()')),
-                                  ('audit_customer_portal_switch_changes', to_regprocedure('security_audit.log_row_change()')),
-                                  ('audit_customer_portal_switch_deletes', to_regprocedure('security_audit.log_row_change()'))))
-UNION ALL SELECT 'row audit: insert and update always; delete always except the platform offboarding''s own (its flag for that row''s company), on both tables; nothing else skips it',
-  (SELECT count(*) = 4 FROM pg_trigger t WHERE NOT t.tgisinternal AND t.tgfoid = to_regprocedure('security_audit.log_row_change()')
-     AND ((t.tgrelid, t.tgname, t.tgtype) IN ((to_regclass('public.document_customer_links'), 'audit_document_customer_links_changes', 21::SMALLINT),
-                                              (to_regclass('public.customer_portal_switch'), 'audit_customer_portal_switch_changes', 21::SMALLINT))
-          AND t.tgqual IS NULL
-       OR (t.tgrelid, t.tgname, t.tgtype) IN ((to_regclass('public.document_customer_links'), 'audit_document_customer_links_deletes', 9::SMALLINT),
-                                              (to_regclass('public.customer_portal_switch'), 'audit_customer_portal_switch_deletes', 9::SMALLINT))
-          AND pg_get_triggerdef(t.oid) LIKE '%WHEN ((COALESCE(current_setting(''tolra.'
-              || CASE t.tgname WHEN 'audit_document_customer_links_deletes' THEN 'document_customer_link_removal' ELSE 'customer_portal_switch_write' END
-              || '''::text, true), ''''::text) <> (''offboard:''::text || (old.organization_id)::text)))%'))
-UNION ALL SELECT 'offboarding snapshots (PM ruling, 12 Nov 2026 14:55): read only by a platform admin at aal2; append-only (guard on update, delete, truncate); never row-audited; no reference that could block a company''s removal',
+                                  ('customer_portal_switch_no_truncate', to_regprocedure('public.customer_portal_switch_no_truncate()'))))
+  AND (SELECT count(*) = 2 FROM pg_trigger t WHERE t.tgrelid = to_regclass('public.customer_portal_switch') AND NOT t.tgisinternal)
+UNION ALL SELECT 'no row audit (PM ruling, 12 Nov 2026 16:15): no 153 table copies whole rows (name texts, free-text reasons) into the shared audit log, and no 153 row audit exists there',
+  NOT EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgfoid = to_regprocedure('security_audit.log_row_change()')
+                AND t.tgrelid IN (to_regclass('public.document_customer_links'), to_regclass('public.customer_portal_switch'),
+                                  to_regclass('public.document_customer_offboarding_snapshots')))
+  AND NOT EXISTS (SELECT 1 FROM security_audit.audit_log a
+                  WHERE a.entity_table IN ('document_customer_links', 'customer_portal_switch', 'document_customer_offboarding_snapshots')
+                    AND (a.old_data IS NOT NULL OR a.new_data IS NOT NULL OR a.action IN ('INSERT', 'UPDATE', 'DELETE')))
+UNION ALL SELECT 'offboarding snapshots (PM rulings, 12 Nov 2026 14:55 and 16:15): kind offboarding or retire; read only by a platform admin at aal2; append-only (guard on update, delete, truncate); never row-audited; no reference that could block a company''s removal',
   (SELECT count(*) = 1 FROM pg_policies p WHERE p.schemaname = 'public' AND p.tablename = 'document_customer_offboarding_snapshots')
+  AND coalesce((SELECT pg_get_constraintdef(c.oid) LIKE '%''offboarding''%' AND pg_get_constraintdef(c.oid) LIKE '%''retire''%'
+                FROM pg_constraint c WHERE c.conrelid = to_regclass('public.document_customer_offboarding_snapshots')
+                  AND c.conname = 'document_customer_offboarding_snapshots_kind'), false)
+  AND NOT EXISTS (SELECT 1 FROM public.document_customer_offboarding_snapshots s WHERE s.kind NOT IN ('offboarding', 'retire'))
   AND coalesce((SELECT p.cmd = 'SELECT' AND p.permissive = 'PERMISSIVE' AND p.roles = '{authenticated}'::NAME[]
                        AND p.qual LIKE '%is_platform_admin()%' AND p.qual LIKE '%''aal''::text%' AND p.qual LIKE '%''aal2''::text%'
                        AND p.qual NOT LIKE '%organization_id%'
@@ -88,7 +89,27 @@ UNION ALL SELECT 'offboarding marker: every CUSTOMER_PORTAL_OFFBOARDED row in th
                      OR EXISTS (SELECT 1 FROM jsonb_object_keys(a.metadata) k
                                 WHERE k NOT IN ('source', 'snapshot_id', 'count', 'switch_removed', 'reason_category', 'actor'))
                      OR NOT EXISTS (SELECT 1 FROM public.document_customer_offboarding_snapshots s
-                                    WHERE s.id::TEXT = a.metadata ->> 'snapshot_id' AND s.organization_id = a.organization_id)))
+                                    WHERE s.id::TEXT = a.metadata ->> 'snapshot_id' AND s.organization_id = a.organization_id AND s.kind = 'offboarding')))
+UNION ALL SELECT 'named events (PM ruling, 12 Nov 2026 16:15, option A): every link, override, verify, unlink, retire and switch event carries a fixed reason_category and no free-text reason or row data; the retire event lists its rows by id and stamp only and names a retire snapshot of its own company',
+  NOT EXISTS (SELECT 1 FROM security_audit.audit_log a
+              WHERE a.action IN ('DOCUMENT_CUSTOMER_LINKED', 'DOCUMENT_CUSTOMER_LINKED_NAME_OVERRIDE', 'DOCUMENT_CUSTOMER_LINK_VERIFIED',
+                                 'DOCUMENT_CUSTOMER_UNLINKED', 'DOCUMENT_CUSTOMER_LINKS_RETIRED', 'CUSTOMER_PORTAL_SWITCH_CHANGED')
+                AND (a.old_data IS NOT NULL OR a.new_data IS NOT NULL OR a.metadata ? 'reason'
+                     OR coalesce(a.metadata ->> 'reason_category', '') <> CASE a.action
+                          WHEN 'DOCUMENT_CUSTOMER_LINKED' THEN 'manual_link_names_match'
+                          WHEN 'DOCUMENT_CUSTOMER_LINKED_NAME_OVERRIDE' THEN 'name_override_identity_confirmed'
+                          WHEN 'DOCUMENT_CUSTOMER_LINK_VERIFIED' THEN 'backfill_link_verified'
+                          WHEN 'DOCUMENT_CUSTOMER_UNLINKED' THEN 'link_unlinked'
+                          WHEN 'DOCUMENT_CUSTOMER_LINKS_RETIRED' THEN 'links_retired_before_delete'
+                          ELSE CASE a.metadata ->> 'enabled' WHEN 'true' THEN 'portal_switched_on' WHEN 'false' THEN 'portal_switched_off' END END
+                     OR (a.action = 'DOCUMENT_CUSTOMER_LINKS_RETIRED'
+                         AND (jsonb_typeof(a.metadata -> 'rows') IS DISTINCT FROM 'array'
+                              OR EXISTS (SELECT 1 FROM jsonb_array_elements(a.metadata -> 'rows') r, jsonb_object_keys(r) k
+                                         WHERE k NOT IN ('id', 'doc_kind', 'job_id', 'quote_id', 'customer_id', 'source', 'linked_by', 'linked_at',
+                                                         'verified_by', 'verified_at', 'unlinked_by', 'unlinked_at'))
+                              OR NOT EXISTS (SELECT 1 FROM public.document_customer_offboarding_snapshots s
+                                             WHERE s.id::TEXT = a.metadata ->> 'snapshot_id' AND s.organization_id = a.organization_id
+                                               AND s.kind = 'retire')))))
 UNION ALL SELECT 'same company: every link names a document and a customer of its own company, of the kind it says',
   NOT EXISTS (SELECT 1 FROM public.document_customer_links l
               LEFT JOIN public.jobs j ON j.id = l.job_id LEFT JOIN public.quotes q ON q.id = l.quote_id
