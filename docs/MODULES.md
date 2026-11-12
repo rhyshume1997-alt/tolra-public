@@ -34,6 +34,7 @@ Break work into these. Agents own one module at a time. Cross-module changes req
 ## 7. Dashboard / Reports / Numbers / Shared UI
 - Allowed: `app/(dashboard)/dashboard/**`, `app/(dashboard)/numbers/**`, `components/ui/**`, shared hooks, charts
 - Goal: Read-only or thin. No business rules here.
+- Reporting: revenue (PM-approved R0): `app/(dashboard)/reports/revenue/**`, `components/reports/revenue/**`, `lib/reports/revenue/**`. Read only, off by default, admin and office. Invoiced and cash basis shown separately and never added; quote pipeline never counted as revenue.
 
 ## 8. Database / Migrations / Releases
 - Allowed: `supabase/**` ONLY when task explicitly says "migration allowed" and lists the file.
