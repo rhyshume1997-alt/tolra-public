@@ -1,6 +1,6 @@
 /**
  * Brand flash fix (sign-in page and app shell). The sign-in page picks the company on the server (?org, else the company subdomain,
- * else the tolra_brand cookie) and never trusts the cookie: an unknown or not-opted-in slug gets the neutral page, as ?org does.
+ * never the tolra_brand cookie). Plain /login always gets the neutral page.
  * The public logo URL serves only an opted-in company's CURRENT logo version; the signed-in logo URL only the session's own company;
  * the remember route only ever sets the session's own (opted-in) company.
  */
@@ -125,11 +125,11 @@ beforeEach(() => {
 });
 
 describe("sign-in page slug precedence", () => {
-  it("takes ?org first, then the company subdomain, then the brand cookie", () => {
+  it("takes ?org first, then the company subdomain, never the brand cookie", () => {
     expect(loginSlug({ org: "Alpha", host: "beta.example.test", cookie: "gone" }, "example.test")).toBe("alpha");
     expect(loginSlug({ org: null, host: "beta.example.test", cookie: "gone" }, "example.test")).toBe("beta");
-    expect(loginSlug({ org: "", host: "app.example.test", cookie: "gone" }, "example.test")).toBe("gone");
-    expect(loginSlug({ org: null, host: "beta.example.test", cookie: "alpha" }, undefined)).toBe("alpha"); // no TENANT_ROOT_DOMAIN: no host route
+    expect(loginSlug({ org: "", host: "app.example.test", cookie: "gone" }, "example.test")).toBeNull();
+    expect(loginSlug({ org: null, host: "beta.example.test", cookie: "alpha" }, undefined)).toBeNull(); // no TENANT_ROOT_DOMAIN: no host route
     expect(loginSlug({}, "example.test")).toBeNull();
   });
 
@@ -159,11 +159,11 @@ describe("sign-in branding from a slug (the cookie is never trusted)", () => {
     for (const slug of ["nobody", "beta", "gone", null]) expect(await loginBranding(slug)).toBeNull();
   });
 
-  it("renders the page with the cookie's company only after looking it up again", async () => {
+  it("renders the neutral page without looking up a remembered company", async () => {
     cookieJar = { [BRAND_COOKIE]: "alpha" };
     const page = (await LoginPage({ searchParams: Promise.resolve({}) })) as { props: { children: { props: { initialBranding: unknown } } } };
-    expect(page.props.children.props.initialBranding).toMatchObject({ slug: "alpha", name: "Alpha Ltd" });
-    expect(adminLookups).toContain("organizations:alpha");
+    expect(page.props.children.props.initialBranding).toBeNull();
+    expect(adminLookups).toEqual([]);
   });
 
   it("renders the neutral page for a cookie naming an unknown or not-opted-in company", async () => {
@@ -172,6 +172,13 @@ describe("sign-in branding from a slug (the cookie is never trusted)", () => {
       const page = (await LoginPage({ searchParams: Promise.resolve({}) })) as { props: { children: { props: { initialBranding: unknown } } } };
       expect(page.props.children.props.initialBranding).toBeNull();
     }
+  });
+
+
+  it("keeps explicit company links branded despite another remembered cookie", async () => {
+    cookieJar = { [BRAND_COOKIE]: "beta" };
+    const page = (await LoginPage({ searchParams: Promise.resolve({ org: "alpha" }) })) as { props: { children: { props: { initialBranding: unknown } } } };
+    expect(page.props.children.props.initialBranding).toMatchObject({ slug: "alpha", name: "Alpha Ltd" });
   });
 
   it("prefers ?org over the cookie on the page", async () => {

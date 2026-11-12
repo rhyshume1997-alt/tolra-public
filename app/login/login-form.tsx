@@ -9,39 +9,13 @@ import { EXPIRED_NOTICE_COOKIE, LOCK_NOTICE_KEY, accessEndedKeptMessage, forgetL
 import { adoptServerAccessEnded } from "@/lib/offline/access";
 import { INVALID_CREDENTIALS_MESSAGE, UNREACHABLE_MESSAGE, classifySignInResponse, isUnreachableError } from "@/lib/auth-errors";
 import { supabase } from "@/lib/supabase";
-import { LAST_ORG_KEY, fetchLoginBranding, isOrgSlug, type LoginBranding } from "@/lib/branding";
-
-/**
- * The branding the server rendered (?org, the company subdomain or this device's brand cookie: app/login/page.tsx). Only a device
- * that has no brand cookie yet, has no ?org and remembers a branded link from before the cookie still asks /api/branding in the
- * browser, as before; its next sign-in sets the cookie, and from then on the server renders the brand.
- */
-function useLoginBranding(initial: LoginBranding | null, hasOrgParam: boolean) {
-  const [branding, setBranding] = useState<LoginBranding | null>(initial);
-  useEffect(() => {
-    if (initial || hasOrgParam) return;
-    let stored: string | null = null;
-    try { stored = window.localStorage.getItem(LAST_ORG_KEY); } catch { /* storage blocked */ }
-    if (!isOrgSlug(stored)) return;
-    let cancelled = false;
-    fetchLoginBranding(stored)
-      .then((result) => {
-        if (cancelled) return;
-        setBranding(result);
-        if (!result) {
-          try { window.localStorage.removeItem(LAST_ORG_KEY); } catch { /* storage blocked */ }
-        }
-      });
-    return () => { cancelled = true; };
-  }, [initial, hasOrgParam]);
-  return branding;
-}
+import { type LoginBranding } from "@/lib/branding";
 
 export function LoginForm({ initialBranding }: { initialBranding: LoginBranding | null }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const disabled = searchParams.get("disabled") === "1";
-  const branding = useLoginBranding(initialBranding, Boolean(searchParams.get("org")?.trim()));
+  const branding = initialBranding;
   const [error, setError] = useState<string | null>(disabled ? "Your account has been disabled" : null);
   const [messageType, setMessageType] = useState<"error" | "success">("error");
   const [canRetry, setCanRetry] = useState(false);

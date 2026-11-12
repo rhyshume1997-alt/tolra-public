@@ -1,10 +1,13 @@
 /**
- * The app shell's "remember this company for the sign-in page" call (lib/branding.ts rememberBrand, from components/dashboard-shell).
+ * The legacy "remember this company" helper (lib/branding.ts rememberBrand, from components/dashboard-shell).
  * Its answer must always be read to the end: a fetch whose body is never read is never finished in the browser, so every signed-in
  * page stayed busy on the network for as long as it was open (CI run 40182770805: networkidle never came on the pages that sent it).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("server-only", () => ({}));
+
+import { loginSlug } from "@/lib/server/branding";
 import { LAST_ORG_KEY, REMEMBERED_KEY, fetchLoginBranding, rememberBrand } from "@/lib/branding";
 
 const ORG = "11111111-1111-4111-8111-111111111111";
@@ -43,7 +46,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("rememberBrand (app shell, after sign-in and a company switch)", () => {
+describe("rememberBrand (legacy helper; no longer used by the app shell)", () => {
   it("reads the answer to the end, then records the company for this tab and drops the old browser-only record", async () => {
     localStorage.setItem(LAST_ORG_KEY, "acme");
     fetchMock.mockImplementation(async () => answer(200));
@@ -102,5 +105,17 @@ describe("fetchLoginBranding (sign-in page ?org= lookup)", () => {
   it("returns null when the request fails", async () => {
     fetchMock.mockRejectedValue(new Error("offline"));
     expect(await fetchLoginBranding("acme")).toBeNull();
+  });
+});
+
+
+describe("legacy remembered branding cannot select plain login branding", () => {
+  it("ignores the old cookie and storage while preserving explicit company selection", () => {
+    localStorage.setItem(LAST_ORG_KEY, "acme");
+    sessionStorage.setItem(REMEMBERED_KEY, ORG);
+    expect(loginSlug({ host: "app.example.test", cookie: "acme" }, "example.test")).toBeNull();
+    expect(loginSlug({ org: "other", cookie: "acme" }, "example.test")).toBe("other");
+    expect(loginSlug({ host: "other.example.test", cookie: "acme" }, "example.test")).toBe("other");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

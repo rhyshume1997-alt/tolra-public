@@ -7,7 +7,7 @@ import { signIn, world } from "./helpers";
 
 /**
  * Brand flash (sign-in page and app shell). The sign-in page is rendered on the server in the company's branding, chosen by ?org,
- * the company subdomain or this device's tolra_brand cookie, so the product page ("Welcome back", the Tolra wordmark) never shows
+ * or the company subdomain (never a remembered cookie), so the product page ("Welcome back", the Tolra wordmark) never shows
  * first. After sign-in the shell's first paint already has the company's colours and never shows the company placeholder.
  */
 
@@ -21,14 +21,12 @@ async function rememberBrand(context: BrowserContext, slug: string) {
 test.describe("sign-in page without JavaScript", () => {
   test.use({ javaScriptEnabled: false });
 
-  test("the server HTML is already the remembered company's page", async ({ page, context }) => {
+  test("the server HTML stays neutral with a remembered company", async ({ page, context }) => {
     const alpha = world().tenants.alpha;
     await rememberBrand(context, alpha.slug);
     await page.goto("/login");
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText(`Sign in to ${alpha.name}`);
-    const html = await page.content();
-    expect(html).toContain(`Sign in to ${alpha.name}`);
-    expect(html).not.toContain("Welcome back");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Welcome back");
+    expect(await page.content()).not.toContain(alpha.name);
   });
 
   test("a cookie naming an unknown company gets the neutral page", async ({ page, context }) => {
@@ -58,22 +56,29 @@ test.describe("sign-in page with JavaScript", () => {
       new MutationObserver(check).observe(document, { childList: true, subtree: true, characterData: true });
       document.addEventListener("DOMContentLoaded", check);
     }, [PRODUCT.name]);
-    await page.goto("/login");
+    await page.goto(`/login?org=${alpha.slug}`);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(`Sign in to ${alpha.name}`);
     await page.waitForLoadState("networkidle");
     expect(await page.evaluate(() => (window as unknown as { __brandSeen: string[] }).__brandSeen)).toEqual(["tenant"]);
   });
 
-  test("signing in remembers the company on this device (slug only, httpOnly)", async ({ page, context }) => {
+  test("a remembered cookie and old browser storage leave plain login neutral, while ?org still brands it", async ({ page, context }) => {
     const alpha = world().tenants.alpha;
-    const remembered = page.waitForResponse((response) => response.url().endsWith("/api/branding/remember") && response.request().method() === "POST");
-    await signIn(page, alpha.users.office);
-    expect((await remembered).status()).toBe(200);
-    const cookie = (await context.cookies()).find((entry) => entry.name === BRAND_COOKIE);
-    expect(cookie?.value).toBe(alpha.slug);
-    expect(cookie?.httpOnly).toBe(true);
-    expect(cookie?.sameSite).toBe("Lax");
+    await rememberBrand(context, alpha.slug);
+    await page.addInitScript((slug) => localStorage.setItem("qf.login.org", slug), alpha.slug);
+    await page.goto("/login");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Welcome back");
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByText(alpha.name, { exact: false })).toHaveCount(0);
+    await expect(page.getByText(PRODUCT.name, { exact: true }).first()).toBeVisible();
+    expect(await page.content()).not.toContain(alpha.name);
+
+    await page.goto(`/login?org=${alpha.slug}`);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(`Sign in to ${alpha.name}`);
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByText(alpha.name, { exact: false }).first()).toBeVisible();
   });
+
 });
 
 test.describe("app shell after sign-in", () => {
