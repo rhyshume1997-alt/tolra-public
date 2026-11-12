@@ -33,8 +33,8 @@ export const MODEL_PRICES_GBP: Readonly<Record<string, ModelPrice>> = {
   "claude-sonnet-5-5": { provider: "anthropic", inputMicroUsdPerMTok: BigInt(2_000_000), outputMicroUsdPerMTok: BigInt(10_000_000), source: "https://platform.claude.com/docs/en/about-claude/pricing", asOf: "2026-11-11" },
 };
 
-/** A price older than this is stale and refused (PM value; PROPOSED 180, to be confirmed). */
-export const PRICE_MAX_AGE_DAYS = 180;
+/** A price older than this is stale and refused (PM ruling 12 Nov: 90 days). */
+export const PRICE_MAX_AGE_DAYS = 90;
 
 /** The most one request may reserve, in pence: mirrors the database bound (133:67, 134:119 `NOT BETWEEN 1 AND 1000`). */
 export const MAX_REQUEST_PENCE_GBP = 1000;

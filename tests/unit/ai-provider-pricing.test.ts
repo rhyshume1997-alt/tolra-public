@@ -155,6 +155,17 @@ describe("fail closed: price", () => {
     expect(priceFor("anthropic", OPUS, day(PRICE_MAX_AGE_DAYS + 1))).toEqual({ ok: false, reason: "stale" });
   });
 
+  it("PM ruling 12 Nov: 90 days. A price exactly 90 days old is accepted; 90 days + 1 ms is stale", () => {
+    expect(PRICE_MAX_AGE_DAYS).toBe(90);
+    const exact = new Date(Date.parse("2026-11-11T00:00:00Z") + 90 * 86_400_000);
+    expect(priceFor("anthropic", OPUS, exact).ok).toBe(true);
+    expect(priceFor("anthropic", OPUS, new Date(exact.getTime() + 1))).toEqual({ ok: false, reason: "stale" });
+  });
+
+  it("the Anthropic rows (asOf 2026-11-11) are usable at the fixed test clock", () => {
+    for (const model of [OPUS, SONNET]) expect(priceFor("anthropic", model, NOW).ok).toBe(true);
+  });
+
   it("not yet effective, bad dates and unusable prices are refused", () => {
     expect(priceFor("anthropic", "m", day(1), row({ effectiveFrom: "2026-11-20" }))).toEqual({ ok: false, reason: "not_yet_effective" });
     expect(priceFor("anthropic", "m", day(10), row({ effectiveFrom: "2026-11-20" })).ok).toBe(true);
