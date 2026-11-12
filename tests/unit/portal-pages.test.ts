@@ -126,6 +126,32 @@ describe("sign-in pages and code page", () => {
     expect(s.quotes).not.toHaveBeenCalled();
     expect(s.jobs).not.toHaveBeenCalled();
   });
+  const SENTENCE = "We couldn&#x27;t verify your code. Please try again or request a new code.";
+  const withC = (c: string | string[]) => render(CodePage({ params: Promise.resolve({ ref: GOOD_REF }), searchParams: Promise.resolve({ c }) }));
+  it("code page: ?c= shows the fixed sentence and a link to request a new code", async () => {
+    const out = await withC("abc123");
+    expect(out).toContain(SENTENCE);
+    expect(out).toContain('href="/portal/signin"');
+    expect(out.indexOf(SENTENCE)).toBeLessThan(out.indexOf("<form"));
+  });
+  it("code page: output is identical for different ?c= values and never renders the id", async () => {
+    const a = await withC("first-refusal-id-111");
+    const b = await withC("second-refusal-id-222");
+    expect(a).toBe(b);
+    expect(a).not.toContain("refusal-id");
+  });
+  it("code page: without ?c= there is no message", async () => {
+    const plain = await render(CodePage({ params: Promise.resolve({ ref: GOOD_REF }) }));
+    const empty = await render(CodePage({ params: Promise.resolve({ ref: GOOD_REF }), searchParams: Promise.resolve({}) }));
+    expect(plain).not.toContain("verify your code");
+    expect(empty).toBe(plain);
+  });
+  it("code page: with ?c= still no database call", async () => {
+    await withC("x");
+    expect(s.resolve).not.toHaveBeenCalled();
+    expect(s.quotes).not.toHaveBeenCalled();
+    expect(s.jobs).not.toHaveBeenCalled();
+  });
   it("code page: a malformed ref shows the generic refusal, never echoed", async () => {
     const out = await render(CodePage({ params: Promise.resolve({ ref: '"><script>' }) }));
     expect(out).toContain(REFUSAL);
