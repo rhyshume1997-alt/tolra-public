@@ -12,7 +12,7 @@ vi.mock("@/lib/supabase", () => ({ supabase: null, isSupabaseConfigured: false }
 vi.mock("@/lib/use-user", () => ({ useUser: () => ({ activeRole: "admin" }) }));
 vi.mock("@/lib/org-settings", () => ({ useOrgSettings: () => ({ hiddenNav: [] }) }));
 
-import { INCOMPLETE_TEXT, PlannedVsActualTable, unplannedInTotalText } from "@/components/jobs/planned-vs-actual-panel";
+import { BENCH_HEADING, INCOMPLETE_TEXT, PlannedVsActualTable, unplannedInTotalText } from "@/components/jobs/planned-vs-actual-panel";
 import { MAX_LIST_ROWS } from "@/lib/fetch-all";
 import { loadPlannedVsActual } from "@/lib/jobs/load-planned-vs-actual";
 
@@ -121,6 +121,22 @@ describe("PlannedVsActualTable", () => {
     // The heading comes after the planned machine and before the unplanned one.
     expect(html.indexOf(">Mill<")).toBeLessThan(html.indexOf("pva-unplanned"));
     expect(html.indexOf("pva-unplanned")).toBeLessThan(html.indexOf("Saw (Not on plan)"));
+  });
+
+  it("bench row has its own heading and is not under the unplanned heading", async () => {
+    const loaded = await loadPlannedVsActual(fakeClient(base({ machine_runs: [...runs(10, "m1"), ...runs(30, "m3")] })).client, "job-1", NOW);
+    const data = { ...loaded, steps: [...loaded.steps, { ...loaded.steps[0], key: "bench", label: "Bench", machineId: null, isBench: true, onPlan: false }] };
+    const html = renderToStaticMarkup(createElement(PlannedVsActualTable, { data }));
+    expect(BENCH_HEADING).toBe("Bench (no machine; not counted in the total)");
+    expect(html).toContain('data-testid="pva-bench"');
+    expect(html).toContain(BENCH_HEADING);
+    // Order: planned, bench heading, bench row, unplanned heading, unplanned row, total.
+    const at = (text: string) => html.indexOf(text);
+    expect(at(">Mill<")).toBeLessThan(at("pva-bench"));
+    expect(at("pva-bench")).toBeLessThan(at(">Bench<"));
+    expect(at(">Bench<")).toBeLessThan(at("pva-unplanned"));
+    expect(at("pva-unplanned")).toBeLessThan(at("Saw (Not on plan)"));
+    expect(at("Saw (Not on plan)")).toBeLessThan(at("Total (machines)"));
   });
 
   it("no unplanned heading or line when every run is on the plan", async () => {

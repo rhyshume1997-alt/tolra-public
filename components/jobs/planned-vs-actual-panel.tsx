@@ -30,6 +30,7 @@ const hours = (value: number | null) => (value == null ? "-" : value.toFixed(2))
 const calculatedText = (iso: string) => `Calculated at ${fmtTime(iso)} on ${fmtDateText(iso, { year: true }, "dmy-short")} (UK time)`;
 const signed = (value: number | null) => (value == null ? "-" : `${value > 0 ? "+" : ""}${value.toFixed(2)}`);
 export const UNPLANNED_HEADING = `${UNPLANNED_LABEL} (machines not on this job's plan; counted in the total, not against any planned machine)`;
+export const BENCH_HEADING = "Bench (no machine; not counted in the total)";
 export const unplannedInTotalText = (value: number) => `Total actual includes ${hours(value)} h of unplanned machine time.`;
 export const INCOMPLETE_TEXT = `These figures may be incomplete: this job has too many records to read in full (the limit is ${MAX_LIST_ROWS.toLocaleString("en-GB")} of each kind), so some may be missing.`;
 
@@ -88,9 +89,10 @@ export function PlannedVsActualTable({ data }: { data: PlannedVsActual }) {
         <tbody>
           {data.steps.length ? null : <tr><td colSpan={5} className="px-1.5 py-1 text-slate-600">No machines or runs on this job yet.</td></tr>}
           {planned.map(row)}
+          {bench.length ? <tr data-testid="pva-bench" className="border-t border-black/20"><td colSpan={5} className="px-1.5 py-1 font-semibold">{BENCH_HEADING}</td></tr> : null}
+          {bench.map(row)}
           {unplanned.length ? <tr data-testid="pva-unplanned" className="border-t border-black/20"><td colSpan={5} className="px-1.5 py-1 font-semibold">{UNPLANNED_HEADING}</td></tr> : null}
           {unplanned.map(row)}
-          {bench.map(row)}
           <tr className="border-t border-black font-semibold">
             <td className="px-1.5 py-1">Total (machines)</td>
             <td className="px-1.5 py-1 text-right">{hours(data.machinePlannedHours)}</td>
