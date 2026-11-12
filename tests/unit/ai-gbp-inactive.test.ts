@@ -71,14 +71,16 @@ describe("the GBP path is not reachable from the live code (source)", () => {
 describe("runAiHelper with the shipped EMPTY FX table is unchanged (runtime)", () => {
   it("one reserve at the live estimate, then the key read, then one settle: no new refusal, no extra RPC, no provider call", async () => {
     expect(USD_GBP_RATES).toEqual([]);
-    const rpc = vi.fn().mockResolvedValue({ data: { ok: true, request_id: "req-1", key_source: "own" }, error: null });
+    const rpc = vi.fn(async (...a: [string, unknown?]) => (a[0] === "ai_helper_status" ? { data: { tolra_enabled: false }, error: null } : { data: { ok: true, request_id: "req-1", key_source: "own" }, error: null }));
     const complete = vi.fn();
     const data = "{}"; const system = "s"; const schema = {};
     const outcome = await runAiHelper({ supabase: { rpc } as never, organizationId: "org-1", feature: "rfq", system, data, schema, validate: () => ({ value: 1, store: {} }), provider: { id: "anthropic", complete } });
     expect(outcome).toMatchObject({ kind: "failed", failure: "unavailable", detail: "key" });
-    expect(rpc).toHaveBeenCalledTimes(1);
-    expect(rpc.mock.calls[0][0]).toBe("ai_helper_reserve");
-    expect(rpc.mock.calls[0][1]).toMatchObject({ p_feature: "rfq", p_estimate_pence: estimatePence(AI_HELPER_MODELS.rfq, Buffer.byteLength(system + data + JSON.stringify(schema), "utf8"), MAX_OUTPUT_TOKENS.rfq) });
+    // C4 (on main): the mode read comes first, with no arguments, then the original reserve call.
+    expect(rpc).toHaveBeenCalledTimes(2);
+    expect(rpc.mock.calls[0]).toEqual(["ai_helper_status"]);
+    expect(rpc.mock.calls[1][0]).toBe("ai_helper_reserve");
+    expect(rpc.mock.calls[1][1]).toMatchObject({ p_feature: "rfq", p_estimate_pence: estimatePence(AI_HELPER_MODELS.rfq, Buffer.byteLength(system + data + JSON.stringify(schema), "utf8"), MAX_OUTPUT_TOKENS.rfq) });
     expect(state.serviceCalls).toEqual(["from:ai_helper_secrets", "rpc:ai_helper_settle"]);
     expect(state.settle).toMatchObject({ p_status: "failed", p_cost_pence: 0 });
     expect(complete).not.toHaveBeenCalled();
