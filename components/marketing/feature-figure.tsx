@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-import { ILLUSTRATION_LABEL, SCREENSHOT_LABEL, SHEET_LABELS, type FeatureFigure as Figure, type FeatureShot } from "@/lib/marketing";
+import { EXAMPLE_DATA_LABEL, ILLUSTRATION_LABEL, SHEET_LABELS, type FeatureFigure as Figure, type FeatureShot } from "@/lib/marketing";
 
 /** Inner padding of every figure: one scale (16px on a phone, 24px from 640px), set as --mk-box in marketing.css. */
 const BOX = "p-[var(--mk-box)]";
@@ -104,11 +104,31 @@ function Drawing({ figure }: { figure: Figure }) {
           <p className="mt-3 inline-block border border-[#0b2a5b] px-3 py-1.5 text-[0.8125rem] font-semibold">{figure.flag}</p>
         </div>
       );
+    case "overview":
+      // The tiles' names as the Dashboard prints them, every value a dash: the drawing shows what is measured, never a figure.
+      return (
+        <div className={BOX}>
+          <p className="mk-display max-w-none border-b border-[#0b2a5b] pb-2 text-lg uppercase">{figure.title}</p>
+          <dl className="mt-3 grid grid-cols-2 border-l border-t border-[#0b2a5b]/60 sm:grid-cols-3">
+            {figure.tiles.map((tile) => (
+              <div key={tile} className="flex min-h-[5.5rem] flex-col justify-between gap-2 border-b border-r border-[#0b2a5b]/60 px-3 py-2.5">
+                <dt className="text-[0.8125rem] leading-snug text-[#3c5277]">{tile}</dt>
+                <dd className="mk-mono text-[1.375rem] font-medium leading-none">{figure.blank}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      );
   }
 }
 
+/** The In development tag: a square, outlined mono label beside a feature that is in the code on main but not yet working for the shops. */
+export function InDevelopmentTag({ label, className = "" }: { label: string; className?: string }) {
+  return <span className={`mk-tag ${className}`}>{label}</span>;
+}
+
 /**
- * One feature's figure. A real screenshot when `shot` is set, labelled Screenshot; until then the drawn layout, labelled Illustration.
+ * One feature's figure. A real screenshot when `shot` is set, labelled Example data; until then the drawn layout, labelled Illustration.
  * Either way the frame and caption are the same, so screenshots drop in without changing the row.
  */
 export function FeatureFigure({ figure, shot }: { figure: Figure; shot: FeatureShot }) {
@@ -117,25 +137,25 @@ export function FeatureFigure({ figure, shot }: { figure: Figure; shot: FeatureS
       {shot ? <Image src={shot.src} alt={shot.alt} width={shot.width} height={shot.height} sizes="(min-width: 1024px) 640px, 100vw" className="h-auto w-full" /> : <Drawing figure={figure} />}
       <figcaption className="flex items-baseline justify-between gap-3 border-t border-[#0b2a5b] px-[var(--mk-box)] py-3 text-sm text-[#3c5277]">
         <span>{figure.caption}</span>
-        <span className="mk-label shrink-0 text-[#0b2a5b]">{shot ? SCREENSHOT_LABEL : ILLUSTRATION_LABEL}</span>
+        <span className="mk-label shrink-0 text-[#0b2a5b]">{shot ? EXAMPLE_DATA_LABEL : ILLUSTRATION_LABEL}</span>
       </figcaption>
     </figure>
   );
 }
 
 /**
- * A real screenshot of the app in a sheet frame: a title strip with the screen's name and the Screenshot label, then the image.
+ * A real screenshot of the app in a sheet frame: a title strip with the screen's name and the Example data label, then the image.
  * The image is a plain link to the full-size file, so on a phone a tap opens it at a legible size.
  */
-export function ScreenFigure({ shot }: { shot: { title: string; src: string; alt: string; width: number; height: number } }) {
+export function ScreenFigure({ shot, sizes = "(min-width: 1240px) 560px, (min-width: 1024px) 46vw, calc(100vw - 2rem)" }: { shot: { title: string; src: string; alt: string; width: number; height: number }; sizes?: string }) {
   return (
     <figure className="flex flex-col border border-[#0b2a5b] bg-white">
       <figcaption className="flex min-h-12 items-baseline justify-between gap-3 border-b border-[#0b2a5b] px-[var(--mk-box)] py-3">
         <span className="mk-display text-[1.375rem] uppercase">{shot.title}</span>
-        <span className="mk-label shrink-0 text-[#0b2a5b]">{SCREENSHOT_LABEL}</span>
+        <span className="mk-label shrink-0 text-[#0b2a5b]">{EXAMPLE_DATA_LABEL}</span>
       </figcaption>
       <a href={shot.src} className="block cursor-zoom-in focus-visible:outline-offset-[-3px]">
-        <Image src={shot.src} alt={shot.alt} width={shot.width} height={shot.height} sizes="(min-width: 1240px) 560px, (min-width: 1024px) 46vw, calc(100vw - 2rem)" className="h-auto w-full" />
+        <Image src={shot.src} alt={shot.alt} width={shot.width} height={shot.height} sizes={sizes} className="h-auto w-full" />
       </a>
     </figure>
   );
