@@ -11,6 +11,10 @@
  * with its audit trail, the go-live gate reading with 153 absent, re-apply and verify (all in rolled-back transactions); reading rules;
  * verify (roles, fresh code, batches, stale, all or nothing, events); manual link; name override; unlink; ON DELETE RESTRICT and the
  * guard; retire; the audit chain; the portal switch (status, on / off, the switch-on race, its guard and row audit).
+ * Fixes of 12 Nov 2026 (PM rulings d, e and the live guard proof): the platform owner's company offboarding (who, second step, fresh code,
+ * read-only support refused, every link and the switch row removed with one event and a row audit each, nothing else touched); the
+ * rollback refuses while any release 154 object exists and after any offboarding; the verify file's release-order row; and the 17 guards'
+ * full definitions and the triggers that run them, read from this database's catalogue, identical at 152 and with 153 installed.
  * Must not change: this file proves; it never edits a release, verify or guard file to make itself pass.
  */
 import { randomBytes, randomUUID } from "node:crypto";
@@ -112,7 +116,10 @@ function body(file: string) {
   return s.replace(/^BEGIN;$/m, "").replace(/^COMMIT;$/m, "");
 }
 const verifyRows = async (db?: PoolClient) => ((db ? await db.query(read(VERIFY)) : { rows: await q(read(VERIFY)) }).rows) as { check_name: string; ok: boolean }[];
-const guardRows = async (db?: PoolClient) => ((db ? await db.query(read(GUARDS)) : { rows: await q(read(GUARDS)) }).rows) as { check_name: string; actual_md5: string; ok: boolean }[];
+type GuardRow = { check_name: string; actual_md5: string; definition_md5: string; triggers: number; triggers_md5: string; ok: boolean };
+const guardRows = async (db?: PoolClient) => ((db ? await db.query(read(GUARDS)) : { rows: await q(read(GUARDS)) }).rows) as GuardRow[];
+/** The live-catalogue part of the guard rows (definition and triggers), for before / after comparison. */
+const guardLive = (rows: GuardRow[]) => rows.map(({ check_name, definition_md5, triggers, triggers_md5 }) => ({ check_name, definition_md5, triggers, triggers_md5 }));
 const preflightRows = async (db?: PoolClient) => ((db ? await db.query(read(PREFLIGHT)) : { rows: await q(read(PREFLIGHT)) }).rows) as { check: string; value: string }[];
 const gate1a = (rows: Row[]) => decide({ preflight: { status: "ok", rows } }).checks.find((c: { id: string }) => c.id === "1a") as { pass: boolean; detail: string };
 async function events(org: string, action: string) {
@@ -206,19 +213,23 @@ describe("release 153 document customer links", () => {
   it("installed: marker applied, every verify row true, the 17 guard fingerprints read true, and nothing person-made exists yet", async () => {
     expect((await preflightRows()).find((r) => r.check === MARKER)?.value).toBe("applied");
     const v = await verifyRows();
-    expect(v).toHaveLength(16);
+    expect(v).toHaveLength(17);
     expect(v.filter((r) => r.ok !== true).map((r) => r.check_name)).toEqual([]);
     const g = await guardRows();
     expect(g).toHaveLength(17);
     expect(g.filter((r) => r.ok !== true).map((r) => `${r.check_name} ${r.actual_md5}`)).toEqual([]);
-    // The 17 actual md5s, read from this database (inventory section 6 step 1: paste into the A1 PR).
-    console.info(`153 guard fingerprints on the local stack:\n${g.map((r) => `${r.actual_md5}  ${r.check_name}`).join("\n")}`);
+    // Live catalogue: every guard has a definition and runs from at least one trigger outside 153's own tables.
+    expect(g.filter((r) => r.definition_md5 === "missing" || r.triggers < 1 || r.triggers_md5 === "none").map((r) => r.check_name)).toEqual([]);
+    // The 17 actual md5s, read from this database (inventory section 6 step 1: paste into the A1 PR), with the definition and trigger md5s.
+    console.info(`153 guard fingerprints on the local stack (body md5, definition md5, triggers, triggers md5):\n${g.map((r) =>
+      `${r.actual_md5}  ${r.definition_md5}  ${r.triggers}  ${r.triggers_md5}  ${r.check_name}`).join("\n")}`);
     // The release-time state still holds database-wide (the rollback proofs below rely on it): backfill rows only, no switch row, no retire.
-    const [s] = await q<{ person: number; switches: number; retired: number }>(`select
+    const [s] = await q<{ person: number; switches: number; retired: number; offboarded: number }>(`select
       (select count(*) from document_customer_links where source <> 'backfill' or verified_at is not null or unlinked_at is not null)::int as person,
       (select count(*) from customer_portal_switch)::int as switches,
-      (select count(*) from security_audit.audit_log where action = 'DOCUMENT_CUSTOMER_LINKS_RETIRED')::int as retired`);
-    expect(s).toEqual({ person: 0, switches: 0, retired: 0 });
+      (select count(*) from security_audit.audit_log where action = 'DOCUMENT_CUSTOMER_LINKS_RETIRED')::int as retired,
+      (select count(*) from security_audit.audit_log where action = 'CUSTOMER_PORTAL_OFFBOARDED')::int as offboarded`);
+    expect(s).toEqual({ person: 0, switches: 0, retired: 0, offboarded: 0 });
     gateWith153 = gate1a(await preflightRows());
   });
 
@@ -250,7 +261,7 @@ describe("release 153 document customer links", () => {
     D.l1 = await linkOf(D.j1); D.l2 = await linkOf(D.j2); D.lq1 = await linkOf(D.q1); D.lq2 = await linkOf(D.q2); D.lB = await linkOf(D.jB);
   });
 
-  it("rollback refuses each unsafe state on its own (nothing changed): person link, override, verified, unlinked, a switch row, a retire, a dependent", async () => {
+  it("rollback refuses each unsafe state on its own (nothing changed): person link, override, verified, unlinked, a switch row, a retire, an offboarding, a dependent, any 154 object", async () => {
     const rb = body(ROLLBACK);
     const refused = (setup: (db: PoolClient) => Promise<unknown>) => rolledBack(async (db) => {
       await setup(db);
@@ -272,6 +283,21 @@ describe("release 153 document customer links", () => {
     })).toMatch(/153 rollback: a company has used the customer portal switch/);
     expect(await refused((db) => db.query("select security_audit.log_named_event($1, 'DOCUMENT_CUSTOMER_LINKS_RETIRED', 'document_customer_links', $1::text, '{}'::jsonb)", [orgA])))
       .toMatch(/153 rollback: an admin has retired document links/);
+    expect(await refused((db) => db.query("select security_audit.log_named_event($1, 'CUSTOMER_PORTAL_OFFBOARDED', 'document_customer_links', $1::text, '{}'::jsonb)", [orgA])))
+      .toMatch(/153 rollback: the platform owner has offboarded/);
+    // PM ruling (e): 154 must be rolled back before 153. Each of the objects 154's own guard names, alone, refuses (and the verify row
+    // still reads true: 153 is whole).
+    const with154 = (setup: string) => refused(async (db) => {
+      await db.query(setup);
+      expect((await verifyRows(db)).filter((r) => r.ok !== true).map((r) => r.check_name)).toEqual([]);
+    });
+    expect(await with154("create function public.ai_helper_set_provider_key(text, text, text) returns integer language sql as $$ select 1 $$"))
+      .toMatch(/153 rollback: release 154 .* is installed and requires 153/);
+    expect(await with154("alter table public.ai_helper_secrets add column provider text")).toMatch(/153 rollback: release 154 .* is installed and requires 153/);
+    expect(await with154("alter table public.ai_helper_tolra_control add constraint ai_helper_tolra_control_deactivated_154 check (not enabled) not valid"))
+      .toMatch(/153 rollback: release 154 .* is installed and requires 153/);
+    expect(await with154("alter table public.ai_helper_tolra_companies add constraint ai_helper_tolra_companies_deactivated_154 check (not enabled) not valid"))
+      .toMatch(/153 rollback: release 154 .* is installed and requires 153/);
     expect(await refused((db) => db.query("create function public.p153_test_dependent() returns bigint language sql as $$ select count(*) from public.document_customer_links $$")))
       .toMatch(/153 rollback: something outside 153 depends/);
     expect(await q("select 1 from document_customer_links where organization_id = $1", [orgA])).toHaveLength(4);
@@ -280,6 +306,7 @@ describe("release 153 document customer links", () => {
   it("rollback with only backfill rows: audited removal, every 153 object gone, the gate reads 153 as portal-only, guards true at 152; re-apply verifies (rolled back)", async () => {
     const before = (await q<{ id: string }>("select id::text from document_customer_links where organization_id = $1 order by id", [orgA])).map((r) => r.id);
     await rolledBack(async (db) => {
+      const live153 = guardLive(await guardRows(db));
       await db.query(body(ROLLBACK));
       const gone = (await db.query(`select to_regclass('public.document_customer_links') as a, to_regclass('public.document_customer_links_verified') as b,
         to_regclass('public.customer_portal_switch') as c, (select count(*)::int from pg_proc where pronamespace = 'public'::regnamespace
@@ -302,15 +329,18 @@ describe("release 153 document customer links", () => {
       expect(plain.pass).toBe(false);
       expect(plain.detail).toMatch(/post-144 marker 153/);
 
-      // Section 6 step 1: the 17 guards at 152.
+      // Section 6 step 1: the 17 guards at 152. Live catalogue: each guard's full definition (with owner and grants) and every trigger that
+      // runs it are identical at 152 and with 153 installed.
       const g = await guardRows(db);
       expect(g.filter((r) => r.ok !== true).map((r) => r.check_name)).toEqual([]);
+      expect(guardLive(g)).toEqual(live153);
 
       // Re-apply: the release's own guard, fingerprint and self-check pass; verify all true; release-time state.
       await db.query(body(RELEASE));
       expect((await preflightRows(db)).find((r) => r.check === MARKER)?.value).toBe("applied");
       const v = await verifyRows(db);
       expect(v.filter((r) => r.ok !== true).map((r) => r.check_name)).toEqual([]);
+      expect(guardLive(await guardRows(db))).toEqual(live153);
       const st = (await db.query(`select
         (select count(*) from document_customer_links where source <> 'backfill' or verified_at is not null or unlinked_at is not null)::int as person,
         (select count(*) from document_customer_links_verified)::int as shown, (select count(*) from customer_portal_switch)::int as switches,
@@ -536,6 +566,57 @@ describe("release 153 document customer links", () => {
     expect((await readAs<Row>(as(P.office), "select * from customer_portal_switch"))).toEqual([]);
 
     // Every verify row stays true after people linked, verified, unlinked, retired and switched.
+    expect((await verifyRows()).filter((r) => r.ok !== true).map((r) => r.check_name)).toEqual([]);
+  });
+  it("offboarding (PM ruling d): platform owner only, second step, fresh code, never read-only support; every link and the switch row of one company removed, one event, a row audit each; nothing else touched", async () => {
+    const off = (who: Who, org: string, reason = "company offboarded at its request") =>
+      call(who, "public.platform_offboard_document_customer_links($1::uuid, $2)", [org, reason]);
+    const owner = (mfa: Mfa = "fresh", extra: Record<string, unknown> = {}) => ({ claims: claims(support, mfa, extra) });
+    expect(await off(as(P.admin), orgA)).toMatchObject({ code: "42501", hint: "platform_required" });
+    expect(await off(anon, orgA)).toMatchObject({ code: "42501" });
+    expect(await off(owner("none"), orgA)).toMatchObject({ code: "42501", hint: "mfa_required" });
+    expect(await off(owner("stale"), orgA)).toMatchObject({ code: "42501", hint: "mfa_recent_required" });
+    expect(await off(owner("fresh", { session_id: supportSession }), orgA)).toMatchObject({ code: "42501", hint: "support_read_only" });
+    expect(await off(owner(), randomUUID())).toMatchObject({ hint: "company_not_found" });
+    expect(await off(owner(), orgA, "")).toMatchObject({ hint: "reason_required" });
+    expect(await events(orgA, "CUSTOMER_PORTAL_OFFBOARDED")).toHaveLength(0);
+
+    const linksA = (await q<{ id: string }>("select id::text from document_customer_links where organization_id = $1 order by id", [orgA])).map((r) => r.id);
+    const [sw] = await q<{ id: string }>("select id::text from customer_portal_switch where organization_id = $1", [orgA]);
+    expect(linksA.length).toBeGreaterThan(0);
+    expect(sw).toBeTruthy();
+    const linksB = (await q<{ id: string }>("select id::text from document_customer_links where organization_id = $1 order by id", [orgB])).map((r) => r.id);
+    const kept = async () => (await q<{ jobs: number; quotes: number; customers: number; audit: number }>(`select
+      (select count(*) from jobs where organization_id = $1)::int as jobs, (select count(*) from quotes where organization_id = $1)::int as quotes,
+      (select count(*) from customers where organization_id = $1)::int as customers,
+      (select count(*) from security_audit.audit_log where organization_id = $1)::int as audit`, [orgA]))[0];
+    const was = await kept();
+    // The flags are the only way in, and only for the company they name: a flag naming company B removes nothing of company A, the owner too.
+    const flagged = (setting: string, sql: string) => rolledBack(async (db) => {
+      await db.query("select set_config($1, 'offboard:' || $2::text, true)", [setting, orgB]);
+      return db.query(sql, [orgA]).then(() => "ok", (e: { code?: string; hint?: string }) => `${e.code}/${e.hint}`);
+    });
+    expect(await flagged("tolra.document_customer_link_removal", "delete from document_customer_links where organization_id = $1")).toBe("42501/link_immutable");
+    expect(await flagged("tolra.customer_portal_switch_write", "delete from customer_portal_switch where organization_id = $1")).toBe("42501/switch_immutable");
+
+    expect((await off(owner(), orgA)).data).toEqual({ removed_links: linksA.length, removed_switch: true, organization_id: orgA });
+    const ev = await events(orgA, "CUSTOMER_PORTAL_OFFBOARDED");
+    expect(ev).toHaveLength(1);
+    expect(ev[0].actor_user_id).toBe(support);
+    expect(((ev[0].metadata.rows as Row[]).map((r) => String(r.id))).sort()).toEqual(linksA);
+    expect(ev[0].metadata).toMatchObject({ count: linksA.length, reason: "company offboarded at its request", actor: support, switch: { id: sw.id, organization_id: orgA } });
+    expect(await rowAudits(orgA, "document_customer_links", "DELETE", linksA)).toBe(linksA.length);
+    expect(await rowAudits(orgA, "customer_portal_switch", "DELETE", [sw.id])).toBe(1);
+    // 153 holds nothing of company A any more, so it no longer stands in the way of removing the company; company B is untouched;
+    // no job, quote, customer or audit row of A was removed (the audit log only grew).
+    expect(await q("select 1 from document_customer_links where organization_id = $1 union all select 1 from customer_portal_switch where organization_id = $1", [orgA])).toHaveLength(0);
+    expect((await q<{ id: string }>("select id::text from document_customer_links where organization_id = $1 order by id", [orgB])).map((r) => r.id)).toEqual(linksB);
+    const now = await kept();
+    expect({ jobs: now.jobs, quotes: now.quotes, customers: now.customers }).toEqual({ jobs: was.jobs, quotes: was.quotes, customers: was.customers });
+    expect(now.audit).toBe(was.audit + linksA.length + 2); // a row-audit DELETE per link, one for the switch row, and the event
+    // Nothing left: refused, nothing written.
+    expect(await off(owner(), orgA)).toMatchObject({ hint: "nothing_to_offboard" });
+    expect(await events(orgA, "CUSTOMER_PORTAL_OFFBOARDED")).toHaveLength(1);
     expect((await verifyRows()).filter((r) => r.ok !== true).map((r) => r.check_name)).toEqual([]);
   });
 });

@@ -8,8 +8,23 @@
 --      compare that function's body on production with the reviewed one; only after review may its production md5 be added to the
 --      pins (as release_preflight already allows two reviewed values for some functions). Never edit a guard to make it match.
 -- Touches nothing; needs no 153 object (safe before and after 153).
+-- Live state, not source (PM, 12 Nov 2026): besides the pinned body md5 (ok), each row also reads from the catalogue the md5 of the
+-- function's full definition (pg_get_functiondef: language, SECURITY DEFINER, SET search_path, volatility and body) plus its owner and
+-- grants (definition_md5), and the number and md5 of the enabled state and pg_get_triggerdef of every user trigger that runs it
+-- (triggers, triggers_md5), leaving out triggers on 153's own two tables (153 adds three enforce_same_org_parent triggers there). Those
+-- three columns have no pinned value yet: the DB proof requires them identical at 152 and with 153 installed (153 changed no guard
+-- definition and no trigger that runs one), and prints them so a reviewed run can pin them. The last column must still be true on all 17.
 SELECT 'guard ' || e.sig || ' matches the reviewed body' AS check_name,
        coalesce(md5(regexp_replace(p.prosrc, '\s', '', 'g')), 'missing') AS actual_md5,
+       coalesce(md5(pg_get_functiondef(p.oid) || '|' || p.proowner::regrole::TEXT || '|' || coalesce(p.proacl::TEXT, '')), 'missing') AS definition_md5,
+       (SELECT count(*) FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
+        WHERE t.tgfoid = p.oid AND NOT t.tgisinternal
+          AND NOT (c.relnamespace = 'public'::regnamespace AND c.relname IN ('document_customer_links', 'customer_portal_switch')))::INT AS triggers,
+       coalesce((SELECT md5(string_agg(n.nspname || '.' || c.relname || '.' || t.tgname || ':' || t.tgenabled::TEXT || ':' || pg_get_triggerdef(t.oid), E'\n'
+                                       ORDER BY n.nspname, c.relname, t.tgname))
+                 FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid JOIN pg_namespace n ON n.oid = c.relnamespace
+                 WHERE t.tgfoid = p.oid AND NOT t.tgisinternal
+                   AND NOT (c.relnamespace = 'public'::regnamespace AND c.relname IN ('document_customer_links', 'customer_portal_switch'))), 'none') AS triggers_md5,
        coalesce(md5(regexp_replace(p.prosrc, '\s', '', 'g')) = e.body, false) AS ok
 FROM (VALUES
   (1, 'public.invoice_issue_lock()', 'aa8c9f3ae3035d0ed566723a28edd827'), (2, 'public.invoice_lines_issue_lock()', 'b3673253b58e588dfe8a58730155f6c2'),

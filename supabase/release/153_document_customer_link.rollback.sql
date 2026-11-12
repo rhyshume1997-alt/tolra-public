@@ -3,9 +3,14 @@
 -- security_audit.audit_log is append-only.
 -- REFUSES (nothing changed; the transaction is rolled back) whenever removal would lose a person's recorded decision or break something:
 --   * 153 is not installed (a second run);
+--   * release 154 (AI own-key providers, which requires 153) is installed: 154 must be rolled back BEFORE 153 (PM ruling (e), 12 Nov
+--     2026). Its objects, as 154's own one-time guard names them: column public.ai_helper_secrets.provider, function
+--     public.ai_helper_set_provider_key(text,text,text), constraints ai_helper_tolra_control_deactivated_154 and
+--     ai_helper_tolra_companies_deactivated_154. Any one of them present refuses;
 --   * any link was made by a person (manual or name_override), any link was verified, or any link was unlinked;
 --   * any company has a portal switch row (ON or OFF: each one is an admin's decision with a reason);
---   * any links were ever retired (a DOCUMENT_CUSTOMER_LINKS_RETIRED event exists): re-applying 153 would backfill those documents again;
+--   * any links were ever retired or any company offboarded (a DOCUMENT_CUSTOMER_LINKS_RETIRED or CUSTOMER_PORTAL_OFFBOARDED event exists):
+--     re-applying 153 would backfill those documents again;
 --   * anything outside 153 depends on its tables, view or functions (a later release such as the portal: roll that back first).
 -- Otherwise (only unverified, live backfill rows exist, which nothing has ever shown): it first writes one DOCUMENT_CUSTOMER_LINK_ROLLBACK
 -- event per company with the count and the ids it removes, then removes those rows one by one through the guard (each removal is its
@@ -23,6 +28,11 @@ BEGIN
   IF to_regclass('public.document_customer_links') IS NULL THEN
     RAISE EXCEPTION '153 rollback: release 153 is not installed';
   END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ai_helper_secrets' AND column_name = 'provider')
+     OR to_regprocedure('public.ai_helper_set_provider_key(text,text,text)') IS NOT NULL
+     OR EXISTS (SELECT 1 FROM pg_constraint WHERE conname IN ('ai_helper_tolra_control_deactivated_154', 'ai_helper_tolra_companies_deactivated_154')) THEN
+    RAISE EXCEPTION '153 rollback: release 154 (AI own-key providers) is installed and requires 153. Nothing was changed. Roll back 154 first.';
+  END IF;
   IF EXISTS (SELECT 1 FROM public.document_customer_links WHERE source <> 'backfill' OR verified_at IS NOT NULL OR unlinked_at IS NOT NULL) THEN
     RAISE EXCEPTION '153 rollback: a person has linked, verified or unlinked documents; removing the table would lose those recorded decisions. Nothing was changed. Keep 153.';
   END IF;
@@ -31,6 +41,9 @@ BEGIN
   END IF;
   IF EXISTS (SELECT 1 FROM security_audit.audit_log a WHERE a.action = 'DOCUMENT_CUSTOMER_LINKS_RETIRED') THEN
     RAISE EXCEPTION '153 rollback: an admin has retired document links; re-applying 153 would link those documents again. Nothing was changed. Keep 153.';
+  END IF;
+  IF EXISTS (SELECT 1 FROM security_audit.audit_log a WHERE a.action = 'CUSTOMER_PORTAL_OFFBOARDED') THEN
+    RAISE EXCEPTION '153 rollback: the platform owner has offboarded a company''s document links; re-applying 153 would link its documents again. Nothing was changed. Keep 153.';
   END IF;
   IF EXISTS (SELECT 1 FROM pg_depend d
              WHERE d.refobjid IN (to_regclass('public.document_customer_links'), to_regclass('public.document_customer_links_verified'),
@@ -44,7 +57,7 @@ BEGIN
                        '_document_customer_link_actor', '_document_customer_link_reason', '_document_customer_link_backfill', 'link_document_customer',
                        'link_document_customer_name_override', 'verify_document_customer_links', 'unlink_document_customer',
                        'retire_document_customer_links', 'customer_portal_status', 'customer_portal_set_enabled',
-                       'customer_portal_switch_guard', 'customer_portal_switch_no_truncate'))) THEN
+                       'customer_portal_switch_guard', 'customer_portal_switch_no_truncate', 'platform_offboard_document_customer_links'))) THEN
     RAISE EXCEPTION '153 rollback: something outside 153 depends on its tables, view or functions (a later release). Nothing was changed. Roll that back first, or keep 153.';
   END IF;
   FOR o IN SELECT l.organization_id, count(*) AS n, jsonb_agg(l.id ORDER BY l.id) AS ids FROM public.document_customer_links l GROUP BY l.organization_id ORDER BY l.organization_id LOOP
@@ -56,6 +69,7 @@ BEGIN
   PERFORM set_config('tolra.document_customer_link_removal', '', TRUE);
 END
 $rollback_guard$;
+DROP FUNCTION public.platform_offboard_document_customer_links(UUID, TEXT);
 DROP FUNCTION public.customer_portal_set_enabled(BOOLEAN, TEXT);
 DROP FUNCTION public.customer_portal_status();
 DROP FUNCTION public.retire_document_customer_links(TEXT, UUID, TEXT);

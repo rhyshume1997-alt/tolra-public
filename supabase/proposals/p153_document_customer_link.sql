@@ -21,13 +21,15 @@
 --     customer references are ON DELETE RESTRICT: a document or customer with link history is not deleted until an admin retires its
 --     links (retire_document_customer_links: reason, fresh code, full snapshot in the audit trail first). RLS: admin and office read
 --     the rows of documents in sections they can see; no API role writes. A guard allows only the one-time verify stamp, the one-time
---     unlink stamp, and removal through retire or the rollback. Every row change is a security_audit.audit_log row.
+--     unlink stamp, and removal through retire, the company offboarding or the rollback. Every row change is a security_audit.audit_log row.
 --   * public.document_customer_links_verified (security_invoker view): what may be shown. Live, VERIFIED, and neither the document's
 --     customer text nor the customer's name has changed since the link was made; never an internal job. Seven columns, no money.
 --   * public.customer_portal_switch: the company's portal switch. No row = OFF; written only by customer_portal_set_enabled (admin); a
---     guard refuses every other write, any DELETE and TRUNCATE; every change is a security_audit.audit_log row.
+--     guard refuses every other write, any DELETE other than the company offboarding's, and TRUNCATE; every change is a
+--     security_audit.audit_log row.
 --   * Functions (signed-in only): link_document_customer, link_document_customer_name_override, verify_document_customer_links,
---     unlink_document_customer, retire_document_customer_links, customer_portal_status, customer_portal_set_enabled.
+--     unlink_document_customer, retire_document_customer_links, customer_portal_status, customer_portal_set_enabled, and the platform
+--     owner's platform_offboard_document_customer_links (PM ruling (d), 12 Nov 2026: no permanent company-delete block).
 --     Internal (no API role): _document_customer_link_actor, _document_customer_link_reason, _document_customer_link_backfill and the
 --     two trigger functions.
 --   * The backfill, once per company: a job (not internal) or quote is linked, UNVERIFIED, only when its customer text matches exactly
@@ -39,12 +41,15 @@
 --   deleting a job, quote or customer that has link rows is REFUSED (23503) until its links are retired. New jobs and quotes get no
 --   link here; reliable assignment at creation is a later release with the Jobs, Quotes and Customers app changes.
 -- RETENTION: link rows live as long as their document; they leave only through retire (with a reason, before the document or customer
---   is deleted under its own retention rule) or this release's rollback (unverified backfill rows only). Audit rows are never deleted
+--   is deleted under its own retention rule), the company offboarding (platform owner, with a reason: every link row and the switch row
+--   of one company, so 153 never blocks that company's removal) or this release's rollback (unverified backfill rows only). The
+--   offboarding never deletes the company, a document, a customer or an audit row. Audit rows are never deleted
 --   or changed by anything here; they follow the audit trail's own retention (full detail 6 years, then personal fields anonymised by
 --   the checkpoint method, which keeps the hash chain verifiable). Reasons are free text: the screens ask for no personal data in them,
 --   and link_reason, verify_reason and unlink_reason join the anonymiser's key list when that is built, with the customer names:
 --   document_customer_text and customer_name_at_link (row audits), the override event's document_customer_text and customer_name, the
---   retire event's nested rows[] (each holds both names and the three reasons), and the switch's reason (row audit and event).
+--   retire and offboarding events' nested rows[] (each holds both names and the three reasons), and the switch's reason (row audit,
+--   event and the offboarding event's switch snapshot).
 -- =====================================================================================================
 BEGIN;
 -- ---- 1. The link table: jobs and quotes only ----------------------------------------------------------------------------------------
@@ -126,8 +131,9 @@ CREATE TRIGGER zz_same_org_customer_id BEFORE INSERT OR UPDATE ON public.documen
 --     stored texts are exactly the document's customer text and the customer's name now (the names rule is the CHECK above).
 --   UPDATE: exactly one of the one-time verify stamp (only while live, and only while neither text has changed since the link:
 --     otherwise link_stale) or the one-time unlink stamp; every other column unchanged.
---   DELETE: only inside retire_document_customer_links for that document or customer, or inside 153's rollback for an unverified,
---     live backfill row (each sets the transaction-local tolra.document_customer_link_removal). Anything else is refused, the owner too.
+--   DELETE: only inside retire_document_customer_links for that document or customer, inside platform_offboard_document_customer_links
+--     for that company, or inside 153's rollback for an unverified, live backfill row (each sets the transaction-local
+--     tolra.document_customer_link_removal). Anything else is refused, the owner too.
 CREATE FUNCTION public.document_customer_links_guard()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -196,7 +202,8 @@ BEGIN
   IF v_removal = 'rollback' AND OLD.source = 'backfill' AND OLD.verified_at IS NULL AND OLD.unlinked_at IS NULL THEN
     RETURN OLD;
   END IF;
-  IF v_removal <> '' AND v_removal IN ('retire:job:' || OLD.job_id::TEXT, 'retire:quote:' || OLD.quote_id::TEXT, 'retire:customer:' || OLD.customer_id::TEXT) THEN
+  IF v_removal <> '' AND v_removal IN ('retire:job:' || OLD.job_id::TEXT, 'retire:quote:' || OLD.quote_id::TEXT, 'retire:customer:' || OLD.customer_id::TEXT,
+                                       'offboard:' || OLD.organization_id::TEXT) THEN
     RETURN OLD;
   END IF;
   RAISE EXCEPTION 'A document link is a record: it leaves only when an admin retires the links of its document or customer (with a reason).' USING ERRCODE = '42501', HINT = 'link_immutable';
@@ -265,15 +272,19 @@ REVOKE ALL ON public.customer_portal_switch FROM PUBLIC, anon, authenticated, se
 GRANT SELECT ON public.customer_portal_switch TO authenticated;
 
 -- Only customer_portal_set_enabled writes the switch: it sets the transaction-local tolra.customer_portal_switch_write to its own company
--- first. Any other INSERT or UPDATE is refused, the owner too; a switch row is never deleted or emptied by anything in 153 (each row is an
--- admin's decision with a reason; 153's rollback refuses while any exists). Every change is also a security_audit.audit_log row (the
--- id column exists for security_audit.log_row_change, which records each row by id).
+-- first. Any other INSERT or UPDATE is refused, the owner too. A switch row is never emptied, and is deleted only by the platform owner's
+-- company offboarding (platform_offboard_document_customer_links sets the same flag to 'offboard:' and that company; its event keeps the
+-- row). Each row is an admin's decision with a reason; 153's rollback refuses while any exists or after any offboarding. Every change is
+-- also a security_audit.audit_log row (the id column exists for security_audit.log_row_change, which records each row by id).
 CREATE FUNCTION public.customer_portal_switch_guard()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SET search_path = pg_catalog, public
 AS $$
 BEGIN
+  IF TG_OP = 'DELETE' AND coalesce(current_setting('tolra.customer_portal_switch_write', TRUE), '') = 'offboard:' || OLD.organization_id::TEXT THEN
+    RETURN OLD;
+  END IF;
   IF TG_OP IN ('INSERT', 'UPDATE') THEN
     IF NEW.organization_id::TEXT = coalesce(current_setting('tolra.customer_portal_switch_write', TRUE), '') THEN
       IF TG_OP = 'INSERT' THEN
@@ -284,7 +295,7 @@ BEGIN
       END IF;
     END IF;
   END IF;
-  RAISE EXCEPTION 'The customer portal switch changes only through its own setting (admin, fresh code, reason), and is never removed.'
+  RAISE EXCEPTION 'The customer portal switch changes only through its own setting (admin, fresh code, reason), and is removed only by the platform offboarding.'
     USING ERRCODE = '42501', HINT = 'switch_immutable';
 END
 $$;
@@ -667,6 +678,74 @@ REVOKE ALL ON FUNCTION public.link_document_customer(TEXT, UUID, UUID, TEXT), pu
 GRANT EXECUTE ON FUNCTION public.link_document_customer(TEXT, UUID, UUID, TEXT), public.link_document_customer_name_override(TEXT, UUID, UUID, TEXT, BOOLEAN),
   public.verify_document_customer_links(UUID[], TEXT), public.unlink_document_customer(TEXT, UUID, TEXT), public.retire_document_customer_links(TEXT, UUID, TEXT),
   public.customer_portal_status(), public.customer_portal_set_enabled(BOOLEAN, TEXT) TO authenticated;
+
+-- ---- 10a. Company offboarding (PLATFORM OWNER only; second step; fresh code; reason): PM ruling (d), 12 Nov 2026 --------------------------
+-- 153 must not block a company's removal for ever. This removes, for ONE company, every document link row (live, verified, unlinked or
+-- backfill; each removal is its own row-audit DELETE) and its portal switch row (a row-audit DELETE too), and in the same transaction
+-- writes one CUSTOMER_PORTAL_OFFBOARDED event in that company's own audit chain holding exactly the removed rows, taken from the DELETEs
+-- themselves (DELETE ... RETURNING, as retire). Nothing references a link or switch row, so nothing is orphaned. It does NOT delete the
+-- company, a document, a customer or any audit row, and changes nothing else: deleting the company stays outside 153 under its own rules
+-- (security_audit.audit_log's reference to organizations, 000, still keeps a company with audit history; audit evidence never cascades).
+-- Who: the platform owner pattern of 036 / 039 / 107 (is_platform_admin, then assert_platform_aal: aal2 always), never a read-only support
+-- session, plus an authenticator code from the last 15 minutes (the fresh-code test of _document_customer_link_actor, 136, 149) because it
+-- removes admins' recorded decisions. Both tables are locked (SHARE ROW EXCLUSIVE, as the rollback locks before its checks) so no link,
+-- verify, unlink, retire or switch can commit between the removal and the event. Refused (nothing written) when the company has nothing
+-- to remove. After any offboarding the 153 rollback refuses (re-applying 153 would backfill that company again).
+CREATE FUNCTION public.platform_offboard_document_customer_links(p_org UUID, p_reason TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, security_audit
+AS $$
+DECLARE
+  v_uid    UUID := auth.uid();
+  v_now    NUMERIC := extract(epoch FROM now());
+  v_reason TEXT;
+  v_links  JSONB;
+  v_n      INT;
+  v_switch JSONB;
+BEGIN
+  IF v_uid IS NULL OR NOT public.is_platform_admin() THEN
+    RAISE EXCEPTION 'Platform access only' USING ERRCODE = '42501', HINT = 'platform_required';
+  END IF;
+  PERFORM public.assert_platform_aal();
+  IF public.session_read_only() THEN
+    RAISE EXCEPTION 'Support access is read-only. Ask for write access first.' USING ERRCODE = '42501', HINT = 'support_read_only';
+  END IF;
+  IF NOT EXISTS (
+       SELECT 1 FROM jsonb_array_elements(CASE WHEN jsonb_typeof(auth.jwt() -> 'amr') = 'array' THEN auth.jwt() -> 'amr' ELSE '[]'::JSONB END) AS e
+       WHERE e ->> 'method' IN ('totp', 'mfa/totp')
+         AND CASE WHEN jsonb_typeof(e -> 'timestamp') = 'number' THEN (e ->> 'timestamp')::NUMERIC END BETWEEN v_now - 900 AND v_now + 60) THEN
+    RAISE EXCEPTION 'Enter a fresh code from your authenticator app first.' USING ERRCODE = '42501', HINT = 'mfa_recent_required';
+  END IF;
+  IF p_org IS NULL OR NOT EXISTS (SELECT 1 FROM public.organizations o WHERE o.id = p_org) THEN
+    RAISE EXCEPTION 'Company not found.' USING ERRCODE = 'P0002', HINT = 'company_not_found';
+  END IF;
+  v_reason := public._document_customer_link_reason(p_reason);
+  LOCK TABLE public.document_customer_links, public.customer_portal_switch IN SHARE ROW EXCLUSIVE MODE;
+  PERFORM set_config('tolra.document_customer_link_removal', 'offboard:' || p_org::TEXT, TRUE);
+  WITH gone AS (
+    DELETE FROM public.document_customer_links l WHERE l.organization_id = p_org RETURNING l.*
+  )
+  SELECT jsonb_agg(to_jsonb(g) ORDER BY g.linked_at, g.id), count(*) INTO v_links, v_n FROM gone g;
+  PERFORM set_config('tolra.document_customer_link_removal', '', TRUE);
+  PERFORM set_config('tolra.customer_portal_switch_write', 'offboard:' || p_org::TEXT, TRUE);
+  WITH gone AS (
+    DELETE FROM public.customer_portal_switch s WHERE s.organization_id = p_org RETURNING s.*
+  )
+  SELECT to_jsonb(g) INTO v_switch FROM gone g;
+  PERFORM set_config('tolra.customer_portal_switch_write', '', TRUE);
+  IF coalesce(v_n, 0) = 0 AND v_switch IS NULL THEN
+    RAISE EXCEPTION 'That company has no document links or portal switch to remove.' USING ERRCODE = 'P0002', HINT = 'nothing_to_offboard';
+  END IF;
+  PERFORM security_audit.log_named_event(p_org, 'CUSTOMER_PORTAL_OFFBOARDED', 'document_customer_links', p_org::TEXT,
+    jsonb_build_object('rows', coalesce(v_links, '[]'::JSONB), 'count', coalesce(v_n, 0), 'switch', v_switch, 'reason', v_reason, 'actor', v_uid));
+  RETURN jsonb_build_object('removed_links', coalesce(v_n, 0), 'removed_switch', v_switch IS NOT NULL, 'organization_id', p_org);
+END
+$$;
+REVOKE ALL ON FUNCTION public.platform_offboard_document_customer_links(UUID, TEXT) FROM PUBLIC, anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.platform_offboard_document_customer_links(UUID, TEXT) TO authenticated;
 
 -- ---- 11. Backfill (internal; the release runs it once per company). Every row it writes is UNVERIFIED and hidden. -----------------------
 -- A job (not internal) or quote with NO link row at all (live or unlinked: a person's unlink is never undone here) is linked when its

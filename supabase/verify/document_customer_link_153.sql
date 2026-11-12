@@ -2,10 +2,11 @@
 -- What it proves: the link table and the portal switch exist with row security, are readable (never writable) by signed-in users and
 -- nothing for anon or the service role; only jobs and quotes can be linked; the job, quote and customer references are ON DELETE RESTRICT
 -- (never cascade) and every link stays inside its company; at most one live link per document; the guard, same-company, audit and
--- no-truncate triggers are on; only the seven reviewed functions are callable (signed-in only, SECURITY DEFINER, pinned search_path); the
+-- no-truncate triggers are on; only the eight reviewed functions are callable (signed-in only, SECURITY DEFINER, pinned search_path); the
 -- private functions are callable by no API role; the verified view runs as its caller, shows seven columns, none of them money, and never
 -- shows an unverified link; every person-made link carries who and why and was verified when made; the portal is never on without an
--- admin and a reason; and every issued-document guard is still byte-for-byte the body 153 was reviewed against, on its tables, enabled.
+-- admin and a reason; every issued-document guard is still byte-for-byte the body 153 was reviewed against, on its tables, enabled; and
+-- the release order holds: release 154 (which requires 153) is never present without every 153 object (154 is rolled back before 153).
 -- Invariants only: each row stays true after people link, verify, unlink, retire or switch the portal (the release-time "all off",
 -- "only unverified backfill rows" and "nothing shown yet" checks are in the release's own self-check).
 SELECT 'tables: document_customer_links and customer_portal_switch exist with row security' AS check_name,
@@ -68,14 +69,15 @@ UNION ALL SELECT 'who and why: person-made links carry who and a reason and were
 UNION ALL SELECT 'names: a manual or backfill link names the customer the document names; a name override names a different one',
   NOT EXISTS (SELECT 1 FROM public.document_customer_links
               WHERE (source = 'name_override') = (lower(btrim(document_customer_text)) = lower(btrim(customer_name_at_link))))
-UNION ALL SELECT 'functions: only link, name-override link, verify, unlink, retire, portal status and portal switch are callable (signed-in only), all SECURITY DEFINER with a pinned search_path',
-  (SELECT count(*) = 7 FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace
+UNION ALL SELECT 'functions: only link, name-override link, verify, unlink, retire, portal status, portal switch and the platform offboarding are callable (signed-in only), all SECURITY DEFINER with a pinned search_path',
+  (SELECT count(*) = 8 FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace
      AND (p.proname LIKE '%document_customer%' OR p.proname LIKE 'customer_portal%') AND has_function_privilege('authenticated', p.oid, 'EXECUTE'))
-  AND (SELECT count(*) = 7 FROM pg_proc p WHERE p.prosecdef AND p.proconfig::TEXT LIKE '%search_path=pg_catalog, public%'
+  AND (SELECT count(*) = 8 FROM pg_proc p WHERE p.prosecdef AND p.proconfig::TEXT LIKE '%search_path=pg_catalog, public%'
        AND p.oid IN (to_regprocedure('public.link_document_customer(text,uuid,uuid,text)'), to_regprocedure('public.link_document_customer_name_override(text,uuid,uuid,text,boolean)'),
                      to_regprocedure('public.verify_document_customer_links(uuid[],text)'), to_regprocedure('public.unlink_document_customer(text,uuid,text)'),
                      to_regprocedure('public.retire_document_customer_links(text,uuid,text)'),
-                     to_regprocedure('public.customer_portal_status()'), to_regprocedure('public.customer_portal_set_enabled(boolean,text)')))
+                     to_regprocedure('public.customer_portal_status()'), to_regprocedure('public.customer_portal_set_enabled(boolean,text)'),
+                     to_regprocedure('public.platform_offboard_document_customer_links(uuid,text)')))
   AND NOT EXISTS (SELECT 1 FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND (p.proname LIKE '%document_customer%' OR p.proname LIKE 'customer_portal%')
                   AND (has_function_privilege('anon', p.oid, 'EXECUTE') OR has_function_privilege('service_role', p.oid, 'EXECUTE')))
 UNION ALL SELECT 'private: the backfill, the actor and reason checks and the four trigger functions are callable by no API role',
@@ -130,4 +132,13 @@ UNION ALL SELECT 'document tables untouched in shape: no column, user trigger or
   AND NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename IN ('jobs', 'quotes', 'invoices', 'credit_notes', 'customers')
                   AND (coalesce(qual, '') || coalesce(with_check, '')) LIKE '%document_customer%')
   AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name IN ('jobs', 'quotes', 'invoices', 'credit_notes', 'customers')
-                  AND (column_name LIKE '%document_customer%' OR column_name LIKE '%portal%'));
+                  AND (column_name LIKE '%document_customer%' OR column_name LIKE '%portal%'))
+UNION ALL SELECT 'release order: release 154 (which requires 153) is never present without every 153 object; 154 is rolled back before 153',
+  NOT (EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ai_helper_secrets' AND column_name = 'provider')
+       OR to_regprocedure('public.ai_helper_set_provider_key(text,text,text)') IS NOT NULL
+       OR EXISTS (SELECT 1 FROM pg_constraint WHERE conname IN ('ai_helper_tolra_control_deactivated_154', 'ai_helper_tolra_companies_deactivated_154')))
+  OR (to_regclass('public.document_customer_links') IS NOT NULL AND to_regclass('public.document_customer_links_verified') IS NOT NULL
+      AND to_regclass('public.customer_portal_switch') IS NOT NULL
+      AND to_regprocedure('public.link_document_customer(text,uuid,uuid,text)') IS NOT NULL
+      AND to_regprocedure('public.retire_document_customer_links(text,uuid,text)') IS NOT NULL
+      AND to_regprocedure('public.platform_offboard_document_customer_links(uuid,text)') IS NOT NULL);
