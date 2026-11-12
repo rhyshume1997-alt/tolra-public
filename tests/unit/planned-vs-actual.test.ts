@@ -43,6 +43,26 @@ describe("plannedVsActual", () => {
     expect(r.machinePlannedHours).toBe(2);
   });
 
+  it("unplanned machine time is in the total, on its own, and never in a planned machine's actual or variance (PM ruling 12 Nov)", () => {
+    const r = calc(entries(["m1", 2], ["m2", 4]), [run("m1", 0, 2), run("m2", 0, 4), run("m3", 0, 3), run(null, 0, 1)]);
+    const [mill, lathe, saw] = r.steps;
+    // Planned machines carry only their own runs: no unplanned hours in actual, variance or status.
+    expect(mill).toMatchObject({ label: "Mill", onPlan: true, plannedHours: 2, actualHours: 2, varianceHours: 0, status: "on_plan" });
+    expect(lathe).toMatchObject({ label: "Lathe", onPlan: true, plannedHours: 4, actualHours: 4, varianceHours: 0, status: "on_plan" });
+    // Its own line, with no plan, variance or over/under status.
+    expect(saw).toMatchObject({ label: "Saw (Not on plan)", onPlan: false, isBench: false, actualHours: 3, plannedHours: null, varianceHours: null, status: "no_plan" });
+    expect(r.unplannedActualHours).toBe(3);
+    // In the total actual (planned 6 + unplanned 3); bench stays separate as before.
+    expect(r.machineActualHours).toBe(9);
+    expect(r.machinePlannedHours).toBe(6);
+    expect(r.benchActualHours).toBe(1);
+    expect(r.steps.filter((s) => s.onPlan).reduce((sum, s) => sum + s.actualHours, 0)).toBe(6);
+  });
+
+  it("no unplanned machine time when every run is on a planned machine", () => {
+    expect(calc(entries(["m1", 2]), [run("m1", 0, 1), run(null, 0, 1)]).unplannedActualHours).toBe(0);
+  });
+
   it("bench runs make a Bench step with no plan, excluded from machine totals", () => {
     const r = calc(entries(["m1", 2]), [run("m1", 0, 2), run(null, 0, 3)]);
     const bench = r.steps[r.steps.length - 1];

@@ -4,6 +4,8 @@
  *
  * Inputs: the plan entries, the runs, the labour sessions, a machine-name lookup, whether the job is finished, and `now` (injected).
  * Outputs: steps, totals, bench and labour hours. Hours are rounded to 2 dp in the output only; sums are kept raw internally.
+ * Unplanned machine time (runs on a machine not on the job's plan) counts in the machine total, is reported on its own
+ * (unplannedActualHours, steps with onPlan false) and is never added to a planned machine's actual or variance (PM ruling 12 Nov).
  * Must not change: the named definitions below without Rhys/PM sign-off. Pure (no React, no I/O, no clock of its own).
  */
 import type { JobMachineEntry } from "@/lib/job-machine-plan";
@@ -14,6 +16,8 @@ export const OVER_PLAN_TOLERANCE = 0.1;
 export const BENCH_STEP_LABEL = "Bench";
 /** Suffix for a machine that has runs but is not on the job's plan. */
 export const NOT_ON_PLAN_SUFFIX = "Not on plan";
+/** Heading for the machines that have runs but are not on the job's plan. */
+export const UNPLANNED_LABEL = "Unplanned machine time";
 
 export type StepStatus = "not_started" | "over" | "under" | "on_plan" | "no_plan";
 export type RunRow = { machine_id: string | null; started_at: string; ended_at: string | null };
@@ -38,11 +42,15 @@ export type PlannedVsActual = {
   machinePlannedHours: number;
   machineActualHours: number;
   machineVarianceHours: number;
+  /** Run time on machines that are not on the job's plan. Included in machineActualHours; never in a planned machine's figures. */
+  unplannedActualHours: number;
   benchActualHours: number;
   /** People time (operator sessions, voided excluded). Has no plan. */
   labourActualHours: number;
   /** The injected `now` the figures were worked out at (ISO). The figures are a snapshot; open runs count to this instant. */
   calculatedAt: string;
+  /** True when a read hit its safety cap, so some rows may be missing: the panel must say so (never silent). */
+  truncated: boolean;
 };
 
 const HOUR_MS = 3_600_000;
@@ -79,8 +87,9 @@ export function plannedVsActual(input: {
   machineNames: ReadonlyMap<string, string>;
   jobFinished: boolean;
   now: Date;
+  truncated?: boolean;
 }): PlannedVsActual {
-  const { entries, runs, labour, machineNames, jobFinished, now } = input;
+  const { entries, runs, labour, machineNames, jobFinished, now, truncated = false } = input;
   const name = (id: string) => machineNames.get(id) || "Machine";
 
   // Raw run time per machine (null key = bench) and whether any run is still open. Runs carry no plan-row id, so actual can
@@ -116,6 +125,7 @@ export function plannedVsActual(input: {
   const steps: Step[] = [];
   let plannedSum = 0;
   let actualSum = 0;
+  let unplannedSum = 0;
   for (const [machineId, planned] of plannedBy) {
     steps.push(make(machineId, name(machineId), true, planned));
     plannedSum += planned;
@@ -123,8 +133,9 @@ export function plannedVsActual(input: {
   }
   for (const machineId of [...actualMs.keys()].filter((id): id is string => id !== null && !plannedBy.has(id))) {
     steps.push(make(machineId, `${name(machineId)} (${NOT_ON_PLAN_SUFFIX})`, false, null));
-    actualSum += actualMs.get(machineId) ?? 0;
+    unplannedSum += actualMs.get(machineId) ?? 0;
   }
+  actualSum += unplannedSum;
   const benchMs = actualMs.get(null) ?? 0;
   if (benchMs > 0) steps.push(make(null, BENCH_STEP_LABEL, false, null));
 
@@ -133,8 +144,10 @@ export function plannedVsActual(input: {
     machinePlannedHours: round2(plannedSum),
     machineActualHours: round2(actualSum / HOUR_MS),
     machineVarianceHours: round2(actualSum / HOUR_MS - plannedSum),
+    unplannedActualHours: round2(unplannedSum / HOUR_MS),
     benchActualHours: round2(benchMs / HOUR_MS),
     labourActualHours: labourHours(labour, now),
     calculatedAt: now.toISOString(),
+    truncated,
   };
 }
