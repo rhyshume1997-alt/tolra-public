@@ -15,6 +15,9 @@
  * read-only support refused, every link and the switch row removed with one event and a row audit each, nothing else touched); the
  * rollback refuses while any release 154 object exists and after any offboarding; the verify file's release-order row; and the 17 guards'
  * full definitions and the triggers that run them, read from this database's catalogue, identical at 152 and with 153 installed.
+ * PM merge condition of 12 Nov 2026: 153's own events name documents, customers and links by id, never by name (override, retire,
+ * offboarding); the audit readers: office, workshop, viewer, another company's admin and anon read none of 153's audit rows (table, view,
+ * Activity, a record's trail); the platform owner reads them only through a support session into the company.
  * Must not change: this file proves; it never edits a release, verify or guard file to make itself pass.
  */
 import { randomBytes, randomUUID } from "node:crypto";
@@ -281,9 +284,9 @@ describe("release 153 document customer links", () => {
       await db.query("select set_config('tolra.customer_portal_switch_write', $1, true)", [orgA]);
       await db.query("insert into customer_portal_switch (organization_id, enabled, changed_by, reason) values ($1, false, $2, 'r')", [orgA, P.admin]);
     })).toMatch(/153 rollback: a company has used the customer portal switch/);
-    expect(await refused((db) => db.query("select security_audit.log_named_event($1, 'DOCUMENT_CUSTOMER_LINKS_RETIRED', 'document_customer_links', $1::text, '{}'::jsonb)", [orgA])))
+    expect(await refused((db) => db.query("select security_audit.log_named_event($1::uuid, 'DOCUMENT_CUSTOMER_LINKS_RETIRED', 'document_customer_links', $1::uuid::text, '{}'::jsonb)", [orgA])))
       .toMatch(/153 rollback: an admin has retired document links/);
-    expect(await refused((db) => db.query("select security_audit.log_named_event($1, 'CUSTOMER_PORTAL_OFFBOARDED', 'document_customer_links', $1::text, '{}'::jsonb)", [orgA])))
+    expect(await refused((db) => db.query("select security_audit.log_named_event($1::uuid, 'CUSTOMER_PORTAL_OFFBOARDED', 'document_customer_links', $1::uuid::text, '{}'::jsonb)", [orgA])))
       .toMatch(/153 rollback: the platform owner has offboarded/);
     // PM ruling (e): 154 must be rolled back before 153. Each of the objects 154's own guard names, alone, refuses (and the verify row
     // still reads true: 153 is whole).
@@ -441,7 +444,15 @@ describe("release 153 document customer links", () => {
     D.lq4 = String(ok.data!.link_id);
     const ev = await events(orgA, "DOCUMENT_CUSTOMER_LINKED_NAME_OVERRIDE");
     expect(ev).toHaveLength(1);
-    expect(ev[0].metadata).toMatchObject({ document_customer_text: "Typo Acme", customer_name: "Override Target Ltd", identity_confirmed: true, actor: P.admin });
+    expect(ev[0].metadata).toMatchObject({ doc_kind: "quote", document_id: D.q4, customer_id: C.target, identity_confirmed: true, actor: P.admin });
+    // PM merge condition (12 Nov): the event names the document, customer and link by id, never by name; the name texts stay in the link
+    // row's own row-audit INSERT (the shared log_row_change records whole rows).
+    expect(ev[0].entity_id).toBe(D.lq4);
+    expect(ev[0].metadata).not.toHaveProperty("document_customer_text");
+    expect(ev[0].metadata).not.toHaveProperty("customer_name");
+    expect(JSON.stringify(ev[0].metadata)).not.toMatch(/Typo Acme|Override Target/);
+    const [ins] = await q<{ new_data: Row }>("select new_data from security_audit.audit_log where organization_id = $1 and entity_table = 'document_customer_links' and action = 'INSERT' and entity_id = $2", [orgA, D.lq4]);
+    expect(ins.new_data).toMatchObject({ document_customer_text: "Typo Acme", customer_name_at_link: "Override Target Ltd" });
     const shown = async () => (await readAs<{ id: string }>(as(P.admin), "select id::text from document_customer_links_verified where id = $1", [D.lq4])) as { id: string }[];
     expect(await shown()).toHaveLength(1);
     await q("update quotes set customer = 'Typo Acme Ltd' where id = $1", [D.q4]);
@@ -494,7 +505,12 @@ describe("release 153 document customer links", () => {
     expect(ev).toHaveLength(1);
     const rows = ev[0].metadata.rows as Row[];
     expect(rows.map((r) => r.id)).toEqual([D.l2]);
-    expect(rows[0]).toMatchObject({ document_customer_text: " acme ltd ", unlink_reason: "wrong customer", source: "backfill" });
+    expect(rows[0]).toMatchObject({ job_id: D.j2, customer_id: C.acme, unlink_reason: "wrong customer", source: "backfill" });
+    // Ids, stamps and reasons, not the name texts (PM merge condition, 12 Nov); the row's own row-audit DELETE keeps its full content.
+    expect(rows[0]).not.toHaveProperty("document_customer_text");
+    expect(rows[0]).not.toHaveProperty("customer_name_at_link");
+    const [del] = await q<{ old_data: Row }>("select old_data from security_audit.audit_log where organization_id = $1 and entity_table = 'document_customer_links' and action = 'DELETE' and entity_id = $2", [orgA, D.l2]);
+    expect(del.old_data).toMatchObject({ id: D.l2, document_customer_text: " acme ltd ", customer_name_at_link: "Acme Ltd" });
     expect(ev[0].metadata).toMatchObject({ count: 1, actor: P.admin });
     expect(await rowAudits(orgA, "document_customer_links", "DELETE", [D.l2])).toBe(1);
     expect(await q("select 1 from document_customer_links where id = $1", [D.l2])).toHaveLength(0);
@@ -604,6 +620,11 @@ describe("release 153 document customer links", () => {
     expect(ev).toHaveLength(1);
     expect(ev[0].actor_user_id).toBe(support);
     expect(((ev[0].metadata.rows as Row[]).map((r) => String(r.id))).sort()).toEqual(linksA);
+    // No name texts in the event (PM merge condition, 12 Nov): ids, stamps and reasons only.
+    for (const r of ev[0].metadata.rows as Row[]) {
+      expect(r).not.toHaveProperty("document_customer_text");
+      expect(r).not.toHaveProperty("customer_name_at_link");
+    }
     expect(ev[0].metadata).toMatchObject({ count: linksA.length, reason: "company offboarded at its request", actor: support, switch: { id: sw.id, organization_id: orgA } });
     expect(await rowAudits(orgA, "document_customer_links", "DELETE", linksA)).toBe(linksA.length);
     expect(await rowAudits(orgA, "customer_portal_switch", "DELETE", [sw.id])).toBe(1);
@@ -618,5 +639,61 @@ describe("release 153 document customer links", () => {
     expect(await off(owner(), orgA)).toMatchObject({ hint: "nothing_to_offboard" });
     expect(await events(orgA, "CUSTOMER_PORTAL_OFFBOARDED")).toHaveLength(1);
     expect((await verifyRows()).filter((r) => r.ok !== true).map((r) => r.check_name)).toEqual([]);
+  });
+
+  it("audit readers (PM merge condition, 12 Nov): office, workshop, viewer, another company's admin and anon read none of 153's audit rows; the platform owner reads them only through a support session; no 153 event names a customer", async () => {
+    // Company A's 153 audit rows (row audits of both tables and the named events), read as the owner.
+    const ids153 = (await q<{ id: string }>(`select id::text from security_audit.audit_log where organization_id = $1
+      and (entity_table in ('document_customer_links', 'customer_portal_switch') or action like 'DOCUMENT_CUSTOMER%' or action like 'CUSTOMER_PORTAL%')`, [orgA])).map((r) => r.id);
+    const offboarded = (await events(orgA, "CUSTOMER_PORTAL_OFFBOARDED"));
+    expect(offboarded).toHaveLength(1);
+    const [offId] = (await q<{ id: string }>("select id::text from security_audit.audit_log where organization_id = $1 and action = 'CUSTOMER_PORTAL_OFFBOARDED'", [orgA])).map((r) => r.id);
+    for (const t of ["document_customer_links", "customer_portal_switch"]) expect(await rowAudits(orgA, t, "DELETE")).toBeGreaterThan(0);
+    expect(ids153.length).toBeGreaterThan(5);
+    const direct = (who: Who) => readAs<{ id: string }>(who, "select id::text from security_audit.audit_log where id = any($1::uuid[])", [ids153]);
+    const view = (who: Who) => readAs<{ id: string }>(who, "select id::text from public.audit_log_view where id = any($1::uuid[])", [ids153]);
+    const activity = (who: Who) => readAs<{ id: string }>(who, "select id::text from public.org_activity(p_limit => 500) where id = any($1::uuid[])", [ids153]);
+    const recordTrail = (who: Who, table: string, id: string) =>
+      readAs<{ entity_table: string }>(who, "select entity_table from public.record_activity($1, $2::uuid, 500)", [table, id]);
+
+    // Routine company access: office, workshop, viewer of the same company; the admin of another company.
+    for (const who of [P.office, P.workshop, P.viewer, P.adminB]) {
+      expect(await direct(as(who))).toEqual([]);
+      expect(await view(as(who))).toEqual([]);
+    }
+    for (const who of [P.office, P.workshop, P.viewer]) expect(await activity(as(who))).toBe("42501");
+    expect(await activity(as(P.adminB))).toEqual([]);
+    // A record's own trail never lists a 153 table, for anyone who may open it.
+    for (const who of [P.admin, P.office, P.workshop, P.viewer]) {
+      for (const [table, id] of [["jobs", D.j1], ["quotes", D.q1], ["quotes", D.q4]] as const) {
+        const trail = await recordTrail(as(who), table, id);
+        if (Array.isArray(trail)) expect(trail.filter((r) => ["document_customer_links", "customer_portal_switch"].includes(r.entity_table))).toEqual([]);
+        else expect(trail).toBe("42501");
+      }
+    }
+    // Not signed in: no privilege at all.
+    expect(await direct(anon)).toBe("42501");
+    expect(await view(anon)).toBe("42501");
+    expect(await activity(anon)).toBe("42501");
+
+    // The platform owner: nothing without choosing the company (no support session on the token), and nothing at aal1; the whole set
+    // through a support session into company A (036: aal2, the entry is logged in org_entry_log).
+    expect(await direct({ claims: claims(support, "fresh") })).toEqual([]);
+    expect(await direct({ claims: claims(support, "none", { session_id: supportSession }) })).toEqual([]);
+    const viaSupport = { claims: claims(support, "fresh", { session_id: supportSession }) };
+    expect(((await direct(viaSupport)) as { id: string }[]).map((r) => r.id).sort()).toEqual([...ids153].sort());
+    expect(((await view(viaSupport)) as { id: string }[]).map((r) => r.id).sort()).toEqual([...ids153].sort());
+    expect(((await activity(viaSupport)) as { id: string }[]).map((r) => r.id)).toContain(offId);
+
+    // No 153 named event, in either company, carries a customer's name or a document's customer text (stable ids only).
+    const named = await q<{ action: string; metadata: Row }>(`select action, metadata from security_audit.audit_log
+      where organization_id = any($1::uuid[]) and (action like 'DOCUMENT_CUSTOMER%' or action like 'CUSTOMER_PORTAL%')`, [[orgA, orgB]]);
+    expect(named.length).toBeGreaterThan(5);
+    const names = (await q<{ name: string }>("select name from customers where organization_id = any($1::uuid[]) union select customer from jobs where organization_id = any($1::uuid[]) and btrim(coalesce(customer, '')) <> '' union select customer from quotes where organization_id = any($1::uuid[]) and btrim(customer) <> ''", [[orgA, orgB]])).map((r) => r.name.trim().toLowerCase());
+    for (const e of named) {
+      const text = JSON.stringify(e.metadata).toLowerCase();
+      expect(names.filter((n) => text.includes(n)), e.action).toEqual([]);
+      expect(text, e.action).not.toMatch(/document_customer_text|customer_name/);
+    }
   });
 });

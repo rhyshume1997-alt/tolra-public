@@ -65,7 +65,7 @@ AS $p153fp$
   SELECT 'function'::TEXT, g.sig::TEXT, md5(concat_ws('|', p.prosrc, p.prosecdef, p.proconfig::TEXT, p.proowner, p.proacl::TEXT, p.provolatile))
   FROM g LEFT JOIN pg_proc p ON p.oid = to_regprocedure(g.sig)
   UNION ALL
-  SELECT 'trigger', c.relname::TEXT || '.' || tr.tgname::TEXT, md5(pg_get_triggerdef(tr.oid) || tr.tgenabled)
+  SELECT 'trigger', c.relname::TEXT || '.' || tr.tgname::TEXT, md5(pg_get_triggerdef(tr.oid) || tr.tgenabled::TEXT)
   FROM pg_trigger tr JOIN pg_class c ON c.oid = tr.tgrelid
   WHERE c.relnamespace = 'public'::regnamespace AND c.relname IN (SELECT name FROM t) AND NOT tr.tgisinternal
   UNION ALL
@@ -461,7 +461,8 @@ $$;
 
 -- ---- 6. Link with a different name (PM answer 1: ADMIN only; identity confirmed; fresh code; reason; its own audit event) -------------
 -- For a document whose customer text can't be corrected (for example a sent quote with a typo). Refused when the names already match
--- (use the ordinary link), when the identity was not confirmed, or when the document has no customer text at all.
+-- (use the ordinary link), when the identity was not confirmed, or when the document has no customer text at all. Its event names the
+-- document, customer and link by id only (no name texts: both are in the link row's own row-audit INSERT).
 CREATE FUNCTION public.link_document_customer_name_override(p_kind TEXT, p_document UUID, p_customer UUID, p_reason TEXT, p_identity_confirmed BOOLEAN)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -520,8 +521,7 @@ BEGIN
     RAISE EXCEPTION 'This % is already linked to a customer (verified or waiting): verify or unlink that link first.', p_kind USING ERRCODE = '55000', HINT = 'already_linked';
   END;
   PERFORM security_audit.log_named_event(v_org, 'DOCUMENT_CUSTOMER_LINKED_NAME_OVERRIDE', 'document_customer_links', v_link::TEXT,
-    jsonb_build_object('doc_kind', p_kind, 'document_id', p_document, 'customer_id', p_customer, 'document_customer_text', v_doc_text,
-                       'customer_name', v_name, 'identity_confirmed', TRUE, 'reason', v_reason, 'actor', v_uid));
+    jsonb_build_object('doc_kind', p_kind, 'document_id', p_document, 'customer_id', p_customer, 'identity_confirmed', TRUE, 'reason', v_reason, 'actor', v_uid));
   RETURN jsonb_build_object('link_id', v_link, 'doc_kind', p_kind, 'document_id', p_document, 'customer_id', p_customer, 'source', 'name_override');
 END
 $$;
@@ -607,8 +607,10 @@ $$;
 
 -- ---- 9. Retire (ADMIN only; fresh code; reason): the controlled way a document or customer with link history can later be deleted -------
 -- Removes every link row of that job, quote or customer (each removal is its own row-audit DELETE) and, in the same transaction, writes
--- one DOCUMENT_CUSTOMER_LINKS_RETIRED event holding exactly the removed rows in full, taken from the DELETE itself (DELETE ... RETURNING:
--- no row can be added or changed between reading and removing), so the audit trail says what was removed, by whom and why. Does NOT delete
+-- one DOCUMENT_CUSTOMER_LINKS_RETIRED event holding exactly the removed rows, taken from the DELETE itself (DELETE ... RETURNING:
+-- no row can be added or changed between reading and removing), so the audit trail says what was removed, by whom and why. The event keeps
+-- ids, stamps and reasons but not the two name texts (document_customer_text, customer_name_at_link): each row's full content is already
+-- in its own row-audit DELETE (PM merge condition, 12 Nov 2026: stable ids, not names, where names aren't needed). Does NOT delete
 -- the document or the customer: that stays the existing route, under its own rules (jobs: admin; quotes and customers: admin or
 -- office; 082 customers_in_use_guard still refuses a customer that is named on a record) and its own retention rule.
 CREATE FUNCTION public.retire_document_customer_links(p_target_kind TEXT, p_target UUID, p_reason TEXT)
@@ -636,7 +638,7 @@ BEGIN
       AND CASE p_target_kind WHEN 'job' THEN l.job_id = p_target WHEN 'quote' THEN l.quote_id = p_target ELSE l.customer_id = p_target END
     RETURNING l.*
   )
-  SELECT jsonb_agg(to_jsonb(g) ORDER BY g.linked_at, g.id), count(*) INTO v_snapshot, v_n FROM gone g;
+  SELECT jsonb_agg(to_jsonb(g) - 'document_customer_text' - 'customer_name_at_link' ORDER BY g.linked_at, g.id), count(*) INTO v_snapshot, v_n FROM gone g;
   PERFORM set_config('tolra.document_customer_link_removal', '', TRUE);
   IF coalesce(v_n, 0) = 0 THEN
     RAISE EXCEPTION 'That % has no links to retire.', p_target_kind USING ERRCODE = 'P0002', HINT = 'not_linked';
@@ -718,7 +720,8 @@ GRANT EXECUTE ON FUNCTION public.link_document_customer(TEXT, UUID, UUID, TEXT),
 -- 153 must not block a company's removal for ever. This removes, for ONE company, every document link row (live, verified, unlinked or
 -- backfill; each removal is its own row-audit DELETE) and its portal switch row (a row-audit DELETE too), and in the same transaction
 -- writes one CUSTOMER_PORTAL_OFFBOARDED event in that company's own audit chain holding exactly the removed rows, taken from the DELETEs
--- themselves (DELETE ... RETURNING, as retire). Nothing references a link or switch row, so nothing is orphaned. It does NOT delete the
+-- themselves (DELETE ... RETURNING, as retire; as there, without the two name texts, which stay in each row's own row-audit DELETE; the
+-- switch snapshot names no customer). Nothing references a link or switch row, so nothing is orphaned. It does NOT delete the
 -- company, a document, a customer or any audit row, and changes nothing else: deleting the company stays outside 153 under its own rules
 -- (security_audit.audit_log's reference to organizations, 000, still keeps a company with audit history; audit evidence never cascades).
 -- Who: the platform owner pattern of 036 / 039 / 107 (is_platform_admin, then assert_platform_aal: aal2 always), never a read-only support
@@ -763,7 +766,7 @@ BEGIN
   WITH gone AS (
     DELETE FROM public.document_customer_links l WHERE l.organization_id = p_org RETURNING l.*
   )
-  SELECT jsonb_agg(to_jsonb(g) ORDER BY g.linked_at, g.id), count(*) INTO v_links, v_n FROM gone g;
+  SELECT jsonb_agg(to_jsonb(g) - 'document_customer_text' - 'customer_name_at_link' ORDER BY g.linked_at, g.id), count(*) INTO v_links, v_n FROM gone g;
   PERFORM set_config('tolra.document_customer_link_removal', '', TRUE);
   PERFORM set_config('tolra.customer_portal_switch_write', 'offboard:' || p_org::TEXT, TRUE);
   WITH gone AS (

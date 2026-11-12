@@ -19,7 +19,7 @@
 --     text and the customer's name as they were when linked. Sources: backfill (unverified until verified), manual (names match;
 --     verified when made), name_override (names differ; admin only; identity confirmed; verified when made). The job, quote and
 --     customer references are ON DELETE RESTRICT: a document or customer with link history is not deleted until an admin retires its
---     links (retire_document_customer_links: reason, fresh code, full snapshot in the audit trail first). RLS: admin and office read
+--     links (retire_document_customer_links: reason, fresh code, a snapshot of the removed rows in the audit trail first). RLS: admin and office read
 --     the rows of documents in sections they can see; no API role writes. A guard allows only the one-time verify stamp, the one-time
 --     unlink stamp, and removal through retire, the company offboarding or the rollback. Every row change is a security_audit.audit_log row.
 --   * public.document_customer_links_verified (security_invoker view): what may be shown. Live, VERIFIED, and neither the document's
@@ -40,16 +40,36 @@
 --   after, in one transaction). The foreign keys add PostgreSQL's own internal referential triggers on jobs, quotes and customers:
 --   deleting a job, quote or customer that has link rows is REFUSED (23503) until its links are retired. New jobs and quotes get no
 --   link here; reliable assignment at creation is a later release with the Jobs, Quotes and Customers app changes.
--- RETENTION: link rows live as long as their document; they leave only through retire (with a reason, before the document or customer
---   is deleted under its own retention rule), the company offboarding (platform owner, with a reason: every link row and the switch row
---   of one company, so 153 never blocks that company's removal) or this release's rollback (unverified backfill rows only). The
---   offboarding never deletes the company, a document, a customer or an audit row. Audit rows are never deleted
---   or changed by anything here; they follow the audit trail's own retention (full detail 6 years, then personal fields anonymised by
---   the checkpoint method, which keeps the hash chain verifiable). Reasons are free text: the screens ask for no personal data in them,
---   and link_reason, verify_reason and unlink_reason join the anonymiser's key list when that is built, with the customer names:
---   document_customer_text and customer_name_at_link (row audits), the override event's document_customer_text and customer_name, the
---   retire and offboarding events' nested rows[] (each holds both names and the three reasons), and the switch's reason (row audit,
---   event and the offboarding event's switch snapshot).
+-- RETENTION AND DELETION (PM merge condition, 12 Nov 2026: facts of what the system does; the period is not decided here):
+--   * Link rows live as long as their document. They leave only through retire (admin, fresh code, reason; before the document or
+--     customer is deleted under its own rule), the company offboarding (platform owner, fresh code, reason: every link row and the switch
+--     row of one company, so 153 never blocks that company's removal) or this release's rollback (unverified backfill rows only). Each
+--     removal is its own row-audit DELETE plus one named event. Nothing removes a link row on a timer. The switch row leaves only through
+--     the company offboarding. The offboarding never deletes the company, a document, a customer or an audit row.
+--   * Audit rows (the row audits of both tables and 153's named events) are never deleted or changed by anything here or elsewhere in
+--     this repository: security_audit.audit_log is append-only (000 audit_log_prevent_mutation refuses UPDATE and DELETE, the owner too)
+--     and hash-chained (077). Nothing expires, deletes or anonymises audit rows; no anonymiser exists yet. The audit log references the
+--     company with no ON DELETE action (000), so a company with audit history is kept.
+--   * Retention PERIOD for these audit rows: UNKNOWN. It is a business and legal decision for Rhys; this release sets none and relies on
+--     none (133's header cites a 6-year figure from a retention document that is not in this repository; 153 does not depend on it).
+--     Until a period and an erasure procedure are decided, the rows stay.
+--   * Personal data in the audit rows: user ids (actor, linked_by, verified_by, unlinked_by, changed_by), free-text reasons (the screens
+--     ask for no personal data in them), and the two name texts (document_customer_text, customer_name_at_link) inside the link rows'
+--     own row audits only: the shared security_audit.log_row_change trigger (000/006, unchanged) records whole rows, as it already does
+--     for jobs, quotes and customers. 153's own named events hold ids, stamps, counts and reasons, never a name text. When an anonymiser
+--     is built, these keys join its list: link_reason, verify_reason, unlink_reason, document_customer_text and customer_name_at_link
+--     (row audits), the reasons inside the retire and offboarding events' rows[], and the switch's reason (row audit, event, offboarding
+--     snapshot).
+-- WHO READS THE AUDIT ROWS (the shared audit mechanism, unchanged by 153; proved in the DB proof's audit-readers case):
+--   * security_audit.audit_log policy "audit admins read org" (000, 131): an ADMIN of the row's own company. A platform owner reads them
+--     only through a support session into that company (036: aal2, logged in org_entry_log). Company admins see them in Admin > Activity
+--     (public.org_activity, 094: named-event metadata, and for a link or switch row audit only the fields an update changed, never the
+--     name texts) and Admin > Compliance (public.audit_log_view, 000: metadata, never old_data / new_data). Direct reads of
+--     security_audit.audit_log (old_data / new_data, so the name texts) are possible for the same admin only where the API exposes the
+--     security_audit schema: the local config exposes public and graphql_public only (supabase/config.toml); hosted: not checked here.
+--   * Office, workshop and viewer: none (the policy is admin-only; org_activity is admin-only; record_activity lists only the record's
+--     own tables). Another company's admin: none. anon: no privilege on the schema, the table, the view or org_activity. Customers have
+--     no sign-in before release 155.
 -- =====================================================================================================
 BEGIN;
 -- ---- 1. The link table: jobs and quotes only ----------------------------------------------------------------------------------------
@@ -426,7 +446,8 @@ $$;
 
 -- ---- 6. Link with a different name (PM answer 1: ADMIN only; identity confirmed; fresh code; reason; its own audit event) -------------
 -- For a document whose customer text can't be corrected (for example a sent quote with a typo). Refused when the names already match
--- (use the ordinary link), when the identity was not confirmed, or when the document has no customer text at all.
+-- (use the ordinary link), when the identity was not confirmed, or when the document has no customer text at all. Its event names the
+-- document, customer and link by id only (no name texts: both are in the link row's own row-audit INSERT).
 CREATE FUNCTION public.link_document_customer_name_override(p_kind TEXT, p_document UUID, p_customer UUID, p_reason TEXT, p_identity_confirmed BOOLEAN)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -485,8 +506,7 @@ BEGIN
     RAISE EXCEPTION 'This % is already linked to a customer (verified or waiting): verify or unlink that link first.', p_kind USING ERRCODE = '55000', HINT = 'already_linked';
   END;
   PERFORM security_audit.log_named_event(v_org, 'DOCUMENT_CUSTOMER_LINKED_NAME_OVERRIDE', 'document_customer_links', v_link::TEXT,
-    jsonb_build_object('doc_kind', p_kind, 'document_id', p_document, 'customer_id', p_customer, 'document_customer_text', v_doc_text,
-                       'customer_name', v_name, 'identity_confirmed', TRUE, 'reason', v_reason, 'actor', v_uid));
+    jsonb_build_object('doc_kind', p_kind, 'document_id', p_document, 'customer_id', p_customer, 'identity_confirmed', TRUE, 'reason', v_reason, 'actor', v_uid));
   RETURN jsonb_build_object('link_id', v_link, 'doc_kind', p_kind, 'document_id', p_document, 'customer_id', p_customer, 'source', 'name_override');
 END
 $$;
@@ -572,8 +592,10 @@ $$;
 
 -- ---- 9. Retire (ADMIN only; fresh code; reason): the controlled way a document or customer with link history can later be deleted -------
 -- Removes every link row of that job, quote or customer (each removal is its own row-audit DELETE) and, in the same transaction, writes
--- one DOCUMENT_CUSTOMER_LINKS_RETIRED event holding exactly the removed rows in full, taken from the DELETE itself (DELETE ... RETURNING:
--- no row can be added or changed between reading and removing), so the audit trail says what was removed, by whom and why. Does NOT delete
+-- one DOCUMENT_CUSTOMER_LINKS_RETIRED event holding exactly the removed rows, taken from the DELETE itself (DELETE ... RETURNING:
+-- no row can be added or changed between reading and removing), so the audit trail says what was removed, by whom and why. The event keeps
+-- ids, stamps and reasons but not the two name texts (document_customer_text, customer_name_at_link): each row's full content is already
+-- in its own row-audit DELETE (PM merge condition, 12 Nov 2026: stable ids, not names, where names aren't needed). Does NOT delete
 -- the document or the customer: that stays the existing route, under its own rules (jobs: admin; quotes and customers: admin or
 -- office; 082 customers_in_use_guard still refuses a customer that is named on a record) and its own retention rule.
 CREATE FUNCTION public.retire_document_customer_links(p_target_kind TEXT, p_target UUID, p_reason TEXT)
@@ -601,7 +623,7 @@ BEGIN
       AND CASE p_target_kind WHEN 'job' THEN l.job_id = p_target WHEN 'quote' THEN l.quote_id = p_target ELSE l.customer_id = p_target END
     RETURNING l.*
   )
-  SELECT jsonb_agg(to_jsonb(g) ORDER BY g.linked_at, g.id), count(*) INTO v_snapshot, v_n FROM gone g;
+  SELECT jsonb_agg(to_jsonb(g) - 'document_customer_text' - 'customer_name_at_link' ORDER BY g.linked_at, g.id), count(*) INTO v_snapshot, v_n FROM gone g;
   PERFORM set_config('tolra.document_customer_link_removal', '', TRUE);
   IF coalesce(v_n, 0) = 0 THEN
     RAISE EXCEPTION 'That % has no links to retire.', p_target_kind USING ERRCODE = 'P0002', HINT = 'not_linked';
@@ -683,7 +705,8 @@ GRANT EXECUTE ON FUNCTION public.link_document_customer(TEXT, UUID, UUID, TEXT),
 -- 153 must not block a company's removal for ever. This removes, for ONE company, every document link row (live, verified, unlinked or
 -- backfill; each removal is its own row-audit DELETE) and its portal switch row (a row-audit DELETE too), and in the same transaction
 -- writes one CUSTOMER_PORTAL_OFFBOARDED event in that company's own audit chain holding exactly the removed rows, taken from the DELETEs
--- themselves (DELETE ... RETURNING, as retire). Nothing references a link or switch row, so nothing is orphaned. It does NOT delete the
+-- themselves (DELETE ... RETURNING, as retire; as there, without the two name texts, which stay in each row's own row-audit DELETE; the
+-- switch snapshot names no customer). Nothing references a link or switch row, so nothing is orphaned. It does NOT delete the
 -- company, a document, a customer or any audit row, and changes nothing else: deleting the company stays outside 153 under its own rules
 -- (security_audit.audit_log's reference to organizations, 000, still keeps a company with audit history; audit evidence never cascades).
 -- Who: the platform owner pattern of 036 / 039 / 107 (is_platform_admin, then assert_platform_aal: aal2 always), never a read-only support
@@ -728,7 +751,7 @@ BEGIN
   WITH gone AS (
     DELETE FROM public.document_customer_links l WHERE l.organization_id = p_org RETURNING l.*
   )
-  SELECT jsonb_agg(to_jsonb(g) ORDER BY g.linked_at, g.id), count(*) INTO v_links, v_n FROM gone g;
+  SELECT jsonb_agg(to_jsonb(g) - 'document_customer_text' - 'customer_name_at_link' ORDER BY g.linked_at, g.id), count(*) INTO v_links, v_n FROM gone g;
   PERFORM set_config('tolra.document_customer_link_removal', '', TRUE);
   PERFORM set_config('tolra.customer_portal_switch_write', 'offboard:' || p_org::TEXT, TRUE);
   WITH gone AS (
