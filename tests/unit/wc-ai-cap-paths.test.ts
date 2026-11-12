@@ -9,9 +9,12 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { pinClock, unpinClock } from "../support/fixed-price-clock";
 
 vi.mock("server-only", () => ({}));
+beforeAll(pinClock);
+afterAll(unpinClock);
 
 const root = path.resolve(__dirname, "../..");
 const read = (f: string) => readFileSync(path.join(root, f), "utf8");

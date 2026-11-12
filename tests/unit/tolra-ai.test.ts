@@ -3,9 +3,12 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { beforeEach, afterEach, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
+import { pinClock, unpinClock } from "../support/fixed-price-clock";
 
 vi.mock("server-only", () => ({}));
+beforeAll(pinClock);
+afterAll(unpinClock);
 vi.mock("@/lib/supabase", () => ({supabase:null}));
 vi.mock("@/lib/use-user", () => ({useUser:()=>({profile:{organization_id:"company-a"},activeRole:"admin"})}));
 const state = vi.hoisted(()=>({
