@@ -1,0 +1,22 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/queue-features
+
+ ✓ tests/unit/ai-assistant.test.ts (27 tests) 60ms
+ ✓ tests/unit/ai-helper.test.ts (31 tests) 30ms
+ ✓ tests/unit/machine-schedule.test.ts (46 tests) 28ms
+ ✓ tests/unit/integrations-engine.test.ts (21 tests) 38ms
+ ✓ tests/unit/purchase-order-link.test.ts (25 tests) 28ms
+ ✓ tests/unit/accountant-invite-129.test.ts (11 tests) 432ms
+ ✓ tests/unit/machine-runs.test.ts (13 tests) 11ms
+ ✓ tests/unit/xero-mapper.test.ts (12 tests) 8ms
+ ✓ tests/unit/year-end-export.test.ts (6 tests) 9ms
+ ✓ tests/unit/purchase-order-total.test.ts (7 tests) 4ms
+ ✓ tests/unit/rfq-quote.test.ts (8 tests) 5ms
+ ✓ tests/unit/invoice-draft-payment.test.ts (10 tests) 3ms
+
+ Test Files  12 passed (12)
+      Tests  217 passed (217)
+   Start at  07:14:00
+   Duration  5.39s (transform 893ms, setup 0ms, collect 2.76s, tests 656ms, environment 2ms, prepare 584ms)
+
