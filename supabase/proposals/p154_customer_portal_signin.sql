@@ -13,8 +13,11 @@
 --   ref_hash   = SHA-256 hex of a random 22-character reference (in the e-mailed link);
 --   code_hash  = the server's keyed HMAC-SHA256 hex of the eight-digit code (151's inviteCodeHash pattern; key never in the database);
 --   token_hash = SHA-256 hex of the 32-byte random session cookie token.
--- OUTPUTS: JSON answers. Customer-side functions (service_role only) answer {ok:false, reason, correlation_id} for every refusal and
--- never raise for one (so the refusal row and any session end are kept); staff functions (authenticated) raise as every staff function.
+-- OUTPUTS: JSON answers. Customer-side functions (service_role only) answer one identical {ok:false, reason:'refused', correlation_id}
+-- for every refusal (the category only in the refusal log; nothing tells a caller whether a contact, code, document or account
+-- exists) and never raise for one (so the refusal row and any session end are kept); staff functions (authenticated) raise as every
+-- staff function. The refusal log's 16-hex subject is only ever a prefix of the server's random reference or session-token hash, never
+-- of an e-mail. Archived quotes and jobs (record_archive_state) are never shown; unarchived with the link still live, they show again.
 -- WHAT IT ADDS (nothing existing changes; the release's self-check proves it):
 --   tables public.customer_portal_contacts, public.customer_portal_signin_codes, public.customer_portal_sessions (row security on, no
 --   grant to any API role, guard and no-truncate triggers, same-company triggers, ON DELETE RESTRICT) and the security log
@@ -296,8 +299,8 @@ REVOKE ALL ON FUNCTION security_audit.portal_refuse(TEXT, TEXT, TEXT, UUID) FROM
 -- ---- 6. The session gate (private): one place for every check a signed-in customer call makes ----------------------------------------
 -- Locks the session row, then in this order: the company's portal switch is ON (no row = OFF), the company is active, the contact is not
 -- revoked, the customer is not archived, under 8 hours, under 30 minutes since the last accepted call. The first that fails ENDS the
--- session (it never comes back, even if the cause is undone) with a named event, logs the refusal and answers {ok:false, reason,
--- correlation_id}. Then the read rate limit (120 calls a minute per session, public.auth_rate_hit; refused, not ended). Otherwise the
+-- session (it never comes back, even if the cause is undone) with a named event, logs the refusal (its category) and answers
+-- {ok:false, reason:'refused', correlation_id}. Then the read rate limit (120 calls a minute per session, public.auth_rate_hit; refused, not ended). Otherwise the
 -- idle clock restarts and the answer carries the session's company, customer, contact and permissions, read from the rows, never from
 -- the caller. Called only by the customer-side functions below (no API role may call it).
 CREATE FUNCTION public._portal_session_gate(p_token_hash TEXT, p_step TEXT)
@@ -312,7 +315,7 @@ DECLARE
   v_why TEXT;
 BEGIN
   IF p_token_hash IS NULL OR p_token_hash !~ '^[0-9a-f]{64}$' THEN
-    RETURN jsonb_build_object('ok', FALSE, 'reason', 'not_signed_in', 'correlation_id', security_audit.portal_refuse(p_step, 'malformed', NULL, NULL));
+    RETURN jsonb_build_object('ok', FALSE, 'reason', 'refused', 'correlation_id', security_audit.portal_refuse(p_step, 'malformed', NULL, NULL));
   END IF;
   SELECT x.id, x.organization_id, x.contact_id, x.customer_id, x.last_seen_at, x.absolute_expires_at, x.ended_at,
          k.revoked_at AS contact_revoked_at, k.permissions, k.display_name, o.status AS company_status, o.name AS company_name, cu.name AS customer_name,
@@ -328,10 +331,10 @@ BEGIN
   WHERE x.token_hash = p_token_hash
   FOR UPDATE OF x;
   IF NOT FOUND THEN
-    RETURN jsonb_build_object('ok', FALSE, 'reason', 'not_signed_in', 'correlation_id', security_audit.portal_refuse(p_step, 'not_signed_in', p_token_hash, NULL));
+    RETURN jsonb_build_object('ok', FALSE, 'reason', 'refused', 'correlation_id', security_audit.portal_refuse(p_step, 'not_signed_in', p_token_hash, NULL));
   END IF;
   IF s.ended_at IS NOT NULL THEN
-    RETURN jsonb_build_object('ok', FALSE, 'reason', 'not_signed_in',
+    RETURN jsonb_build_object('ok', FALSE, 'reason', 'refused',
                               'correlation_id', security_audit.portal_refuse(p_step, 'session_ended', p_token_hash, s.organization_id));
   END IF;
   v_end := CASE WHEN NOT s.portal_on THEN 'portal_off'
@@ -345,10 +348,10 @@ BEGIN
     PERFORM security_audit.log_named_event(s.organization_id, 'CUSTOMER_PORTAL_SESSION_ENDED', 'customer_portal_sessions', s.id::TEXT,
       jsonb_build_object('end_reason', v_end, 'contact_id', s.contact_id, 'customer_id', s.customer_id));
     v_why := CASE v_end WHEN 'absolute' THEN 'session_expired' WHEN 'idle' THEN 'session_idle' ELSE v_end END;
-    RETURN jsonb_build_object('ok', FALSE, 'reason', v_why, 'correlation_id', security_audit.portal_refuse(p_step, v_why, p_token_hash, s.organization_id));
+    RETURN jsonb_build_object('ok', FALSE, 'reason', 'refused', 'correlation_id', security_audit.portal_refuse(p_step, v_why, p_token_hash, s.organization_id));
   END IF;
   IF NOT public.auth_rate_hit('portal_read', encode(sha256(convert_to('portal_read:' || p_token_hash, 'UTF8')), 'hex'), 60, 120) THEN
-    RETURN jsonb_build_object('ok', FALSE, 'reason', 'rate_limited',
+    RETURN jsonb_build_object('ok', FALSE, 'reason', 'refused',
                               'correlation_id', security_audit.portal_refuse(p_step, 'rate_limited', p_token_hash, s.organization_id));
   END IF;
   UPDATE public.customer_portal_sessions SET last_seen_at = greatest(last_seen_at, now()) WHERE id = s.id;
@@ -394,13 +397,13 @@ BEGIN
     RAISE EXCEPTION 'Invalid request.' USING ERRCODE = '22023';
   END IF;
   IF length(v_email) NOT BETWEEN 3 AND 254 OR v_email !~ '^[^[:space:]@<>(),;:"\[\]\\]+@[^[:space:]@<>(),;:"\[\]\\]+\.[^[:space:]@<>(),;:"\[\]\\]+$' THEN
-    RETURN jsonb_build_object('ok', FALSE, 'reason', 'malformed', 'correlation_id', security_audit.portal_refuse('request', 'malformed', NULL, NULL));
+    RETURN jsonb_build_object('ok', FALSE, 'reason', 'refused', 'correlation_id', security_audit.portal_refuse('request', 'malformed', NULL, NULL));
   END IF;
   v_key := encode(sha256(convert_to('portal_email:' || v_email, 'UTF8')), 'hex');
   v_hour := public.auth_rate_hit('portal_request_email', v_key, 900, 3);
   v_min := public.auth_rate_hit('portal_request_email_min', v_key, 60, 1);
   IF NOT v_hour OR NOT v_min THEN
-    RETURN jsonb_build_object('ok', FALSE, 'reason', 'rate_limited', 'correlation_id', security_audit.portal_refuse('request', 'rate_limited', NULL, NULL));
+    RETURN jsonb_build_object('ok', FALSE, 'reason', 'refused', 'correlation_id', security_audit.portal_refuse('request', 'rate_limited', NULL, NULL));
   END IF;
   FOR c IN
     SELECT k.id, k.organization_id, k.customer_id, o.status AS company_status, o.name AS company_name, cu.name AS customer_name,
@@ -451,7 +454,7 @@ $$;
 -- 7b. The code is typed on the page the link opened. The code row is locked. In this order: a known reference; not used, not burnt, not
 -- expired; contact not revoked; the company's portal ON; company active; customer not archived; then the code. A wrong code counts:
 -- the fifth burns it ('locked'). The right code is used up (once) and a session is opened for that contact's customer, bound to the
--- token hash the server made for the cookie. Answers {ok:false, reason, correlation_id[, attempts_left]} or {ok:true, session}.
+-- token hash the server made for the cookie. Answers {ok:false, reason:'refused', correlation_id} or {ok:true, session}.
 CREATE FUNCTION public.portal_signin_verify(p_ref_hash TEXT, p_code_hash TEXT, p_token_hash TEXT)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -469,7 +472,7 @@ BEGIN
     RAISE EXCEPTION 'Invalid request.' USING ERRCODE = '22023';
   END IF;
   IF p_ref_hash IS NULL OR p_ref_hash !~ '^[0-9a-f]{64}$' THEN
-    RETURN jsonb_build_object('ok', FALSE, 'reason', 'invalid', 'correlation_id', security_audit.portal_refuse('verify', 'malformed', NULL, NULL));
+    RETURN jsonb_build_object('ok', FALSE, 'reason', 'refused', 'correlation_id', security_audit.portal_refuse('verify', 'malformed', NULL, NULL));
   END IF;
   SELECT x.id, x.organization_id, x.contact_id, x.code_hash, x.expires_at, x.attempts, x.used_at, x.burnt_at, x.burn_reason,
          k.customer_id, k.revoked_at AS contact_revoked_at, k.permissions, k.display_name, o.status AS company_status, o.name AS company_name,
@@ -485,7 +488,7 @@ BEGIN
   WHERE x.ref_hash = p_ref_hash
   FOR UPDATE OF x, k;
   IF NOT FOUND THEN
-    RETURN jsonb_build_object('ok', FALSE, 'reason', 'invalid', 'correlation_id', security_audit.portal_refuse('verify', 'unknown_ref', p_ref_hash, NULL));
+    RETURN jsonb_build_object('ok', FALSE, 'reason', 'refused', 'correlation_id', security_audit.portal_refuse('verify', 'unknown_ref', p_ref_hash, NULL));
   END IF;
   v_why := CASE WHEN v.used_at IS NOT NULL THEN 'code_used'
                 WHEN v.burn_reason = 'locked' THEN 'locked'
@@ -496,16 +499,16 @@ BEGIN
                 WHEN v.company_status IS DISTINCT FROM 'active' THEN 'company_inactive'
                 WHEN v.customer_archived THEN 'customer_archived' END;
   IF v_why IS NOT NULL THEN
-    RETURN jsonb_build_object('ok', FALSE, 'reason', v_why, 'correlation_id', security_audit.portal_refuse('verify', v_why, p_ref_hash, v.organization_id));
+    RETURN jsonb_build_object('ok', FALSE, 'reason', 'refused', 'correlation_id', security_audit.portal_refuse('verify', v_why, p_ref_hash, v.organization_id));
   END IF;
   IF v.code_hash IS DISTINCT FROM p_code_hash THEN
     v_attempts := v.attempts + 1;
     IF v_attempts >= 5 THEN
       UPDATE public.customer_portal_signin_codes SET attempts = v_attempts, burnt_at = now(), burn_reason = 'locked', code_hash = NULL WHERE id = v.id;
-      RETURN jsonb_build_object('ok', FALSE, 'reason', 'locked', 'correlation_id', security_audit.portal_refuse('verify', 'locked', p_ref_hash, v.organization_id));
+      RETURN jsonb_build_object('ok', FALSE, 'reason', 'refused', 'correlation_id', security_audit.portal_refuse('verify', 'locked', p_ref_hash, v.organization_id));
     END IF;
     UPDATE public.customer_portal_signin_codes SET attempts = v_attempts WHERE id = v.id;
-    RETURN jsonb_build_object('ok', FALSE, 'reason', 'wrong_code', 'attempts_left', 5 - v_attempts,
+    RETURN jsonb_build_object('ok', FALSE, 'reason', 'refused',
                               'correlation_id', security_audit.portal_refuse('verify', 'wrong_code', p_ref_hash, v.organization_id));
   END IF;
   UPDATE public.customer_portal_signin_codes SET used_at = now(), code_hash = NULL WHERE id = v.id;
@@ -567,7 +570,8 @@ $$;
 
 -- 7e. Quotes (permission 'quotes'): only documents with a VERIFIED link to the session's own customer in the session's own company
 -- (153's document_customer_links_verified: never a backfill link nobody verified, an unlinked document or one whose names changed),
--- only sent, accepted or rejected (never a draft or a superseded version), and only these fields. One named event per list.
+-- only sent, accepted or rejected (never a draft or a superseded version), never an archived quote (record_archive_state; shown again
+-- once unarchived while the link is still live), and only these fields. One named event per list.
 CREATE FUNCTION public.portal_quotes(p_token_hash TEXT)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -588,21 +592,23 @@ BEGIN
   v_org := (g ->> 'organization_id')::UUID;
   v_cust := (g ->> 'customer_id')::UUID;
   IF NOT (g -> 'permissions') ? 'quotes' THEN
-    RETURN jsonb_build_object('ok', FALSE, 'reason', 'no_permission', 'correlation_id', security_audit.portal_refuse('read', 'no_permission', p_token_hash, v_org));
+    RETURN jsonb_build_object('ok', FALSE, 'reason', 'refused', 'correlation_id', security_audit.portal_refuse('read', 'no_permission', p_token_hash, v_org));
   END IF;
   SELECT coalesce(jsonb_agg(jsonb_build_object('quote_ref', q.quote_ref, 'status', q.status, 'sent_at', q.sent_at, 'valid_until', q.valid_until,
            'customer_po', q.customer_po, 'total_value', q.total_value) ORDER BY q.sent_at DESC NULLS LAST, q.quote_ref), '[]'::JSONB), count(*)::INTEGER
     INTO v_rows, v_n
   FROM public.document_customer_links_verified l
   JOIN public.quotes q ON q.id = l.document_id AND q.organization_id = l.organization_id
-  WHERE l.organization_id = v_org AND l.customer_id = v_cust AND l.doc_kind = 'quote' AND q.status IN ('sent', 'accepted', 'rejected');
+  WHERE l.organization_id = v_org AND l.customer_id = v_cust AND l.doc_kind = 'quote' AND q.status IN ('sent', 'accepted', 'rejected')
+    AND NOT EXISTS (SELECT 1 FROM public.record_archive_state a WHERE a.record_table = 'quotes' AND a.record_id = q.id AND a.state = 'archived');
   PERFORM security_audit.log_named_event(v_org, 'CUSTOMER_PORTAL_DOCUMENTS_VIEWED', 'customer_portal_sessions', g ->> 'session_id',
     jsonb_build_object('kind', 'quotes', 'count', v_n, 'contact_id', g -> 'contact_id', 'customer_id', v_cust));
   RETURN jsonb_build_object('ok', TRUE, 'quotes', v_rows);
 END
 $$;
 
--- 7f. Jobs (permission 'jobs'): verified links only (153's view never shows an internal job), and only these fields. The stage is a
+-- 7f. Jobs (permission 'jobs'): verified links only (153's view never shows an internal job), never an archived job (record_archive_state;
+-- shown again once unarchived while the link is still live), and only these fields. The stage is a
 -- fixed customer-facing word from the job's flow (the rule of lib/job-flow.ts jobStatusOf, with running, rework and waiting for
 -- inspection all shown as in_progress): not_started, in_progress or complete. Nothing else of the job is returned.
 CREATE FUNCTION public.portal_jobs(p_token_hash TEXT)
@@ -625,7 +631,7 @@ BEGIN
   v_org := (g ->> 'organization_id')::UUID;
   v_cust := (g ->> 'customer_id')::UUID;
   IF NOT (g -> 'permissions') ? 'jobs' THEN
-    RETURN jsonb_build_object('ok', FALSE, 'reason', 'no_permission', 'correlation_id', security_audit.portal_refuse('read', 'no_permission', p_token_hash, v_org));
+    RETURN jsonb_build_object('ok', FALSE, 'reason', 'refused', 'correlation_id', security_audit.portal_refuse('read', 'no_permission', p_token_hash, v_org));
   END IF;
   SELECT coalesce(jsonb_agg(jsonb_build_object('job_no', j.job_no, 'customer_po', j.customer_po, 'due_date', j.due_date,
            'stage', CASE WHEN j.stage = 'rework' THEN 'in_progress' WHEN j.inspected_at IS NOT NULL THEN 'complete'
@@ -634,7 +640,8 @@ BEGIN
     INTO v_rows, v_n
   FROM public.document_customer_links_verified l
   JOIN public.jobs j ON j.id = l.document_id AND j.organization_id = l.organization_id
-  WHERE l.organization_id = v_org AND l.customer_id = v_cust AND l.doc_kind = 'job' AND NOT j.is_internal;
+  WHERE l.organization_id = v_org AND l.customer_id = v_cust AND l.doc_kind = 'job' AND NOT j.is_internal
+    AND NOT EXISTS (SELECT 1 FROM public.record_archive_state a WHERE a.record_table = 'jobs' AND a.record_id = j.id AND a.state = 'archived');
   PERFORM security_audit.log_named_event(v_org, 'CUSTOMER_PORTAL_DOCUMENTS_VIEWED', 'customer_portal_sessions', g ->> 'session_id',
     jsonb_build_object('kind', 'jobs', 'count', v_n, 'contact_id', g -> 'contact_id', 'customer_id', v_cust));
   RETURN jsonb_build_object('ok', TRUE, 'jobs', v_rows);

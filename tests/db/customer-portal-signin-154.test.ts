@@ -138,6 +138,13 @@ async function signIn(addr: string) {
   return token;
 }
 const sessionOf = async (token: string) => (await q<Row>("select end_reason, ended_at from customer_portal_sessions where token_hash = $1", [sha(token)]))[0];
+/** PM rule: every customer-side refusal answers one identical shape (nothing tells the caller whether a contact, code, document or
+ *  account exists); the specific category is kept only in the internal refusal log, found by the answer's correlation id. */
+async function refused(res: { data: Row | null }, step: string, category: string) {
+  expect(Object.keys(res.data ?? {}).sort()).toEqual(["correlation_id", "ok", "reason"]);
+  expect(res.data).toMatchObject({ ok: false, reason: "refused", correlation_id: expect.stringMatching(/^[0-9a-f-]{36}$/) });
+  expect(await q("select step, reason from security_audit.customer_portal_refusals where correlation_id = $1", [res.data?.correlation_id])).toEqual([{ step, reason: category }]);
+}
 
 // The synthetic world.
 async function makeCompany(o: string = randomUUID()) {
@@ -329,13 +336,13 @@ describe("release 154 customer portal sign-in", () => {
     await resetEmailLimit();
     const req = await request(E.off);
     expect(req.r.data).toMatchObject({ ok: true, sends: [] });
-    expect((await verify(pairs[0].ref, pairs[0].code, newToken())).data).toMatchObject({ ok: false, reason: "portal_off" });
-    expect((await resolve(token)).data).toMatchObject({ ok: false, reason: "portal_off" });
+    await refused(await verify(pairs[0].ref, pairs[0].code, newToken()), "verify", "portal_off");
+    await refused(await resolve(token), "session", "portal_off");
     expect(await sessionOf(token)).toMatchObject({ end_reason: "portal_off" });
-    for (const f of [resolve, quotes, jobs]) expect((await f(token)).data).toMatchObject({ ok: false, reason: "not_signed_in" });
+    for (const [f, step] of [[resolve, "session"], [quotes, "read"], [jobs, "read"]] as const) await refused(await f(token), step, "session_ended");
     // Switching ON again does not revive the session; the unused code still works only once the switch is ON.
     await portalOn(P.adminOff, true);
-    expect((await resolve(token)).data).toMatchObject({ ok: false, reason: "not_signed_in" });
+    await refused(await resolve(token), "session", "session_ended");
     expect(await sessionOf(token)).toMatchObject({ end_reason: "portal_off" });
     const refusals = await q<{ step: string; reason: string }>("select step, reason from security_audit.customer_portal_refusals where organization_id = $1 and reason = 'portal_off' order by id", [orgOff]);
     expect(refusals.map((r) => r.step)).toEqual(["request", "verify", "session"]);
@@ -379,25 +386,28 @@ describe("release 154 customer portal sign-in", () => {
     expect(row).toEqual({ ref_hash: sha(pairs[0].ref), code_hash: hmac(pairs[0].code), ten: true });
     expect(JSON.stringify(await q("select * from customer_portal_signin_codes where contact_id = $1", [K.a1]))).not.toContain(pairs[0].code);
     // Four wrong codes count down; the fifth locks; the right code then fails.
-    for (let i = 1; i <= 4; i++) expect((await verify(pairs[0].ref, "00000000", newToken())).data).toMatchObject({ ok: false, reason: "wrong_code", attempts_left: 5 - i });
-    expect((await verify(pairs[0].ref, "00000000", newToken())).data).toMatchObject({ ok: false, reason: "locked" });
-    expect((await verify(pairs[0].ref, pairs[0].code, newToken())).data).toMatchObject({ ok: false, reason: "locked" });
+    for (let i = 1; i <= 4; i++) {
+      await refused(await verify(pairs[0].ref, "00000000", newToken()), "verify", "wrong_code");
+      expect(await q("select attempts from customer_portal_signin_codes where ref_hash = $1", [sha(pairs[0].ref)])).toEqual([{ attempts: i }]);
+    }
+    await refused(await verify(pairs[0].ref, "00000000", newToken()), "verify", "locked");
+    await refused(await verify(pairs[0].ref, pairs[0].code, newToken()), "verify", "locked");
     // Expired (clock moved back as the owner), unknown reference, superseded by a newer code.
     await resetEmailLimit();
     const old = await request(E.a1);
     await replica("update customer_portal_signin_codes set created_at = now() - interval '11 minutes', expires_at = now() - interval '1 minute' where ref_hash = $1", [sha(old.pairs[0].ref)]);
-    expect((await verify(old.pairs[0].ref, old.pairs[0].code, newToken())).data).toMatchObject({ ok: false, reason: "code_expired" });
-    expect((await verify(newRef(), "12345678", newToken())).data).toMatchObject({ ok: false, reason: "invalid" });
+    await refused(await verify(old.pairs[0].ref, old.pairs[0].code, newToken()), "verify", "code_expired");
+    await refused(await verify(newRef(), "12345678", newToken()), "verify", "unknown_ref");
     await resetEmailLimit();
     const first = await request(E.a1);
     await resetEmailLimit();
     const second = await request(E.a1);
-    expect((await verify(first.pairs[0].ref, first.pairs[0].code, newToken())).data).toMatchObject({ ok: false, reason: "code_superseded" });
+    await refused(await verify(first.pairs[0].ref, first.pairs[0].code, newToken()), "verify", "code_superseded");
     expect(await q("select 1 from customer_portal_signin_codes where contact_id = $1 and code_hash is not null", [K.a1])).toHaveLength(1);
     // Two verifies of the same right code at once: exactly one session.
     const [x, y] = await Promise.all([verify(second.pairs[0].ref, second.pairs[0].code, newToken()), verify(second.pairs[0].ref, second.pairs[0].code, newToken())]);
     expect([x.data?.ok, y.data?.ok].sort()).toEqual([false, true]);
-    expect([x.data?.reason, y.data?.reason].filter(Boolean)).toEqual(["code_used"]);
+    await refused([x, y].find((r) => r.data?.ok === false) ?? { data: null }, "verify", "code_used");
     expect(await q("select 1 from customer_portal_sessions s join customer_portal_signin_codes c on c.id = s.code_id where c.ref_hash = $1", [sha(second.pairs[0].ref)])).toHaveLength(1);
     // A used or locked code can never be made live again, and nothing is deleted (the owner too).
     expect(await ownerTry("update customer_portal_signin_codes set code_hash = $2, used_at = null where ref_hash = $1", [sha(second.pairs[0].ref), hmac("1")])).toBe("42501/code_immutable");
@@ -409,24 +419,46 @@ describe("release 154 customer portal sign-in", () => {
   it("rate limits: 1 sign-in e-mail a minute and 3 a quarter of an hour per e-mail (contact or not); 120 calls a minute per session", async () => {
     await resetEmailLimit();
     expect((await request(E.a1)).r.data).toMatchObject({ ok: true });
-    expect((await request(E.a1)).r.data).toMatchObject({ ok: false, reason: "rate_limited" });
+    await refused((await request(E.a1)).r, "request", "rate_limited");
     await q("delete from auth_rate_limits where bucket = 'portal_request_email_min'");
     // Every request counts, refused ones too (the existing limiter's rule): the third in the quarter hour is the last one allowed.
     await q("delete from auth_rate_limits where bucket = 'portal_request_email_min'");
     expect((await request(E.a1)).r.data).toMatchObject({ ok: true });
     await q("delete from auth_rate_limits where bucket = 'portal_request_email_min'");
-    expect((await request(E.a1)).r.data).toMatchObject({ ok: false, reason: "rate_limited" });
+    await refused((await request(E.a1)).r, "request", "rate_limited");
     const stranger = email("nobody");
     await resetEmailLimit();
     expect((await request(stranger)).r.data).toMatchObject({ ok: true, sends: [] });
-    expect((await request(stranger)).r.data).toMatchObject({ ok: false, reason: "rate_limited" });
+    await refused((await request(stranger)).r, "request", "rate_limited");
     const token = await signIn(E.a1);
     const key = sha(`portal_read:${sha(token)}`);
     await q("insert into auth_rate_limits (bucket, key_hash) select 'portal_read', $1 from generate_series(1, 120)", [key]);
-    expect((await quotes(token)).data).toMatchObject({ ok: false, reason: "rate_limited" });
+    await refused(await quotes(token), "read", "rate_limited");
     expect(await sessionOf(token)).toMatchObject({ ended_at: null });
     await q("delete from auth_rate_limits where bucket = 'portal_read' and key_hash = $1", [key]);
     expect((await quotes(token)).data).toMatchObject({ ok: true });
+  });
+
+  it("archived documents: an archived quote or job is never shown, with its link still live and verified; unarchived, it is shown again", async () => {
+    const t = await signIn(E.a1);
+    const quoteIds = await q<{ id: string }>("select id from quotes where organization_id = $1 and quote_ref = 'Q-1001'", [orgA]);
+    const jobIds = await q<{ id: string }>("select id from jobs where organization_id = $1 and job_no = 'J-1002'", [orgA]);
+    expect([quoteIds.length, jobIds.length]).toEqual([1, 1]);
+    const ids = [quoteIds[0].id, jobIds[0].id];
+    const refs = async () => ((await quotes(t)).data?.quotes as Row[]).map((r) => r.quote_ref).sort();
+    const nos = async () => ((await jobs(t)).data?.jobs as Row[]).map((r) => r.job_no);
+    expect(await refs()).toEqual(["Q-1001", "Q-1002"]);
+    expect(await nos()).toEqual(["J-1001", "J-1002", "J-1003"]);
+    await q("insert into record_archive_state (organization_id, record_table, record_id, state, set_by) values ($1, 'quotes', $2, 'archived', $4), ($1, 'jobs', $3, 'archived', $4)",
+      [orgA, ids[0], ids[1], P.admin]);
+    // The links are still live and verified: only the documents' own archive state hides them.
+    expect(await q("select 1 from document_customer_links_verified where document_id = any($1::uuid[])", [ids])).toHaveLength(2);
+    expect(await refs()).toEqual(["Q-1002"]);
+    expect(await nos()).toEqual(["J-1001", "J-1003"]);
+    // Unarchived (028's set_archive_state removes the row) with the link still live: shown again.
+    await q("delete from record_archive_state where record_table in ('quotes', 'jobs') and record_id = any($1::uuid[])", [ids]);
+    expect(await refs()).toEqual(["Q-1001", "Q-1002"]);
+    expect(await nos()).toEqual(["J-1001", "J-1002", "J-1003"]);
   });
 
   it("isolation and documents: own customer and company only, verified links only, sent/accepted/rejected quotes only, exact fields, permissions", async () => {
@@ -451,7 +483,7 @@ describe("release 154 customer portal sign-in", () => {
     expect(((await jobs(tb)).data?.jobs as Row[]).map((r) => r.job_no)).toEqual(["J-1001"]);
     // A quotes-only contact gets no jobs.
     const tq = await signIn(E.quotesOnly);
-    expect((await jobs(tq)).data).toMatchObject({ ok: false, reason: "no_permission" });
+    await refused(await jobs(tq), "read", "no_permission");
     expect(((await quotes(tq)).data?.quotes as Row[]).length).toBe(2);
     // One e-mail that is a contact of two customers gets one slot per customer, never both in one session.
     K.a1second = String((await invite(as(P.admin), C.acme2, E.a1)).data?.contact_id);
@@ -467,30 +499,30 @@ describe("release 154 customer portal sign-in", () => {
   it("sessions: idle 30 minutes, 8 hours absolute, sign out; an ended session is never revived or deleted", async () => {
     const idle = await signIn(E.a1);
     await replica("update customer_portal_sessions set created_at = now() - interval '40 minutes', absolute_expires_at = now() - interval '40 minutes' + interval '8 hours', last_seen_at = now() - interval '31 minutes' where token_hash = $1", [sha(idle)]);
-    expect((await quotes(idle)).data).toMatchObject({ ok: false, reason: "session_idle" });
+    await refused(await quotes(idle), "read", "session_idle");
     expect(await sessionOf(idle)).toMatchObject({ end_reason: "idle" });
     const fresh = await signIn(E.a1);
     await replica("update customer_portal_sessions set created_at = now() - interval '29 minutes', absolute_expires_at = now() - interval '29 minutes' + interval '8 hours', last_seen_at = now() - interval '29 minutes' where token_hash = $1", [sha(fresh)]);
     expect((await resolve(fresh)).data).toMatchObject({ ok: true });
     const abs = await signIn(E.a1);
     await replica("update customer_portal_sessions set created_at = now() - interval '8 hours 1 minute', absolute_expires_at = now() - interval '1 minute', last_seen_at = now() - interval '1 minute' where token_hash = $1", [sha(abs)]);
-    expect((await resolve(abs)).data).toMatchObject({ ok: false, reason: "session_expired" });
+    await refused(await resolve(abs), "session", "session_expired");
     expect(await sessionOf(abs)).toMatchObject({ end_reason: "absolute" });
     expect((await signOut(fresh)).data).toEqual({ ok: true });
     expect(await sessionOf(fresh)).toMatchObject({ end_reason: "signed_out" });
-    expect((await resolve(fresh)).data).toMatchObject({ ok: false, reason: "not_signed_in" });
+    await refused(await resolve(fresh), "session", "session_ended");
     expect((await signOut(fresh)).data).toEqual({ ok: true });
     expect(await ownerTry("update customer_portal_sessions set ended_at = null, end_reason = null where token_hash = $1", [sha(fresh)])).toBe("42501/session_immutable");
     expect(await ownerTry("delete from customer_portal_sessions where token_hash = $1", [sha(fresh)])).toBe("42501/session_immutable");
-    expect((await resolve(newToken())).data).toMatchObject({ ok: false, reason: "not_signed_in" });
-    expect((await resolve("not-a-hash")).data).toMatchObject({ ok: false, reason: "not_signed_in" });
+    await refused(await resolve(newToken()), "session", "not_signed_in");
+    await refused(await resolve("not-a-hash"), "session", "not_signed_in");
   });
 
   it("revoke, archived customer and paused company end access at the next call; revoked contacts get no code", async () => {
     // Customer archived.
     const tArch = await signIn(E.a2);
     await q("insert into record_archive_state (organization_id, record_table, record_id, state, set_by) values ($1, 'customers', $2, 'archived', $3)", [orgA, C.acme2, P.admin]);
-    expect((await quotes(tArch)).data).toMatchObject({ ok: false, reason: "customer_archived" });
+    await refused(await quotes(tArch), "read", "customer_archived");
     expect(await sessionOf(tArch)).toMatchObject({ end_reason: "customer_archived" });
     await resetEmailLimit();
     expect((await request(E.a2)).r.data).toMatchObject({ ok: true, sends: [] });
@@ -499,7 +531,7 @@ describe("release 154 customer portal sign-in", () => {
     // Company paused.
     const tB = await signIn(E.b);
     await replica("update organizations set status = 'paused' where id = $1", [orgB]);
-    expect((await resolve(tB)).data).toMatchObject({ ok: false, reason: "company_inactive" });
+    await refused(await resolve(tB), "session", "company_inactive");
     expect(await sessionOf(tB)).toMatchObject({ end_reason: "company_inactive" });
     await resetEmailLimit();
     expect((await request(E.b)).r.data).toMatchObject({ ok: true, sends: [] });
@@ -516,8 +548,8 @@ describe("release 154 customer portal sign-in", () => {
     expect(rv.data).toMatchObject({ contact_id: K.quotesOnly, ended_sessions: live });
     expect(await q("select 1 from customer_portal_sessions where contact_id = $1 and ended_at is null", [K.quotesOnly])).toHaveLength(0);
     expect(await sessionOf(tRev)).toMatchObject({ end_reason: "revoked" });
-    expect((await quotes(tRev)).data).toMatchObject({ ok: false, reason: "not_signed_in" });
-    expect((await verify(pending.pairs[0].ref, pending.pairs[0].code, newToken())).data).toMatchObject({ ok: false, reason: "revoked" });
+    await refused(await quotes(tRev), "read", "session_ended");
+    await refused(await verify(pending.pairs[0].ref, pending.pairs[0].code, newToken()), "verify", "revoked");
     await resetEmailLimit();
     expect((await request(E.quotesOnly)).r.data).toMatchObject({ ok: true, sends: [] });
     expect((await call(as(P.admin), "public.portal_contact_revoke($1, $2)", [K.quotesOnly, `again ${REASON_MARK}`])).hint).toBe("already_revoked");
