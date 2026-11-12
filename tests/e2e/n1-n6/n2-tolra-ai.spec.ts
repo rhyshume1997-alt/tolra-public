@@ -42,7 +42,7 @@ test("N2: Tolra mode starts hidden and an ordinary company admin cannot activate
   expect((await page.request.post("/api/ai-helper/tolra-mode",{data:{enabled:true}})).status()).toBe(403);
 });
 
-test("N2: shared Tolra AI is switched off: owner can only store the key switched off, no company choice, no shared-key request",async({page})=>{
+test("N2: shared Tolra AI is switched off: owner can only store the key switched off, no company choice, no shared-key request",async({page,browser})=>{
   test.setTimeout(180_000);
   await ownerOnPlatform(page);
   const input=page.getByLabel("Tolra Anthropic key",{exact:true});
@@ -69,6 +69,18 @@ test("N2: shared Tolra AI is switched off: owner can only store the key switched
   expect(requests.error).toBeNull();expect(requests.data).toEqual([]);
   const quotes=await adminClient().from("quotes").select("id").eq("organization_id",a.id);
   expect(quotes.error).toBeNull();expect(quotes.data).toEqual([]);
+  // Company B is untouched by A's actions: same switched-off state, nothing spent, reserved or requested.
+  const b=await createSoloTenant(world().runId,"n2-company-b");
+  const context=await browser.newContext({baseURL:new URL(page.url()).origin});
+  try {
+    const other=await context.newPage();await signIn(other,b.admin);await other.goto("/admin/integrations");
+    await expect(other.getByTestId("setup-card-ai").getByRole("radio",{name:/Tolra-provided AI/})).toHaveCount(0);
+    const otherStatus=await other.request.get("/api/ai-helper/status");expect(otherStatus.ok()).toBe(true);
+    expect(await otherStatus.json()).toMatchObject({tolra_enabled:false,month_spent_pence:0,month_reserved_pence:0});
+    const otherRequests=await adminClient().from("ai_helper_requests").select("status").eq("organization_id",b.id);
+    expect(otherRequests.error).toBeNull();expect(otherRequests.data).toEqual([]);
+    expect((await other.request.post("/api/ai-helper/tolra-mode",{data:{enabled:true}})).status()).toBe(403);
+  } finally {await context.close();}
 });
 
 test("N2: office and viewer accounts cannot change mode or read the owner controls",async({page})=>{

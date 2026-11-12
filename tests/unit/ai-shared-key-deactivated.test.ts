@@ -27,7 +27,8 @@ describe("runAiHelper refuses shared (Tolra) mode", () => {
     expect(provider.complete).not.toHaveBeenCalled();
   });
   it("unreadable mode: refused before any reservation", async () => {
-    const callerRpc = vi.fn(async (...args: string[]) => ({ data: args.length ? null : null, error: { code: "XX000" } }));
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- typed so the call list is indexable
+    const callerRpc = vi.fn(async (..._args: string[]) => ({ data: null, error: { code: "XX000" } }));
     const provider = { complete: vi.fn() };
     expect(await run(callerRpc, provider)).toEqual({ kind: "unavailable" });
     expect(callerRpc.mock.calls.map((c) => c[0])).toEqual(["ai_helper_status"]);
