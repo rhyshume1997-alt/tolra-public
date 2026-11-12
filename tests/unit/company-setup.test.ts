@@ -22,3 +22,8 @@ it("puts import last and uses existing settings/users/integrations/import pages"
  expect(SETUP_STEPS.at(-1)?.id).toBe("import");
  expect(new Set(SETUP_STEPS.map(s=>s.href.split('#')[0]))).toEqual(new Set(['/settings','/admin/users','/admin/integrations','/admin/data']));
 });
+it("accounting connections hint names only Xero, not Sage or QuickBooks", () => {
+ const hint = SETUP_STEPS.find(s=>s.id==="connections")?.hint ?? "";
+ expect(hint).toContain("Xero");
+ expect(hint).not.toMatch(/Sage|QuickBooks/);
+});
