@@ -38,7 +38,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { isolatedBackend } from "../support/isolation";
 import { EMAIL_DOMAIN, destroySyntheticWorld, verifyBackendIdentity, withDb } from "../support/fixtures";
 import { preparePost144Fixture } from "../support/post-144-release-fixture";
-import { enter154PortalWindow, exit154PortalWindow } from "../support/release-154-portal-window";
+import { enter154PortalWindow, exit154PortalWindow } from "../support/release-154-portal-window"; // Release 154 test compatibility exception (setup only)
 import { decide } from "../../scripts/release-readiness-gate.mjs";
 
 const runId = randomBytes(4).toString("hex");
@@ -180,8 +180,8 @@ describe("release 153 document customer links", () => {
     await verifyBackendIdentity();
     // 145..153 on this disposable database (153 applied fresh onto 152 where it is not yet), each verify file all true.
     await withDb((db) => preparePost144Fixture({ verify: verifyBackendIdentity, query: (sql) => db.query(sql) }));
-    // Release 154 window: this proof is about the state before 154 (it rolls 153 back), so it runs with 154 rolled back and re-applies it
-    // after (tests/support/release-154-portal-window.ts).
+    // Release 154 test compatibility exception (setup only): this proof rolls 153 back, so it runs with 154 rolled back and re-applies it
+    // after (tests/support/release-154-portal-window.ts). No assertion, check or 153 database behaviour is changed.
     await enter154PortalWindow();
     pool = new Pool({ connectionString: isolatedBackend().databaseUrl, max: 4 });
 
@@ -230,7 +230,7 @@ describe("release 153 document customer links", () => {
       await pool.end();
     }
     await destroySyntheticWorld(runId);
-    await exit154PortalWindow();
+    await exit154PortalWindow(); // Release 154 test compatibility exception (setup only)
   });
 
   it("installed: marker applied, every verify row true, the 17 guard fingerprints read true, and nothing person-made exists yet", async () => {

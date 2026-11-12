@@ -32,6 +32,12 @@
 --   reason, code, reference, token or hash). Full invite and revoke reasons stay only in the contact row (no API grant).
 -- NAMES: no 154 function is named customer_portal% or %document_customer% (153's verify counts those). 153's rollback refuses while
 --   customer_portal_contacts, customer_portal_sessions or portal_session_resolve(text) exists.
+-- RETENTION POLICY (PM 16:15: documented and enforced before activation; no automatic purge in this release; portal stays OFF):
+--   codes     usable 10 minutes, once, 5 wrong tries (enforced); the code hash is cleared when used or burnt; the row (ids, times,
+--             ref hash) is kept as sign-in evidence. Sessions: 30 minutes idle, 8 hours absolute (enforced at the next call); the row is
+--             kept with its end reason. Contacts: kept while the customer exists (revoked ones stay as the record of who had access).
+--             Refusal log: 180 days (as 151). Proposed for the later purge release (PM to confirm the periods): code and session rows
+--             180 days after expiry or end, revoked contacts 180 days after revocation. Until then nothing is deleted (DELETE is refused).
 -- KNOWN BUG CLASSES CHECKED: no text || "char" (every "char" column is cast ::TEXT first); no parameter used with two deduced types.
 -- =====================================================================================================
 BEGIN;
