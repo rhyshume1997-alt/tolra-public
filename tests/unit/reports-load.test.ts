@@ -93,6 +93,14 @@ describe("loadReports", () => {
     expect((await loadReports(over.client, { now: NOW })).machines).toMatchObject({ state: "ok", truncated: true });
   });
 
+  it("machine hours: a plan read cut off at the row cap (a job flagged truncated by 3b) says it may be incomplete", async () => {
+    const runs = Array.from({ length: 20_000 }, (_, i) => ({ id: `run-${i}`, job_id: "job-1", machine_id: "m-1", started_at: "2026-10-04T09:00:00Z", ended_at: "2026-10-04T10:00:00Z" }));
+    const { client } = fake((q) => (q.table === "machine_runs" ? runs : base(q)));
+    expect((await loadReports(client, { now: NOW })).machines).toMatchObject({ state: "ok", truncated: true });
+    const { client: under } = fake((q) => (q.table === "machine_runs" ? runs.slice(0, 3) : base(q)));
+    expect((await loadReports(under, { now: NOW })).machines).toMatchObject({ state: "ok", truncated: false });
+  });
+
   it("machine hours: internal jobs are dropped before the cap and never sent to the plan reads", async () => {
     const jobs = [...Array.from({ length: 3 }, (_, i) => finishedJob(1000 + i, true)), ...Array.from({ length: MACHINE_HOURS_JOB_CAP }, (_, i) => finishedJob(i))];
     const { client, queries } = fake((q) => (isFinishedRead(q) ? jobs : []));
