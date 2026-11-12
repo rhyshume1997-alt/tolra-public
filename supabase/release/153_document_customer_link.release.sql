@@ -1,0 +1,990 @@
+-- Post-144 release step 153 (document customer link v2: jobs and quotes, side table, backfill unverified, ON DELETE RESTRICT, portal switch off by default; registered in supabase/release-plan.json as phase 153, after 152; CI's post-144 step installs it). One-time, one transaction; never part of baseline replay.
+-- Not applied anywhere hosted or local. Canonical source: supabase/proposals/p153_document_customer_link.sql (its body between BEGIN; and COMMIT; is copied below verbatim
+-- between the fingerprint and the self-check; read its header). Apply only after 152 (the guard tests 152's objects). Production only with Rhys's separate yes,
+-- and only after supabase/verify/document_customer_link_153_guards.sql has returned 17 true rows on that same database (read only).
+-- Verify: supabase/verify/document_customer_link_153.sql (every row true). Rollback: supabase/release/153_document_customer_link.rollback.sql.
+-- Takes a short SHARE ROW EXCLUSIVE lock on jobs, quotes and customers (adding the foreign keys): run it in the release window, as every release.
+BEGIN;
+DO $post_release_guard$ BEGIN
+ IF to_regclass('public.document_customer_links') IS NOT NULL OR to_regclass('public.customer_portal_switch') IS NOT NULL
+    OR to_regclass('public.document_customer_links_verified') IS NOT NULL
+    OR to_regprocedure('public.link_document_customer(text,uuid,uuid,text)') IS NOT NULL
+    OR to_regprocedure('public.retire_document_customer_links(text,uuid,text)') IS NOT NULL THEN
+  RAISE EXCEPTION '153: the document customer link already exists; this one-time release was applied before';
+ END IF;
+ IF to_regclass('public.import_source_rows') IS NULL
+    OR to_regprocedure('public.import_sliq_batch(text,jsonb,text,text,integer,jsonb,boolean,boolean)') IS NULL THEN
+  RAISE EXCEPTION '153: required release 152 (SliQ import route) is missing; stop and check release preflight';
+ END IF;
+ IF to_regprocedure('public.enforce_same_org_parent()') IS NULL OR to_regprocedure('security_audit.log_row_change()') IS NULL
+    OR to_regprocedure('security_audit.log_named_event(uuid,text,text,text,jsonb)') IS NULL OR to_regprocedure('public.assert_privileged_aal()') IS NULL
+    OR to_regprocedure('public._session_membership()') IS NULL OR to_regprocedure('public.session_read_only()') IS NULL
+    OR to_regprocedure('public.has_org_role(text[])') IS NULL OR to_regprocedure('public.current_user_organization_id()') IS NULL
+    OR to_regprocedure('public.section_allowed(text)') IS NULL OR to_regprocedure('public.is_platform_admin()') IS NULL
+    OR to_regprocedure('public.assert_platform_aal()') IS NULL THEN
+  RAISE EXCEPTION '153: the helper functions it builds on are not all in place; stop and check release preflight';
+ END IF;
+ IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'jobs' AND column_name = 'is_internal')
+    OR NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'jobs' AND column_name = 'customer')
+    OR NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'quotes' AND column_name = 'customer') THEN
+  RAISE EXCEPTION '153: jobs.customer, jobs.is_internal (042) or quotes.customer is missing; stop and check release preflight';
+ END IF;
+ -- The issued-document guards are exactly the bodies 153 was reviewed against (md5 of the body without whitespace, as release_preflight).
+ IF EXISTS (
+   SELECT 1 FROM (VALUES
+     ('public.invoice_issue_lock()', 'aa8c9f3ae3035d0ed566723a28edd827'), ('public.invoice_lines_issue_lock()', 'b3673253b58e588dfe8a58730155f6c2'),
+     ('public.invoice_issue_guard()', 'a601d6b3464100729d4c9b5055d6633e'), ('public.issue_requires_matching_totals()', 'b4916aa4cdae320a157e810372f79b2e'),
+     ('public.quote_lifecycle_guard()', '3c01d528076221cdac11c72f7327ab02'), ('public.quote_lines_issue_lock()', 'a53b1982a3a9d995d1f3770e4dcbc2af'),
+     ('public.quote_version_guard()', 'f31c7937ac32d3615a5b144b5e6d064c'), ('public.quote_revision_withdrawn()', 'ad87b0b819e1ce1352e1c79a2a49fdc8'),
+     ('public.documents_start_as_drafts()', 'e923e0bc1a8c1e28a29ae912dc551fd2'), ('public.credit_note_issue_lock()', '8e0ff460c60a94bb1164dc39dd77aae1'),
+     ('public.credit_note_lines_issue_lock()', '369bbaa5c6979d4bb9d70c5cbf68d9bd'), ('public.delivery_notes_link_guard()', '4c57607b1909f060d689df9ea5a99128'),
+     ('public.delivery_note_items_link_guard()', '612a2bc924a8ea1916ce1a66101ced97'), ('public.purchase_order_issue_lock()', '9f903e888bca6d55322cc877488c1019'),
+     ('public.jobs_internal_immutable()', 'f05940d0ef168da81021a95aa3716718'), ('public.customers_in_use_guard()', 'f0eacba59c9e666f82083ff030cc966c'),
+     ('public.enforce_same_org_parent()', '4152a78c6de9e2473c49ce6c6e45c30f')) AS e(sig, body)
+   LEFT JOIN pg_proc p ON p.oid = to_regprocedure(e.sig)
+   WHERE p.oid IS NULL OR md5(regexp_replace(p.prosrc, '\s', '', 'g')) <> e.body) THEN
+  RAISE EXCEPTION '153: an issued-document guard is not the body 153 was reviewed against; stop and compare it first';
+ END IF;
+END $post_release_guard$;
+
+-- Before: a fingerprint of every issued-document guard function (body, definer, search_path, owner, grants), and of every trigger,
+-- policy, column and grant on the document and customer tables, and of every one of their rows. The self-check at the end
+-- requires the identical fingerprint. Session-only helper, dropped before COMMIT.
+CREATE FUNCTION pg_temp.p153_fingerprint()
+RETURNS TABLE (kind TEXT, item TEXT, fp TEXT)
+LANGUAGE sql
+AS $p153fp$
+  WITH t(name) AS (VALUES ('jobs'), ('quotes'), ('quote_line_items'), ('invoices'), ('invoice_line_items'), ('credit_notes'),
+                          ('credit_note_lines'), ('delivery_notes'), ('delivery_note_items'), ('purchase_orders'), ('customers')),
+  g(sig) AS (VALUES ('public.invoice_issue_lock()'), ('public.invoice_lines_issue_lock()'), ('public.invoice_issue_guard()'),
+                    ('public.issue_requires_matching_totals()'), ('public.quote_lifecycle_guard()'), ('public.quote_lines_issue_lock()'),
+                    ('public.quote_version_guard()'), ('public.quote_revision_withdrawn()'), ('public.documents_start_as_drafts()'),
+                    ('public.credit_note_issue_lock()'), ('public.credit_note_lines_issue_lock()'), ('public.delivery_notes_link_guard()'),
+                    ('public.delivery_note_items_link_guard()'), ('public.purchase_order_issue_lock()'), ('public.jobs_internal_immutable()'),
+                    ('public.customers_in_use_guard()'), ('public.enforce_same_org_parent()'))
+  SELECT 'function'::TEXT, g.sig::TEXT, md5(concat_ws('|', p.prosrc, p.prosecdef, p.proconfig::TEXT, p.proowner, p.proacl::TEXT, p.provolatile))
+  FROM g LEFT JOIN pg_proc p ON p.oid = to_regprocedure(g.sig)
+  UNION ALL
+  SELECT 'trigger', c.relname::TEXT || '.' || tr.tgname::TEXT, md5(pg_get_triggerdef(tr.oid) || tr.tgenabled::TEXT)
+  FROM pg_trigger tr JOIN pg_class c ON c.oid = tr.tgrelid
+  WHERE c.relnamespace = 'public'::regnamespace AND c.relname IN (SELECT name FROM t) AND NOT tr.tgisinternal
+  UNION ALL
+  SELECT 'policy', p.tablename::TEXT || '.' || p.policyname::TEXT, md5(concat_ws('|', p.permissive, p.roles::TEXT, p.cmd, p.qual, p.with_check))
+  FROM pg_policies p WHERE p.schemaname = 'public' AND p.tablename IN (SELECT name FROM t)
+  UNION ALL
+  SELECT 'column', c.table_name::TEXT || '.' || c.column_name::TEXT, md5(concat_ws('|', c.data_type, c.column_default, c.is_nullable, c.ordinal_position))
+  FROM information_schema.columns c WHERE c.table_schema = 'public' AND c.table_name IN (SELECT name FROM t)
+  UNION ALL
+  SELECT 'table', c.relname::TEXT, md5(concat_ws('|', c.relacl::TEXT, c.relrowsecurity, c.relforcerowsecurity))
+  FROM pg_class c WHERE c.relnamespace = 'public'::regnamespace AND c.relname IN (SELECT name FROM t)
+  UNION ALL SELECT 'rows', 'jobs', md5(coalesce(string_agg(md5(to_jsonb(x)::TEXT), '' ORDER BY x.id), '')) FROM public.jobs x
+  UNION ALL SELECT 'rows', 'quotes', md5(coalesce(string_agg(md5(to_jsonb(x)::TEXT), '' ORDER BY x.id), '')) FROM public.quotes x
+  UNION ALL SELECT 'rows', 'invoices', md5(coalesce(string_agg(md5(to_jsonb(x)::TEXT), '' ORDER BY x.id), '')) FROM public.invoices x
+  UNION ALL SELECT 'rows', 'credit_notes', md5(coalesce(string_agg(md5(to_jsonb(x)::TEXT), '' ORDER BY x.id), '')) FROM public.credit_notes x
+  UNION ALL SELECT 'rows', 'customers', md5(coalesce(string_agg(md5(to_jsonb(x)::TEXT), '' ORDER BY x.id), '')) FROM public.customers x
+$p153fp$;
+CREATE TEMP TABLE _p153_before ON COMMIT DROP AS SELECT * FROM pg_temp.p153_fingerprint();
+
+
+
+-- ---- 1. The link table: jobs and quotes only ----------------------------------------------------------------------------------------
+-- One row per link. A live link (unlinked_at IS NULL) is at most one per document. Each row keeps the document's customer text and the
+-- customer's name as they were when it was made. Rows change only by the one-time verify stamp and the one-time unlink stamp; a relink
+-- is a new row. The job, quote and customer references are ON DELETE RESTRICT (the 045 / 081 "records kept" precedent): a link row
+-- never disappears behind a document's back. The document tables get no column, trigger, policy or grant from this release.
+CREATE TABLE public.document_customer_links (
+  id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id         UUID NOT NULL REFERENCES public.organizations(id),
+  doc_kind                TEXT NOT NULL,
+  job_id                  UUID REFERENCES public.jobs(id) ON DELETE RESTRICT,
+  quote_id                UUID REFERENCES public.quotes(id) ON DELETE RESTRICT,
+  customer_id             UUID NOT NULL REFERENCES public.customers(id) ON DELETE RESTRICT,
+  source                  TEXT NOT NULL,
+  document_customer_text  TEXT NOT NULL,
+  customer_name_at_link   TEXT NOT NULL,
+  linked_by               UUID,
+  link_reason             TEXT,
+  linked_at               TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+  verified_by             UUID,
+  verify_reason           TEXT,
+  verified_at             TIMESTAMPTZ,
+  unlinked_by             UUID,
+  unlink_reason           TEXT,
+  unlinked_at             TIMESTAMPTZ,
+  CONSTRAINT document_customer_links_kind CHECK (doc_kind IN ('job', 'quote')),
+  CONSTRAINT document_customer_links_one_document CHECK (num_nonnulls(job_id, quote_id) = 1
+    AND (doc_kind = 'job') = (job_id IS NOT NULL) AND (doc_kind = 'quote') = (quote_id IS NOT NULL)),
+  CONSTRAINT document_customer_links_source CHECK (source IN ('backfill', 'manual', 'name_override')),
+  CONSTRAINT document_customer_links_names CHECK (btrim(document_customer_text) <> '' AND btrim(customer_name_at_link) <> ''
+    AND CASE source WHEN 'name_override' THEN lower(btrim(document_customer_text)) <> lower(btrim(customer_name_at_link))
+                    ELSE lower(btrim(document_customer_text)) = lower(btrim(customer_name_at_link)) END),
+  CONSTRAINT document_customer_links_who_and_why CHECK (CASE source
+    WHEN 'backfill' THEN linked_by IS NULL AND link_reason IS NULL
+    ELSE linked_by IS NOT NULL AND length(btrim(coalesce(link_reason, ''))) BETWEEN 1 AND 500
+         AND verified_by = linked_by AND verified_at = linked_at AND verify_reason = link_reason END),
+  CONSTRAINT document_customer_links_verify_whole CHECK ((verified_at IS NULL) = (verified_by IS NULL)
+    AND (verified_at IS NULL) = (verify_reason IS NULL)
+    AND (verify_reason IS NULL OR length(btrim(verify_reason)) BETWEEN 1 AND 500)),
+  CONSTRAINT document_customer_links_unlink_whole CHECK ((unlinked_at IS NULL) = (unlinked_by IS NULL)
+    AND (unlinked_at IS NULL) = (unlink_reason IS NULL)
+    AND (unlink_reason IS NULL OR length(btrim(unlink_reason)) BETWEEN 1 AND 500))
+);
+CREATE UNIQUE INDEX document_customer_links_one_live_job ON public.document_customer_links (job_id) WHERE unlinked_at IS NULL AND job_id IS NOT NULL;
+CREATE UNIQUE INDEX document_customer_links_one_live_quote ON public.document_customer_links (quote_id) WHERE unlinked_at IS NULL AND quote_id IS NOT NULL;
+CREATE INDEX document_customer_links_job ON public.document_customer_links (job_id) WHERE job_id IS NOT NULL;
+CREATE INDEX document_customer_links_quote ON public.document_customer_links (quote_id) WHERE quote_id IS NOT NULL;
+CREATE INDEX document_customer_links_customer ON public.document_customer_links (customer_id);
+CREATE INDEX document_customer_links_pending ON public.document_customer_links (organization_id) WHERE unlinked_at IS NULL AND verified_at IS NULL;
+
+-- Read only: own company, admin and office, only in a section the person may see, and only where the caller can already see the
+-- document (the EXISTS runs under the caller's own row security on jobs / quotes). Admin and office see unverified backfill rows here so
+-- they can verify or unlink them; nothing outside the verified view is ever shown to a customer. Nobody writes directly: the functions
+-- below are the only route; the service role gets nothing in 153.
+ALTER TABLE public.document_customer_links ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "document_customer_links select" ON public.document_customer_links FOR SELECT TO authenticated
+  USING (organization_id = (SELECT public.current_user_organization_id())
+         AND (SELECT public.has_org_role(ARRAY['admin', 'office']))
+         AND CASE document_customer_links.doc_kind
+               WHEN 'job' THEN (SELECT public.section_allowed('jobs'))
+                               AND EXISTS (SELECT 1 FROM public.jobs j WHERE j.id = document_customer_links.job_id)
+               WHEN 'quote' THEN (SELECT public.section_allowed('quotes'))
+                                 AND EXISTS (SELECT 1 FROM public.quotes q WHERE q.id = document_customer_links.quote_id)
+               ELSE FALSE END);
+REVOKE ALL ON public.document_customer_links FROM PUBLIC, anon, authenticated, service_role;
+GRANT SELECT ON public.document_customer_links TO authenticated;
+
+-- Same company: the existing 006 trigger function, unchanged, once per parent (the zz_same_org_<column> naming of 006).
+CREATE TRIGGER zz_same_org_job_id BEFORE INSERT OR UPDATE ON public.document_customer_links
+  FOR EACH ROW EXECUTE FUNCTION public.enforce_same_org_parent('jobs', 'job_id');
+CREATE TRIGGER zz_same_org_quote_id BEFORE INSERT OR UPDATE ON public.document_customer_links
+  FOR EACH ROW EXECUTE FUNCTION public.enforce_same_org_parent('quotes', 'quote_id');
+CREATE TRIGGER zz_same_org_customer_id BEFORE INSERT OR UPDATE ON public.document_customer_links
+  FOR EACH ROW EXECUTE FUNCTION public.enforce_same_org_parent('customers', 'customer_id');
+
+-- The guard.
+--   INSERT: starts live; a backfill row starts unverified; the document is a non-internal job or a quote of its own company and the
+--     stored texts are exactly the document's customer text and the customer's name now (the names rule is the CHECK above).
+--   UPDATE: exactly one of the one-time verify stamp (only while live, and only while neither text has changed since the link:
+--     otherwise link_stale) or the one-time unlink stamp; every other column unchanged.
+--   DELETE: only inside retire_document_customer_links for that document or customer, inside platform_offboard_document_customer_links
+--     for that company, or inside 153's rollback for an unverified, live backfill row (each sets the transaction-local
+--     tolra.document_customer_link_removal). Anything else is refused, the owner too.
+CREATE FUNCTION public.document_customer_links_guard()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  v_doc_text TEXT;
+  v_internal BOOLEAN := FALSE;
+  v_found    BOOLEAN;
+  v_name     TEXT;
+  v_removal  TEXT := coalesce(current_setting('tolra.document_customer_link_removal', TRUE), '');
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.unlinked_at IS NOT NULL OR (NEW.source = 'backfill' AND NEW.verified_at IS NOT NULL) THEN
+      RAISE EXCEPTION 'A new document link starts live, and a backfill link starts unverified.' USING ERRCODE = '42501', HINT = 'link_immutable';
+    END IF;
+    IF NEW.doc_kind = 'job' THEN
+      SELECT j.customer, j.is_internal INTO v_doc_text, v_internal FROM public.jobs j WHERE j.id = NEW.job_id AND j.organization_id = NEW.organization_id;
+      v_found := FOUND;
+    ELSE
+      SELECT q.customer INTO v_doc_text FROM public.quotes q WHERE q.id = NEW.quote_id AND q.organization_id = NEW.organization_id;
+      v_found := FOUND;
+    END IF;
+    IF NOT v_found THEN
+      RAISE EXCEPTION 'A document link must name a % of its own company.', NEW.doc_kind USING ERRCODE = '42501', HINT = 'link_other_company';
+    END IF;
+    IF v_internal THEN
+      RAISE EXCEPTION 'An internal job has no customer to link.' USING ERRCODE = '22023', HINT = 'internal_job';
+    END IF;
+    SELECT c.name INTO v_name FROM public.customers c WHERE c.id = NEW.customer_id AND c.organization_id = NEW.organization_id;
+    IF NOT FOUND OR NEW.document_customer_text IS DISTINCT FROM v_doc_text OR NEW.customer_name_at_link IS DISTINCT FROM v_name THEN
+      RAISE EXCEPTION 'A document link must record the document''s customer text and the customer''s name as they are now.' USING ERRCODE = '42501', HINT = 'link_stale';
+    END IF;
+    RETURN NEW;
+  END IF;
+  IF TG_OP = 'UPDATE' THEN
+    IF (NEW.id, NEW.organization_id, NEW.doc_kind, NEW.job_id, NEW.quote_id, NEW.customer_id, NEW.source, NEW.document_customer_text,
+        NEW.customer_name_at_link, NEW.linked_by, NEW.link_reason, NEW.linked_at)
+       IS DISTINCT FROM (OLD.id, OLD.organization_id, OLD.doc_kind, OLD.job_id, OLD.quote_id, OLD.customer_id, OLD.source, OLD.document_customer_text,
+        OLD.customer_name_at_link, OLD.linked_by, OLD.link_reason, OLD.linked_at) THEN
+      RAISE EXCEPTION 'A document link can''t be changed: unlink it (once, with a reason) and link again.' USING ERRCODE = '42501', HINT = 'link_immutable';
+    END IF;
+    -- The one-time verify stamp: live before and after, unlink columns untouched, and nothing has changed since the link was made.
+    IF OLD.verified_at IS NULL AND NEW.verified_at IS NOT NULL AND OLD.unlinked_at IS NULL AND NEW.unlinked_at IS NULL
+       AND NEW.unlinked_by IS NULL AND NEW.unlink_reason IS NULL THEN
+      IF NOT EXISTS (
+           SELECT 1 FROM public.customers c
+           WHERE c.id = OLD.customer_id AND lower(btrim(c.name)) = lower(btrim(OLD.customer_name_at_link))
+             AND CASE OLD.doc_kind
+                   WHEN 'job' THEN EXISTS (SELECT 1 FROM public.jobs j WHERE j.id = OLD.job_id AND NOT j.is_internal
+                                             AND lower(btrim(coalesce(j.customer, ''))) = lower(btrim(OLD.document_customer_text)))
+                   ELSE EXISTS (SELECT 1 FROM public.quotes q WHERE q.id = OLD.quote_id
+                                  AND lower(btrim(q.customer)) = lower(btrim(OLD.document_customer_text))) END) THEN
+        RAISE EXCEPTION 'The document''s customer or the customer''s name has changed since this link was made: unlink it and link again.' USING ERRCODE = '55000', HINT = 'link_stale';
+      END IF;
+      RETURN NEW;
+    END IF;
+    -- The one-time unlink stamp: verify columns untouched.
+    IF OLD.unlinked_at IS NULL AND NEW.unlinked_at IS NOT NULL
+       AND (NEW.verified_by, NEW.verify_reason, NEW.verified_at) IS NOT DISTINCT FROM (OLD.verified_by, OLD.verify_reason, OLD.verified_at) THEN
+      RETURN NEW;
+    END IF;
+    RAISE EXCEPTION 'A document link can''t be changed: unlink it (once, with a reason) and link again.' USING ERRCODE = '42501', HINT = 'link_immutable';
+  END IF;
+  -- DELETE.
+  IF v_removal = 'rollback' AND OLD.source = 'backfill' AND OLD.verified_at IS NULL AND OLD.unlinked_at IS NULL THEN
+    RETURN OLD;
+  END IF;
+  IF v_removal <> '' AND v_removal IN ('retire:job:' || OLD.job_id::TEXT, 'retire:quote:' || OLD.quote_id::TEXT, 'retire:customer:' || OLD.customer_id::TEXT,
+                                       'offboard:' || OLD.organization_id::TEXT) THEN
+    RETURN OLD;
+  END IF;
+  RAISE EXCEPTION 'A document link is a record: it leaves only when an admin retires the links of its document or customer (with a reason).' USING ERRCODE = '42501', HINT = 'link_immutable';
+END
+$$;
+REVOKE ALL ON FUNCTION public.document_customer_links_guard() FROM PUBLIC, anon, authenticated, service_role;
+CREATE TRIGGER document_customer_links_guard BEFORE INSERT OR UPDATE OR DELETE ON public.document_customer_links
+  FOR EACH ROW EXECUTE FUNCTION public.document_customer_links_guard();
+
+CREATE FUNCTION public.document_customer_links_no_truncate()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public
+AS $$
+BEGIN
+  RAISE EXCEPTION 'Document links are a record: they can''t be emptied.' USING ERRCODE = '42501', HINT = 'link_immutable';
+END
+$$;
+REVOKE ALL ON FUNCTION public.document_customer_links_no_truncate() FROM PUBLIC, anon, authenticated, service_role;
+CREATE TRIGGER document_customer_links_no_truncate BEFORE TRUNCATE ON public.document_customer_links
+  FOR EACH STATEMENT EXECUTE FUNCTION public.document_customer_links_no_truncate();
+
+-- Audit (PM ruling, 12 Nov 2026 16:15, option A: fixed safe reason categories in audit events; complete reasons only in authorised
+-- restricted records): NO security_audit.log_row_change trigger on this table. The shared row audit copies whole rows (the two name
+-- texts and the three free-text reasons) into the log every company admin reads, so, as 149's xero_transfer_hold and this release's own
+-- offboarding, every change is instead a named event in the append-only, hash-chained security_audit.audit_log (000/006/077) that
+-- names the link, document and customer by id and carries a fixed reason_category, never a name text or a free-text reason: the
+-- backfill (DOCUMENT_CUSTOMER_LINK_BACKFILL, with the ids it inserted), link, name override, verify, unlink, retire and the offboarding
+-- (sections 5-11), and the rollback (DOCUMENT_CUSTOMER_LINK_ROLLBACK, with the ids it removes). The complete reasons stay only in this
+-- row's own link_reason / verify_reason / unlink_reason (the policy above: own company, admin and office, a section they may see; no
+-- API role writes; the guard keeps them unchanged), and, once retired or offboarded, in the platform-admin-only snapshot table
+-- (section 10a). No support_read_only / admin_mfa statement triggers on this table: the functions check both themselves.
+
+-- ---- 2. What may be shown: verified links only ---------------------------------------------------------------------------------------
+-- Live, VERIFIED (a person verified it, or a person made it), and neither the document's customer text nor the customer's name has
+-- changed since the link was made (case and surrounding spaces aside); never an internal job. An unverified backfill link is never here.
+-- security_invoker: the caller's own row security applies. Only these seven columns: no cost, margin, balance, total, status or approval.
+CREATE VIEW public.document_customer_links_verified WITH (security_invoker = true) AS
+SELECT l.id, l.organization_id, l.doc_kind, coalesce(l.job_id, l.quote_id) AS document_id, l.customer_id, l.source, l.verified_at
+FROM public.document_customer_links l
+JOIN public.customers c ON c.id = l.customer_id AND c.organization_id = l.organization_id
+LEFT JOIN public.jobs j ON l.doc_kind = 'job' AND j.id = l.job_id AND j.organization_id = l.organization_id
+LEFT JOIN public.quotes q ON l.doc_kind = 'quote' AND q.id = l.quote_id AND q.organization_id = l.organization_id
+WHERE l.unlinked_at IS NULL
+  AND l.verified_at IS NOT NULL
+  AND lower(btrim(c.name)) = lower(btrim(l.customer_name_at_link))
+  AND CASE l.doc_kind
+        WHEN 'job' THEN j.id IS NOT NULL AND NOT j.is_internal AND lower(btrim(coalesce(j.customer, ''))) = lower(btrim(l.document_customer_text))
+        WHEN 'quote' THEN q.id IS NOT NULL AND lower(btrim(q.customer)) = lower(btrim(l.document_customer_text))
+        ELSE FALSE END;
+REVOKE ALL ON public.document_customer_links_verified FROM PUBLIC, anon, authenticated, service_role;
+GRANT SELECT ON public.document_customer_links_verified TO authenticated;
+
+-- ---- 3. The company switch: OFF by default --------------------------------------------------------------------------------------------
+-- No row = off. A row exists only once an admin has used the switch. As 149's xero_transfer_hold (not an organization_settings column or
+-- a hidden_nav marker, which an admin can change with a plain UPDATE: no fresh code, no reason, no named audit event). In 153 nothing
+-- outside Tolra reads it; the portal release refuses every portal call while it is off. Its Settings screen is a separate PR.
+CREATE TABLE public.customer_portal_switch (
+  id              UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
+  organization_id UUID PRIMARY KEY REFERENCES public.organizations(id),
+  enabled         BOOLEAN NOT NULL DEFAULT FALSE,
+  changed_by      UUID NOT NULL,
+  changed_at      TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+  reason          TEXT NOT NULL,
+  CONSTRAINT customer_portal_switch_reason CHECK (length(btrim(reason)) BETWEEN 1 AND 500)
+);
+ALTER TABLE public.customer_portal_switch ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "customer_portal_switch admin select" ON public.customer_portal_switch FOR SELECT TO authenticated
+  USING (organization_id = (SELECT public.current_user_organization_id()) AND (SELECT public.has_org_role(ARRAY['admin'])));
+REVOKE ALL ON public.customer_portal_switch FROM PUBLIC, anon, authenticated, service_role;
+GRANT SELECT ON public.customer_portal_switch TO authenticated;
+
+-- Only customer_portal_set_enabled writes the switch: it sets the transaction-local tolra.customer_portal_switch_write to its own company
+-- first. Any other INSERT or UPDATE is refused, the owner too. A switch row is never emptied, and is deleted only by the platform owner's
+-- company offboarding (platform_offboard_document_customer_links sets the same flag to 'offboard:' and that company; its platform-only
+-- snapshot keeps the row). Each row is an admin's decision with a reason; 153's rollback refuses while any exists or after any
+-- offboarding. Every change is a named event (CUSTOMER_PORTAL_SWITCH_CHANGED: on / off, what it was, a fixed reason_category and the
+-- actor; CUSTOMER_PORTAL_OFFBOARDED for the offboarding's DELETE), never a row audit (as for the links, section 1): the admin's
+-- free-text reason stays only in this row's reason column, which only the company's admins read (the policy above); the offboarding
+-- keeps the removed row whole in the platform-only snapshot.
+CREATE FUNCTION public.customer_portal_switch_guard()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public
+AS $$
+BEGIN
+  IF TG_OP = 'DELETE' AND coalesce(current_setting('tolra.customer_portal_switch_write', TRUE), '') = 'offboard:' || OLD.organization_id::TEXT THEN
+    RETURN OLD;
+  END IF;
+  IF TG_OP IN ('INSERT', 'UPDATE') THEN
+    IF NEW.organization_id::TEXT = coalesce(current_setting('tolra.customer_portal_switch_write', TRUE), '') THEN
+      IF TG_OP = 'INSERT' THEN
+        RETURN NEW;
+      END IF;
+      IF (NEW.id, NEW.organization_id) IS NOT DISTINCT FROM (OLD.id, OLD.organization_id) THEN
+        RETURN NEW;
+      END IF;
+    END IF;
+  END IF;
+  RAISE EXCEPTION 'The customer portal switch changes only through its own setting (admin, fresh code, reason), and is removed only by the platform offboarding.'
+    USING ERRCODE = '42501', HINT = 'switch_immutable';
+END
+$$;
+REVOKE ALL ON FUNCTION public.customer_portal_switch_guard() FROM PUBLIC, anon, authenticated, service_role;
+CREATE TRIGGER customer_portal_switch_guard BEFORE INSERT OR UPDATE OR DELETE ON public.customer_portal_switch
+  FOR EACH ROW EXECUTE FUNCTION public.customer_portal_switch_guard();
+
+CREATE FUNCTION public.customer_portal_switch_no_truncate()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public
+AS $$
+BEGIN
+  RAISE EXCEPTION 'The customer portal switch is a record: it can''t be emptied.' USING ERRCODE = '42501', HINT = 'switch_immutable';
+END
+$$;
+REVOKE ALL ON FUNCTION public.customer_portal_switch_no_truncate() FROM PUBLIC, anon, authenticated, service_role;
+CREATE TRIGGER customer_portal_switch_no_truncate BEFORE TRUNCATE ON public.customer_portal_switch
+  FOR EACH STATEMENT EXECUTE FUNCTION public.customer_portal_switch_no_truncate();
+
+-- ---- 4. Who may act (internal) ---------------------------------------------------------------------------------------------------------
+-- A signed-in member of the session's company in one of p_roles: 033's second step where the company asks for it (assert_privileged_aal);
+-- never a support session (elevated or not) and never a read-only session; and, when p_fresh, an authenticator code from the last
+-- 15 minutes (900 s, up to 60 s ahead for clock skew: the test of 136 / 149 and lib/mfa-policy.ts recentSecondStep), whatever the
+-- company's own setting (PM answer 2: people without an authenticator enrol first). Returns the company. No API role may call it.
+CREATE FUNCTION public._document_customer_link_actor(p_roles TEXT[], p_fresh BOOLEAN)
+RETURNS UUID
+LANGUAGE plpgsql
+STABLE
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  v_org UUID := public.current_user_organization_id();
+  v_now NUMERIC := extract(epoch FROM now());
+BEGIN
+  PERFORM public.assert_privileged_aal();
+  IF v_org IS NULL OR auth.uid() IS NULL OR p_roles IS NULL OR NOT public.has_org_role(p_roles)
+     OR coalesce((SELECT s.is_support FROM public._session_membership() s), TRUE) OR public.session_read_only() THEN
+    RAISE EXCEPTION 'Only the company''s own % can do this.', array_to_string(p_roles, ' or ') USING ERRCODE = '42501',
+      HINT = CASE WHEN p_roles = ARRAY['admin'] THEN 'admin_required' ELSE 'admin_or_office_required' END;
+  END IF;
+  IF p_fresh AND NOT EXISTS (
+       SELECT 1 FROM jsonb_array_elements(CASE WHEN jsonb_typeof(auth.jwt() -> 'amr') = 'array' THEN auth.jwt() -> 'amr' ELSE '[]'::JSONB END) AS e
+       WHERE e ->> 'method' IN ('totp', 'mfa/totp')
+         AND CASE WHEN jsonb_typeof(e -> 'timestamp') = 'number' THEN (e ->> 'timestamp')::NUMERIC END BETWEEN v_now - 900 AND v_now + 60) THEN
+    RAISE EXCEPTION 'Enter a fresh code from your authenticator app first.' USING ERRCODE = '42501', HINT = 'mfa_recent_required';
+  END IF;
+  RETURN v_org;
+END
+$$;
+REVOKE ALL ON FUNCTION public._document_customer_link_actor(TEXT[], BOOLEAN) FROM PUBLIC, anon, authenticated, service_role;
+
+CREATE FUNCTION public._document_customer_link_reason(p_reason TEXT)
+RETURNS TEXT
+LANGUAGE plpgsql
+IMMUTABLE
+SET search_path = pg_catalog, public
+AS $$
+BEGIN
+  IF p_reason IS NULL OR length(btrim(p_reason)) NOT BETWEEN 1 AND 500 THEN
+    RAISE EXCEPTION 'Give a reason (up to 500 characters).' USING ERRCODE = '22023', HINT = 'reason_required';
+  END IF;
+  RETURN btrim(p_reason);
+END
+$$;
+REVOKE ALL ON FUNCTION public._document_customer_link_reason(TEXT) FROM PUBLIC, anon, authenticated, service_role;
+
+-- ---- 5. Link by hand (admin or office; fresh code; reason; names must match; audited) ---------------------------------------------------
+CREATE FUNCTION public.link_document_customer(p_kind TEXT, p_document UUID, p_customer UUID, p_reason TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, security_audit
+AS $$
+DECLARE
+  v_org      UUID := public._document_customer_link_actor(ARRAY['admin', 'office'], TRUE);
+  v_uid      UUID := auth.uid();
+  v_at       TIMESTAMPTZ := clock_timestamp();
+  v_reason   TEXT;
+  v_doc_text TEXT;
+  v_internal BOOLEAN := FALSE;
+  v_name     TEXT;
+  v_link     UUID;
+BEGIN
+  IF p_kind IS NULL OR p_kind NOT IN ('job', 'quote') THEN
+    RAISE EXCEPTION 'Only jobs and quotes can be linked to a customer.' USING ERRCODE = '22023', HINT = 'invalid_kind';
+  END IF;
+  v_reason := public._document_customer_link_reason(p_reason);
+  IF NOT public.section_allowed(CASE p_kind WHEN 'job' THEN 'jobs' ELSE 'quotes' END) THEN
+    RAISE EXCEPTION 'That % isn''t in your company.', p_kind USING ERRCODE = 'P0002', HINT = 'document_not_found';
+  END IF;
+  IF p_kind = 'job' THEN
+    SELECT j.customer, j.is_internal INTO v_doc_text, v_internal FROM public.jobs j WHERE j.id = p_document AND j.organization_id = v_org;
+  ELSE
+    SELECT q.customer INTO v_doc_text FROM public.quotes q WHERE q.id = p_document AND q.organization_id = v_org;
+  END IF;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'That % isn''t in your company.', p_kind USING ERRCODE = 'P0002', HINT = 'document_not_found';
+  END IF;
+  IF v_internal THEN
+    RAISE EXCEPTION 'An internal job has no customer to link.' USING ERRCODE = '22023', HINT = 'internal_job';
+  END IF;
+  SELECT c.name INTO v_name FROM public.customers c WHERE c.id = p_customer AND c.organization_id = v_org;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'That customer isn''t in your company.' USING ERRCODE = 'P0002', HINT = 'customer_not_found';
+  END IF;
+  IF btrim(coalesce(v_doc_text, '')) = '' OR lower(btrim(v_name)) IS DISTINCT FROM lower(btrim(v_doc_text)) THEN
+    RAISE EXCEPTION 'That customer isn''t the one named on this % (%). An admin can link it after confirming who the customer is.', p_kind, btrim(coalesce(v_doc_text, ''))
+      USING ERRCODE = '22023', HINT = 'customer_mismatch';
+  END IF;
+  BEGIN
+    INSERT INTO public.document_customer_links (organization_id, doc_kind, job_id, quote_id, customer_id, source, document_customer_text,
+                                                customer_name_at_link, linked_by, link_reason, linked_at, verified_by, verify_reason, verified_at)
+    VALUES (v_org, p_kind, CASE WHEN p_kind = 'job' THEN p_document END, CASE WHEN p_kind = 'quote' THEN p_document END, p_customer, 'manual',
+            v_doc_text, v_name, v_uid, v_reason, v_at, v_uid, v_reason, v_at)
+    RETURNING id INTO v_link;
+  EXCEPTION WHEN unique_violation THEN
+    RAISE EXCEPTION 'This % is already linked to a customer (verified or waiting): verify or unlink that link first.', p_kind USING ERRCODE = '55000', HINT = 'already_linked';
+  END;
+  PERFORM security_audit.log_named_event(v_org, 'DOCUMENT_CUSTOMER_LINKED', 'document_customer_links', v_link::TEXT,
+    jsonb_build_object('doc_kind', p_kind, 'document_id', p_document, 'customer_id', p_customer, 'reason_category', 'manual_link_names_match', 'actor', v_uid));
+  RETURN jsonb_build_object('link_id', v_link, 'doc_kind', p_kind, 'document_id', p_document, 'customer_id', p_customer, 'source', 'manual');
+END
+$$;
+
+-- ---- 6. Link with a different name (PM answer 1: ADMIN only; identity confirmed; fresh code; reason; its own audit event) -------------
+-- For a document whose customer text can't be corrected (for example a sent quote with a typo). Refused when the names already match
+-- (use the ordinary link), when the identity was not confirmed, or when the document has no customer text at all. Its event names the
+-- document, customer and link by id only, with a fixed reason_category: the two name texts and the admin's reason for the override stay
+-- only in the link row itself (section 1's read policy), the restricted record of why the names differ.
+CREATE FUNCTION public.link_document_customer_name_override(p_kind TEXT, p_document UUID, p_customer UUID, p_reason TEXT, p_identity_confirmed BOOLEAN)
+RETURNS JSONB
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, security_audit
+AS $$
+DECLARE
+  v_org      UUID := public._document_customer_link_actor(ARRAY['admin'], TRUE);
+  v_uid      UUID := auth.uid();
+  v_at       TIMESTAMPTZ := clock_timestamp();
+  v_reason   TEXT;
+  v_doc_text TEXT;
+  v_internal BOOLEAN := FALSE;
+  v_name     TEXT;
+  v_link     UUID;
+BEGIN
+  IF p_kind IS NULL OR p_kind NOT IN ('job', 'quote') THEN
+    RAISE EXCEPTION 'Only jobs and quotes can be linked to a customer.' USING ERRCODE = '22023', HINT = 'invalid_kind';
+  END IF;
+  v_reason := public._document_customer_link_reason(p_reason);
+  IF p_identity_confirmed IS NOT TRUE THEN
+    RAISE EXCEPTION 'Confirm you have checked who the customer is before linking a different name.' USING ERRCODE = '22023', HINT = 'identity_not_confirmed';
+  END IF;
+  IF NOT public.section_allowed(CASE p_kind WHEN 'job' THEN 'jobs' ELSE 'quotes' END) THEN
+    RAISE EXCEPTION 'That % isn''t in your company.', p_kind USING ERRCODE = 'P0002', HINT = 'document_not_found';
+  END IF;
+  IF p_kind = 'job' THEN
+    SELECT j.customer, j.is_internal INTO v_doc_text, v_internal FROM public.jobs j WHERE j.id = p_document AND j.organization_id = v_org;
+  ELSE
+    SELECT q.customer INTO v_doc_text FROM public.quotes q WHERE q.id = p_document AND q.organization_id = v_org;
+  END IF;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'That % isn''t in your company.', p_kind USING ERRCODE = 'P0002', HINT = 'document_not_found';
+  END IF;
+  IF v_internal THEN
+    RAISE EXCEPTION 'An internal job has no customer to link.' USING ERRCODE = '22023', HINT = 'internal_job';
+  END IF;
+  IF btrim(coalesce(v_doc_text, '')) = '' THEN
+    RAISE EXCEPTION 'This % names no customer.', p_kind USING ERRCODE = '22023', HINT = 'no_customer_text';
+  END IF;
+  SELECT c.name INTO v_name FROM public.customers c WHERE c.id = p_customer AND c.organization_id = v_org;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'That customer isn''t in your company.' USING ERRCODE = 'P0002', HINT = 'customer_not_found';
+  END IF;
+  IF lower(btrim(v_name)) = lower(btrim(v_doc_text)) THEN
+    RAISE EXCEPTION 'The names match: use the ordinary link.' USING ERRCODE = '22023', HINT = 'names_match';
+  END IF;
+  BEGIN
+    INSERT INTO public.document_customer_links (organization_id, doc_kind, job_id, quote_id, customer_id, source, document_customer_text,
+                                                customer_name_at_link, linked_by, link_reason, linked_at, verified_by, verify_reason, verified_at)
+    VALUES (v_org, p_kind, CASE WHEN p_kind = 'job' THEN p_document END, CASE WHEN p_kind = 'quote' THEN p_document END, p_customer, 'name_override',
+            v_doc_text, v_name, v_uid, v_reason, v_at, v_uid, v_reason, v_at)
+    RETURNING id INTO v_link;
+  EXCEPTION WHEN unique_violation THEN
+    RAISE EXCEPTION 'This % is already linked to a customer (verified or waiting): verify or unlink that link first.', p_kind USING ERRCODE = '55000', HINT = 'already_linked';
+  END;
+  PERFORM security_audit.log_named_event(v_org, 'DOCUMENT_CUSTOMER_LINKED_NAME_OVERRIDE', 'document_customer_links', v_link::TEXT,
+    jsonb_build_object('doc_kind', p_kind, 'document_id', p_document, 'customer_id', p_customer, 'identity_confirmed', TRUE,
+                       'reason_category', 'name_override_identity_confirmed', 'actor', v_uid));
+  RETURN jsonb_build_object('link_id', v_link, 'doc_kind', p_kind, 'document_id', p_document, 'customer_id', p_customer, 'source', 'name_override');
+END
+$$;
+
+-- ---- 7. Verify backfill links (admin or office; fresh code; one reason for the batch; 1..200 links; all or nothing; audited) ----------
+CREATE FUNCTION public.verify_document_customer_links(p_links UUID[], p_reason TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, security_audit
+AS $$
+DECLARE
+  v_org    UUID := public._document_customer_link_actor(ARRAY['admin', 'office'], TRUE);
+  v_uid    UUID := auth.uid();
+  v_at     TIMESTAMPTZ := clock_timestamp();
+  v_reason TEXT;
+  v_ids    UUID[];
+  v_row    public.document_customer_links%ROWTYPE;
+  v_n      INT := 0;
+BEGIN
+  v_reason := public._document_customer_link_reason(p_reason);
+  SELECT array_agg(DISTINCT x ORDER BY x) INTO v_ids FROM unnest(p_links) AS x WHERE x IS NOT NULL;
+  IF p_links IS NULL OR v_ids IS NULL OR cardinality(v_ids) <> cardinality(p_links) OR cardinality(v_ids) NOT BETWEEN 1 AND 200 THEN
+    RAISE EXCEPTION 'Choose between 1 and 200 links to verify, each once.' USING ERRCODE = '22023', HINT = 'invalid_batch';
+  END IF;
+  FOR v_row IN SELECT * FROM public.document_customer_links l WHERE l.id = ANY (v_ids) AND l.organization_id = v_org ORDER BY l.id FOR UPDATE LOOP
+    IF v_row.source <> 'backfill' OR v_row.verified_at IS NOT NULL OR v_row.unlinked_at IS NOT NULL THEN
+      RAISE EXCEPTION 'Link % is not a waiting backfill link.', v_row.id USING ERRCODE = '55000', HINT = 'not_pending';
+    END IF;
+    IF NOT public.section_allowed(CASE v_row.doc_kind WHEN 'job' THEN 'jobs' ELSE 'quotes' END) THEN
+      RAISE EXCEPTION 'Link % isn''t in your company.', v_row.id USING ERRCODE = 'P0002', HINT = 'link_not_found';
+    END IF;
+    UPDATE public.document_customer_links l SET verified_by = v_uid, verify_reason = v_reason, verified_at = v_at WHERE l.id = v_row.id;
+    PERFORM security_audit.log_named_event(v_org, 'DOCUMENT_CUSTOMER_LINK_VERIFIED', 'document_customer_links', v_row.id::TEXT,
+      jsonb_build_object('doc_kind', v_row.doc_kind, 'document_id', coalesce(v_row.job_id, v_row.quote_id), 'customer_id', v_row.customer_id,
+                         'reason_category', 'backfill_link_verified', 'actor', v_uid, 'batch_size', cardinality(v_ids)));
+    v_n := v_n + 1;
+  END LOOP;
+  IF v_n <> cardinality(v_ids) THEN
+    RAISE EXCEPTION 'One or more links aren''t in your company. Nothing was verified.' USING ERRCODE = 'P0002', HINT = 'link_not_found';
+  END IF;
+  RETURN jsonb_build_object('verified', v_n, 'verified_at', v_at);
+END
+$$;
+
+-- ---- 8. Unlink (admin or office; fresh code; reason; audited). Also how a wrong backfill link is rejected. ----------------------------
+CREATE FUNCTION public.unlink_document_customer(p_kind TEXT, p_document UUID, p_reason TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, security_audit
+AS $$
+DECLARE
+  v_org    UUID := public._document_customer_link_actor(ARRAY['admin', 'office'], TRUE);
+  v_uid    UUID := auth.uid();
+  v_reason TEXT;
+  v_link   public.document_customer_links%ROWTYPE;
+  v_at     TIMESTAMPTZ := clock_timestamp();
+BEGIN
+  IF p_kind IS NULL OR p_kind NOT IN ('job', 'quote') THEN
+    RAISE EXCEPTION 'Only jobs and quotes can be linked to a customer.' USING ERRCODE = '22023', HINT = 'invalid_kind';
+  END IF;
+  v_reason := public._document_customer_link_reason(p_reason);
+  IF NOT public.section_allowed(CASE p_kind WHEN 'job' THEN 'jobs' ELSE 'quotes' END) THEN
+    RAISE EXCEPTION 'This % isn''t linked to a customer.', p_kind USING ERRCODE = 'P0002', HINT = 'not_linked';
+  END IF;
+  SELECT * INTO v_link FROM public.document_customer_links l
+  WHERE l.organization_id = v_org AND l.unlinked_at IS NULL AND l.doc_kind = p_kind
+    AND (l.job_id = p_document OR l.quote_id = p_document)
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'This % isn''t linked to a customer.', p_kind USING ERRCODE = 'P0002', HINT = 'not_linked';
+  END IF;
+  UPDATE public.document_customer_links l SET unlinked_at = v_at, unlinked_by = v_uid, unlink_reason = v_reason WHERE l.id = v_link.id;
+  PERFORM security_audit.log_named_event(v_org, 'DOCUMENT_CUSTOMER_UNLINKED', 'document_customer_links', v_link.id::TEXT,
+    jsonb_build_object('doc_kind', p_kind, 'document_id', p_document, 'customer_id', v_link.customer_id, 'was_source', v_link.source,
+                       'was_verified', v_link.verified_at IS NOT NULL, 'reason_category', 'link_unlinked', 'actor', v_uid));
+  RETURN jsonb_build_object('link_id', v_link.id, 'unlinked_at', v_at);
+END
+$$;
+
+-- ---- 9. Retire (ADMIN only; fresh code; reason): the controlled way a document or customer with link history can later be deleted -------
+-- Removes every link row of that job, quote or customer and, in the same transaction, from the DELETE itself (DELETE ... RETURNING: no
+-- row can be added or changed between reading and removing): (a) one row of the platform-admin-only snapshot table (section 10a, kind
+-- 'retire') holding exactly the removed rows, whole (the two name texts and every reason, so why a link was made or overridden is not
+-- lost), with the admin's retire reason; (b) one DOCUMENT_CUSTOMER_LINKS_RETIRED event in the shared log holding the removed rows by id
+-- and stamp only (no name text, no free-text reason: PM ruling, 12 Nov 2026 16:15, option A), a fixed reason_category, the count, the
+-- actor and the snapshot id. So the audit trail says what was removed, by whom and when. Does NOT delete
+-- the document or the customer: that stays the existing route, under its own rules (jobs: admin; quotes and customers: admin or
+-- office; 082 customers_in_use_guard still refuses a customer that is named on a record) and its own retention rule.
+CREATE FUNCTION public.retire_document_customer_links(p_target_kind TEXT, p_target UUID, p_reason TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, security_audit
+AS $$
+DECLARE
+  v_org      UUID := public._document_customer_link_actor(ARRAY['admin'], TRUE);
+  v_uid      UUID := auth.uid();
+  v_reason   TEXT;
+  v_rows     JSONB;
+  v_snapshot JSONB;
+  v_n        INT;
+  v_snap_id  UUID;
+BEGIN
+  IF p_target_kind IS NULL OR p_target_kind NOT IN ('job', 'quote', 'customer') THEN
+    RAISE EXCEPTION 'Retire the links of a job, a quote or a customer.' USING ERRCODE = '22023', HINT = 'invalid_kind';
+  END IF;
+  v_reason := public._document_customer_link_reason(p_reason);
+  PERFORM set_config('tolra.document_customer_link_removal', 'retire:' || p_target_kind || ':' || p_target::TEXT, TRUE);
+  WITH gone AS (
+    DELETE FROM public.document_customer_links l
+    WHERE l.organization_id = v_org
+      AND CASE p_target_kind WHEN 'job' THEN l.job_id = p_target WHEN 'quote' THEN l.quote_id = p_target ELSE l.customer_id = p_target END
+    RETURNING l.*
+  )
+  SELECT jsonb_agg(to_jsonb(g) ORDER BY g.linked_at, g.id),
+         jsonb_agg(jsonb_build_object('id', g.id, 'doc_kind', g.doc_kind, 'job_id', g.job_id, 'quote_id', g.quote_id, 'customer_id', g.customer_id,
+                                      'source', g.source, 'linked_by', g.linked_by, 'linked_at', g.linked_at, 'verified_by', g.verified_by,
+                                      'verified_at', g.verified_at, 'unlinked_by', g.unlinked_by, 'unlinked_at', g.unlinked_at) ORDER BY g.linked_at, g.id),
+         count(*)
+    INTO v_rows, v_snapshot, v_n FROM gone g;
+  PERFORM set_config('tolra.document_customer_link_removal', '', TRUE);
+  IF coalesce(v_n, 0) = 0 THEN
+    RAISE EXCEPTION 'That % has no links to retire.', p_target_kind USING ERRCODE = 'P0002', HINT = 'not_linked';
+  END IF;
+  INSERT INTO public.document_customer_offboarding_snapshots (kind, organization_id, offboarded_by, reason, link_count, link_rows, switch_row)
+  VALUES ('retire', v_org, v_uid, v_reason, v_n, v_rows, NULL)
+  RETURNING id INTO v_snap_id;
+  PERFORM security_audit.log_named_event(v_org, 'DOCUMENT_CUSTOMER_LINKS_RETIRED', 'document_customer_links', p_target::TEXT,
+    jsonb_build_object('target_kind', p_target_kind, 'target_id', p_target, 'rows', v_snapshot, 'count', v_n,
+                       'reason_category', 'links_retired_before_delete', 'snapshot_id', v_snap_id, 'actor', v_uid));
+  RETURN jsonb_build_object('retired', v_n, 'target_kind', p_target_kind, 'target_id', p_target);
+END
+$$;
+
+-- ---- 10. The switch: status (admin) and on / off (admin, reason; ON needs a fresh code; OFF never waits for one) ------------------------
+CREATE FUNCTION public.customer_portal_status()
+RETURNS JSONB
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  -- The same checks as every other function here (033's second step where asked, never a support or read-only session); admin only;
+  -- reading needs no fresh code.
+  v_org UUID := public._document_customer_link_actor(ARRAY['admin'], FALSE);
+  v_row public.customer_portal_switch%ROWTYPE;
+BEGIN
+  SELECT * INTO v_row FROM public.customer_portal_switch s WHERE s.organization_id = v_org;
+  RETURN jsonb_build_object('enabled', coalesce(v_row.enabled, FALSE), 'changed_at', v_row.changed_at);
+END
+$$;
+
+CREATE FUNCTION public.customer_portal_set_enabled(p_enabled BOOLEAN, p_reason TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, security_audit
+AS $$
+DECLARE
+  v_org    UUID := public._document_customer_link_actor(ARRAY['admin'], coalesce(p_enabled, FALSE));
+  v_uid    UUID := auth.uid();
+  v_reason TEXT;
+  v_was    BOOLEAN;
+  v_at     TIMESTAMPTZ := clock_timestamp();
+BEGIN
+  IF p_enabled IS NULL THEN
+    RAISE EXCEPTION 'Choose on or off.' USING ERRCODE = '22023', HINT = 'invalid_enabled';
+  END IF;
+  v_reason := public._document_customer_link_reason(p_reason);
+  PERFORM set_config('tolra.customer_portal_switch_write', v_org::TEXT, TRUE);
+  -- Switching on: insert the row first (149's pattern), so two switch-ons at once wait on the same row and the second sees it on and
+  -- logs nothing. Switching off never creates a row: no row already means off.
+  IF p_enabled THEN
+    INSERT INTO public.customer_portal_switch (organization_id, enabled, changed_by, changed_at, reason)
+    VALUES (v_org, FALSE, v_uid, v_at, v_reason) ON CONFLICT (organization_id) DO NOTHING;
+  END IF;
+  SELECT s.enabled INTO v_was FROM public.customer_portal_switch s WHERE s.organization_id = v_org FOR UPDATE;
+  v_was := coalesce(v_was, FALSE);
+  IF v_was IS DISTINCT FROM p_enabled THEN
+    INSERT INTO public.customer_portal_switch AS s (organization_id, enabled, changed_by, changed_at, reason)
+    VALUES (v_org, p_enabled, v_uid, v_at, v_reason)
+    ON CONFLICT (organization_id) DO UPDATE SET enabled = EXCLUDED.enabled, changed_by = EXCLUDED.changed_by,
+      changed_at = EXCLUDED.changed_at, reason = EXCLUDED.reason;
+    PERFORM security_audit.log_named_event(v_org, 'CUSTOMER_PORTAL_SWITCH_CHANGED', 'customer_portal_switch', v_org::TEXT,
+      jsonb_build_object('enabled', p_enabled, 'was', v_was,
+                         'reason_category', CASE WHEN p_enabled THEN 'portal_switched_on' ELSE 'portal_switched_off' END, 'actor', v_uid));
+  END IF;
+  PERFORM set_config('tolra.customer_portal_switch_write', '', TRUE);
+  RETURN jsonb_build_object('enabled', p_enabled, 'changed_at', CASE WHEN v_was IS DISTINCT FROM p_enabled THEN v_at END);
+END
+$$;
+
+-- Signed-in users only (each function checks the role itself); never anon, never the service role, never PUBLIC.
+REVOKE ALL ON FUNCTION public.link_document_customer(TEXT, UUID, UUID, TEXT), public.link_document_customer_name_override(TEXT, UUID, UUID, TEXT, BOOLEAN),
+  public.verify_document_customer_links(UUID[], TEXT), public.unlink_document_customer(TEXT, UUID, TEXT), public.retire_document_customer_links(TEXT, UUID, TEXT),
+  public.customer_portal_status(), public.customer_portal_set_enabled(BOOLEAN, TEXT) FROM PUBLIC, anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.link_document_customer(TEXT, UUID, UUID, TEXT), public.link_document_customer_name_override(TEXT, UUID, UUID, TEXT, BOOLEAN),
+  public.verify_document_customer_links(UUID[], TEXT), public.unlink_document_customer(TEXT, UUID, TEXT), public.retire_document_customer_links(TEXT, UUID, TEXT),
+  public.customer_portal_status(), public.customer_portal_set_enabled(BOOLEAN, TEXT) TO authenticated;
+
+-- ---- 10a. Company offboarding (PLATFORM OWNER only; second step; fresh code; reason): PM ruling (d), 12 Nov 2026 --------------------------
+-- 153 must not block a company's removal for ever. This removes, for ONE company, every document link row (live, verified, unlinked or
+-- backfill) and its portal switch row. PM ruling of 12 Nov 2026 14:55 (sensitive offboarding snapshots to authorised platform
+-- administrators only; no shared audit policy, trigger function or audit reader changes): exactly the removed rows, whole (the two name
+-- texts and every reason included), taken from the DELETEs themselves (DELETE ... RETURNING), go into ONE row of
+-- public.document_customer_offboarding_snapshots (below), which only a platform admin at aal2 can read; neither table has a row audit
+-- (sections 1 and 3); and the company's shared audit chain gets one CUSTOMER_PORTAL_OFFBOARDED
+-- marker that company admins may read: the snapshot id, the link count, whether a switch row was removed, the reason category and the
+-- actor (the time is the audit row's own), never a row, a name or the free-text reason. Nothing references a link or switch row, so
+-- nothing is orphaned. It does NOT delete the company, a document, a customer or any audit row, and changes nothing else: deleting the
+-- company stays outside 153 under its own rules
+-- (security_audit.audit_log's reference to organizations, 000, still keeps a company with audit history; audit evidence never cascades).
+-- Who: the platform owner pattern of 036 / 039 / 107 (is_platform_admin, then assert_platform_aal: aal2 always), never a read-only support
+-- session, plus an authenticator code from the last 15 minutes (the fresh-code test of _document_customer_link_actor, 136, 149) because it
+-- removes admins' recorded decisions. Both tables are locked (SHARE ROW EXCLUSIVE, as the rollback locks before its checks) so no link,
+-- verify, unlink, retire or switch can commit between the removal and the event. Refused (nothing written) when the company has nothing
+-- to remove. After any offboarding the 153 rollback refuses (re-applying 153 would backfill that company again).
+--
+-- The offboarding snapshots: one row per offboarding (kind 'offboarding') and, under PM ruling 12 Nov 2026 16:15 (option A: complete
+-- reasons only in authorised restricted records), one row per retire (kind 'retire', section 9: the removed rows whole, with the admin's
+-- retire reason; no switch row), written only by those two functions (no API role may write). No reference to
+-- organizations: like audit evidence it must never block the company's removal. Readable ONLY by a platform admin whose token passed the
+-- second step (is_platform_admin and aal2, as 036's support-membership test); never a company role (admin included), another company,
+-- anon or the service role. Append-only: UPDATE, DELETE and TRUNCATE are refused, the owner too. Deliberately NO
+-- security_audit.log_row_change trigger here: that would copy the snapshot back into the shared audit log that company admins read.
+-- offboarded_by / offboarded_at are who removed the rows and when (for a retire: the company admin who retired them). 153's rollback
+-- drops it, and refuses once any offboarding or retire has happened.
+CREATE TABLE public.document_customer_offboarding_snapshots (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  kind             TEXT NOT NULL,
+  organization_id  UUID NOT NULL,
+  offboarded_by    UUID NOT NULL,
+  offboarded_at    TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+  reason           TEXT NOT NULL,
+  link_count       INT NOT NULL,
+  link_rows        JSONB NOT NULL,
+  switch_row       JSONB,
+  CONSTRAINT document_customer_offboarding_snapshots_kind CHECK (kind IN ('offboarding', 'retire') AND (kind = 'offboarding' OR (switch_row IS NULL AND link_count > 0))),
+  CONSTRAINT document_customer_offboarding_snapshots_reason CHECK (length(btrim(reason)) BETWEEN 1 AND 500),
+  CONSTRAINT document_customer_offboarding_snapshots_rows CHECK (jsonb_typeof(link_rows) = 'array' AND jsonb_array_length(link_rows) = link_count
+    AND (switch_row IS NULL OR jsonb_typeof(switch_row) = 'object') AND (link_count > 0 OR switch_row IS NOT NULL))
+);
+CREATE INDEX document_customer_offboarding_snapshots_org ON public.document_customer_offboarding_snapshots (organization_id);
+ALTER TABLE public.document_customer_offboarding_snapshots ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "document_customer_offboarding_snapshots platform select" ON public.document_customer_offboarding_snapshots FOR SELECT TO authenticated
+  USING ((SELECT public.is_platform_admin()) AND coalesce((SELECT auth.jwt()) ->> 'aal', '') = 'aal2');
+REVOKE ALL ON public.document_customer_offboarding_snapshots FROM PUBLIC, anon, authenticated, service_role;
+GRANT SELECT ON public.document_customer_offboarding_snapshots TO authenticated;
+CREATE FUNCTION public.document_customer_offboarding_snapshots_guard()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public
+AS $$
+BEGIN
+  RAISE EXCEPTION 'An offboarding snapshot is a record: it can''t be changed, removed or emptied.' USING ERRCODE = '42501', HINT = 'snapshot_immutable';
+END
+$$;
+REVOKE ALL ON FUNCTION public.document_customer_offboarding_snapshots_guard() FROM PUBLIC, anon, authenticated, service_role;
+CREATE TRIGGER document_customer_offboarding_snapshots_guard BEFORE UPDATE OR DELETE ON public.document_customer_offboarding_snapshots
+  FOR EACH ROW EXECUTE FUNCTION public.document_customer_offboarding_snapshots_guard();
+CREATE TRIGGER document_customer_offboarding_snapshots_no_truncate BEFORE TRUNCATE ON public.document_customer_offboarding_snapshots
+  FOR EACH STATEMENT EXECUTE FUNCTION public.document_customer_offboarding_snapshots_guard();
+
+CREATE FUNCTION public.platform_offboard_document_customer_links(p_org UUID, p_reason TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, security_audit
+AS $$
+DECLARE
+  v_uid      UUID := auth.uid();
+  v_now      NUMERIC := extract(epoch FROM now());
+  v_reason   TEXT;
+  v_links    JSONB;
+  v_n        INT;
+  v_switch   JSONB;
+  v_snapshot UUID;
+BEGIN
+  IF v_uid IS NULL OR NOT public.is_platform_admin() THEN
+    RAISE EXCEPTION 'Platform access only' USING ERRCODE = '42501', HINT = 'platform_required';
+  END IF;
+  PERFORM public.assert_platform_aal();
+  IF public.session_read_only() THEN
+    RAISE EXCEPTION 'Support access is read-only. Ask for write access first.' USING ERRCODE = '42501', HINT = 'support_read_only';
+  END IF;
+  IF NOT EXISTS (
+       SELECT 1 FROM jsonb_array_elements(CASE WHEN jsonb_typeof(auth.jwt() -> 'amr') = 'array' THEN auth.jwt() -> 'amr' ELSE '[]'::JSONB END) AS e
+       WHERE e ->> 'method' IN ('totp', 'mfa/totp')
+         AND CASE WHEN jsonb_typeof(e -> 'timestamp') = 'number' THEN (e ->> 'timestamp')::NUMERIC END BETWEEN v_now - 900 AND v_now + 60) THEN
+    RAISE EXCEPTION 'Enter a fresh code from your authenticator app first.' USING ERRCODE = '42501', HINT = 'mfa_recent_required';
+  END IF;
+  IF p_org IS NULL OR NOT EXISTS (SELECT 1 FROM public.organizations o WHERE o.id = p_org) THEN
+    RAISE EXCEPTION 'Company not found.' USING ERRCODE = 'P0002', HINT = 'company_not_found';
+  END IF;
+  v_reason := public._document_customer_link_reason(p_reason);
+  LOCK TABLE public.document_customer_links, public.customer_portal_switch IN SHARE ROW EXCLUSIVE MODE;
+  PERFORM set_config('tolra.document_customer_link_removal', 'offboard:' || p_org::TEXT, TRUE);
+  WITH gone AS (
+    DELETE FROM public.document_customer_links l WHERE l.organization_id = p_org RETURNING l.*
+  )
+  SELECT jsonb_agg(to_jsonb(g) ORDER BY g.linked_at, g.id), count(*) INTO v_links, v_n FROM gone g;
+  PERFORM set_config('tolra.document_customer_link_removal', '', TRUE);
+  PERFORM set_config('tolra.customer_portal_switch_write', 'offboard:' || p_org::TEXT, TRUE);
+  WITH gone AS (
+    DELETE FROM public.customer_portal_switch s WHERE s.organization_id = p_org RETURNING s.*
+  )
+  SELECT to_jsonb(g) INTO v_switch FROM gone g;
+  PERFORM set_config('tolra.customer_portal_switch_write', '', TRUE);
+  IF coalesce(v_n, 0) = 0 AND v_switch IS NULL THEN
+    RAISE EXCEPTION 'That company has no document links or portal switch to remove.' USING ERRCODE = 'P0002', HINT = 'nothing_to_offboard';
+  END IF;
+  INSERT INTO public.document_customer_offboarding_snapshots (kind, organization_id, offboarded_by, reason, link_count, link_rows, switch_row)
+  VALUES ('offboarding', p_org, v_uid, v_reason, coalesce(v_n, 0), coalesce(v_links, '[]'::JSONB), v_switch)
+  RETURNING id INTO v_snapshot;
+  PERFORM security_audit.log_named_event(p_org, 'CUSTOMER_PORTAL_OFFBOARDED', 'document_customer_links', p_org::TEXT,
+    jsonb_build_object('snapshot_id', v_snapshot, 'count', coalesce(v_n, 0), 'switch_removed', v_switch IS NOT NULL,
+                       'reason_category', 'company_offboarding', 'actor', v_uid));
+  RETURN jsonb_build_object('removed_links', coalesce(v_n, 0), 'removed_switch', v_switch IS NOT NULL, 'organization_id', p_org, 'snapshot_id', v_snapshot);
+END
+$$;
+REVOKE ALL ON FUNCTION public.platform_offboard_document_customer_links(UUID, TEXT) FROM PUBLIC, anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.platform_offboard_document_customer_links(UUID, TEXT) TO authenticated;
+
+-- ---- 11. Backfill (internal; the release runs it once per company). Every row it writes is UNVERIFIED and hidden. -----------------------
+-- A job (not internal) or quote with NO link row at all (live or unlinked: a person's unlink is never undone here) is linked when its
+-- trimmed, lower-case customer text matches exactly ONE customer of its own company (archived customers count: archiving never changes
+-- the customer row, 100). Zero matches, two or more (an active and an archived one included), or no name: NOT inserted, only counted.
+-- Never across companies. A second run inserts nothing new. Writes one DOCUMENT_CUSTOMER_LINK_BACKFILL event per company with the counts;
+-- the event also lists the ids of the rows it inserted (no row audit on the table, section 1). Never touches a job, quote or customer row.
+CREATE FUNCTION public._document_customer_link_backfill(p_org UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, security_audit
+AS $$
+DECLARE
+  v_result JSONB;
+  v_ids    JSONB;
+BEGIN
+  IF auth.uid() IS NOT NULL THEN
+    RAISE EXCEPTION 'The backfill is run by the release, not by a signed-in user.' USING ERRCODE = '42501';
+  END IF;
+  IF p_org IS NULL OR NOT EXISTS (SELECT 1 FROM public.organizations o WHERE o.id = p_org) THEN
+    RAISE EXCEPTION 'backfill: no such company' USING ERRCODE = '22023';
+  END IF;
+  WITH names AS (
+    SELECT lower(btrim(c.name)) AS nn, count(*)::INT AS n, (array_agg(c.id))[1] AS only_id, (array_agg(c.name))[1] AS only_name
+    FROM public.customers c WHERE c.organization_id = p_org GROUP BY 1
+  ), docs AS (
+    SELECT 'job'::TEXT AS kind, j.id, j.customer AS doc_text, lower(btrim(coalesce(j.customer, ''))) AS nn,
+           EXISTS (SELECT 1 FROM public.document_customer_links l WHERE l.job_id = j.id) AS has_row
+    FROM public.jobs j WHERE j.organization_id = p_org AND NOT j.is_internal
+    UNION ALL
+    SELECT 'quote'::TEXT, q.id, q.customer, lower(btrim(coalesce(q.customer, ''))),
+           EXISTS (SELECT 1 FROM public.document_customer_links l WHERE l.quote_id = q.id)
+    FROM public.quotes q WHERE q.organization_id = p_org
+  ), classified AS (
+    SELECT d.kind, d.id, d.doc_text, n.only_id, n.only_name,
+           CASE WHEN d.has_row THEN 'already' WHEN d.nn = '' THEN 'no_name' WHEN n.n IS NULL THEN 'unmatched'
+                WHEN n.n > 1 THEN 'ambiguous' ELSE 'link' END AS outcome
+    FROM docs d LEFT JOIN names n ON n.nn = d.nn
+  ), ins AS (
+    INSERT INTO public.document_customer_links (organization_id, doc_kind, job_id, quote_id, customer_id, source, document_customer_text, customer_name_at_link)
+    SELECT p_org, c.kind, CASE WHEN c.kind = 'job' THEN c.id END, CASE WHEN c.kind = 'quote' THEN c.id END, c.only_id, 'backfill', c.doc_text, c.only_name
+    FROM classified c WHERE c.outcome = 'link'
+    RETURNING id, doc_kind
+  )
+  SELECT jsonb_build_object(
+    'jobs', jsonb_build_object('linked_unverified', (SELECT count(*) FROM ins WHERE ins.doc_kind = 'job'),
+                               'ambiguous', count(*) FILTER (WHERE kind = 'job' AND outcome = 'ambiguous'),
+                               'unmatched', count(*) FILTER (WHERE kind = 'job' AND outcome = 'unmatched'),
+                               'no_name', count(*) FILTER (WHERE kind = 'job' AND outcome = 'no_name'),
+                               'already', count(*) FILTER (WHERE kind = 'job' AND outcome = 'already')),
+    'quotes', jsonb_build_object('linked_unverified', (SELECT count(*) FROM ins WHERE ins.doc_kind = 'quote'),
+                                 'ambiguous', count(*) FILTER (WHERE kind = 'quote' AND outcome = 'ambiguous'),
+                                 'unmatched', count(*) FILTER (WHERE kind = 'quote' AND outcome = 'unmatched'),
+                                 'no_name', count(*) FILTER (WHERE kind = 'quote' AND outcome = 'no_name'),
+                                 'already', count(*) FILTER (WHERE kind = 'quote' AND outcome = 'already'))),
+         (SELECT coalesce(jsonb_agg(ins.id ORDER BY ins.id), '[]'::JSONB) FROM ins)
+  INTO v_result, v_ids FROM classified;
+  PERFORM security_audit.log_named_event(p_org, 'DOCUMENT_CUSTOMER_LINK_BACKFILL', 'document_customer_links', p_org::TEXT,
+    v_result || jsonb_build_object('link_ids', v_ids, 'actor', 'release 153', 'reason', 'release 153 backfill (unverified links only)'));
+  RETURN v_result;
+END
+$$;
+REVOKE ALL ON FUNCTION public._document_customer_link_backfill(UUID) FROM PUBLIC, anon, authenticated, service_role;
+
+DO $p153_backfill$
+DECLARE
+  o RECORD;
+BEGIN
+  FOR o IN SELECT id FROM public.organizations ORDER BY id LOOP
+    RAISE NOTICE '153 backfill %: %', o.id, public._document_customer_link_backfill(o.id);
+  END LOOP;
+END
+$p153_backfill$;
+
+
+-- ---- Self-check before COMMIT (anything wrong: the whole release is rolled back) -------------------------------------------------------
+DO $p153_self_check$
+BEGIN
+  IF EXISTS (SELECT * FROM _p153_before EXCEPT SELECT * FROM pg_temp.p153_fingerprint())
+     OR EXISTS (SELECT * FROM pg_temp.p153_fingerprint() EXCEPT SELECT * FROM _p153_before) THEN
+    RAISE EXCEPTION '153 self-check: an issued-document guard, or a trigger, policy, column, grant or row of the document or customer tables, changed';
+  END IF;
+  IF NOT coalesce((SELECT bool_and(c.relrowsecurity) AND count(*) = 3 FROM pg_class c
+                   WHERE c.oid IN (to_regclass('public.document_customer_links'), to_regclass('public.customer_portal_switch'),
+                                   to_regclass('public.document_customer_offboarding_snapshots'))), FALSE)
+     OR NOT coalesce((SELECT 'security_invoker=true' = ANY (c.reloptions) FROM pg_class c WHERE c.oid = to_regclass('public.document_customer_links_verified')), FALSE) THEN
+    RAISE EXCEPTION '153 self-check: the tables or the verified view are not as reviewed';
+  END IF;
+  IF (SELECT count(*) FROM pg_constraint c WHERE c.conrelid = to_regclass('public.document_customer_links') AND c.contype = 'f' AND c.confdeltype = 'r'
+        AND c.confrelid IN (to_regclass('public.jobs'), to_regclass('public.quotes'), to_regclass('public.customers'))) <> 3
+     OR EXISTS (SELECT 1 FROM pg_constraint c WHERE c.conrelid = to_regclass('public.document_customer_links') AND c.contype = 'f' AND c.confdeltype = 'c') THEN
+    RAISE EXCEPTION '153 self-check: the job, quote and customer references must be ON DELETE RESTRICT, never CASCADE';
+  END IF;
+  IF (SELECT count(*) FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace
+        AND (p.proname LIKE '%document_customer%' OR p.proname LIKE 'customer_portal%')
+        AND has_function_privilege('authenticated', p.oid, 'EXECUTE')) <> 8
+     OR EXISTS (SELECT 1 FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace
+                  AND (p.proname LIKE '%document_customer%' OR p.proname LIKE 'customer_portal%')
+                  AND (has_function_privilege('anon', p.oid, 'EXECUTE') OR has_function_privilege('service_role', p.oid, 'EXECUTE'))) THEN
+    RAISE EXCEPTION '153 self-check: the callable functions are not exactly the eight reviewed ones (signed-in only)';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.document_customer_links l
+             LEFT JOIN public.jobs j ON j.id = l.job_id LEFT JOIN public.quotes q ON q.id = l.quote_id
+             JOIN public.customers c ON c.id = l.customer_id
+             WHERE c.organization_id <> l.organization_id OR coalesce(j.organization_id, q.organization_id) IS DISTINCT FROM l.organization_id) THEN
+    RAISE EXCEPTION '153 self-check: a link crosses companies';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.document_customer_links l WHERE l.source <> 'backfill' OR l.verified_at IS NOT NULL OR l.unlinked_at IS NOT NULL) THEN
+    RAISE EXCEPTION '153 self-check: the release may write only unverified, live backfill links';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.document_customer_links_verified) THEN
+    RAISE EXCEPTION '153 self-check: no link may be shown until a person has verified it';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.customer_portal_switch) THEN
+    RAISE EXCEPTION '153 self-check: the customer portal must start OFF for every company';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.document_customer_offboarding_snapshots)
+     OR EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid IN (to_regclass('public.document_customer_offboarding_snapshots'),
+                                                              to_regclass('public.document_customer_links'), to_regclass('public.customer_portal_switch'))
+                  AND t.tgfoid = to_regprocedure('security_audit.log_row_change()')) THEN
+    RAISE EXCEPTION '153 self-check: the offboarding snapshots must start empty, and no 153 table may be copied into the shared audit log (whole rows: names and free-text reasons)';
+  END IF;
+END
+$p153_self_check$;
+DROP FUNCTION pg_temp.p153_fingerprint();
+COMMIT;
