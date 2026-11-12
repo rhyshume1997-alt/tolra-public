@@ -16,6 +16,7 @@ const signed = (n: number | null) => (n === null ? "–" : `${n > 0 ? "+" : ""}$
 
 const COLUMNS: SheetColumn<MachineVarianceRow>[] = [
   { header: "Machine", type: "text", value: (r) => r.label },
+  { header: "Jobs", type: "number", value: (r) => r.jobs },
   { header: "Planned hours", type: "number", value: (r) => r.plannedHours },
   { header: "Actual hours", type: "number", value: (r) => r.actualHours },
   { header: "Variance hours", type: "number", value: (r) => r.varianceHours },
@@ -28,15 +29,15 @@ export function MachineHoursCard({ data }: { data: MachineVarianceReport }) {
     <div className="space-y-3">
       {!data.rows.length ? <p className="text-sm text-slate-500">No machine hours for jobs finished in this period.</p> : (
         <Table>
-          <TableHeader><TableRow>{["Machine", "Planned (h)", "Actual (h)", "Variance (h)", "Variance %", "Status"].map((h) => <TableHead key={h}>{h}</TableHead>)}</TableRow></TableHeader>
+          <TableHeader><TableRow>{["Machine", "Jobs", "Planned (h)", "Actual (h)", "Variance (h)", "Variance %", "Status"].map((h) => <TableHead key={h}>{h}</TableHead>)}</TableRow></TableHeader>
           <TableBody>
             {data.rows.map((r) => (
               <TableRow key={r.machineId} data-testid="machine-row">
-                <TableCell>{r.label}</TableCell><TableCell>{r.plannedHours.toFixed(2)}</TableCell><TableCell>{r.actualHours.toFixed(2)}</TableCell>
+                <TableCell>{r.label}</TableCell><TableCell>{r.jobs}</TableCell><TableCell>{r.plannedHours.toFixed(2)}</TableCell><TableCell>{r.actualHours.toFixed(2)}</TableCell>
                 <TableCell>{signed(r.varianceHours)}</TableCell><TableCell>{r.variancePercent === null ? "–" : `${signed(r.variancePercent)}%`}</TableCell><TableCell>{STATUS_TEXT[r.status]}</TableCell>
               </TableRow>
             ))}
-            <TableRow data-testid="machine-total"><TableCell>Total</TableCell><TableCell>{data.plannedHours.toFixed(2)}</TableCell><TableCell>{data.actualHours.toFixed(2)}</TableCell><TableCell>{signed(data.varianceHours)}</TableCell><TableCell>{data.plannedMachinesPercent === null ? "–" : `${signed(data.plannedMachinesPercent)}%`}</TableCell><TableCell /></TableRow>
+            <TableRow data-testid="machine-total"><TableCell>Total</TableCell><TableCell /><TableCell>{data.plannedHours.toFixed(2)}</TableCell><TableCell>{data.actualHours.toFixed(2)}</TableCell><TableCell>{signed(data.varianceHours)}</TableCell><TableCell>{data.plannedMachinesPercent === null ? "–" : `${signed(data.plannedMachinesPercent)}%`}</TableCell><TableCell /></TableRow>
           </TableBody>
         </Table>
       )}

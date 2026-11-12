@@ -16,7 +16,7 @@ import { loadNcrRegister } from "@/lib/jobs/load-ncr-register";
 import { buildNcrRows, ncrByMonth } from "@/lib/jobs/ncr-register";
 import { sumStepsByMachine } from "@/lib/jobs/planned-vs-actual";
 import { lastDespatchByJob, type DespatchRow } from "@/lib/reports/last-despatch";
-import { machineHoursVariance, type MachineVarianceReport } from "@/lib/reports/machine-hours-variance";
+import { jobsPerMachine, machineHoursVariance, type MachineVarianceReport } from "@/lib/reports/machine-hours-variance";
 import { ncrTrend, type NcrTrendReport } from "@/lib/reports/ncr-trend";
 import { onTimeCompletion, type OnTimeJob, type OnTimeReport } from "@/lib/reports/on-time-completion";
 import { wipAgeing, type WipJob, type WipReport } from "@/lib/reports/wip-ageing";
@@ -118,7 +118,7 @@ export async function loadReports(client: ReadClient, options: { months?: number
       const batch = await loadPlannedVsActualBatch(client, ids.slice(0, MACHINE_HOURS_JOB_CAP), now);
       // 3b's batch has no cap of its own: this loader caps the job list, and any job flagged truncated by 3b (its whole chunk) also means "may be incomplete".
       const truncated = jobs.truncated || ids.length > MACHINE_HOURS_JOB_CAP || [...batch.values()].some((r) => r.truncated);
-      return { state: "ok", data: machineHoursVariance(sumStepsByMachine(batch.values())), truncated };
+      return { state: "ok", data: machineHoursVariance(sumStepsByMachine(batch.values()), jobsPerMachine(batch.values())), truncated };
     } catch {
       return { state: "error" };
     }

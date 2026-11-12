@@ -180,7 +180,7 @@ test("switch on: admin and office see the seeded figures, nothing of another com
     const mill = p.getByTestId("machine-row").filter({ hasText: millName });
     await expect(mill).toHaveCount(1);
     const m = await cellTexts(mill);
-    expect([m[1], m[2], m[3], m[5]]).toEqual(["2.00", "2.50", "+0.50", "Over plan"]);
+    expect([m[2], m[3], m[4], m[6]]).toEqual(["2.00", "2.50", "+0.50", "Over plan"]);
     // Another company's job and machine never appear.
     await expect(p.getByText(otherMillName)).toHaveCount(0);
     await expect(p.getByText(otherJobNo)).toHaveCount(0);
