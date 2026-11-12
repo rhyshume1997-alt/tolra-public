@@ -171,8 +171,11 @@ const portalOn = async (admin: string, on: boolean) => {
   const r = await call(as(admin), "public.customer_portal_set_enabled($1, 'portal pilot')", [on]);
   expect(r.code, r.message).toBeUndefined();
 };
-const invite = (who: Who, cust: string, addr: string, perms: string[] = ["quotes", "jobs"], name = "Pat Buyer") =>
-  call(who, "public.portal_contact_invite($1, $2, $3, $4::text[], 'customer asked for portal access')", [cust, addr, name, perms]);
+// Free text the staff type: each carries a marker that must never reach any audit row (PM rule: no free text in ordinary audit records).
+const NAME_MARK = `NAME-MARK-${runId}`;
+const REASON_MARK = `REASON-MARK-${runId}`;
+const invite = (who: Who, cust: string, addr: string, perms: string[] = ["quotes", "jobs"], name = `Pat Buyer ${NAME_MARK}`) =>
+  call(who, "public.portal_contact_invite($1, $2, $3, $4::text[], $5)", [cust, addr, name, perms, `customer asked for portal access ${REASON_MARK}`]);
 
 const orgA = randomUUID();
 const orgB = randomUUID();
@@ -255,7 +258,7 @@ describe("release 154 customer portal sign-in", () => {
   it("installed: marker applied, every 154 verify row true, 153 verify still all true; rollback and re-apply verify (rolled back); guard order", async () => {
     expect((await preflight()).find((r) => r.check === MARKER)?.value).toBe("applied");
     const v = await verifyRows();
-    expect(v).toHaveLength(14);
+    expect(v).toHaveLength(15);
     expect(v.filter((r) => r.ok !== true).map((r) => r.check_name)).toEqual([]);
     expect((await verifyRows(undefined, VERIFY153)).filter((r) => r.ok !== true).map((r) => r.check_name)).toEqual([]);
     // 153's rollback refuses while 154 is installed (154 is rolled back first).
@@ -505,10 +508,10 @@ describe("release 154 customer portal sign-in", () => {
     const tRev = await signIn(E.quotesOnly);
     await resetEmailLimit();
     const pending = await request(E.quotesOnly);
-    expect(await call(as(P.office), "public.portal_contact_revoke($1, 'left the customer')", [K.quotesOnly])).toMatchObject({ hint: "admin_required" });
+    expect(await call(as(P.office), "public.portal_contact_revoke($1, $2)", [K.quotesOnly, `left the customer ${REASON_MARK}`])).toMatchObject({ hint: "admin_required" });
     const [{ live }] = await q<{ live: number }>("select count(*)::int as live from customer_portal_sessions where contact_id = $1 and ended_at is null", [K.quotesOnly]);
     expect(live).toBeGreaterThanOrEqual(1);
-    const rv = await call(as(P.admin, "stale"), "public.portal_contact_revoke($1, 'left the customer')", [K.quotesOnly]);
+    const rv = await call(as(P.admin, "stale"), "public.portal_contact_revoke($1, $2)", [K.quotesOnly, `left the customer ${REASON_MARK}`]);
     expect(rv.code, rv.message).toBeUndefined();
     expect(rv.data).toMatchObject({ contact_id: K.quotesOnly, ended_sessions: live });
     expect(await q("select 1 from customer_portal_sessions where contact_id = $1 and ended_at is null", [K.quotesOnly])).toHaveLength(0);
@@ -517,7 +520,7 @@ describe("release 154 customer portal sign-in", () => {
     expect((await verify(pending.pairs[0].ref, pending.pairs[0].code, newToken())).data).toMatchObject({ ok: false, reason: "revoked" });
     await resetEmailLimit();
     expect((await request(E.quotesOnly)).r.data).toMatchObject({ ok: true, sends: [] });
-    expect((await call(as(P.admin), "public.portal_contact_revoke($1, 'again')", [K.quotesOnly])).hint).toBe("already_revoked");
+    expect((await call(as(P.admin), "public.portal_contact_revoke($1, $2)", [K.quotesOnly, `again ${REASON_MARK}`])).hint).toBe("already_revoked");
     expect(await ownerTry("update customer_portal_contacts set revoked_at = null, revoked_by = null, revoke_reason = null where id = $1", [K.quotesOnly])).toBe("42501/contact_immutable");
     expect(await ownerTry("delete from customer_portal_contacts where id = $1", [K.quotesOnly])).toBe("42501/contact_immutable");
     // A revoked contact can be invited again as a new row.
@@ -525,7 +528,7 @@ describe("release 154 customer portal sign-in", () => {
     expect((await verifyRows()).filter((r) => r.ok !== true).map((r) => r.check_name)).toEqual([]);
   });
 
-  it("audit: named events by id only (no e-mail, code, reference, token or hash); contact row audit; refusal log keeps 16 hex characters only", async () => {
+  it("audit: named events by id only with a reason category (no e-mail, name, free-text reason, code, reference, token or hash); no row audit of any portal table; refusal log keeps 16 hex characters only", async () => {
     const ev = await q<{ action: string; metadata: Row }>("select action, metadata from security_audit.audit_log where organization_id = any($1::uuid[]) and action like 'CUSTOMER_PORTAL_%' order by created_at", [[orgA, orgB, orgOff]]);
     const actions = new Set(ev.map((e) => e.action));
     for (const a of ["CUSTOMER_PORTAL_CONTACT_INVITED", "CUSTOMER_PORTAL_CONTACT_REVOKED", "CUSTOMER_PORTAL_SIGNIN_CODE_SENT", "CUSTOMER_PORTAL_SIGNED_IN",
@@ -535,9 +538,25 @@ describe("release 154 customer portal sign-in", () => {
     expect(text).not.toMatch(/[0-9a-f]{64}/);
     const ended = ev.filter((e) => e.action === "CUSTOMER_PORTAL_SESSION_ENDED").map((e) => e.metadata.end_reason);
     for (const r of ["portal_off", "idle", "absolute", "signed_out", "revoked", "customer_archived", "company_inactive"]) expect(ended, r).toContain(r);
-    // No code or session row is ever row-audited (they hold hashes).
-    expect(await q("select 1 from security_audit.audit_log where entity_table in ('customer_portal_signin_codes', 'customer_portal_sessions') and action in ('INSERT', 'UPDATE', 'DELETE')")).toHaveLength(0);
-    expect((await q("select 1 from security_audit.audit_log where entity_table = 'customer_portal_contacts' and action = 'INSERT' and organization_id = $1", [orgA])).length).toBeGreaterThanOrEqual(4);
+    // No portal table is ever row-audited (contacts hold e-mail, name and free text; codes and sessions hold hashes).
+    expect(await q("select 1 from security_audit.audit_log where entity_table in ('customer_portal_contacts', 'customer_portal_signin_codes', 'customer_portal_sessions') and action in ('INSERT', 'UPDATE', 'DELETE')")).toHaveLength(0);
+    // Every audit row of these companies that is about the portal (named or row-change, any entity table) carries no contact e-mail,
+    // display name or free-text reason; invite and revoke carry a fixed category, never a 'reason'.
+    const all = await q<Row>(`select action, entity_table, entity_id, old_data, new_data, metadata from security_audit.audit_log
+      where organization_id = any($1::uuid[]) and (action like 'CUSTOMER_PORTAL_%' or entity_table like 'customer_portal_%')`, [[orgA, orgB, orgOff]]);
+    expect(all.length).toBeGreaterThan(20);
+    const allText = JSON.stringify(all).toLowerCase();
+    for (const e of Object.values(E)) expect(allText, e).not.toContain(e.toLowerCase());
+    for (const mark of [NAME_MARK, REASON_MARK, "pat buyer", "customer asked for portal access", "left the customer"]) expect(allText, mark).not.toContain(mark.toLowerCase());
+    // 154's own events (its three tables) never carry a 'reason' key. (153's CUSTOMER_PORTAL_SWITCH_CHANGED, entity customer_portal_switch,
+    // is 153's event and is not changed here.)
+    const own154 = all.filter((r) => ["customer_portal_contacts", "customer_portal_signin_codes", "customer_portal_sessions"].includes(String(r.entity_table)));
+    expect(own154.length).toBeGreaterThan(20);
+    expect(own154.filter((r) => (r.metadata as Row | null)?.reason !== undefined).map((r) => r.action)).toEqual([]);
+    expect([...new Set(ev.filter((e) => e.action === "CUSTOMER_PORTAL_CONTACT_INVITED").map((e) => e.metadata.reason_category))]).toEqual(["portal_access_granted"]);
+    expect([...new Set(ev.filter((e) => e.action === "CUSTOMER_PORTAL_CONTACT_REVOKED").map((e) => e.metadata.reason_category))]).toEqual(["portal_access_revoked"]);
+    // The full text is kept only in the restricted contact row (no API role can read it).
+    expect((await q("select 1 from customer_portal_contacts where organization_id = $1 and invite_reason like $2", [orgA, `%${REASON_MARK}`])).length).toBeGreaterThanOrEqual(4);
     const refusals = await q<Row>("select step, reason, subject_hash16, organization_id from security_audit.customer_portal_refusals where organization_id = any($1::uuid[])", [[orgA, orgB, orgOff]]);
     expect(new Set(refusals.map((r) => r.reason))).toEqual(new Set(["portal_off", "wrong_code", "locked", "code_expired", "code_superseded", "code_used",
       "rate_limited", "no_permission", "session_idle", "session_expired", "session_ended", "customer_archived", "company_inactive", "revoked"]));

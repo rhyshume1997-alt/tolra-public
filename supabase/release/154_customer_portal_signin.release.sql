@@ -65,8 +65,10 @@ CREATE TEMP TABLE _p154_before ON COMMIT DROP AS SELECT * FROM pg_temp.p154_fing
 -- ---- 1. Portal contacts: named people of one customer, each with own permissions; revocable; never deleted ------------------------------
 -- A contact is an e-mail address an admin of the company has invited for ONE customer of that company. It is not a Supabase user and
 -- has no password. One live contact per (company, customer, e-mail); a revoked contact stays as a record and can be invited again as a
--- new row. Written only by the functions below (no API role has any grant). Every change is a row in security_audit.audit_log (as the
--- customer's own e-mail already is).
+-- new row. Written only by the functions below (no API role has any grant). The e-mail, name and the full invite and revoke reasons
+-- (free text) live ONLY in this restricted row: no API role can read the table, and staff read contacts only through
+-- portal_contacts_list (company admin; never the reasons). The company audit gets named events with ids and a fixed reason category,
+-- never a row copy (PM rule: no free text in ordinary audit records).
 CREATE TABLE public.customer_portal_contacts (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id UUID NOT NULL REFERENCES public.organizations(id),
@@ -264,10 +266,9 @@ CREATE TRIGGER portal_no_truncate BEFORE TRUNCATE ON public.customer_portal_cont
 CREATE TRIGGER portal_no_truncate BEFORE TRUNCATE ON public.customer_portal_signin_codes FOR EACH STATEMENT EXECUTE FUNCTION public.portal_no_truncate();
 CREATE TRIGGER portal_no_truncate BEFORE TRUNCATE ON public.customer_portal_sessions FOR EACH STATEMENT EXECUTE FUNCTION public.portal_no_truncate();
 
--- Row audit for contacts only. Codes and sessions are NOT row-audited: their rows hold hashes, which never go to the company audit; each
--- code sent, sign-in and session end is a named event (ids only) instead.
-CREATE TRIGGER audit_customer_portal_contacts_changes AFTER INSERT OR UPDATE OR DELETE ON public.customer_portal_contacts
-  FOR EACH ROW EXECUTE FUNCTION security_audit.log_row_change();
+-- No row audit (security_audit.log_row_change) on any portal table: a row copy would put the contact's e-mail, name and free-text
+-- reasons (contacts) or hashes (codes, sessions) into the company audit log. Each invite, revoke, code sent, sign-in and session end is a
+-- named event instead, by id, with a fixed category (153's offboarding pattern: category in the event, full text in a restricted record).
 
 -- ---- 5. The security log of refusals (151's pattern) -----------------------------------------------------------------------------------
 -- One row per refused customer-side call: a random correlation id (returned, so the server can show it and support can trace it), the
@@ -716,7 +717,7 @@ BEGIN
     RAISE EXCEPTION 'That e-mail is already a portal contact of this customer.' USING ERRCODE = '55000', HINT = 'already_invited';
   END;
   PERFORM security_audit.log_named_event(v_org, 'CUSTOMER_PORTAL_CONTACT_INVITED', 'customer_portal_contacts', v_contact::TEXT,
-    jsonb_build_object('contact_id', v_contact, 'customer_id', p_customer, 'permissions', to_jsonb(v_perms), 'reason', v_reason, 'actor', v_uid));
+    jsonb_build_object('contact_id', v_contact, 'customer_id', p_customer, 'permissions', to_jsonb(v_perms), 'reason_category', 'portal_access_granted', 'actor', v_uid));
   RETURN jsonb_build_object('contact_id', v_contact, 'customer_id', p_customer, 'permissions', to_jsonb(v_perms));
 END
 $$;
@@ -778,7 +779,7 @@ BEGIN
       jsonb_build_object('end_reason', 'revoked', 'contact_id', v_k.id, 'customer_id', v_k.customer_id));
   END LOOP;
   PERFORM security_audit.log_named_event(v_org, 'CUSTOMER_PORTAL_CONTACT_REVOKED', 'customer_portal_contacts', v_k.id::TEXT,
-    jsonb_build_object('contact_id', v_k.id, 'customer_id', v_k.customer_id, 'ended_sessions', v_ended, 'reason', v_reason, 'actor', v_uid));
+    jsonb_build_object('contact_id', v_k.id, 'customer_id', v_k.customer_id, 'ended_sessions', v_ended, 'reason_category', 'portal_access_revoked', 'actor', v_uid));
   RETURN jsonb_build_object('contact_id', v_k.id, 'revoked_at', v_at, 'ended_sessions', v_ended);
 END
 $$;
@@ -829,6 +830,11 @@ BEGIN
   IF (SELECT count(*) FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND (p.proname LIKE '%document_customer%' OR p.proname LIKE 'customer_portal%')
         AND has_function_privilege('authenticated', p.oid, 'EXECUTE')) <> 8 THEN
     RAISE EXCEPTION '154 self-check: a 154 function is named like a 153 function';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgfoid = to_regprocedure('security_audit.log_row_change()')
+               AND t.tgrelid IN (to_regclass('public.customer_portal_contacts'), to_regclass('public.customer_portal_signin_codes'),
+                                 to_regclass('public.customer_portal_sessions'), to_regclass('security_audit.customer_portal_refusals'))) THEN
+    RAISE EXCEPTION '154 self-check: no portal table may be row-audited (e-mail, names, free text and hashes stay out of the company audit)';
   END IF;
   IF (SELECT count(*) FROM pg_constraint c WHERE c.contype = 'f' AND c.confdeltype = 'r'
         AND c.conrelid IN (to_regclass('public.customer_portal_contacts'), to_regclass('public.customer_portal_signin_codes'), to_regclass('public.customer_portal_sessions'))

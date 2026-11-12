@@ -2,7 +2,7 @@
 -- What it proves: the three portal tables and the refusal log exist with row security and no grant to any API role; the six customer-side
 -- functions are callable by the service role only, the three staff functions by signed-in users only, all SECURITY DEFINER with a pinned
 -- search_path; the private functions are callable by no API role; customer, contact and code references are ON DELETE RESTRICT; the
--- same-company, guard, no-truncate and contact row-audit triggers are on; codes are hashed (64 hex), single use, 10 minutes, at most 5
+-- same-company, guard and no-truncate triggers are on; no portal table is row-audited and no 154 named event carries a free-text reason; codes are hashed (64 hex), single use, 10 minutes, at most 5
 -- attempts; sessions are bound to a token hash, 8 hours absolute; no table holds a clear code, reference or token; every session's company
 -- and customer are its contact's; every customer-side read goes through the gate, which reads the portal switch; 153 is whole (its eight
 -- callable functions only). Invariants only: each row stays true after contacts are invited, sign in, sessions end and contacts are revoked
@@ -41,8 +41,8 @@ UNION ALL SELECT 'references: customer, contact and code references are ON DELET
      AND c.confrelid IN (to_regclass('public.customers'), to_regclass('public.customer_portal_contacts'), to_regclass('public.customer_portal_signin_codes')))
   AND NOT EXISTS (SELECT 1 FROM pg_constraint c WHERE c.contype = 'f' AND c.confdeltype = 'c'
      AND c.conrelid IN (to_regclass('public.customer_portal_contacts'), to_regclass('public.customer_portal_signin_codes'), to_regclass('public.customer_portal_sessions')))
-UNION ALL SELECT 'triggers: same company (5), guard (3), no truncate (3) and the contact row audit are on',
-  (SELECT count(*) = 12 FROM pg_trigger t WHERE NOT t.tgisinternal AND t.tgenabled = 'O'
+UNION ALL SELECT 'triggers: same company (5), guard (3) and no truncate (3) are on',
+  (SELECT count(*) = 11 FROM pg_trigger t WHERE NOT t.tgisinternal AND t.tgenabled = 'O'
      AND (t.tgrelid, t.tgname, t.tgfoid) IN (
        (to_regclass('public.customer_portal_contacts'), 'zz_same_org_customer_id', to_regprocedure('public.enforce_same_org_parent()')),
        (to_regclass('public.customer_portal_signin_codes'), 'zz_same_org_contact_id', to_regprocedure('public.enforce_same_org_parent()')),
@@ -54,8 +54,7 @@ UNION ALL SELECT 'triggers: same company (5), guard (3), no truncate (3) and the
        (to_regclass('public.customer_portal_sessions'), 'portal_sessions_guard', to_regprocedure('public.portal_sessions_guard()')),
        (to_regclass('public.customer_portal_contacts'), 'portal_no_truncate', to_regprocedure('public.portal_no_truncate()')),
        (to_regclass('public.customer_portal_signin_codes'), 'portal_no_truncate', to_regprocedure('public.portal_no_truncate()')),
-       (to_regclass('public.customer_portal_sessions'), 'portal_no_truncate', to_regprocedure('public.portal_no_truncate()')),
-       (to_regclass('public.customer_portal_contacts'), 'audit_customer_portal_contacts_changes', to_regprocedure('security_audit.log_row_change()'))))
+       (to_regclass('public.customer_portal_sessions'), 'portal_no_truncate', to_regprocedure('public.portal_no_truncate()'))))
 UNION ALL SELECT 'codes: 64-hex hashes only, ten minutes, at most five attempts, used or burnt once, at most one live code per contact',
   (SELECT count(*) = 7 FROM pg_constraint c WHERE c.conrelid = to_regclass('public.customer_portal_signin_codes') AND c.contype = 'c'
      AND c.conname IN ('customer_portal_signin_codes_ref_hash', 'customer_portal_signin_codes_code_hash', 'customer_portal_signin_codes_ten_minutes',
@@ -76,6 +75,12 @@ UNION ALL SELECT 'no clear secret: the code and session tables hold no e-mail, c
                                       'expires_at', 'attempts', 'used_at', 'burnt_at', 'burn_reason', 'last_seen_at', 'absolute_expires_at', 'ended_at', 'end_reason'))
   AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'security_audit' AND table_name = 'customer_portal_refusals'
               AND column_name NOT IN ('id', 'correlation_id', 'step', 'reason', 'subject_hash16', 'organization_id', 'created_at'))
+UNION ALL SELECT 'audit privacy: no portal table is row-audited (no e-mail, name, free-text reason or hash copied into the audit log); 154 events carry a reason category, never a reason',
+  NOT EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgfoid = to_regprocedure('security_audit.log_row_change()')
+              AND t.tgrelid IN (to_regclass('public.customer_portal_contacts'), to_regclass('public.customer_portal_signin_codes'),
+                                to_regclass('public.customer_portal_sessions'), to_regclass('security_audit.customer_portal_refusals')))
+  AND NOT EXISTS (SELECT 1 FROM security_audit.audit_log a WHERE a.entity_table IN ('customer_portal_contacts', 'customer_portal_signin_codes', 'customer_portal_sessions')
+              AND (a.action IN ('INSERT', 'UPDATE', 'DELETE') OR a.metadata ? 'reason'))
 UNION ALL SELECT 'isolation: every code and session belongs to its contact''s company, and every session to its contact''s customer',
   NOT EXISTS (SELECT 1 FROM public.customer_portal_sessions x JOIN public.customer_portal_contacts k ON k.id = x.contact_id
               WHERE k.organization_id <> x.organization_id OR k.customer_id <> x.customer_id)
