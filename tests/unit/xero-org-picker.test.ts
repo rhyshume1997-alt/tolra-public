@@ -157,15 +157,30 @@ describe("Connect with several organisations (the callback's side)", () => {
     svc = fakeService();
     expect(await finishConnect(svc.client, ORG, USER, "state", "code", ready, { fetchImpl: x.fetchImpl, now: () => NOW, offerPicker: true })).toEqual({ ok: false, reason: "choose_one" });
   });
-  it("zero organisations and one organisation behave as before, with the picker on", async () => {
+  it("zero organisations behave as before, with the picker on; ONE organisation now asks (the same confirm step as several) and nothing is stored", async () => {
     let x = fakeXero([]);
     let svc = fakeService();
     expect(await completeConnect(svc.client, ORG, USER, "v", "code", ready, { fetchImpl: x.fetchImpl, now: () => NOW, offerPicker: true })).toEqual({ ok: false, reason: "no_organisation" });
     x = fakeXero([xc("conn-a", "t-a", 30_000)]);
     svc = fakeService();
-    expect(await completeConnect(svc.client, ORG, USER, "v", "code", ready, { fetchImpl: x.fetchImpl, now: () => NOW, offerPicker: true })).toEqual({ ok: true, tenantName: "Org t-a" });
-    expect(stored(svc.rpcs)).toHaveLength(1);
+    const out = await completeConnect(svc.client, ORG, USER, "v", "code", ready, { fetchImpl: x.fetchImpl, now: () => NOW, offerPicker: true });
+    expect(out).toMatchObject({ ok: false, reason: "choose_organisation", offer: { orgs: [{ id: "conn-a", tenantId: "t-a", tenantName: "Org t-a" }] } });
+    expect(stored(svc.rpcs)).toEqual([]);
     expect(x.deleted).toEqual([]);
+  });
+  it("one organisation WITHOUT the picker (the accountant link) is stored as before", async () => {
+    const x = fakeXero([xc("conn-a", "t-a", 30_000)]);
+    const svc = fakeService();
+    expect(await completeConnect(svc.client, ORG, USER, "v", "code", ready, { fetchImpl: x.fetchImpl, now: () => NOW })).toEqual({ ok: true, tenantName: "Org t-a" });
+    expect(stored(svc.rpcs)).toHaveLength(1);
+  });
+  it("a one-organisation offer goes through finishPick and stores that organisation", async () => {
+    const x = fakeXero([xc("conn-a", "t-a", 30_000)]);
+    const svc = fakeService();
+    const one = { refreshToken: "r-old", eventId: "evt-1", orgs: [{ id: "conn-a", tenantId: "t-a", tenantName: "Org t-a" }] };
+    expect(await finishPick(svc.client, ORG, USER, one, "t-a", ready, { fetchImpl: x.fetchImpl, now: () => NOW })).toEqual({ ok: true, tenantName: "Org t-a" });
+    expect(stored(svc.rpcs)).toHaveLength(1);
+    expect(stored(svc.rpcs)[0].args).toMatchObject({ p_tenant_id: "t-a", p_external_connection_id: "conn-a" });
   });
 });
 

@@ -9,8 +9,9 @@ import { connectOutcomeMessage, type IntegrationOverview } from "@/lib/integrati
 /**
  * The company's Xero transfer switch (release 149, GET/POST /api/integrations/xero/launch). `available`: the server answered (false: it could
  * not be read, so nothing is sent: the app fails closed). `on`: the switch (null while it is being read). Absent: no switch is wired (legacy words).
+ * `organisation`: the Xero organisation connected now (read from the server; the card names it before ON). `set(true, tenantId)` sends it as confirmTenantId.
  */
-export type LaunchHold = { available: boolean; on: boolean | null; set: (next: boolean) => Promise<void> | void };
+export type LaunchHold = { available: boolean; on: boolean | null; set: (next: boolean, confirmTenantId?: string) => Promise<void> | void; organisation?: { tenantId: string; name: string | null } | null };
 
 export const HOLD_NOT_APPROVED = "Transfers cannot be switched on from here yet: the Xero launch hold (release 149) has not been approved.";
 export const NOT_SET_UP = "Xero is not set up on this server: nothing is sent.";

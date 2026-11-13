@@ -9,6 +9,8 @@
 import { createElement, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+// AI-E (C4): the shared Tolra key is switched off by default; these tests keep the dormant Tolra code covered by turning the constant on.
+vi.mock("@/lib/ai-helper/shared-ai-deactivation", () => ({ SHARED_TOLRA_AI_ACTIVE: true }));
 
 import { AiSetupPanel } from "@/components/integrations/ai-setup-card";
 import type { AiHelperStatus } from "@/components/ai-helper/use-ai-helper-status";

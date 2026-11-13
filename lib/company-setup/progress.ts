@@ -6,7 +6,7 @@ export const SETUP_STEPS = [
   { id: "hours", label: "Working hours", hint: "Choose the days and hours your workshop works.", href: "/settings#setup-company" },
   { id: "breaks", label: "Paid or unpaid breaks", hint: "Check whether breaks are paid and how long they last.", href: "/settings#setup-breaks" },
   { id: "people", label: "People and roles", hint: "Add your team and choose what each person can see and change.", href: "/admin/users" },
-  { id: "connections", label: "Accounting connections", hint: "Connect Xero, Sage or QuickBooks if you use one, or leave this off.", href: "/admin/integrations" },
+  { id: "connections", label: "Accounting connections", hint: "Connect Xero if you use it, or leave this off.", href: "/admin/integrations" },
   { id: "ai", label: "AI help", hint: "Choose whether to use AI. It is optional and stays off until you turn it on.", href: "/admin/integrations" },
   { id: "email", label: "Email", hint: "Connect your mailbox and check the emails your company sends.", href: "/settings#setup-email" },
   { id: "import", label: "Import your records", hint: "Bring in your own records after you have checked the settings above. You can also start with no records.", href: "/admin/data" },
