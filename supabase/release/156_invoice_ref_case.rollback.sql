@@ -13,7 +13,7 @@ BEGIN
   RAISE EXCEPTION '156 rollback: release 152 (SliQ import route) is not installed; roll 156 back before 152';
  END IF;
  SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) INTO v FROM pg_proc p WHERE p.oid = to_regprocedure('public.import_sliq_prepare(uuid,text,jsonb,text)');
- IF v IS DISTINCT FROM '24411fb681e2be3fc2ba3bcd007e71ac' AND v IS DISTINCT FROM 'a35a5a70fac350a7e662dd28dd324d80' THEN
+ IF v IS DISTINCT FROM 'a06f5525bb6770dde21c4f9453b96207' AND v IS DISTINCT FROM 'a35a5a70fac350a7e662dd28dd324d80' THEN
   RAISE EXCEPTION '156 rollback: public.import_sliq_prepare is neither 156''s nor 152''s; stop and compare it first';
  END IF;
  SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) INTO v FROM pg_proc p WHERE p.oid = to_regprocedure('public.import_sliq_reconcile_rows(uuid)');

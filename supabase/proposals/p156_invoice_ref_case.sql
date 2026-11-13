@@ -130,7 +130,7 @@ BEGIN
       SELECT i.kind, i.ord, i.source_row_id, public.import_clean_record(i.rec) ->> 'invoice_ref' AS ref
       FROM _sliq_in i WHERE i.kind = 'invoices' AND NOT i.mapped AND i.obj),
     in_file AS (
-      SELECT lower(r.ref) AS k, string_agg(DISTINCT r.ref, ', ' ORDER BY r.ref) AS refs FROM r WHERE r.ref IS NOT NULL
+      SELECT lower(r.ref) AS k, string_agg(DISTINCT r.ref COLLATE "C", ', ' ORDER BY r.ref COLLATE "C") AS refs FROM r WHERE r.ref IS NOT NULL
       GROUP BY lower(r.ref) HAVING count(DISTINCT r.ref) > 1)
   SELECT x.kind, x.source_row_id, 'invoice_ref', x.message, 'invoice_ref_case_duplicate'
   FROM (SELECT r.kind, r.ord, 1 AS o, r.source_row_id,

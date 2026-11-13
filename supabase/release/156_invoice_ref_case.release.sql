@@ -31,7 +31,7 @@ BEGIN
   RAISE EXCEPTION '156: required release 152 (SliQ import route) is missing; stop and check release preflight';
  END IF;
  SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) INTO v FROM pg_proc p WHERE p.oid = to_regprocedure('public.import_sliq_prepare(uuid,text,jsonb,text)');
- IF v IS DISTINCT FROM 'a35a5a70fac350a7e662dd28dd324d80' AND v IS DISTINCT FROM '24411fb681e2be3fc2ba3bcd007e71ac' THEN
+ IF v IS DISTINCT FROM 'a35a5a70fac350a7e662dd28dd324d80' AND v IS DISTINCT FROM 'a06f5525bb6770dde21c4f9453b96207' THEN
   RAISE EXCEPTION '156: public.import_sliq_prepare is neither 152''s nor 156''s; stop and compare it first';
  END IF;
  SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) INTO v FROM pg_proc p WHERE p.oid = to_regprocedure('public.import_sliq_reconcile_rows(uuid)');
@@ -52,7 +52,7 @@ BEGIN
  LOCK TABLE public.invoices IN SHARE MODE;
  SELECT count(*), string_agg(g.org || ': ' || g.refs, '; ' ORDER BY g.org, g.k) FILTER (WHERE g.rn <= 20) INTO v_groups, v_list
  FROM (SELECT x.organization_id::TEXT AS org, x.k, x.refs, row_number() OVER (ORDER BY x.organization_id, x.k) AS rn
-       FROM (SELECT i.organization_id, lower(i.invoice_ref) AS k, string_agg(i.invoice_ref, ', ' ORDER BY i.invoice_ref) AS refs
+       FROM (SELECT i.organization_id, lower(i.invoice_ref) AS k, string_agg(i.invoice_ref, ', ' ORDER BY i.invoice_ref COLLATE "C") AS refs
              FROM public.invoices i WHERE i.invoice_ref IS NOT NULL
              GROUP BY i.organization_id, lower(i.invoice_ref) HAVING count(DISTINCT i.invoice_ref) > 1) x) g;
  IF v_groups > 0 THEN
@@ -173,7 +173,7 @@ BEGIN
       SELECT i.kind, i.ord, i.source_row_id, public.import_clean_record(i.rec) ->> 'invoice_ref' AS ref
       FROM _sliq_in i WHERE i.kind = 'invoices' AND NOT i.mapped AND i.obj),
     in_file AS (
-      SELECT lower(r.ref) AS k, string_agg(DISTINCT r.ref, ', ' ORDER BY r.ref) AS refs FROM r WHERE r.ref IS NOT NULL
+      SELECT lower(r.ref) AS k, string_agg(DISTINCT r.ref COLLATE "C", ', ' ORDER BY r.ref COLLATE "C") AS refs FROM r WHERE r.ref IS NOT NULL
       GROUP BY lower(r.ref) HAVING count(DISTINCT r.ref) > 1)
   SELECT x.kind, x.source_row_id, 'invoice_ref', x.message, 'invoice_ref_case_duplicate'
   FROM (SELECT r.kind, r.ord, 1 AS o, r.source_row_id,
@@ -433,7 +433,7 @@ BEGIN
     RAISE EXCEPTION '156 self-check: invoices_invoice_ref_ci_uniq must be the valid unique index on (organization_id, lower(invoice_ref))';
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.import_sliq_prepare(uuid,text,jsonb,text)')
-                   AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '24411fb681e2be3fc2ba3bcd007e71ac' AND p.prosrc LIKE '%invoice_ref_case_duplicate%')
+                   AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'a06f5525bb6770dde21c4f9453b96207' AND p.prosrc LIKE '%invoice_ref_case_duplicate%')
      OR NOT EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.next_doc_number(text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '75dffec8a6b52c01267aa22a64802da0')
      OR NOT EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.import_sliq_reconcile_rows(uuid)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '3288cdc2d98acba018c8e417bddd77bb') THEN
     RAISE EXCEPTION '156 self-check: import_sliq_prepare, next_doc_number and import_sliq_reconcile_rows must be 156''s';

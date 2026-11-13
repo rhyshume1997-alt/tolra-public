@@ -345,7 +345,7 @@ post_release_markers(label, present) AS (
       AND NOT has_function_privilege('anon', to_regprocedure('public.portal_session_resolve(text)'), 'EXECUTE')), FALSE)),
     ('post-144 marker 156 invoice_ref_case', coalesce((EXISTS (SELECT 1 FROM pg_index i WHERE i.indexrelid = to_regclass('public.invoices_invoice_ref_ci_uniq') AND i.indisunique AND i.indisvalid AND i.indisready
              AND pg_get_indexdef(i.indexrelid) = 'CREATE UNIQUE INDEX invoices_invoice_ref_ci_uniq ON public.invoices USING btree (organization_id, lower(invoice_ref))')
-      AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.import_sliq_prepare(uuid,text,jsonb,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '24411fb681e2be3fc2ba3bcd007e71ac')
+      AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.import_sliq_prepare(uuid,text,jsonb,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'a06f5525bb6770dde21c4f9453b96207')
       AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.next_doc_number(text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '75dffec8a6b52c01267aa22a64802da0')
       AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.import_sliq_reconcile_rows(uuid)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '3288cdc2d98acba018c8e417bddd77bb')), FALSE)),
     ('post-144 marker 151 xero_invite_hardening', coalesce(((SELECT count(*) = 10 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'integration_connect_invites'
@@ -673,7 +673,7 @@ checks(n, check_name, value, expected) AS (
     'true / 5 / 0 / any number / none before 137, 137 after it, no-op after its rollback (false, not 5, encrypted above 0 or other: stop, 137 refuses to apply)'
   UNION ALL SELECT 59, '156 needs: invoice number groups that differ only in capital letters / import_sliq_prepare / next_doc_number / import_sliq_reconcile_rows',
     (SELECT count(*) FROM (SELECT 1 FROM public.invoices i WHERE i.invoice_ref IS NOT NULL GROUP BY i.organization_id, lower(i.invoice_ref) HAVING count(DISTINCT i.invoice_ref) > 1) g)::TEXT
-    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN 'a35a5a70fac350a7e662dd28dd324d80' THEN '152' WHEN '24411fb681e2be3fc2ba3bcd007e71ac' THEN '156' ELSE 'other' END
+    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN 'a35a5a70fac350a7e662dd28dd324d80' THEN '152' WHEN 'a06f5525bb6770dde21c4f9453b96207' THEN '156' ELSE 'other' END
               FROM pg_proc p WHERE p.oid = to_regprocedure('public.import_sliq_prepare(uuid,text,jsonb,text)')), 'missing')
     || ' / ' || coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN 'c5af802da68d4236a36db71098036acf' THEN '078' WHEN '75dffec8a6b52c01267aa22a64802da0' THEN '156' ELSE 'other' END
               FROM pg_proc p WHERE p.oid = to_regprocedure('public.next_doc_number(text)')), 'missing')

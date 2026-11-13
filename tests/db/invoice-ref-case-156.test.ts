@@ -96,7 +96,7 @@ const bodies = async (db: PoolClient) => (await db.query(`select
     (select md5(regexp_replace(prosrc, '\\s', '', 'g')) from pg_proc where oid = to_regprocedure('public.import_sliq_reconcile_rows(uuid)')) as reconcile,
     to_regclass('public.invoices_invoice_ref_ci_uniq') is not null as ci_index`)).rows[0] as { prepare: string; numbering: string; reconcile: string; ci_index: boolean };
 const BEFORE_156 = { prepare: "a35a5a70fac350a7e662dd28dd324d80", numbering: "c5af802da68d4236a36db71098036acf", reconcile: "315952a95ce42c75078e94026069121b", ci_index: false };
-const AFTER_156 = { prepare: "24411fb681e2be3fc2ba3bcd007e71ac", numbering: "75dffec8a6b52c01267aa22a64802da0", reconcile: "3288cdc2d98acba018c8e417bddd77bb", ci_index: true };
+const AFTER_156 = { prepare: "a06f5525bb6770dde21c4f9453b96207", numbering: "75dffec8a6b52c01267aa22a64802da0", reconcile: "3288cdc2d98acba018c8e417bddd77bb", ci_index: true };
 
 // ---- Synthetic companies and SliQ exports ----------------------------------------------------------------------------------------
 async function makeCompany() {
@@ -141,7 +141,7 @@ async function committed(c: Co, label: string, no: number, invoices: Row[]) {
   expect(r.data?.committed, JSON.stringify(r).slice(0, 600)).toBe(true);
   return r.data!;
 }
-const refs = async (o: string) => (await q<{ r: string }>("select invoice_ref as r from invoices where organization_id = $1 order by invoice_ref", [o])).map((x) => x.r);
+const refs = async (o: string) => (await q<{ r: string }>("select invoice_ref as r from invoices where organization_id = $1 order by invoice_ref collate \"C\"", [o])).map((x) => x.r);
 /** Everything an import can change for the company: invoices, payments, allocations, the map, batches, counters, keys, the audit tail. */
 async function state(o: string) {
   const [r] = await q(`select
