@@ -1,3 +1,8 @@
+/**
+ * BOUNDARY (module 1): request pathname and staff session -> pass-through or staff redirect.
+ * Only /portal and /portal/ descendants delegate to the Portal pages' flag/session guards.
+ * Must preserve every staff authentication, role, MFA and company check for other paths.
+ */
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
@@ -13,6 +18,8 @@ const ASSET_PATTERN = /\.(?:png|jpe?g|gif|svg|webp|avif|ico|css|js|map|txt|woff2
 // page's images (/brand/, /marketing/, /icons/) are .png, .svg and .ico files, which ASSET_PATTERN already covers.
 const SITEMAP_PATH = "/sitemap.xml";
 const SECURE_COOKIES = process.env.NODE_ENV === "production";
+
+const isPortalCustomerPage = (pathname: string): boolean => pathname === "/portal" || pathname.startsWith("/portal/");
 
 const ALL_ROLES = ["admin", "office", "workshop", "viewer"];
 // First matching prefix wins. Client-side RoleGate is cosmetic; this is the real gate.
@@ -62,6 +69,10 @@ export async function middleware(request: NextRequest) {
   // The API does not: its getUser below refreshes an expiring session and writes the new cookies on the response (the routes'
   // own clients are read-only and would use up the refresh token without saving the new one).
   if (isAsset || isPwaFile) return NextResponse.next({ request });
+
+  // Customer pages check the platform flag before cookies, then resolve the separate Release 154 session.
+  // Never consult, refresh or clear the staff session for this exact namespace. API routes keep their own guards.
+  if (isPortalCustomerPage(path)) return NextResponse.next({ request });
 
   let response = NextResponse.next({ request });
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
