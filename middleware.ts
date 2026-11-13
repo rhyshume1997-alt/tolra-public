@@ -263,7 +263,8 @@ export async function middleware(request: NextRequest) {
   // Company step: the platform owner's list, or the choice between a person's own companies.
   const step = companyStepRoute(session, path);
   if (step) return redirectTo(step);
-  if (path === "/platform" || path.startsWith("/platform/") || path === "/choose-company" || path.startsWith("/choose-company/")) return response;
+  if (path === "/platform" || path.startsWith("/platform/")) return session.platform_admin ? response : forbidden();
+  if (path === "/choose-company" || path.startsWith("/choose-company/")) return session.organization_count > 0 ? response : forbidden();
 
   if (!working || ![working.role, working.secondary_role].some((role) => role && ALL_ROLES.includes(role))) {
     return forbidden();
