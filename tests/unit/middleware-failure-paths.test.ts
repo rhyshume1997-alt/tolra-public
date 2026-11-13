@@ -209,4 +209,9 @@ describe("middleware: fail closed verified authorisation", () => {
     expect(response.status).toBe(200); expect(location(response)).toBeNull();
   });
 
+  it.each(["/platform", "/choose-company"]) ("no company membership cannot authorise the setup page %s", async (path) => {
+    h.session.organization_id = null; h.session.organization_count = 0; h.session.needs_choice = false;
+    const response = await visit(path); expect(response.status).toBe(403); expect(location(response)).toBeNull();
+  });
+
 });
