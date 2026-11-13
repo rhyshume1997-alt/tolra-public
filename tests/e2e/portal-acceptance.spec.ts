@@ -8,6 +8,8 @@ import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
 import { createSoloTenant, verifyBackendIdentity, withDb, type SyntheticUser } from "../support/fixtures";
 import { asSeparateDevice, world } from "./helpers";
+import { E2E_MOCK_PORT } from "./paths";
+import type { RecordedEmail } from "../support/mock-providers";
 
 const w = world();
 const sha = (value: string) => createHash("sha256").update(value).digest("hex");
@@ -265,4 +267,33 @@ test("absolute session expiry refuses even a recently active customer", async ({
   await expect(page.locator("body")).not.toContainText(ownQuote);
   const state = await withDb(db=>db.query("select end_reason from public.customer_portal_sessions where contact_id=$1",[buyer.id]));
   expect(state.rows).toEqual([{end_reason:"absolute"}]);
+});
+
+
+test("the request route sends a platform email whose real code signs in", async ({ page }) => {
+  await asSeparateDevice(page);
+  await page.goto("/portal/signin");
+  await page.getByLabel("E-mail address").fill(buyer.email);
+  await page.getByRole("button", { name: "Send me a link and code", exact: true }).click();
+  await expect(page).toHaveURL(/\/portal\/signin\/sent$/);
+  // Provider transport is the existing local recorder. The request handler, code generation and database remain real.
+  const received = async () => {
+    const response = await fetch(`http://127.0.0.1:${E2E_MOCK_PORT}/__emails`);
+    expect(response.ok).toBe(true);
+    const records = await response.json() as RecordedEmail[];
+    return records.filter(record => JSON.stringify(record.body).includes(buyer.email));
+  };
+  await expect.poll(async () => (await received()).length).toBe(1);
+  const body = (await received())[0].body as { to?: unknown; text?: unknown; subject?: unknown; from?: unknown };
+  expect(body.to).toEqual([buyer.email]);
+  expect(body.from).toBe("Tolra Test <noreply@example.test>");
+  expect(body.subject).toBe("Your sign-in link and code");
+  if (typeof body.text!=="string") throw new Error("Portal platform email is missing its text body");
+  const ref = body.text.match(/\/portal\/code\/([A-Za-z0-9_-]{22})/);
+  const code = body.text.match(/Your code: (\d{4}) (\d{4})/);
+  if (!ref || !code) throw new Error("Portal platform email is missing its sign-in link or code");
+  await enter(page,{ref:ref[1],code:code[1]+code[2]});
+  await expect(page.getByRole("heading",{name:`Welcome, ${buyer.name}`,exact:true})).toBeVisible();
+  const history = await withDb(db=>db.query("select id from public.email_history where to_email=$1",[buyer.email]));
+  expect(history.rows).toEqual([]);
 });
