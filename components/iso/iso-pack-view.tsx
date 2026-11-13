@@ -22,7 +22,7 @@ import { DEMO_MODE } from "@/lib/demo";
 import { exportSpreadsheet } from "@/lib/export-records";
 import { ISO_DOCUMENTS } from "@/lib/iso/document-list";
 import { fillDocument, TO_COMPLETE, type FillContext } from "@/lib/iso/fill";
-import { buildGapChecklist, EMPTY_EVIDENCE, GAP_CSV_COLUMNS } from "@/lib/iso/gap-checklist";
+import { buildGapChecklist, EMPTY_EVIDENCE, GAP_CSV_COLUMNS, gapStatusLabel } from "@/lib/iso/gap-checklist";
 import { ISO_OFF_NOTICE, isoTemplatesEnabled } from "@/lib/iso/iso-switch";
 import { loadIsoEvidence, type IsoEvidence } from "@/lib/iso/load-iso-evidence";
 import { overdueNcrs, REVIEW_DAYS_DEFAULT, reviewDays } from "@/lib/iso/ncr-review-reminder";
@@ -157,7 +157,7 @@ function IsoPackBody() {
             <Table>
               <TableHeader><TableRow><TableHead>Clause</TableHead><TableHead>Requirement</TableHead><TableHead>Status</TableHead><TableHead>Basis</TableHead></TableRow></TableHeader>
               <TableBody>
-                {gapRows.map((r) => <TableRow key={r.clause}><TableCell>{r.clause}</TableCell><TableCell>{r.requirement}</TableCell><TableCell className="font-medium">{r.status}</TableCell><TableCell className="text-sm text-slate-600">{r.basis}</TableCell></TableRow>)}
+                {gapRows.map((r) => <TableRow key={r.clause}><TableCell>{r.clause}</TableCell><TableCell>{r.requirement}</TableCell><TableCell className="font-medium">{gapStatusLabel(r.status)}</TableCell><TableCell className="text-sm text-slate-600">{r.basis}</TableCell></TableRow>)}
               </TableBody>
             </Table>
           </section>
