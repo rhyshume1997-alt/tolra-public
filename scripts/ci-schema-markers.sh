@@ -17,7 +17,8 @@ for row in "marker 138 chase steps|chase_steps_138|138 chase steps applied" \
            "post-144 marker 150 ai_cap_key_off|ai_cap_key_off_150|150 ai_cap_key_off applied" \
            "post-144 marker 151 xero_invite_hardening|xero_invite_hardening_151|151 xero_invite_hardening applied" \
            "post-144 marker 152 sliq_import_route|sliq_import_route_152|152 sliq_import_route applied" \
-           "post-144 marker 153 document_customer_link|document_customer_link_153|153 document_customer_link applied"; do
+           "post-144 marker 153 document_customer_link|document_customer_link_153|153 document_customer_link applied" \
+           "post-144 marker 154 customer_portal_signin|customer_portal_signin_154|154 customer_portal_signin applied"; do
   IFS='|' read -r marker verify label <<< "$row"
   line="$(printf '%s\n' "$pre" | awk -F'|' -v m="$marker" '$1==m')"
   state="$(printf '%s\n' "$line" | awk -F'|' '{print $2}')"
