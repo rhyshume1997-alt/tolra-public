@@ -71,7 +71,7 @@ describe("each release refuses to run before the release the plan says it follow
   });
 
   it("the plan chain is 144 then 145 .. 152, each one after the one before", () => {
-    expect(plan.phases.map((p: { number: number; after: string }) => [p.number, p.after])).toEqual([[145, "144"], [146, "145"], [147, "146"], [148, "147"], [149, "148"], [150, "149"], [151, "150"], [152, "151"], [153, "152"], [154, "153"]]);
+    expect(plan.phases.map((p: { number: number; after: string }) => [p.number, p.after])).toEqual([[145, "144"], [146, "145"], [147, "146"], [148, "147"], [149, "148"], [150, "149"], [151, "150"], [152, "151"], [153, "152"], [154, "153"], [156, "154"]]);
   });
 });
 

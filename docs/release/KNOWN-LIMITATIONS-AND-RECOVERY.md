@@ -31,6 +31,7 @@ How to read this document:
 | L8 | AI, Xero transfers and job profit are off by default | Nothing sends or switches on without an admin turning it on | Info | Sourced; the "recent code" rule is partly NOT VERIFIED |
 | L9 | Release 151 header said "PROPOSAL, not registered" | Resolved: 151 IS registered (plan phase 151, after 150) and CI installs it; only a header comment was stale (fixed on this branch) | Info (resolved) | Sourced |
 | L10 | Release tests ran on PostgreSQL 16; the preflight expects 17.x | Behaviour on the production database version is not proven | Medium | Sourced |
+| L11 | Release 156: the generic workbook import refuses a case-variant invoice number only with the general database refusal | `inv-1001` next to `INV-1001` is never written, but the message is the generic "database refused the import" (23505), not a named problem | Low | Proved locally (PG16) |
 
 ---
 
@@ -139,6 +140,14 @@ How to read this document:
 - **Severity:** Medium.
 - **Workaround:** Confirm the production database version and whether a PostgreSQL 17 rehearsal is needed. Not decided here.
 - **Evidence:** `/tmp/claude-0/s/overnight-151.md` line 86 ("Release on Postgres 17 ... (PG16 only; preflight header expects 17.x)").
+
+### L11. Release 156: the generic import refuses a case-variant invoice number with the general refusal only
+
+- **What it is:** Release 156 makes invoice numbers unique per company whatever their capital letters (index `invoices_invoice_ref_ci_uniq`). The SliQ go-live route names the problem (`invoice_ref_case_duplicate`) in its preflight and refuses the batch before writing. The generic workbook import (085) is not changed: its dry run and its commit are refused by the index with the general message "The database refused the import, so nothing was imported" (code 23505). Accepted for now (PM recommended answer 3, 12 Nov 2026); a named message would mean replacing 085's import function.
+- **What it means for John:** Nothing is duplicated and nothing is written; only the wording is general.
+- **Severity:** Low.
+- **Release note:** 156 refuses to install while any company already has invoice numbers that differ only in capital letters (run the read-only finder in the 156 release header first). Local index build at 4,000 invoices: about 5 ms (PG16; hosted time not measured). Credit note numbers keep the exact-case rule (follow-up).
+- **Evidence:** `tests/db/invoice-ref-case-156.test.ts` cases 11 and 14.
 
 ---
 
