@@ -23,13 +23,47 @@ const walk = (dir: string): string[] =>
 /* ------------------------------------------------------------------------------------------------------------------------------ */
 /* 1. The inventory: no way to reach a provider, or to reserve spend, except the three capped entry points.                          */
 /* ------------------------------------------------------------------------------------------------------------------------------ */
+/**
+ * Provider endpoint owner map (pure; applied to the real tree below and to synthetic inputs in the regression cases). A host may appear only in
+ * its one owning adapter, and there only as ONE fixed constant of the exact form `const NAME = "https://<host>/...";`. Every other host is
+ * refused in every file, owning adapters included.
+ */
+const HOST_OWNERS: Record<string, string> = { "api.openai.com": "lib/ai-helper/providers/openai.ts", "api.x.ai": "lib/ai-helper/providers/xai.ts" };
+const REFUSED_HOSTS = ["api.anthropic.com", "api.openai.com", "api.x.ai", "generativelanguage.googleapis", "api.mistral", "api.cohere"];
+/** Any other spelling of an owner's brand domain, so a second or odd host in the owning adapter is caught. */
+const OWNER_BRAND: Record<string, RegExp> = { "api.openai.com": /openai\.com/, "api.x.ai": /(?:^|[^a-z0-9])x\.ai/ };
+function endpointViolations(file: string, text: string): string[] {
+  const f = file.replace(/\\/g, "/");
+  const out: string[] = [];
+  for (const host of REFUSED_HOSTS) {
+    if (!text.includes(host)) continue;
+    const owner = HOST_OWNERS[host];
+    if (owner === undefined || f !== owner) {
+      out.push(`${host} in ${f}`);
+      continue;
+    }
+    const escaped = host.replace(/\./g, "\\.");
+    const fixed = new RegExp(`\\bconst\\s+[A-Za-z_]\\w*\\s*=\\s*"https://${escaped}/[^"$\`\\s]*";`, "g");
+    const rest = text.replace(fixed, "");
+    const once = (text.match(fixed) ?? []).length === 1;
+    if (!once || rest.includes(host) || OWNER_BRAND[host].test(rest) || /https?:\/\/\$\{/.test(rest)) out.push(`${host} in ${f} is not one fixed URL constant`);
+  }
+  // A brand domain that is not an approved host at all (second or odd host) in an owning adapter.
+  for (const [host, owner] of Object.entries(HOST_OWNERS)) {
+    if (f !== owner) continue;
+    const stripped = text.replace(new RegExp(`"https://${host.replace(/\./g, "\\.")}/[^"$\`\\s]*"`), "");
+    if (OWNER_BRAND[host].test(stripped) && !out.some((o) => o.startsWith(host))) out.push(`odd ${host} spelling in ${f}`);
+  }
+  return out;
+}
+
 describe("every AI call site is one of the capped paths (source inventory)", () => {
   const all = ["app", "lib", "components"].flatMap(walk);
 
   it("only lib/ai-helper/anthropic.ts imports a model SDK or names a provider endpoint", () => {
     const sdk = all.filter((f) => /from ["']@anthropic-ai\/sdk["']|from ["']openai["']|@ai-sdk\/|from ["']@google\/generative-ai["']/.test(read(f)));
     expect(sdk).toEqual([path.join("lib", "ai-helper", "anthropic.ts")]);
-    const endpoint = all.filter((f) => /api\.anthropic\.com|api\.openai\.com|generativelanguage\.googleapis|api\.mistral|api\.cohere/.test(read(f)));
+    const endpoint = all.filter((f) => endpointViolations(f, read(f)).length > 0);
     expect(endpoint).toEqual([]);
   });
 
@@ -60,6 +94,51 @@ describe("every AI call site is one of the capped paths (source inventory)", () 
     for (const f of ["app/api/ai/finance-check/route.ts", "app/api/ai/finance-check/decision/route.ts", "app/api/cron/ai-helper-purge/route.ts", "app/api/chase/run/route.ts", ...walk("lib/ai/finance-check")]) {
       expect(read(f), f).not.toMatch(/runAiHelper|ai-helper\/server|ai-helper\/anthropic|ai-helper\/provider|ai_helper_reserve|ai_helper_tolra/);
     }
+  });
+});
+
+describe("provider endpoint owner map (pure helper, synthetic inputs, no file writes)", () => {
+  const OPENAI = "lib/ai-helper/providers/openai.ts";
+  const XAI = "lib/ai-helper/providers/xai.ts";
+  const oai = 'const URL_CHAT = "https://api.openai.com/v1/chat/completions";\n';
+  const xai = 'const URL_CHAT = "https://api.x.ai/v1/chat/completions";\n';
+
+  it("accepts each approved host in its owning adapter as one fixed constant", () => {
+    expect(endpointViolations(OPENAI, oai)).toEqual([]);
+    expect(endpointViolations(XAI, xai)).toEqual([]);
+  });
+
+  it("refuses an approved host in any other path, including the other provider's adapter", () => {
+    for (const f of ["lib/ai-helper/server.ts", "app/api/x/route.ts", "lib/ai-helper/anthropic.ts", "components/a.tsx", XAI]) expect(endpointViolations(f, oai), f).not.toEqual([]);
+    for (const f of ["lib/ai-helper/server.ts", "app/api/x/route.ts", OPENAI]) expect(endpointViolations(f, xai), f).not.toEqual([]);
+  });
+
+  it("refuses unrelated external hosts everywhere, owning adapters included", () => {
+    for (const h of ["api.anthropic.com", "api.mistral.ai", "generativelanguage.googleapis.com", "api.cohere.com"]) {
+      const text = `const U = "https://${h}/v1";\n`;
+      for (const f of [OPENAI, XAI, "lib/ai-helper/server.ts", "app/api/x/route.ts"]) expect(endpointViolations(f, text), `${h} in ${f}`).not.toEqual([]);
+    }
+  });
+
+  it("refuses a second or odd OpenAI host, a duplicate, a templated or non-constant URL in the owning adapter", () => {
+    for (const extra of ['const B = "https://eu.api.openai.com/v1";\n', 'const B = "https://api.openai.com.evil.test/v1";\n', 'const B = "https://openai.com/x";\n', oai, "const B = `https://${host}/v1`;\n", "const B = `https://api.openai.com/${p}`;\n", 'fetch("https://api.openai.com/v1/x");\n']) {
+      expect(endpointViolations(OPENAI, oai + extra), extra).not.toEqual([]);
+    }
+    expect(endpointViolations(OPENAI, 'const URL_CHAT = "https://api.openai.com.evil.test/v1";\n')).not.toEqual([]);
+    expect(endpointViolations(OPENAI, "const URL_CHAT = `https://api.openai.com/v1/${x}`;\n")).not.toEqual([]);
+    expect(endpointViolations(OPENAI, 'const U = "http://api.openai.com/v1";\n')).not.toEqual([]);
+  });
+
+  it("refuses a second or odd xAI host in the xAI adapter", () => {
+    expect(endpointViolations(XAI, xai + 'const B = "https://api2.x.ai/v1";\n')).not.toEqual([]);
+    expect(endpointViolations(XAI, xai + xai)).not.toEqual([]);
+  });
+
+  it("the real tree: api.x.ai appears nowhere yet, and api.openai.com only in the OpenAI adapter", () => {
+    const tree = ["app", "lib", "components"].flatMap(walk);
+    const hits = (h: string) => tree.filter((f) => read(f).includes(h)).map((f) => f.replace(/\\/g, "/"));
+    expect(hits("api.x.ai")).toEqual([]);
+    expect(hits("api.openai.com")).toEqual(["lib/ai-helper/providers/openai.ts"]);
   });
 });
 
