@@ -44,6 +44,12 @@ Break work into these. Agents own one module at a time. Cross-module changes req
 - Allowed: `app/(dashboard)/admin/iso/**`, `components/iso/**`, `lib/iso/**`
 - Goal: Admin-only, off by default, downloadable draft templates. No AI, no SQL, no saved documents. Outputs need company review and are not certification evidence.
 
+## 10. Customer portal
+- Allowed: `app/portal/**`, `app/api/portal/**`, `lib/portal/**`, `components/portal/**`, `tests/{unit,db,e2e}/portal-*`
+- Goal: Customer sign-in, quotes and jobs view. Off by default: needs both the server flag `CUSTOMER_PORTAL_ENABLED` (exactly "true") AND the company switch. All authorisation lives in the release 154 functions (service role only).
+- Rules: one generic refusal, and nothing ever says whether a contact, code, document or account exists. No TOTP. Never show the customer `sends` or `email`. Never log or audit an e-mail address, name, IP, code, ref or token. Sign-in e-mails go only through the platform's verified Resend sender (`EMAIL_FROM`); never through a company's Microsoft 365 mailbox and never written to `email_history`. The platform flag and the company switch are both enforced on the server before any portal work.
+- Frozen elsewhere: `middleware.ts` belongs to module 1; any portal change to it is its own PR with explicit approval.
+
 ## Shared
 - `lib/utils.ts`, types, zod schemas: only if the task lists them.
 - Prefer new files under `lib/<module>/` or `components/<module>/` for extractions.
