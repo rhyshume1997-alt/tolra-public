@@ -5,6 +5,8 @@ vi.mock("server-only", () => ({}));
 
 import { AiProviderError, type AiCompletionRequest } from "@/lib/ai-helper/provider";
 import { OPENAI_MODEL_ALLOWLIST, openaiProvider, type OpenAiModelSpec } from "@/lib/ai-helper/providers/openai";
+import type { UsdGbpRate } from "@/lib/ai-helper/fx";
+import { MAX_REQUEST_PENCE_GBP, MODEL_PRICES_GBP, type ModelPrice, actualPenceGbp, estimatePenceGbp } from "@/lib/ai-helper/pricing-gbp";
 
 const KEY = "sk-test-SECRET-KEY-123";
 const req: AiCompletionRequest = {
@@ -243,5 +245,135 @@ describe("openai adapter", () => {
     const e = await fail(openaiProvider(f as never));
     expect([e.kind, e.rejectedBeforeWork]).toEqual(["unavailable", true]);
     expect(f).not.toHaveBeenCalled();
+  });
+});
+
+describe("openai adapter: guards the PM ruling asks to see explicitly (13 Nov)", () => {
+  const consoleSpies = () => (["log", "info", "warn", "error", "debug", "trace"] as const).map((m) => vi.spyOn(console, m).mockImplementation(() => {}));
+
+  it("no credential in any log or thrown message, on success and on every failure path", async () => {
+    const spies = consoleSpies();
+    const seen: string[] = [];
+    const record = (e: unknown) => {
+      const x = e as Error;
+      seen.push(String(x?.message), String(e), JSON.stringify(e));
+    };
+    const bodies: Array<() => Promise<Response>> = [
+      async () => ok(),
+      async () => new Response(`{"error":"${KEY}"}`, { status: 401 }),
+      async () => new Response(`${KEY}`, { status: 500 }),
+      async () => ok({}, "stop", `not json ${KEY}`),
+      async () => ok({}, "stop", null),
+      async () => {
+        throw new TypeError(`connect failed ${KEY}`);
+      },
+    ];
+    for (const b of bodies) {
+      try {
+        await run(b).p.complete(req);
+      } catch (e) {
+        record(e);
+      }
+    }
+    try {
+      await openaiProvider(vi.fn() as never, ALLOW).complete({ ...req, model: "not-allowed" });
+    } catch (e) {
+      record(e);
+    }
+    expect(seen.length).toBeGreaterThan(0);
+    for (const s of seen) expect(s).not.toContain(KEY);
+    for (const spy of spies) {
+      expect(spy).not.toHaveBeenCalled();
+      expect(JSON.stringify(spy.mock.calls)).not.toContain(KEY);
+      spy.mockRestore();
+    }
+  });
+
+  it("provider disabled: an empty allow-list refuses every model before any fetch, and the global fetch is never used", async () => {
+    const globalFetch = vi.fn(async () => ok());
+    vi.stubGlobal("fetch", globalFetch);
+    try {
+      const injected = vi.fn(async () => ok());
+      for (const provider of [openaiProvider(injected as never, {}), openaiProvider(injected as never)]) {
+        const e = await fail(provider);
+        expect([e.kind, e.rejectedBeforeWork]).toEqual(["unavailable", true]);
+        expect(e.usage).toEqual(ZERO);
+      }
+      expect(injected).not.toHaveBeenCalled();
+      expect(globalFetch).not.toHaveBeenCalled();
+      // An enabled model with an injected fetch uses only the injected one.
+      await run(async () => ok()).p.complete(req);
+      expect(globalFetch).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("request mapping is exact: POST, fixed URL, Bearer authorization, model, token cap, system then user message", async () => {
+    const { f, p } = run(async () => ok());
+    await p.complete({ ...req, maxOutputTokens: 123, apiKey: "sk-dummy-other" });
+    const [url, init] = f.mock.calls[0] as unknown as [string, RequestInit];
+    const body = JSON.parse(init.body as string);
+    expect([url, init.method]).toEqual(["https://api.openai.com/v1/chat/completions", "POST"]);
+    expect((init.headers as Record<string, string>).Authorization).toBe("Bearer sk-dummy-other");
+    expect([body.model, body.max_completion_tokens, body.messages.map((m: { role: string }) => m.role)]).toEqual(["gpt-4.1-mini", 123, ["system", "user"]]);
+  });
+
+  describe("integer GBP pence through the AI-1 pricing path (a test-only OpenAI price row, removed afterwards)", () => {
+    const MODEL = "gpt-pricing-test";
+    const NOW = new Date("2026-11-12T12:00:00Z");
+    const RATES: readonly UsdGbpRate[] = [{ microGbpPerUsd: BigInt(800_000), source: "test stand-in", effectiveAt: "2026-11-12T00:00:00Z" }];
+    const table = MODEL_PRICES_GBP as Record<string, ModelPrice>;
+    const addRow = () => {
+      table[MODEL] = { provider: "openai", inputMicroUsdPerMTok: BigInt(2_500_000), outputMicroUsdPerMTok: BigInt(10_000_000), source: "test stand-in", asOf: "2026-11-12" };
+    };
+    const dropRow = () => {
+      delete table[MODEL];
+    };
+
+    it("shipped table has no OpenAI price: estimate throws, actual is charged the maximum, so nothing is cheap by accident", () => {
+      dropRow();
+      expect(() => estimatePenceGbp(MODEL, 100, 100, "openai", NOW, RATES)).toThrow(/No usable price/);
+      expect(actualPenceGbp(MODEL, { inputTokens: 1, outputTokens: 1 }, "openai", NOW, RATES)).toBe(MAX_REQUEST_PENCE_GBP);
+    });
+
+    it("integer pence, rounded up: exactly 200p at 1M input tokens (USD 2.50 x 0.80), 201p at one token more", () => {
+      addRow();
+      try {
+        const exact = actualPenceGbp(MODEL, { inputTokens: 1_000_000, outputTokens: 0 }, "openai", NOW, RATES);
+        const over = actualPenceGbp(MODEL, { inputTokens: 1_000_001, outputTokens: 0 }, "openai", NOW, RATES);
+        const est = estimatePenceGbp(MODEL, 1000, 500, "openai", NOW, RATES);
+        expect([exact, over]).toEqual([200, 201]);
+        for (const n of [exact, over, est]) expect(Number.isInteger(n)).toBe(true);
+        expect(est).toBeGreaterThanOrEqual(1);
+        expect(actualPenceGbp(MODEL, { inputTokens: 1, outputTokens: 1 }, "openai", NOW, RATES)).toBe(1);
+      } finally {
+        dropRow();
+      }
+    });
+
+    it("missing, stale or not-yet-effective exchange rate fails closed (estimate throws, actual is the maximum)", () => {
+      addRow();
+      try {
+        for (const rates of [[], [{ ...RATES[0], effectiveAt: "2026-11-10T00:00:00Z" }], [{ ...RATES[0], effectiveAt: "2026-11-13T00:00:00Z" }]] as UsdGbpRate[][]) {
+          expect(() => estimatePenceGbp(MODEL, 100, 100, "openai", NOW, rates)).toThrow(/No usable USD to GBP rate/);
+          expect(actualPenceGbp(MODEL, { inputTokens: 1, outputTokens: 1 }, "openai", NOW, rates)).toBe(MAX_REQUEST_PENCE_GBP);
+        }
+        // The shipped rate table is empty: with no injected rates, an OpenAI request cannot be priced at all.
+        expect(() => estimatePenceGbp(MODEL, 100, 100, "openai", NOW)).toThrow(/No usable USD to GBP rate/);
+      } finally {
+        dropRow();
+      }
+    });
+
+    it("a stale price (over 90 days) and a provider mismatch fail closed", () => {
+      addRow();
+      try {
+        expect(() => estimatePenceGbp(MODEL, 100, 100, "openai", new Date("2027-03-01T00:00:00Z"), [{ ...RATES[0], effectiveAt: "2027-03-01T00:00:00Z" }])).toThrow(/stale/);
+        expect(() => estimatePenceGbp(MODEL, 100, 100, "anthropic", NOW, RATES)).toThrow(/provider_mismatch/);
+      } finally {
+        dropRow();
+      }
+    });
   });
 });
