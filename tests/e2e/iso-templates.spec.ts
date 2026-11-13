@@ -119,9 +119,12 @@ test("admin switches ISO templates on from the page, then off; other hidden_nav 
     await toggle.click();
     await expect(page.getByRole("button", { name: "Download pack (zip)" })).toBeVisible({ timeout: 60_000 });
     await expect(toggle).toHaveAttribute("aria-checked", "true");
-    expect(await hiddenNav()).toEqual(expect.arrayContaining([KEEP, ISO_TEMPLATES_ON_MARKER]));
+    // The switch updates the screen at once and saves in the background (lib/org-settings.ts enqueue), so wait for the
+    // stored row itself rather than reading it straight after the click.
+    await expect.poll(hiddenNav, { timeout: 30_000 }).toEqual(expect.arrayContaining([KEEP, ISO_TEMPLATES_ON_MARKER]));
     await toggle.click();
     await expect(page.getByText(ISO_OFF_NOTICE)).toBeVisible({ timeout: 60_000 });
+    await expect.poll(hiddenNav, { timeout: 30_000 }).not.toContain(ISO_TEMPLATES_ON_MARKER);
     const after = await hiddenNav();
     expect(after).toContain(KEEP);
     expect(after).not.toContain(ISO_TEMPLATES_ON_MARKER);
