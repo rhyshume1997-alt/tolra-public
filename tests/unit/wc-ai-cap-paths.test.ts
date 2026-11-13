@@ -134,10 +134,10 @@ describe("provider endpoint owner map (pure helper, synthetic inputs, no file wr
     expect(endpointViolations(XAI, xai + xai)).not.toEqual([]);
   });
 
-  it("the real tree: api.x.ai appears nowhere yet, and api.openai.com only in the OpenAI adapter", () => {
+  it("the real tree: api.x.ai only in the xAI adapter, and api.openai.com only in the OpenAI adapter", () => {
     const tree = ["app", "lib", "components"].flatMap(walk);
     const hits = (h: string) => tree.filter((f) => read(f).includes(h)).map((f) => f.replace(/\\/g, "/"));
-    expect(hits("api.x.ai")).toEqual([]);
+    expect(hits("api.x.ai")).toEqual(["lib/ai-helper/providers/xai.ts"]);
     expect(hits("api.openai.com")).toEqual(["lib/ai-helper/providers/openai.ts"]);
   });
 });
