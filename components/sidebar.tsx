@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { useOrgSettings } from "@/lib/org-settings";
 import { useAiFeatures } from "@/components/ai-features";
 import { aiNavAvailable, canOpenDestination } from "@/lib/destinations";
+import { canSeeReports, reportsEnabled } from "@/lib/reports/reports-switch";
 import { passwordProblem } from "@/lib/password";
 import { changePasswordWithCode } from "@/lib/mfa-step-up";
 import { useCodePrompt } from "@/components/authenticator-code-dialog";
@@ -65,6 +66,8 @@ const navSections: { title: string; items: NavItem[] }[] = [
       { href: "/schedule", label: "Machine Schedule", roles: ["admin", "office", "workshop", "viewer"] },
       { href: "/time", label: "Weekly hours", roles: ["admin", "office", "workshop"] },
       { href: "/invoices", label: "Invoicing", roles: ["admin", "office"] },
+      // Only while the company has Reports switched on (reportsEnabled); admin and office.
+      { href: "/reports", label: "Reports", roles: ["admin", "office"] },
       { href: "/approval", label: "Approval Queue", roles: ["admin", "office"] },
       { href: "/purchase-orders", label: "Purchase Orders", roles: ["admin", "office"] },
       { href: "/delivery-notes", label: "Delivery Notes", roles: ["admin", "office", "workshop"] },
@@ -218,7 +221,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
       <nav className="flex-1 overflow-y-auto pb-4">
         {navSections.map((section) => {
-          const visibleItems = section.items.filter((item) => hasAnyRole(item.roles) && (item.href !== "/admin/integrations" || has084) && aiNavAvailable(item.href, Boolean(aiHelper)) && canOpenDestination(item.href, { activeRole, hiddenSections, hiddenNav: orgSettings.hiddenNav }));
+          const visibleItems = section.items.filter((item) => hasAnyRole(item.roles) && (item.href !== "/admin/integrations" || has084) && aiNavAvailable(item.href, Boolean(aiHelper)) && (item.href !== "/reports" || (canSeeReports(activeRole) && reportsEnabled(orgSettings.hiddenNav))) && canOpenDestination(item.href, { activeRole, hiddenSections, hiddenNav: orgSettings.hiddenNav }));
           if (!visibleItems.length) return null;
 
           return (
