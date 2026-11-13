@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
-import { AccountingError, cloudAuthorize, cloudTenant } from "@/lib/accounting/cloud-adapters";
+import { createHash } from "node:crypto";
+import { AccountingError, cloudAuthorize, cloudTenant, cloudTokens } from "@/lib/accounting/cloud-adapters";
+import { newAuthorisation } from "@/lib/integrations/xero/oauth";
 
 const config = { clientId: "fake-id", clientSecret: "fake-secret", redirectUri: "https://tolra.example.test/api/accounting/sage/callback", sandbox: false };
 const reply = (body: unknown) => vi.fn<typeof fetch>().mockImplementation(async () => Response.json(body));
@@ -72,5 +74,49 @@ describe("sageTenant business identity", () => {
     expect(a.id).toBe("biz-a");
     expect(b.id).toBe("biz-b");
     expect((await cloudTenant("sage", config, "token-a", null, fetchImpl)).id).toBe("biz-a");
+  });
+});
+
+describe("Sage PKCE S256", () => {
+  const tokenReply = () => vi.fn<typeof fetch>().mockImplementation(async () => Response.json({ access_token: "a", refresh_token: "r", expires_in: 3600 }));
+  it("authorise URL carries the S256 challenge and no verifier or secret", () => {
+    const url = new URL(cloudAuthorize("sage", config, "fake-state", "fake-challenge"));
+    expect(url.searchParams.get("code_challenge")).toBe("fake-challenge");
+    expect(url.searchParams.get("code_challenge_method")).toBe("S256");
+    expect(url.toString()).not.toContain("plain");
+    expect(url.searchParams.get("code_verifier")).toBeNull();
+    expect(url.searchParams.get("client_secret")).toBeNull();
+    expect(() => cloudAuthorize("sage", config, "fake-state", "")).toThrow(AccountingError);
+  });
+  it("a real newAuthorisation challenge is base64url(sha256(verifier))", () => {
+    const auth = newAuthorisation();
+    expect(auth.challenge).toBe(createHash("sha256").update(auth.verifier).digest("base64url"));
+    const url = new URL(cloudAuthorize("sage", config, auth.state, auth.challenge));
+    expect(url.searchParams.get("code_challenge")).toBe(auth.challenge);
+    expect(url.toString()).not.toContain(auth.verifier);
+  });
+  it("code exchange sends code_verifier with the documented form fields", async () => {
+    const fetchImpl = tokenReply();
+    await cloudTokens("sage", config, { code: "fake-code", verifier: "fake-verifier" }, fetchImpl);
+    const body = new URLSearchParams(String(fetchImpl.mock.calls[0][1]?.body));
+    expect(Object.fromEntries(body)).toEqual({ grant_type: "authorization_code", code: "fake-code", redirect_uri: config.redirectUri, client_id: "fake-id", client_secret: "fake-secret", code_verifier: "fake-verifier" });
+    await expect(cloudTokens("sage", config, { code: "fake-code", verifier: "" }, tokenReply())).rejects.toBeInstanceOf(AccountingError);
+  });
+  it("refresh grant has no code_verifier", async () => {
+    const fetchImpl = tokenReply();
+    await cloudTokens("sage", config, { refreshToken: "fake-refresh" }, fetchImpl);
+    const body = new URLSearchParams(String(fetchImpl.mock.calls[0][1]?.body));
+    expect(body.get("grant_type")).toBe("refresh_token");
+    expect(body.has("code_verifier")).toBe(false);
+  });
+  it("verifier never appears in thrown errors, even when the token endpoint echoes it", async () => {
+    const verifier = "very-secret-verifier-value";
+    for (const status of [400, 401, 500]) {
+      const failing = vi.fn<typeof fetch>().mockResolvedValue(new Response(`bad code_verifier=${verifier}`, { status }));
+      const err = await cloudTokens("sage", config, { code: "fake-code", verifier }, failing).catch((e) => e);
+      expect(err).toBeInstanceOf(AccountingError);
+      expect(String(err.message)).not.toContain(verifier);
+      expect(JSON.stringify(err)).not.toContain(verifier);
+    }
   });
 });
