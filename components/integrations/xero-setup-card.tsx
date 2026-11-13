@@ -91,7 +91,8 @@ export function XeroSetupCardView(p: XeroSetupCardViewProps) {
  * The "Turn on transfers" switch is the company's own, persisted, server-side Xero transfer switch (release 149; GET and POST
  * /api/integrations/xero/launch): OFF by default, separate from Connected, enabled only when the company is connected and mapped, and turned on
  * only with a fresh authenticator code (the same code prompt as the AI switch: the route answers mfa_recent_required, the dialog opens, the same
- * request is sent once more). It is read from the server, never assumed. `launchHold` (a test seam): when given, it replaces the real switch.
+ * request is sent once more). Turning it ON first opens a dialog naming the connected Xero organisation and sends it as confirmTenantId (the
+ * route refuses a mismatch); OFF is one click. It is read from the server, never assumed. `launchHold` (a test seam): when given, it replaces the real switch.
  * The Connect, Disconnect and Check logic is copied from components/integrations-panel.tsx (which is not edited).
  */
 export function XeroSetupCard({ launchHold: injected, outcome }: { launchHold?: LaunchHold; outcome?: string | null }) {
@@ -104,6 +105,8 @@ export function XeroSetupCard({ launchHold: injected, outcome }: { launchHold?: 
   const [statusFailed, setStatusFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState(false);
+  const [organisation, setOrganisation] = useState<{ tenantId: string; name: string | null } | null>(null);
+  const [confirmOn, setConfirmOn] = useState(false);
   const [check, setCheck] = useState<{ ok: boolean; text: string } | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [urlOutcome, setUrlOutcome] = useState<string | null>(null);
@@ -122,7 +125,9 @@ export function XeroSetupCard({ launchHold: injected, outcome }: { launchHold?: 
   const loadSwitch = useCallback(async () => {
     try {
       const res = await fetch("/api/integrations/xero/launch", { credentials: "same-origin", cache: "no-store" });
-      const body = res.ok ? ((await res.json().catch(() => null)) as { enabled?: unknown } | null) : null;
+      const body = res.ok ? ((await res.json().catch(() => null)) as { enabled?: unknown; organisation?: { tenantId?: unknown; name?: unknown } | null } | null) : null;
+      const org = body?.organisation;
+      setOrganisation(org && typeof org.tenantId === "string" && org.tenantId ? { tenantId: org.tenantId, name: typeof org.name === "string" ? org.name : null } : null);
       if (body && typeof body.enabled === "boolean") { setSwitchOn(body.enabled); setSwitchReadable(true); } else { setSwitchOn(null); setSwitchReadable(false); }
     } catch { setSwitchOn(null); setSwitchReadable(false); }
   }, []);
@@ -158,14 +163,23 @@ export function XeroSetupCard({ launchHold: injected, outcome }: { launchHold?: 
     const r = await postIntegration("/api/integrations/xero/test");
     setCheck(r.ok ? { ok: true, text: String(r.body.message ?? "Working") } : { ok: false, text: r.error });
   });
-  const changeSwitch = async (next: boolean) => {
-    const outcome = await sendWithCode(() => postJson("/api/integrations/xero/launch", { enabled: next }), requestCode);
+  const changeSwitch = async (next: boolean, confirmTenantId?: string) => {
+    const outcome = await sendWithCode(() => postJson("/api/integrations/xero/launch", next ? { enabled: true, confirmTenantId } : { enabled: false }), requestCode);
     if (outcome.result === "cancelled") setActionError("Cancelled. Nothing was changed.");
     else if (outcome.result === "failed") setActionError(safeMessage(outcome.answer.body, "Xero transfers were not changed. Try again."));
     await loadSwitch();
   };
-  const launchHold: LaunchHold | undefined = injected ?? { available: switchReadable, on: switchOn, set: changeSwitch };
-  const flip = (next: boolean) => { void run(async () => { await launchHold.set(next); await load(); }); };
+  const launchHold: LaunchHold | undefined = injected ?? { available: switchReadable, on: switchOn, set: changeSwitch, organisation };
+  const flip = (next: boolean) => {
+    // ON (the real switch only; the injected test seam is unchanged) first names the organisation in a dialog; nothing is sent until it is confirmed.
+    if (next && !injected) { setConfirmOn(true); return; }
+    void run(async () => { await launchHold.set(next); await load(); });
+  };
+  const confirmTurnOn = () => {
+    setConfirmOn(false);
+    if (!organisation) { setActionError("The connected Xero organisation could not be read, so transfers were not turned on. Reload and try again."); return; }
+    void run(async () => { await launchHold.set(true, organisation.tenantId); await load(); });
+  };
 
   return (
     <>
@@ -188,6 +202,14 @@ export function XeroSetupCard({ launchHold: injected, outcome }: { launchHold?: 
       />
       {/* Release 149: what was waiting before transfers were on stays held until an admin approves it here. */}
       <XeroHeldReview requestCode={requestCode} refreshKey={switchOn} />
+      <ConfirmDialog
+        open={confirmOn}
+        title={`Turn on transfers to Xero organisation ${organisation?.name ?? "(name not available)"}?`}
+        description="From now on, documents issued from Tolra are sent to this Xero organisation automatically. Anything already waiting stays held until an admin approves it. You will be asked for a fresh authenticator code."
+        confirmLabel="Turn on transfers"
+        onConfirm={confirmTurnOn}
+        onCancel={() => setConfirmOn(false)}
+      />
       <ConfirmDialog
         open={confirm}
         title="Disconnect from Xero?"

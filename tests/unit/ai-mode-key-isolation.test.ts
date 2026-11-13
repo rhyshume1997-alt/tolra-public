@@ -1,6 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { afterEach, expect, it, vi } from "vitest";
+// AI-E (C4): the shared Tolra key is switched off by default; these tests keep the dormant Tolra code covered by turning the constant on.
+vi.mock("@/lib/ai-helper/shared-ai-deactivation", () => ({ SHARED_TOLRA_AI_ACTIVE: true }));
 
 vi.mock("server-only", () => ({}));
 const db = vi.hoisted(() => ({
