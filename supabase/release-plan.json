@@ -119,6 +119,24 @@
       "rollback": "supabase/release/152_sliq_import_route.rollback.sql",
       "verify": "supabase/verify/sliq_import_route_152.sql",
       "marker": "post-144 marker 152 sliq_import_route"
+    },
+    {
+      "number": 153,
+      "after": "152",
+      "source": "supabase/proposals/p153_document_customer_link.sql",
+      "release": "supabase/release/153_document_customer_link.release.sql",
+      "rollback": "supabase/release/153_document_customer_link.rollback.sql",
+      "verify": "supabase/verify/document_customer_link_153.sql",
+      "marker": "post-144 marker 153 document_customer_link"
+    },
+    {
+      "number": 154,
+      "after": "153",
+      "source": "supabase/proposals/p154_customer_portal_signin.sql",
+      "release": "supabase/release/154_customer_portal_signin.release.sql",
+      "rollback": "supabase/release/154_customer_portal_signin.rollback.sql",
+      "verify": "supabase/verify/customer_portal_signin_154.sql",
+      "marker": "post-144 marker 154 customer_portal_signin"
     }
   ],
   "other_proposals": [
