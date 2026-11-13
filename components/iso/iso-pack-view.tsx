@@ -10,6 +10,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { IsoSwitchCard } from "@/components/iso/iso-switch-card";
 import { RoleGate } from "@/components/role-gate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,7 +70,7 @@ function IsoPackBody() {
   const overdue = useMemo(() => (data?.ncrRows ? overdueNcrs(data.ncrRows, new Date(), days) : []), [data, days]);
 
   if (!loaded) return <Skeleton className="h-80" />;
-  if (!on) return <p className="text-sm text-slate-500">{ISO_OFF_NOTICE}</p>;
+  if (!on) return <div className="space-y-4"><p className="text-sm text-slate-500">{ISO_OFF_NOTICE}</p><IsoSwitchCard /></div>;
   if (!available) return <p className="text-sm text-slate-500">The ISO templates are not available in this mode.</p>;
 
   const companyName = company?.documentName || company?.name || TO_COMPLETE;
@@ -121,6 +122,7 @@ function IsoPackBody() {
         <h1 className="page-title">ISO templates</h1>
         <p className="mt-2 text-sm text-slate-500">Branded draft templates and a self-check list for {companyName}. Template and self-check aid. Needs company review. Not certification evidence.</p>
       </div>
+      <IsoSwitchCard />
       {state !== "ready" ? <Skeleton className="h-80" /> : (
         <>
           {data?.unread.length ? <p className="text-xs text-slate-500">Some records could not be read ({data.unread.join(", ")}). Those clauses show as not evidenced.</p> : null}
