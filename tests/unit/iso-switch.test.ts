@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { canSeeIso, ISO_OFF_NOTICE, ISO_TEMPLATES_ON_MARKER, isoSwitchChange, isoTemplatesEnabled } from "@/lib/iso/iso-switch";
+import { canSeeIso, ISO_OFF_NOTICE, ISO_TEMPLATES_ON_MARKER, isoSwitchChange, isoTemplatesEnabled, nextIsoHiddenNav } from "@/lib/iso/iso-switch";
 
 describe("ISO templates switch", () => {
   it("is off by default", () => {
@@ -20,5 +20,17 @@ describe("ISO templates switch", () => {
   it("switch change adds or removes only the marker", () => {
     expect(isoSwitchChange(true)).toEqual({ add: [ISO_TEMPLATES_ON_MARKER], remove: [] });
     expect(isoSwitchChange(false)).toEqual({ add: [], remove: [ISO_TEMPLATES_ON_MARKER] });
+  });
+  it("nextIsoHiddenNav keeps other entries, on then off, idempotent, does not mutate input", () => {
+    const start = Object.freeze(["customers", "sales-orders:on", "reports"]);
+    const on = nextIsoHiddenNav(start, true);
+    expect(on).toEqual(["customers", "sales-orders:on", "reports", ISO_TEMPLATES_ON_MARKER]);
+    expect(nextIsoHiddenNav(on, true)).toEqual(on);
+    const off = nextIsoHiddenNav(on, false);
+    expect(off).toEqual([...start]);
+    expect(nextIsoHiddenNav(off, false)).toEqual([...start]);
+    expect(nextIsoHiddenNav([], false)).toEqual([]);
+    expect(start).toEqual(["customers", "sales-orders:on", "reports"]);
+    expect(on).not.toBe(start);
   });
 });
