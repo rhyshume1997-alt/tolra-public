@@ -28,7 +28,7 @@ Break work into these. Agents own one module at a time. Cross-module changes req
 - Goal: Simple CRUD + linking. Low risk.
 
 ## 6. Integrations (Xero, AI, Email, M365, Costing Engine, Resend)
-- Allowed: `lib/integrations/**`, `lib/ai/**`, `components/integrations/**`, `app/api/accounting/[provider]/[action]/route.ts`, related API routes, settings cards
+- Allowed: `lib/integrations/**`, `lib/ai/**`, `lib/accounting/**`, `components/integrations/**`, `app/api/accounting/[provider]/[action]/route.ts`, related API routes, settings cards
 - Goal: Isolated, off-by-default, feature-flagged per company. Deployed only when verified.
 - Do not touch core financial or job logic.
 
