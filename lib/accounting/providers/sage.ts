@@ -48,9 +48,9 @@ export async function sageTenant(call: JsonCall, token: string, fetchImpl: typeo
   const result = await call(fetchImpl, "https://api.accounting.sage.com/v3.1/businesses", { headers });
   if (!Array.isArray(result.$items) || result.$next || result.$items.length !== 1) throw new AccountingError("ambiguous");
   const business = result.$items[0];
-  const name = business?.displayed_as !== undefined ? business.displayed_as : business?.name;
-  if (typeof business?.id !== "string" || !business.id || typeof name !== "string" || !name) throw new AccountingError("invalid");
-  return { id: business.id, name };
+  const rawName = business?.displayed_as !== undefined ? business.displayed_as : business?.name;
+  if (typeof business?.id !== "string" || !business.id.trim() || typeof rawName !== "string" || !rawName.trim()) throw new AccountingError("invalid");
+  return { id: business.id.trim(), name: rawName.trim() };
 }
 
 export async function sageBalance(call: JsonCall, token: string, tenant: string, number: string, fetchImpl: typeof fetch): Promise<BalanceEvidence | null> {

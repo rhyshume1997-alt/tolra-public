@@ -1,22 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
-import { AccountingError } from "@/lib/accounting/cloud-adapters";
-import { sageAuthorize, sageTenant } from "@/lib/accounting/providers/sage";
+import { AccountingError, cloudAuthorize, cloudTenant } from "@/lib/accounting/cloud-adapters";
 
 const config = { clientId: "fake-id", clientSecret: "fake-secret", redirectUri: "https://tolra.example.test/api/accounting/sage/callback", sandbox: false };
 const reply = (body: unknown) => vi.fn<typeof fetch>().mockImplementation(async () => Response.json(body));
 const tenant = (body: unknown, token = "fake-token") => cloudTenantViaSage(reply(body), token);
-// Minimal JSON caller equivalent to the shared one: parses JSON, throws AccountingError on non-2xx without leaking bodies.
-const call = async (fetchImpl: typeof fetch, url: string, init: RequestInit) => {
-  const res = await fetchImpl(url, init);
-  if (!res.ok) throw new AccountingError("unavailable");
-  return res.json();
-};
-function cloudTenantViaSage(fetchImpl: typeof fetch, token: string) { return sageTenant(call, token, fetchImpl); }
+const cloudTenantViaSage = (fetchImpl: typeof fetch, token: string) => cloudTenant("sage", config, token, null, fetchImpl);
 
 describe("sageAuthorize", () => {
   it("uses readonly scope, apiv3.1 filter and the exact redirect, with no secret", () => {
-    const url = new URL(sageAuthorize(config, "fake-state"));
+    const url = new URL(cloudAuthorize("sage", config, "fake-state", "fake-challenge"));
     expect(url.host + url.pathname).toBe("www.sageone.com/oauth2/auth/central");
     expect(url.searchParams.get("filter")).toBe("apiv3.1");
     expect(url.searchParams.get("scope")).toBe("readonly");
@@ -50,17 +43,20 @@ describe("sageTenant business identity", () => {
   it("rejects missing, empty or non-string id and name as invalid", async () => {
     const bad = [
       { displayed_as: "A" }, { id: "", displayed_as: "A" }, { id: 5, displayed_as: "A" },
-      { id: "a" }, { id: "a", displayed_as: "" }, { id: "a", displayed_as: 7 }, { id: "a", name: "" }, { id: "a", name: 7 }, { id: "a", displayed_as: null, name: "A" },
+      { id: "a" }, { id: "a", displayed_as: "" }, { id: "a", displayed_as: 7 }, { id: "a", displayed_as: "   " }, { id: "  ", displayed_as: "A" }, { id: "a", name: "  " }, { id: "a", name: "" }, { id: "a", name: 7 }, { id: "a", displayed_as: null, name: "A" },
     ];
     for (const item of bad) await expect(tenant({ $items: [item] })).rejects.toMatchObject({ message: expect.stringContaining("invalid") });
   });
   it("sends only bearer and accept headers and never leaks token or secret in errors", async () => {
     const fetchImpl = reply({ $items: [{ id: "a", displayed_as: "A" }] });
-    await sageTenant(call, "secret-token", fetchImpl);
+    await cloudTenant("sage", config, "secret-token", null, fetchImpl);
     expect(fetchImpl.mock.calls[0][0]).toBe("https://api.accounting.sage.com/v3.1/businesses");
     expect(fetchImpl.mock.calls[0][1]?.headers).toEqual({ authorization: "Bearer secret-token", accept: "application/json" });
+    const init = fetchImpl.mock.calls[0][1];
+    expect(init?.redirect).toBe("error");
+    expect(init?.signal).toBeInstanceOf(AbortSignal);
     const failing = vi.fn<typeof fetch>().mockResolvedValue(new Response("secret-token fake-secret", { status: 500 }));
-    const err = await sageTenant(call, "secret-token", failing).catch((e) => e);
+    const err = await cloudTenant("sage", config, "secret-token", null, failing).catch((e) => e);
     expect(err).toBeInstanceOf(AccountingError);
     expect(String(err.message)).not.toContain("secret-token");
     expect(String(err.message)).not.toContain(config.clientSecret);
@@ -72,9 +68,9 @@ describe("sageTenant business identity", () => {
       const auth = (init?.headers as Record<string, string>).authorization;
       return Response.json({ $items: [auth === "Bearer token-a" ? { id: "biz-a", displayed_as: "A" } : { id: "biz-b", displayed_as: "B" }] });
     });
-    const [a, b] = await Promise.all([sageTenant(call, "token-a", fetchImpl), sageTenant(call, "token-b", fetchImpl)]);
+    const [a, b] = await Promise.all([cloudTenant("sage", config, "token-a", null, fetchImpl), cloudTenant("sage", config, "token-b", null, fetchImpl)]);
     expect(a.id).toBe("biz-a");
     expect(b.id).toBe("biz-b");
-    expect((await sageTenant(call, "token-a", fetchImpl)).id).toBe("biz-a");
+    expect((await cloudTenant("sage", config, "token-a", null, fetchImpl)).id).toBe("biz-a");
   });
 });
