@@ -201,7 +201,7 @@ test("switch on: the workshop is refused and nothing is read", async ({ browser 
   const reads = reportReads(page);
   await signIn(page, w.tenants.alpha.users.workshop);
   await page.goto("/reports");
-  await expect(page.getByRole("heading", { name: "Access Denied" })).toBeVisible();
+  await expect(page, "workshop").toHaveURL(/\/dashboard(\?|$|\/)/);
   await page.waitForLoadState("networkidle");
   await expect(page.getByTestId("reports-view")).toHaveCount(0);
   for (const [name, found] of Object.entries(reads)) expect(found, `${name} reads for the workshop`).toHaveLength(0);
