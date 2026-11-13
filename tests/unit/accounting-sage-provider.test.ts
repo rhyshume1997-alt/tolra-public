@@ -1,3 +1,5 @@
+/** BOUNDARY (module 6): Sage config/identity and S256 authorisation parameters -> safe provider requests.
+ * Preserve readonly scope, business/company isolation and all existing assertions. No real credentials or provider calls. */
 import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 import { AccountingError, cloudAuthorize, cloudTenant } from "@/lib/accounting/cloud-adapters";
@@ -17,6 +19,9 @@ describe("sageAuthorize", () => {
     expect(url.searchParams.get("client_id")).toBe("fake-id");
     expect(url.searchParams.get("redirect_uri")).toBe(config.redirectUri);
     expect(url.searchParams.get("state")).toBe("fake-state");
+    expect(url.searchParams.get("code_challenge")).toBe("fake-challenge");
+    expect(url.searchParams.get("code_challenge_method")).toBe("S256");
+    expect(url.searchParams.get("code_verifier")).toBeNull();
     expect(url.searchParams.get("client_secret")).toBeNull();
     expect(url.toString()).not.toContain("fake-secret");
     expect(url.toString()).not.toContain("full_access");

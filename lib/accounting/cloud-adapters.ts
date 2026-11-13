@@ -1,7 +1,7 @@
 import "server-only";
 // BOUNDARY: thin public entry for cloud accounting adapters. Keeps shared helpers (AccountingError, json fetcher, moneyPence) and the Xero branches;
 // Sage and QuickBooks logic lives in lib/accounting/providers/{sage,quickbooks}.ts.
-// Inputs/outputs: unchanged exported names, types and signatures. MUST NOT CHANGE: exported surface, URLs, scopes, headers, timeouts, error classification.
+// Inputs/outputs: unchanged exported names, types and signatures. MUST NOT CHANGE: exported surface, Xero/QuickBooks behaviour, timeouts and error classification. Sage forwards the existing S256 challenge.
 import { authorizeUrl, exchangeCode, listConnections, chooseConnection, refreshTokens, type XeroConfig } from "@/lib/integrations/xero/oauth";
 import { xeroString } from "@/lib/integrations/xero/client";
 import type { AccountingId, BalanceEvidence } from "@/lib/accounting/types";
@@ -24,7 +24,7 @@ async function json(fetchImpl: typeof fetch, url: string, init: RequestInit) {
 }
 export function cloudAuthorize(id: AccountingId, config: CloudConfig, state: string, challenge: string) {
   if (id === "xero") return authorizeUrl(config, state, challenge);
-  return id === "sage" ? sageAuthorize(config, state) : quickbooksAuthorize(config, state);
+  return id === "sage" ? sageAuthorize(config, state, challenge) : quickbooksAuthorize(config, state);
 }
 export async function cloudTokens(id: AccountingId, config: CloudConfig, grant: { code: string; verifier: string } | { refreshToken: string }, fetchImpl = fetch): Promise<CloudTokens> {
   if (id === "xero") return "code" in grant ? exchangeCode(config, grant.code, grant.verifier, fetchImpl) : refreshTokens(config, grant.refreshToken, fetchImpl);
