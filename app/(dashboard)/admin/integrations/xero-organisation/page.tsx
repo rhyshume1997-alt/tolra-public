@@ -11,8 +11,8 @@ import { postIntegrationWithCode } from "@/lib/integrations/post-with-code";
 type Offer = { organisations: Array<{ tenantId: string; name: string }>; csrf: string; expiresAt: number };
 
 /**
- * Admin > Integrations > choose the Xero organisation. Shown when one Xero consent made several organisations: only those are listed, none
- * is selected, and nothing connects until the admin picks one and presses the button (with a fresh authenticator code, as for Connect).
+ * Admin > Integrations > confirm the Xero organisation. Shown after the admin's own Connect, whether the consent made one organisation or several:
+ * only those are listed, none is selected, and nothing connects until the admin picks one and presses the button (with a fresh authenticator code, as for Connect).
  * Connecting never turns transfers on or releases held documents.
  */
 export default function XeroOrganisationPage() {
@@ -44,8 +44,8 @@ export default function XeroOrganisationPage() {
   return (
     <RoleGate allowed={["admin"]}>
       <div className="space-y-4" data-testid="xero-organisation-picker">
-        <h1 className="page-title">Choose the Xero organisation</h1>
-        <p className="text-sm text-slate-500">You gave Tolra access to more than one Xero organisation. Choose the one for this company. The others are disconnected again.</p>
+        <h1 className="page-title">Confirm the Xero organisation</h1>
+        <p className="text-sm text-slate-500">{offer && offer.organisations.length === 1 ? "Tolra can see this Xero organisation. Confirm it is the right one for this company." : "You gave Tolra access to more than one Xero organisation. Choose the one for this company. The others are disconnected again."}</p>
         {offer ? (
           <fieldset className="space-y-2" disabled={busy}>
             <legend className="sr-only">Xero organisation</legend>
@@ -61,7 +61,7 @@ export default function XeroOrganisationPage() {
           </fieldset>
         ) : null}
         {problem ? <p role="alert" className="text-sm text-red-700">{problem}</p> : null}
-        <p className="text-sm"><Link href="/admin/integrations" className="underline">Back to Integrations</Link>.Nothing is connected until you choose.</p>
+        <p className="text-sm"><Link href="/admin/integrations" className="underline">Back to Integrations</Link>.Nothing is connected until you confirm.</p>
         {codeDialog}
       </div>
     </RoleGate>
