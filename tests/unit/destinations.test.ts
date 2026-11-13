@@ -12,6 +12,11 @@ describe("canOpenDestination: a visible link must open", () => {
     expect(canOpenDestination("/approval", { activeRole: "viewer", hiddenSections: none })).toBe(false);
   });
 
+  it("Reports is for the admin and office views only", () => {
+    for (const activeRole of ["admin", "office"] as const) expect(canOpenDestination("/reports", { activeRole, hiddenSections: none }), activeRole).toBe(true);
+    for (const activeRole of ["workshop", "viewer"] as const) expect(canOpenDestination("/reports", { activeRole, hiddenSections: none }), activeRole).toBe(false);
+  });
+
   it("Numbers is for the admin view only", () => {
     expect(canOpenDestination("/numbers", { activeRole: "admin", hiddenSections: none })).toBe(true);
     for (const activeRole of ["office", "workshop", "viewer"] as const) expect(canOpenDestination("/numbers", { activeRole, hiddenSections: none }), activeRole).toBe(false);
