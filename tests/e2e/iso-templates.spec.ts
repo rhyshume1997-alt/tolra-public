@@ -100,3 +100,40 @@ test("an office user opening /admin/iso is refused", async ({ page }) => {
   await page.waitForURL(/\/dashboard/);
   await expect(page.getByRole("heading", { name: "ISO templates" })).toHaveCount(0);
 });
+
+test("admin switches ISO templates on from the page, then off; other hidden_nav entries kept", async ({ page }) => {
+  test.setTimeout(120_000);
+  const KEEP = "iso-switch-test-keep";
+  const hiddenNav = async () => withDb(async (db) => {
+    const row = await db.query("select hidden_nav from public.organization_settings where organization_id = $1", [solo.id]);
+    return (row.rows[0]?.hidden_nav ?? []) as string[];
+  });
+  await setMarker(false);
+  await withDb(async (db) => { await db.query("update public.organization_settings set hidden_nav = array_append(array_remove(hidden_nav, $2), $2) where organization_id = $1", [solo.id, KEEP]); });
+  try {
+    await signIn(page, solo.admin);
+    await page.goto("/admin/iso");
+    await expect(page.getByText(ISO_OFF_NOTICE)).toBeVisible();
+    const toggle = page.getByRole("switch", { name: "ISO 9001 draft templates" });
+    await expect(toggle).toHaveAttribute("aria-checked", "false");
+    await toggle.click();
+    await expect(page.getByRole("button", { name: "Download pack (zip)" })).toBeVisible({ timeout: 60_000 });
+    await expect(toggle).toHaveAttribute("aria-checked", "true");
+    expect(await hiddenNav()).toEqual(expect.arrayContaining([KEEP, ISO_TEMPLATES_ON_MARKER]));
+    await toggle.click();
+    await expect(page.getByText(ISO_OFF_NOTICE)).toBeVisible({ timeout: 60_000 });
+    const after = await hiddenNav();
+    expect(after).toContain(KEEP);
+    expect(after).not.toContain(ISO_TEMPLATES_ON_MARKER);
+  } finally {
+    await withDb(async (db) => { await db.query("update public.organization_settings set hidden_nav = array_remove(hidden_nav, $2) where organization_id = $1", [solo.id, KEEP]); });
+  }
+});
+
+test("office user cannot reach the switch", async ({ page }) => {
+  await signIn(page, world().tenants.alpha.users.office);
+  await page.goto("/admin/iso");
+  await page.waitForURL(/\/dashboard/);
+  await expect(page.getByTestId("iso-switch-card")).toHaveCount(0);
+  await expect(page.getByRole("switch", { name: "ISO 9001 draft templates" })).toHaveCount(0);
+});
