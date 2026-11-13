@@ -5,11 +5,16 @@
  * "xero-tenant"); Turn on transfers opens a dialog naming it and Cancel sends nothing; the launch route refuses ON without the stored tenant
  * id (409 confirm_organisation, app/api/integrations/xero/launch/route.ts) and OFF is never blocked; a different organisation puts the
  * company back OFF (database trigger xero_connection_reset, release 149) and the dialog then names the new one; office and workshop
- * cannot see or use the switch (requireProfile(["admin"]) answers 403).
- * asserted. The accounting API still accepts those provider names (tests/e2e/reviewer/accounting.spec.ts uses it), so it is NOT asserted here.
+ * cannot see or use the switch (requireProfile(["admin"]) answers 403); company isolation: another company's admin never sees this company's
+ * organisation, its GET reflects only its own (unconnected, OFF) state, and its launch ON with this company's tenant id is a 409
+ * confirm_organisation that leaves this company's connection, switch and send log unchanged. The launch tests also assert that no outgoing
+ * Xero send row (integration_sends, release 084) exists for the company and that the stored tenant id is synthetic.
+ *
+ * C2, no Sage or QuickBooks is offered on the integrations page, the settings page or the sidebar, and no page route exists for them.
+ * The accounting API is not asserted here: it still accepts those provider names (tests/e2e/reviewer/accounting.spec.ts uses it).
  *
  * Nothing calls Xero. A connection is a service-role row (as xero-batch.spec.ts) with a made-up tenant id and no secret, plus the two account
- * mappings, so the company is connected and mapped. Three own companies: the admin in tests 2 and 3 enrols an authenticator (a later plain
+ * mappings, so the company is connected and mapped. Four own companies: the admins in tests 2, 3 and 5 enrol an authenticator (a later plain
  * sign-in would ask for the code), so they do not share a company with the others. Runs in CI only (needs the isolated Supabase backend).
  */
 import { randomBytes } from "node:crypto";
@@ -25,6 +30,7 @@ type Company = { id: string; admin: SyntheticUser };
 let plain: Company;
 let confirmCo: Company;
 let changeCo: Company;
+let otherCo: Company;
 let office: SyntheticUser;
 let workshop: SyntheticUser;
 
@@ -55,11 +61,12 @@ async function addMember(org: string, label: string, role: "office" | "workshop"
 test.beforeAll(async () => {
   const w = world();
   const db = adminClient();
-  const [a, b, c] = await Promise.all([createSoloTenant(w.runId, "xcfa"), createSoloTenant(w.runId, "xcfb"), createSoloTenant(w.runId, "xcfc")]);
+  const [a, b, c, d] = await Promise.all([createSoloTenant(w.runId, "xcfa"), createSoloTenant(w.runId, "xcfb"), createSoloTenant(w.runId, "xcfc"), createSoloTenant(w.runId, "xcfd")]);
   plain = { id: a.id, admin: a.admin };
   confirmCo = { id: b.id, admin: b.admin };
   changeCo = { id: c.id, admin: c.admin };
-  for (const org of [a.id, b.id, c.id]) {
+  otherCo = { id: d.id, admin: d.admin };
+  for (const org of [a.id, b.id, c.id, d.id]) {
     const mapped = await db.from("integration_mappings").insert([
       { organization_id: org, provider: "xero", kind: "sales_account", tolra_key: "", external_code: "200", external_name: "Sales" },
       { organization_id: org, provider: "xero", kind: "credit_account", tolra_key: "", external_code: "200", external_name: "Sales" },
@@ -69,6 +76,20 @@ test.beforeAll(async () => {
   office = await addMember(a.id, "o", "office");
   workshop = await addMember(a.id, "w", "workshop");
 });
+
+/**
+ * No real invoice transmission: the Xero send log (integration_sends, release 084: supabase/migrations/084_integrations_xero.sql:179; the only
+ * table the Xero transfer path queues outgoing documents in) has no row for this company, and the stored tenant id is the made-up one.
+ */
+async function expectNothingSent(org: string, tenantIdPrefix: string) {
+  const db = adminClient();
+  const sends = await db.from("integration_sends").select("id").eq("organization_id", org).eq("provider", "xero");
+  expect(sends.error).toBeNull();
+  expect(sends.data).toEqual([]);
+  const conn = await db.from("integration_connections").select("tenant_id").eq("organization_id", org).eq("provider", "xero").maybeSingle();
+  expect(conn.error).toBeNull();
+  expect(conn.data?.tenant_id).toMatch(new RegExp(`^${tenantIdPrefix}`));
+}
 
 const switchOf = (page: Page) => page.getByTestId("activation-xero").getByRole("switch", { name: "Turn on transfers" });
 const stateOf = async (page: Page) => (await page.request.get(LAUNCH)).json() as Promise<{ enabled: boolean; organisation: { tenantId: string; name: string } | null }>;
@@ -91,6 +112,7 @@ test("connected and OFF: the card names the Xero organisation, Turn on transfers
 
   await expect(switchOf(page)).toHaveAttribute("aria-checked", "false");
   expect((await stateOf(page)).enabled).toBe(false);
+  await expectNothingSent(plain.id, "e2e-xcf-a-");
 });
 
 test("launch ON without confirmTenantId, or with another tenant id, is 409 confirm_organisation and transfers stay OFF; OFF is not blocked", async ({ page, baseURL }) => {
@@ -109,6 +131,7 @@ test("launch ON without confirmTenantId, or with another tenant id, is 409 confi
   const off = await post(page, baseURL, { enabled: false });
   expect(off.status()).toBe(200);
   expect((await off.json()).enabled).toBe(false);
+  await expectNothingSent(confirmCo.id, "e2e-xcf-b-");
 });
 
 test("after the connection moves to a different organisation transfers are OFF and the dialog names the new organisation", async ({ page, baseURL }) => {
@@ -137,6 +160,7 @@ test("after the connection moves to a different organisation transfers are OFF a
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
   expect((await stateOf(page)).enabled).toBe(false);
+  await expectNothingSent(changeCo.id, "e2e-xcf-c-");
 });
 
 test("office and workshop: no transfer switch on screen, and launch is refused with 403 (ON and OFF) while it stays OFF", async ({ page, browser, baseURL }) => {
@@ -156,9 +180,58 @@ test("office and workshop: no transfer switch on screen, and launch is refused w
     }
     await signIn(adminPage, plain.admin);
     expect((await stateOf(adminPage)).enabled).toBe(false);
+    await expectNothingSent(plain.id, "e2e-xcf-a-");
   } finally {
     await workshopPage.close();
     await adminPage.close();
+  }
+});
+
+test("company isolation: another company's admin cannot see this company's Xero organisation, reads only its own state, and cannot turn this company's transfers on", async ({ page, browser, baseURL }) => {
+  const tenantA = `e2e-xcf-a-${world().runId}`;
+  await seedConnected(plain.id, tenantA, NAME_A());
+  await stepUpWithAuthenticator(page, otherCo.admin);
+  const adminAPage = await browser.newPage();
+  try {
+    // GET reflects only company D: not connected, OFF, no organisation (route.ts:29-33 reads the caller's own company: integration_xero_launch_status
+    // uses current_user_organization_id(), supabase/release/149_xero_launch_hold.release.sql:116, and connectedOrganisation filters on auth.profile.organization_id, route.ts:19).
+    const own = await page.request.get(LAUNCH);
+    expect(own.status()).toBe(200);
+    const ownText = await own.text();
+    expect(ownText).not.toContain(NAME_A());
+    expect(ownText).not.toContain(tenantA);
+    const ownState = JSON.parse(ownText) as { enabled: boolean; connected: boolean; organisation: unknown };
+    expect(ownState.enabled).toBe(false);
+    expect(ownState.connected).toBe(false);
+    expect(ownState.organisation).toBeNull();
+
+    // The page shows no organisation name for D.
+    await page.goto("/admin/integrations");
+    await expect(page.getByTestId("setup-card-xero")).toBeVisible();
+    await expect(page.getByTestId("xero-tenant")).toHaveCount(0);
+    await expect(page.locator("body")).not.toContainText(NAME_A());
+
+    // ON with company A's tenant id: D has no connected organisation, so the route answers 409 confirm_organisation (route.ts:52-53) before any
+    // database call; nothing is written for A.
+    const res = await post(page, baseURL, { enabled: true, confirmTenantId: tenantA });
+    expect(res.status()).toBe(409);
+    const refusal = await res.text();
+    expect(JSON.parse(refusal).code).toBe("confirm_organisation");
+    expect(refusal).not.toContain(tenantA);
+    expect(refusal).not.toContain(NAME_A());
+
+    // Company A is unchanged: its connection row is as seeded (service role), its switch is still OFF (the hold table is not readable by the
+    // service role, release 149 line 45, so the switch is read through A's own admin), and nothing is queued to send.
+    const conn = await adminClient().from("integration_connections").select("status,tenant_id,tenant_name").eq("organization_id", plain.id).eq("provider", "xero").single();
+    expect(conn.error).toBeNull();
+    expect(conn.data).toEqual({ status: "connected", tenant_id: tenantA, tenant_name: NAME_A() });
+    await signIn(adminAPage, plain.admin);
+    const a = await stateOf(adminAPage);
+    expect(a.enabled).toBe(false);
+    expect(a.organisation).toEqual({ tenantId: tenantA, name: NAME_A() });
+    await expectNothingSent(plain.id, "e2e-xcf-a-");
+  } finally {
+    await adminAPage.close();
   }
 });
 
