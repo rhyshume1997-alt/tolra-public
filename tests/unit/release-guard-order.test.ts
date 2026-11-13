@@ -28,6 +28,7 @@ const predecessor: Array<[number, number, string, RegExp]> = [
   [150, 149, "to_regclass('public.xero_transfer_hold') IS NULL", /150: required release 149 \(the Xero transfer switch\) is missing; stop and check release preflight/],
   [151, 150, "to_regprocedure('public.ai_helper_tolra_remove_key(uuid,text)') IS NULL", /151: required release 150 \(AI cap and key-off\) is missing; stop and check release preflight/],
   [152, 151, "to_regprocedure('public.integration_invite_code_verify(text,text,text,text)') IS NULL", /152: required release 151 \(Xero invite hardening\) is missing; stop and check release preflight/],
+  [154, 153, "to_regclass('public.customer_portal_switch') IS NULL", /154: required release 153 \(document customer links\) is missing; stop and check release preflight/],
 ];
 
 describe("each release refuses to run before the release the plan says it follows", () => {
@@ -43,6 +44,8 @@ describe("each release refuses to run before the release the plan says it follow
     created(149, "CREATE TABLE public.xero_transfer_hold");
     created(150, "CREATE FUNCTION public.ai_helper_tolra_remove_key");
     created(151, "FUNCTION public.integration_invite_code_verify");
+    created(153, "CREATE TABLE public.customer_portal_switch");
+    for (const old of [145, 146, 147, 148, 149, 150, 151, 152]) expect(read(release(old))).not.toContain("customer_portal_switch");
     for (const old of [145, 146, 147, 148, 149, 150]) expect(read(release(old))).not.toContain("integration_invite_code_verify");
     for (const old of [145, 146, 147]) {
       expect(read(release(old))).not.toContain("job_costing_settings");
@@ -68,7 +71,7 @@ describe("each release refuses to run before the release the plan says it follow
   });
 
   it("the plan chain is 144 then 145 .. 152, each one after the one before", () => {
-    expect(plan.phases.map((p: { number: number; after: string }) => [p.number, p.after])).toEqual([[145, "144"], [146, "145"], [147, "146"], [148, "147"], [149, "148"], [150, "149"], [151, "150"], [152, "151"]]);
+    expect(plan.phases.map((p: { number: number; after: string }) => [p.number, p.after])).toEqual([[145, "144"], [146, "145"], [147, "146"], [148, "147"], [149, "148"], [150, "149"], [151, "150"], [152, "151"], [153, "152"], [154, "153"], [156, "154"]]);
   });
 });
 

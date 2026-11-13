@@ -44,7 +44,8 @@
     }
   ],
   "numbers_not_in_this_candidate": {
-    "142": "email_schedule_weekdays: optional, off by default, not in the JNR cutover"
+    "142": "email_schedule_weekdays: optional, off by default, not in the JNR cutover",
+    "155": "reserved for AI credentials; not delivered in this candidate (156 follows 154)"
   },
   "mode": "post-numbered-one-time",
   "phases": [
@@ -119,6 +120,33 @@
       "rollback": "supabase/release/152_sliq_import_route.rollback.sql",
       "verify": "supabase/verify/sliq_import_route_152.sql",
       "marker": "post-144 marker 152 sliq_import_route"
+    },
+    {
+      "number": 153,
+      "after": "152",
+      "source": "supabase/proposals/p153_document_customer_link.sql",
+      "release": "supabase/release/153_document_customer_link.release.sql",
+      "rollback": "supabase/release/153_document_customer_link.rollback.sql",
+      "verify": "supabase/verify/document_customer_link_153.sql",
+      "marker": "post-144 marker 153 document_customer_link"
+    },
+    {
+      "number": 154,
+      "after": "153",
+      "source": "supabase/proposals/p154_customer_portal_signin.sql",
+      "release": "supabase/release/154_customer_portal_signin.release.sql",
+      "rollback": "supabase/release/154_customer_portal_signin.rollback.sql",
+      "verify": "supabase/verify/customer_portal_signin_154.sql",
+      "marker": "post-144 marker 154 customer_portal_signin"
+    },
+    {
+      "number": 156,
+      "after": "154",
+      "source": "supabase/proposals/p156_invoice_ref_case.sql",
+      "release": "supabase/release/156_invoice_ref_case.release.sql",
+      "rollback": "supabase/release/156_invoice_ref_case.rollback.sql",
+      "verify": "supabase/verify/invoice_ref_case_156.sql",
+      "marker": "post-144 marker 156 invoice_ref_case"
     }
   ],
   "other_proposals": [
