@@ -24,7 +24,7 @@ async function json(fetchImpl: typeof fetch, url: string, init: RequestInit) {
 }
 export function cloudAuthorize(id: AccountingId, config: CloudConfig, state: string, challenge: string) {
   if (id === "xero") return authorizeUrl(config, state, challenge);
-  return id === "sage" ? sageAuthorize(config, state) : quickbooksAuthorize(config, state);
+  return id === "sage" ? sageAuthorize(config, state, challenge) : quickbooksAuthorize(config, state);
 }
 export async function cloudTokens(id: AccountingId, config: CloudConfig, grant: { code: string; verifier: string } | { refreshToken: string }, fetchImpl = fetch): Promise<CloudTokens> {
   if (id === "xero") return "code" in grant ? exchangeCode(config, grant.code, grant.verifier, fetchImpl) : refreshTokens(config, grant.refreshToken, fetchImpl);

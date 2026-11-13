@@ -2,6 +2,7 @@ import "server-only";
 // BOUNDARY: Sage-specific accounting logic only (config/env, authorise URL, token request, /businesses identity, invoice check).
 // Inputs: env map, CloudConfig, OAuth state, bearer token, tenant id, invoice number, and the shared `call` JSON fetcher from cloud-adapters.
 // Outputs: values in the exact shapes cloud-adapters.ts returned before the split.
+// Authorise carries PKCE S256 (code_challenge); the code exchange sends the matching code_verifier (client_secret stays in the form body).
 // Scope is readonly, filter is apiv3.1; business name comes from documented `displayed_as` (legacy `name` fallback).
 // MUST NOT CHANGE: URLs, headers, error classification, redirect-path checks. Shared helpers stay in cloud-adapters.ts.
 import { AccountingError, moneyPence, type CloudConfig, type CloudTokens } from "@/lib/accounting/cloud-adapters";
@@ -26,16 +27,19 @@ export function sageConfig(env: Record<string, string | undefined>): CloudConfig
   return { clientId, clientSecret, redirectUri, sandbox: false };
 }
 
-export function sageAuthorize(config: CloudConfig, state: string) {
+export function sageAuthorize(config: CloudConfig, state: string, challenge: string) {
+  if (!challenge) throw new AccountingError("invalid");
   const url = new URL(SAGE_SETTINGS.authorize);
-  for (const [key, value] of Object.entries({ response_type: "code", client_id: config.clientId, redirect_uri: config.redirectUri, scope: SAGE_SETTINGS.scope, filter: "apiv3.1", state })) url.searchParams.set(key, value);
-  // Sage v3.1 documented confidential-client code flow: readonly scope, filter=apiv3.1 (no PKCE yet).
+  for (const [key, value] of Object.entries({ response_type: "code", client_id: config.clientId, redirect_uri: config.redirectUri, scope: SAGE_SETTINGS.scope, filter: "apiv3.1", state, code_challenge: challenge, code_challenge_method: "S256" })) url.searchParams.set(key, value);
+  // Sage v3.1 documented confidential-client code flow: readonly scope, filter=apiv3.1, PKCE S256.
   return url.toString();
 }
 
 export async function sageTokens(call: JsonCall, config: CloudConfig, grant: { code: string; verifier: string } | { refreshToken: string }, fetchImpl: typeof fetch): Promise<CloudTokens> {
+  if ("code" in grant && !grant.verifier) throw new AccountingError("invalid");
   const body = new URLSearchParams("code" in grant ? { grant_type: "authorization_code", code: grant.code, redirect_uri: config.redirectUri } : { grant_type: "refresh_token", refresh_token: grant.refreshToken });
   const headers: Record<string, string> = { accept: "application/json", "content-type": "application/x-www-form-urlencoded" };
+  if ("code" in grant) body.set("code_verifier", grant.verifier);
   body.set("client_id", config.clientId); body.set("client_secret", config.clientSecret);
   const result = await call(fetchImpl, SAGE_SETTINGS.token, { method: "POST", headers, body });
   const seconds = Number(result.expires_in);
