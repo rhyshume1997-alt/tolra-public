@@ -326,7 +326,7 @@ test("absolute session expiry refuses even a recently active customer", async ({
 });
 
 
-test("the request route sends a platform email whose real code signs in", async ({ page }) => {
+test("the request route sends a platform email whose real link and code sign in", async ({ page, portalRuntime }) => {
   await asSeparateDevice(page);
   await page.goto("/portal/signin");
   await page.getByLabel("E-mail address").fill(buyer.email);
@@ -346,9 +346,14 @@ test("the request route sends a platform email whose real code signs in", async 
   expect(body.subject).toBe("Your sign-in link and code");
   if (typeof body.text!=="string") throw new Error("Portal platform email is missing its text body");
   const ref = body.text.match(/\/portal\/code\/([A-Za-z0-9_-]{22})/);
+  const link = body.text.match(/https?:\/\/\S+\/portal\/code\/([A-Za-z0-9_-]{22})/);
   const code = body.text.match(/Your code: (\d{4}) (\d{4})/);
-  if (!ref || !code) throw new Error("Portal platform email is missing its sign-in link or code");
-  await enter(page,{ref:ref[1],code:code[1]+code[2]});
+  if (!ref || !link || !code) throw new Error("Portal platform email is missing its sign-in link or code");
+  expect(new URL(link[0]).origin).toBe(portalRuntime.url);
+  expect(link[1]).toBe(ref[1]);
+  await page.goto(link[0]);
+  await page.getByLabel("8-digit code from the e-mail").fill(code[1]+code[2]);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByRole("heading",{name:`Welcome, ${buyer.name}`,exact:true})).toBeVisible();
   const history = await withDb(db=>db.query("select id from public.email_history where to_email=$1",[buyer.email]));
   expect(history.rows).toEqual([]);
@@ -366,18 +371,21 @@ test("request IP limit keeps the generic response and blocks a fresh eligible co
     const first = await limited.post("/api/portal/signin/request", { form: { email: buyer.email }, maxRedirects: 0 });
     expect(first.status()).toBe(303); expect(first.headers()["location"]).toBe("/portal/signin/sent");
     expect(await codeCount(buyer)).toBe(1);
-    for (let attempt = 0; attempt < 9; attempt += 1) {
+    for (let attempt = 0; attempt < 8; attempt += 1) {
       const response = await limited.post("/api/portal/signin/request", { form: { email: `unknown-${randomUUID()}@example.test` }, maxRedirects: 0 });
       expect(response.status()).toBe(303); expect(response.headers()["location"]).toBe(first.headers()["location"]);
     }
-    const refused = await limited.post("/api/portal/signin/request", { form: { email: jobsOnly.email }, maxRedirects: 0 });
+    const boundary = await limited.post("/api/portal/signin/request", { form: { email: jobsOnly.email }, maxRedirects: 0 });
+    expect(boundary.status()).toBe(303); expect(boundary.headers()["location"]).toBe(first.headers()["location"]);
+    expect(await codeCount(jobsOnly)).toBe(1); // attempt10 must still be allowed
+    const refused = await limited.post("/api/portal/signin/request", { form: { email: foreign.email }, maxRedirects: 0 });
     expect(refused.status()).toBe(303); expect(refused.headers()["location"]).toBe(first.headers()["location"]);
     expect(refused.headers()["cache-control"]).toBe("no-store"); expect(refused.headers()["set-cookie"]).toBeUndefined();
-    expect(await codeCount(jobsOnly)).toBe(0);
+    expect(await codeCount(foreign)).toBe(0); // attempt11 must refuse
     // Independent positive control: the same fresh contact is eligible on a fresh IP; no email cooldown explains the refusal.
-    const control = await fresh.post("/api/portal/signin/request", { form: { email: jobsOnly.email }, maxRedirects: 0 });
+    const control = await fresh.post("/api/portal/signin/request", { form: { email: foreign.email }, maxRedirects: 0 });
     expect(control.status()).toBe(303); expect(control.headers()["location"]).toBe(first.headers()["location"]);
-    expect(await codeCount(jobsOnly)).toBe(1);
+    expect(await codeCount(foreign)).toBe(1);
   } finally { await limited.dispose(); await fresh.dispose(); }
 });
 
@@ -386,14 +394,21 @@ test("verify IP limit cannot consume a valid code or issue a customer cookie", a
   const client = (suffix: string) => playwright.request.newContext({ baseURL: portalRuntime.url,
     extraHTTPHeaders: { Origin: portalRuntime.url, "x-real-ip": `2001:db8:${network}::${suffix}` } });
   const limited = await client("1");
+  const blocked = await client("1"); // same IP budget, separate cookie-free context
   const fresh = await client("2");
   try {
-    for (let attempt = 0; attempt < 20; attempt += 1) {
+    for (let attempt = 0; attempt < 19; attempt += 1) {
       const response = await limited.post("/api/portal/signin/verify", { form: { ref: randomBytes(16).toString("base64url"), code: "87654321" }, maxRedirects: 0 });
       expect(response.status()).toBe(303); expect(response.headers()["set-cookie"]).toBeUndefined();
     }
-    const pair = await issue(buyer);
-    const refused = await limited.post("/api/portal/signin/verify", { form: pair, maxRedirects: 0 });
+    const boundary = await issue(buyer);
+    const allowed = await limited.post("/api/portal/signin/verify", { form: boundary, maxRedirects: 0 });
+    expect(allowed.status()).toBe(303); expect(allowed.headers()["location"]).toBe("/portal");
+    expect(allowed.headers()["set-cookie"]).toContain("__Host-tolra_portal="); // attempt20 must be allowed
+    const boundaryState = await withDb(db => db.query("select used_at is not null as used from public.customer_portal_signin_codes where ref_hash=$1", [sha(boundary.ref)]));
+    expect(boundaryState.rows).toEqual([{ used: true }]);
+    const pair = await issue(jobsOnly);
+    const refused = await blocked.post("/api/portal/signin/verify", { form: pair, maxRedirects: 0 });
     expect(refused.status()).toBe(303); expect(refused.headers()["location"]).toContain(`/portal/code/${pair.ref}?c=`);
     expect(refused.headers()["cache-control"]).toBe("no-store"); expect(refused.headers()["set-cookie"]).toBeUndefined();
     const state = await withDb(db => db.query("select used_at from public.customer_portal_signin_codes where ref_hash=$1", [sha(pair.ref)]));
@@ -404,5 +419,5 @@ test("verify IP limit cannot consume a valid code or issue a customer cookie", a
     expect(control.headers()["set-cookie"]).toContain("__Host-tolra_portal=");
     const used = await withDb(db => db.query("select used_at is not null as used from public.customer_portal_signin_codes where ref_hash=$1", [sha(pair.ref)]));
     expect(used.rows).toEqual([{ used: true }]);
-  } finally { await limited.dispose(); await fresh.dispose(); }
+  } finally { await limited.dispose(); await blocked.dispose(); await fresh.dispose(); }
 });
