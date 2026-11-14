@@ -2,7 +2,8 @@
  * BOUNDARY (module 10): isolated synthetic contacts, real route handlers and Release 154 -> browser acceptance.
  * Runs its own disposable Portal-ON server with a fresh test-only HMAC key; shared browser infrastructure stays unchanged.
  * No mocked database behaviour, skipped cases, production records or staff-authentication bypasses.
- * Requires core #498, routes #499, pages #505 and Auth #520 together; this branch has only #505 today.
+ * Requires refreshed core #498, routes #499, pages #505 and Auth #520 together; this draft is stacked on #520.
+ * Native execution remains blocked until the real route/core/release dependency chain is available.
  */
 import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
@@ -351,4 +352,57 @@ test("the request route sends a platform email whose real code signs in", async 
   await expect(page.getByRole("heading",{name:`Welcome, ${buyer.name}`,exact:true})).toBeVisible();
   const history = await withDb(db=>db.query("select id from public.email_history where to_email=$1",[buyer.email]));
   expect(history.rows).toEqual([]);
+});
+
+
+test("request IP limit keeps the generic response and blocks a fresh eligible contact", async ({ playwright, portalRuntime }) => {
+  const network = randomBytes(6).toString("hex").match(/.{4}/g)!.join(":");
+  const client = (suffix: string) => playwright.request.newContext({ baseURL: portalRuntime.url,
+    extraHTTPHeaders: { Origin: portalRuntime.url, "x-real-ip": `2001:db8:${network}::${suffix}` } });
+  const limited = await client("1");
+  const fresh = await client("2");
+  const codeCount = async (contact: Contact) => Number((await withDb(db => db.query("select count(*) as n from public.customer_portal_signin_codes where contact_id=$1", [contact.id]))).rows[0].n);
+  try {
+    const first = await limited.post("/api/portal/signin/request", { form: { email: buyer.email }, maxRedirects: 0 });
+    expect(first.status()).toBe(303); expect(first.headers()["location"]).toBe("/portal/signin/sent");
+    expect(await codeCount(buyer)).toBe(1);
+    for (let attempt = 0; attempt < 9; attempt += 1) {
+      const response = await limited.post("/api/portal/signin/request", { form: { email: `unknown-${randomUUID()}@example.test` }, maxRedirects: 0 });
+      expect(response.status()).toBe(303); expect(response.headers()["location"]).toBe(first.headers()["location"]);
+    }
+    const refused = await limited.post("/api/portal/signin/request", { form: { email: jobsOnly.email }, maxRedirects: 0 });
+    expect(refused.status()).toBe(303); expect(refused.headers()["location"]).toBe(first.headers()["location"]);
+    expect(refused.headers()["cache-control"]).toBe("no-store"); expect(refused.headers()["set-cookie"]).toBeUndefined();
+    expect(await codeCount(jobsOnly)).toBe(0);
+    // Independent positive control: the same fresh contact is eligible on a fresh IP; no email cooldown explains the refusal.
+    const control = await fresh.post("/api/portal/signin/request", { form: { email: jobsOnly.email }, maxRedirects: 0 });
+    expect(control.status()).toBe(303); expect(control.headers()["location"]).toBe(first.headers()["location"]);
+    expect(await codeCount(jobsOnly)).toBe(1);
+  } finally { await limited.dispose(); await fresh.dispose(); }
+});
+
+test("verify IP limit cannot consume a valid code or issue a customer cookie", async ({ playwright, portalRuntime }) => {
+  const network = randomBytes(6).toString("hex").match(/.{4}/g)!.join(":");
+  const client = (suffix: string) => playwright.request.newContext({ baseURL: portalRuntime.url,
+    extraHTTPHeaders: { Origin: portalRuntime.url, "x-real-ip": `2001:db8:${network}::${suffix}` } });
+  const limited = await client("1");
+  const fresh = await client("2");
+  try {
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const response = await limited.post("/api/portal/signin/verify", { form: { ref: randomBytes(16).toString("base64url"), code: "87654321" }, maxRedirects: 0 });
+      expect(response.status()).toBe(303); expect(response.headers()["set-cookie"]).toBeUndefined();
+    }
+    const pair = await issue(buyer);
+    const refused = await limited.post("/api/portal/signin/verify", { form: pair, maxRedirects: 0 });
+    expect(refused.status()).toBe(303); expect(refused.headers()["location"]).toContain(`/portal/code/${pair.ref}?c=`);
+    expect(refused.headers()["cache-control"]).toBe("no-store"); expect(refused.headers()["set-cookie"]).toBeUndefined();
+    const state = await withDb(db => db.query("select used_at from public.customer_portal_signin_codes where ref_hash=$1", [sha(pair.ref)]));
+    expect(state.rows).toEqual([{ used_at: null }]);
+    // Same exact code succeeds on a fresh IP, proving the limit did not consume it and the code was otherwise valid.
+    const control = await fresh.post("/api/portal/signin/verify", { form: pair, maxRedirects: 0 });
+    expect(control.status()).toBe(303); expect(control.headers()["location"]).toBe("/portal");
+    expect(control.headers()["set-cookie"]).toContain("__Host-tolra_portal=");
+    const used = await withDb(db => db.query("select used_at is not null as used from public.customer_portal_signin_codes where ref_hash=$1", [sha(pair.ref)]));
+    expect(used.rows).toEqual([{ used: true }]);
+  } finally { await limited.dispose(); await fresh.dispose(); }
 });
