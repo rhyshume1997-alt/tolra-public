@@ -25,6 +25,8 @@ const FIXED_ROLES: Array<[string, UserRole[]]> = [
   ["/ai-helper", ["admin", "office"]],
   // The daily job sheet and weekly hours (050 to 052): not a hideable section (no member_section_keys() entry).
   ["/time", ["admin", "office", "workshop"]],
+  // The NCR register (a Jobs page): admin and office only (the sidebar also needs the NCR register switch on, see ncrRegisterEnabled).
+  ["/jobs/ncr", ["admin", "office"]],
   // Operations reports: admin and office only (the sidebar also needs the Reports switch on, see reportsEnabled).
   ["/reports", ["admin", "office"]],
 ];
