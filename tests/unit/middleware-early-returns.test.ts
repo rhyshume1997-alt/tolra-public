@@ -31,7 +31,7 @@ vi.mock("@supabase/ssr", () => ({
       from: () => chain,
       rpc: async (name: string) => {
         server.calls.push(name);
-        if (name === "my_session") return { data: { user_id: "u-1", organization_id: "org-1", role: server.profile.role, secondary_role: null, hidden_sections: [], organization_count: 1 }, error: null };
+        if (name === "my_session") return { data: { user_id: "u-1", organization_id: "org-1", role: server.profile.role, secondary_role: null, hidden_sections: [], platform_admin: false, needs_choice: false, organization_count: 1 }, error: null };
         return { data: null, error: null };
       },
     };

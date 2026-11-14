@@ -60,7 +60,7 @@ vi.mock("@supabase/ssr", () => ({
     },
     from: () => chain({ role, secondary_role: null, active: true, organization_id: "org-1", must_change_password: false }),
     rpc: async (name: string) => {
-      if (name === "my_session") return { data: { user_id: "user-1", organization_id: "org-1", role, secondary_role: null, platform_admin: platformAdmin, organization_count: 1 }, error: null };
+      if (name === "my_session") return { data: { user_id: "user-1", organization_id: "org-1", role, secondary_role: null, platform_admin: platformAdmin, needs_choice: false, hidden_sections: [], organization_count: 1 }, error: null };
       if (name === "my_mfa_enrolment_required") return { data: false, error: null };
       return { data: null, error: null };
     },
