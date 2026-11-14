@@ -1,6 +1,8 @@
 /**
  * The self-check gap list: one row per ISO 9001:2015 clause with Met / Minor / Major / Not evidenced by Tolra. Inputs: counts read from
- * the company's own records (GapEvidence; null means "could not be read"). Output: the rows, and a CSV column spec.
+ * the company's own records (GapEvidence; null means "could not be read"). Output: the rows, a display label per status, and a CSV column spec.
+ * The internal "Met" identifier is computed only and never stored; it is DISPLAYED as "Records present" (gapStatusLabel). That label is a
+ * self-assessment that records exist: not certification, audit approval or confirmed ISO compliance.
  * Must not change: the default is "Not evidenced by Tolra"; nothing is "Met" without a supporting database row; clauses Tolra keeps no
  * records for are always "Not evidenced by Tolra"; NO input here may come from the NCR review reminder (that is an internal reminder
  * and never moves a clause: tests/unit/iso-ncr-reminder.test.ts). This is a self-check aid, not an audit result.
@@ -12,6 +14,18 @@ import type { SheetColumn } from "@/lib/spreadsheet";
 export const GAP_STATUSES = ["Met", "Minor", "Major", "Not evidenced by Tolra"] as const;
 export type GapStatus = (typeof GAP_STATUSES)[number];
 export const NOT_EVIDENCED: GapStatus = "Not evidenced by Tolra";
+
+/** What the person sees. "Met" is an internal identifier only; it is shown as "Records present". Display and CSV only: never stored. */
+export const GAP_STATUS_LABELS: Readonly<Record<GapStatus, string>> = {
+  Met: "Records present",
+  Minor: "Minor",
+  Major: "Major",
+  "Not evidenced by Tolra": "Not evidenced by Tolra",
+};
+
+export function gapStatusLabel(status: GapStatus): string {
+  return GAP_STATUS_LABELS[status];
+}
 
 /** Jobs that carry a flag (drawing revision required, or traceable): how many, how many have been inspected, and how many of those are missing the data. */
 export type FlaggedJobs = { flagged: number; finished: number; finishedMissing: number; truncated: boolean };
@@ -142,7 +156,7 @@ export const CSV_NOTE = "Needs company review. Not certification evidence.";
 export const GAP_CSV_COLUMNS: SheetColumn<GapRow>[] = [
   { header: "Clause", type: "text", value: (r) => r.clause },
   { header: "Requirement", type: "text", value: (r) => r.requirement },
-  { header: "Status", type: "text", value: (r) => r.status },
+  { header: "Status", type: "text", value: (r) => gapStatusLabel(r.status) },
   { header: "Basis", type: "text", value: (r) => r.basis },
   { header: "Note", type: "text", value: () => CSV_NOTE },
 ];
