@@ -23,7 +23,7 @@ async function handle(request: Request, context: Context, method: "GET" | "POST"
   if (!service) return jsonError("Accounting is not set up yet.", 503);
   const org = auth.profile.organization_id;
   try {
-    if (action === "disconnect") { await disconnectAccounting(id, { userClient: auth.supabase, service, org }); return NextResponse.json({ disconnected: true }); }
+    if (action === "disconnect") { const r = await disconnectAccounting(id, { userClient: auth.supabase, service, org }); return NextResponse.json({ disconnected: true, ...(r ? { remoteRevocation: r.remoteRevocation } : {}) }); }
     const adapter = await accountingConnection(id, { userClient: auth.supabase, service, org, userId: auth.user.id });
     if (action === "status") {
       const { data, error } = await service.from("integration_connections").select("status,tenant_name").eq("organization_id", org).eq("provider", id).maybeSingle();
