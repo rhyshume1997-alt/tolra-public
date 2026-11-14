@@ -6,7 +6,7 @@
 import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 
 import { DRAFT_HEADER, PAGE_FOOTER } from "@/lib/iso/fill";
-import type { GapRow } from "@/lib/iso/gap-checklist";
+import { gapStatusLabel, type GapRow } from "@/lib/iso/gap-checklist";
 
 const styles = StyleSheet.create({
   page: { paddingTop: 70, paddingBottom: 60, paddingHorizontal: 40, fontFamily: "Helvetica", fontSize: 9, color: "#111111" },
@@ -44,7 +44,7 @@ export function GapChecklistPDF({ rows, companyName, logoSrc }: { rows: GapRow[]
         </View>
         {rows.map((r) => (
           <View key={r.clause} style={styles.row} wrap={false}>
-            <Text style={styles.clause}>{r.clause}</Text><Text style={styles.requirement}>{r.requirement}</Text><Text style={styles.status}>{r.status}</Text><Text style={styles.basis}>{r.basis}</Text>
+            <Text style={styles.clause}>{r.clause}</Text><Text style={styles.requirement}>{r.requirement}</Text><Text style={styles.status}>{gapStatusLabel(r.status)}</Text><Text style={styles.basis}>{r.basis}</Text>
           </View>
         ))}
         <Text style={styles.footer} fixed>{PAGE_FOOTER}</Text>
