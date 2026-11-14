@@ -279,4 +279,15 @@ describe("middleware: fail closed verified authorisation", () => {
     await expectUnavailable(await visit());
   });
 
+  it.each(["/login", "/", "/privacy", "/auth/set-password", "/api/accounting/status"])("ambiguous authentication cannot clear cookies on public exemption %s", async (path) => {
+    h.authError = new AuthApiError("Ambiguous request", 400, "validation_failed");
+    h.cookieBatches = [[{ name: "sb-local-auth-token", value: "", options: { path: "/", maxAge: 0 } }]];
+    const request = new NextRequest(`https://app.test${path}`, { headers: { cookie: "sb-local-auth-token=potentially-valid" } });
+    const response = await middleware(request);
+    expect(response.status).toBe(200); expect(location(response)).toBeNull();
+    expect(response.headers.get("set-cookie")).toBeNull();
+    expect(request.cookies.get("sb-local-auth-token")?.value).toBe("potentially-valid");
+    expect(h.signOuts).toBe(0); expect(h.counts.has(PROFILE)).toBe(false);
+  });
+
 });

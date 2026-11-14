@@ -123,6 +123,7 @@ export async function middleware(request: NextRequest) {
   if (isPortalCustomerPage(path)) return NextResponse.next({ request });
 
   let response = NextResponse.next({ request });
+  const originalCookies = request.cookies.getAll().map(({ name, value }) => ({ name, value }));
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     global: { fetch: withGatewayRetry() },
     cookies: {
@@ -148,6 +149,12 @@ export async function middleware(request: NextRequest) {
   };
 
   const auth = await verifiedRead<Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]>(() => supabase.auth.getUser(), "authentication");
+  if (auth.kind === "unavailable") {
+    // Ambiguous errors cannot commit SDK cookie removal, including on public routes with their own guards.
+    request.cookies.getAll().forEach(({ name }) => request.cookies.delete(name));
+    originalCookies.forEach(({ name, value }) => request.cookies.set(name, value));
+    response = NextResponse.next({ request });
+  }
   const data = auth.kind === "verified" ? auth.data : { user: null };
   const hasSessionCookie = request.cookies.getAll().some((cookie) => /^sb-.+-auth-token(\.\d+)?$/.test(cookie.name));
   const isLogin = path === "/login";
