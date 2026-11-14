@@ -84,8 +84,8 @@ describe("middleware: a newly made admin sets up an authenticator app first (REQ
     expect(rpcCalls).toContain("my_mfa_enrolment_required");
   });
 
-  it("an unavailable enrolment lookup returns 503 without redirecting or changing cookies", async () => {
-    enrolment = { data: null, error: { code: "42883", message: "function does not exist" } };
+  it("a gateway failure reading enrolment returns 503 without redirecting or changing cookies", async () => {
+    enrolment = { data: null, error: { status: 502, message: "Bad Gateway" } };
     const response = await middleware(new NextRequest("https://app.test/dashboard"));
     expect(response.status).toBe(503);
     expect(response.headers.get("retry-after")).toBe("5");
