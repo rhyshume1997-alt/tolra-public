@@ -29,7 +29,7 @@ vi.mock("@supabase/ssr", () => ({
     },
     from: () => profileChain(),
     rpc: async (name: string) => {
-      if (name === "my_session") return { data: { user_id: "user-1", organization_id: "org-1", role, secondary_role: null, platform_admin: false, organization_count: 1, hidden_sections: [] }, error: null };
+      if (name === "my_session") return { data: { user_id: "user-1", organization_id: "org-1", role, secondary_role: null, platform_admin: false, needs_choice: false, organization_count: 1, hidden_sections: [] }, error: null };
       // Not a newly made admin (065): no enrolment step in the way.
       if (name === "my_mfa_enrolment_required") return { data: false, error: null };
       return { data: null, error: null };
