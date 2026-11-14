@@ -210,6 +210,8 @@ export async function middleware(request: NextRequest) {
   // Migration 036 is required: the profile is never a substitute for this session's company or permissions.
   const working = session.organization_id ? { role: session.role, secondary_role: session.secondary_role, organization_id: session.organization_id } : null;
 
+  // Verify required reads before idle side effects; defer verified MFA routing so idle expiry retains precedence.
+  let verifiedMfaTarget: string | null = null;
   // An admin needs the second step (authenticator app) before any page: set it up the first time, then a code at each
   // sign-in (lib/mfa-policy.ts). The API routes and the database check the same, so this is not the only gate. The
   // platform owner always needs it, whatever REQUIRE_ADMIN_MFA says.
@@ -219,7 +221,7 @@ export async function middleware(request: NextRequest) {
     if (assuranceRead.kind === "denied") return forbidden();
     const assurance = assuranceRead.data;
     if (!hasVerifiedAssurance(assurance)) return unavailable();
-    if (assurance?.currentLevel !== "aal2") return path === "/mfa" ? response : redirectTo("/mfa");
+    if (assurance.currentLevel !== "aal2" && path !== "/mfa") verifiedMfaTarget = "/mfa";
   }
   // Someone another admin has just made an admin (migration 065) sets up an authenticator app before anything else, even while
   // REQUIRE_ADMIN_MFA is off. Only to ENROL: once they have a verified factor this stops, and no code is asked for unless the switch
@@ -238,7 +240,7 @@ export async function middleware(request: NextRequest) {
         if (enrolmentRead.kind === "unavailable") return unavailable();
         if (enrolmentRead.kind === "denied") return forbidden();
         if (typeof enrolmentRead.data !== "boolean") return unavailable();
-        if (enrolmentRead.data === true) return redirectTo(`/mfa?${MFA_ENROL_PARAM}=1`);
+        if (enrolmentRead.data === true) verifiedMfaTarget = `/mfa?${MFA_ENROL_PARAM}=1`;
       }
     }
   }
@@ -254,6 +256,8 @@ export async function middleware(request: NextRequest) {
     return ended;
   }
   response.cookies.set(LAST_ACTIVE_COOKIE, String(Date.now()), { httpOnly: true, sameSite: "lax", secure: SECURE_COOKIES, path: "/", maxAge: 60 * 60 * 24 * 30 });
+
+  if (verifiedMfaTarget) return redirectTo(verifiedMfaTarget);
 
   // /mfa is also open to anyone signed in when the second step is not required (setting it up early is allowed).
   if (path === "/mfa") return response;
