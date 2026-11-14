@@ -3,12 +3,15 @@
  * No database/RLS proof is claimed. Preserve staff, MFA, company, Portal and cookie isolation; never replace failures with roles.
  */
 import { NextRequest } from "next/server";
+import { AuthApiError, AuthRetryableFetchError } from "@supabase/supabase-js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 type Reply = { status: number; body?: unknown } | "network";
 const h = vi.hoisted(() => ({
   replies: new Map<string, Reply[]>(), counts: new Map<string, number>(), signOuts: 0,
   refreshedCookie: false, clients: 0,
+  authError: null as Error | null,
+  cookieBatches: [] as Array<Array<{ name: string; value: string; options: { path: string; maxAge?: number } }>>,
   user: { id: "user-1" } as { id: string } | null,
   profile: { role: "viewer", secondary_role: null, active: true, organization_id: "old-company", must_change_password: false },
   session: {} as Record<string, unknown>,
@@ -34,6 +37,8 @@ vi.mock("@supabase/ssr", () => ({
     return {
       auth: {
         getUser: async () => {
+          for (const batch of h.cookieBatches) options.cookies.setAll(batch);
+          if (h.authError) return { data: { user: null }, error: h.authError };
           if (h.refreshedCookie) options.cookies.setAll([{ name: "sb-local-auth-token", value: "changed-by-sdk", options: { path: "/", maxAge: 0 } }]);
           const result = await read<{ id: string }>("/auth/v1/user");
           return { ...result, data: { user: result.data } };
@@ -61,7 +66,7 @@ beforeEach(() => {
   for (const key of envKeys) { originalEnv.set(key, process.env[key]); delete process.env[key]; }
   process.env.NEXT_PUBLIC_SUPABASE_URL = "https://backend.test";
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "synthetic-anon";
-  h.replies.clear(); h.counts.clear(); h.signOuts = 0; h.clients = 0; h.refreshedCookie = false;
+  h.replies.clear(); h.counts.clear(); h.signOuts = 0; h.clients = 0; h.refreshedCookie = false; h.authError = null; h.cookieBatches = [];
   h.user = { id: "user-1" };
   h.profile = { role: "viewer", secondary_role: null, active: true, organization_id: "old-company", must_change_password: false };
   h.session = { user_id: "user-1", organization_id: "current-company", role: "admin", secondary_role: null,
@@ -228,6 +233,50 @@ describe("middleware: fail closed verified authorisation", () => {
     gateway(SESSION, [403]); const response = await visit();
     expect(response.status).toBe(403); expect(response.headers.get("retry-after")).toBeNull();
     expect(location(response)).toBeNull(); expect(h.signOuts).toBe(0);
+  });
+
+  it.each(["refresh_token_not_found", "refresh_token_already_used", "session_not_found", "session_expired"])("real AuthApiError400 %s is signed out and carries SDK cookie deletion to login", async (code) => {
+    h.authError = new AuthApiError("Invalid session", 400, code);
+    h.cookieBatches = [[{ name: "sb-local-auth-token", value: "", options: { path: "/", maxAge: 0 } }]];
+    const response = await visit("/jobs");
+    expect(response.status).toBe(307); expect(location(response)).toBe("/login");
+    expect(response.headers.get("retry-after")).toBeNull();
+    expect(response.cookies.get("sb-local-auth-token")).toMatchObject({ value: "", maxAge: 0, path: "/" });
+    expect(response.headers.get("x-middleware-next")).toBeNull();
+    expect(h.counts.has(PROFILE)).toBe(false); expect(h.counts.has(SESSION)).toBe(false); expect(h.signOuts).toBe(0);
+  });
+  it("revoked refresh preserves clearing of every cookie chunk across SDK callbacks and does not loop on login", async () => {
+    h.authError = new AuthApiError("Invalid Refresh Token: Refresh Token Not Found", 400, "refresh_token_not_found");
+    h.cookieBatches = [
+      [{ name: "sb-local-auth-token.0", value: "", options: { path: "/", maxAge: 0 } }],
+      [{ name: "sb-local-auth-token.1", value: "", options: { path: "/", maxAge: 0 } }],
+    ];
+    const response = await visit("/settings", "sb-local-auth-token.0=revoked-0; sb-local-auth-token.1=revoked-1");
+    expect(response.status).toBe(307); expect(location(response)).toBe("/login");
+    for (const name of ["sb-local-auth-token.0", "sb-local-auth-token.1"]) {
+      expect(response.cookies.get(name)).toMatchObject({ value: "", maxAge: 0, path: "/" });
+    }
+    const login = await visit("/login", "");
+    expect(login.status).toBe(200); expect(location(login)).toBeNull();
+    expect(login.cookies.getAll()).toHaveLength(2); expect(h.counts.size).toBe(0);
+  });
+  it("ambiguous real AuthApiError400 does not erase a potentially valid session", async () => {
+    h.authError = new AuthApiError("Ambiguous request", 400, "validation_failed");
+    h.cookieBatches = [[{ name: "sb-local-auth-token", value: "", options: { path: "/", maxAge: 0 } }]];
+    await expectUnavailable(await visit());
+  });
+  it("an unrecognised400 error object cannot impersonate confirmed revoked authentication", async () => {
+    h.authError = Object.assign(new Error("Unknown source"), { status: 400, code: "refresh_token_not_found" });
+    await expectUnavailable(await visit());
+  });
+  it("real retryable Auth service failure retains browser cookies rather than forwarding SDK clearing", async () => {
+    h.authError = new AuthRetryableFetchError("Service unavailable", 503);
+    h.cookieBatches = [[{ name: "sb-local-auth-token", value: "", options: { path: "/", maxAge: 0 } }]];
+    await expectUnavailable(await visit());
+  });
+  it("server failure status takes precedence even if its code resembles revoked authentication", async () => {
+    h.authError = new AuthApiError("Server failure", 503, "refresh_token_not_found");
+    await expectUnavailable(await visit());
   });
 
 });
