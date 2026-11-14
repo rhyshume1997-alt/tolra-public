@@ -45,7 +45,7 @@ describe("ISO wording", () => {
     expect(text).not.toContain("invoices and the change history of each");
   });
   it("the page and PDF files use none either", () => {
-    for (const f of ["components/iso/iso-pack-view.tsx", "components/iso/iso-document-pdf.tsx", "components/iso/gap-checklist-pdf.tsx"]) {
+    for (const f of ["components/iso/iso-pack-view.tsx", "components/iso/iso-switch-card.tsx", "components/iso/iso-document-pdf.tsx", "components/iso/gap-checklist-pdf.tsx"]) {
       expect(every(readFileSync(f, "utf8")), f).toEqual([]);
     }
   });
