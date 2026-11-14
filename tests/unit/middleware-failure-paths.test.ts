@@ -214,4 +214,20 @@ describe("middleware: fail closed verified authorisation", () => {
     const response = await visit(path); expect(response.status).toBe(403); expect(location(response)).toBeNull();
   });
 
+  it("verified owner aal1 with an expired idle clock signs out before MFA routing", async () => {
+    h.session.platform_admin = true;
+    const response = await visit("/jobs", "sb-local-auth-token=original; tolra_last_active=1");
+    expect(location(response)).toBe("/login?expired=1"); expect(h.signOuts).toBe(1);
+  });
+  it("verified enrolment requirement with an expired idle clock signs out before enrolment routing", async () => {
+    h.replies.set(ENROL, [{ status: 200, body: true }]);
+    const response = await visit("/jobs", "sb-local-auth-token=original; tolra_last_active=1");
+    expect(location(response)).toBe("/login?expired=1"); expect(h.signOuts).toBe(1);
+  });
+  it("verified session permission denial is 403 rather than unavailable", async () => {
+    gateway(SESSION, [403]); const response = await visit();
+    expect(response.status).toBe(403); expect(response.headers.get("retry-after")).toBeNull();
+    expect(location(response)).toBeNull(); expect(h.signOuts).toBe(0);
+  });
+
 });
