@@ -6,6 +6,7 @@
  */
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { isAuthApiError } from "@supabase/supabase-js";
 
 import { AI_HELPER_ROLES } from "@/lib/ai-helper/flag";
 import { MFA_ENROL_PARAM, adminMfaRequired, holdsAdmin, shouldCheckEnrolment } from "@/lib/mfa-policy";
@@ -48,26 +49,31 @@ const ROUTE_ROLES: Array<[string, string[]]> = [
   ["/ai-helper", [...AI_HELPER_ROLES]],
 ];
 
-/** A failed read is never evidence of a role, membership or sign-out. Retry belongs only to the safe transport below. */
+/** Only verified denial ends authentication; unavailable reads never imply a role or sign-out. Retry belongs to the safe transport. */
 type Lookup<T> = { kind: "verified"; data: T } | { kind: "denied" } | { kind: "unavailable" };
 type ReadResult<T> = { data: T; error: unknown; status?: number };
-function lookupFailure(error: unknown, status?: number): "denied" | "unavailable" {
+type ReadScope = "authentication" | "authorisation";
+const INVALID_SESSION_CODES = new Set(["refresh_token_not_found", "refresh_token_already_used", "session_not_found", "session_expired"]);
+function lookupFailure(error: unknown, status: number | undefined, scope: ReadScope): "denied" | "unavailable" {
   const detail = error && typeof error === "object" ? error as { status?: number; code?: string; name?: string } : {};
   const http = status ?? detail.status;
   if (http === 0 || (http !== undefined && http >= 500)) return "unavailable";
+  // GoTrue uses 400 for these confirmed invalid sessions. Do not generalise arbitrary 400s or database errors into sign-out.
+  if (scope === "authentication" && http !== undefined && http >= 400 && http < 500
+      && isAuthApiError(error) && INVALID_SESSION_CODES.has(error.code ?? "")) return "denied";
   if (http === 401 || http === 403 || detail.code === "42501" || detail.name === "AuthSessionMissingError") return "denied";
   // Includes network exceptions, malformed responses and missing database capabilities. None can prove authorisation.
   return "unavailable";
 }
-async function verifiedRead<T>(read: () => PromiseLike<ReadResult<T>>): Promise<Lookup<T>> {
+async function verifiedRead<T>(read: () => PromiseLike<ReadResult<T>>, scope: ReadScope = "authorisation"): Promise<Lookup<T>> {
   try {
     const result = await read();
     if (result.error || (result.status !== undefined && (result.status === 0 || result.status >= 400))) {
-      return { kind: lookupFailure(result.error, result.status) };
+      return { kind: lookupFailure(result.error, result.status, scope) };
     }
     return { kind: "verified", data: result.data };
   } catch (error) {
-    return { kind: lookupFailure(error) };
+    return { kind: lookupFailure(error, undefined, scope) };
   }
 }
 /** Validate security-bearing RPC fields before the shared display parser can apply defaults. */
@@ -125,7 +131,10 @@ export async function middleware(request: NextRequest) {
       },
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+        const previous = response.cookies.getAll();
         response = NextResponse.next({ request });
+        // SDK refresh/removal can emit more than one batch (including chunked cookies); preserve every prior operation.
+        previous.forEach((cookie) => response.cookies.set(cookie));
         cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, { ...options, secure: SECURE_COOKIES }));
       },
     },
@@ -138,7 +147,7 @@ export async function middleware(request: NextRequest) {
     return redirect;
   };
 
-  const auth = await verifiedRead<Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]>(() => supabase.auth.getUser());
+  const auth = await verifiedRead<Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]>(() => supabase.auth.getUser(), "authentication");
   const data = auth.kind === "verified" ? auth.data : { user: null };
   const hasSessionCookie = request.cookies.getAll().some((cookie) => /^sb-.+-auth-token(\.\d+)?$/.test(cookie.name));
   const isLogin = path === "/login";
