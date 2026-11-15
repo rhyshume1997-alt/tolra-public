@@ -224,6 +224,30 @@ describe("middleware: fail closed verified authorisation", () => {
     const response = await visit("/jobs", "sb-local-auth-token=original; tolra_last_active=1");
     expect(location(response)).toBe("/login?expired=1"); expect(h.signOuts).toBe(1);
   });
+  it("verified expired session completes idle sign-out before a forced password change", async () => {
+    h.profile.must_change_password = true;
+    h.session.platform_admin = true;
+    const response = await visit("/jobs", "sb-local-auth-token=original; tolra_last_active=1");
+    expect(response.status).toBe(307);
+    expect(location(response)).toBe("/login?expired=1");
+    expect(h.signOuts).toBe(1);
+    expect(response.cookies.get("tolra_last_active")?.value).toBe("");
+    expect(response.cookies.get("tolra_last_active")?.expires).toEqual(new Date(0));
+    expect(response.cookies.get("tolra_expired")).toMatchObject({ value: "1", maxAge: 300, path: "/" });
+  });
+  it("valid session still changes its forced password before verified MFA routing", async () => {
+    h.profile.must_change_password = true;
+    h.session.platform_admin = true;
+    const response = await visit("/jobs", `sb-local-auth-token=original; tolra_last_active=${Date.now()}`);
+    expect(location(response)).toBe("/auth/set-password?required=1");
+    expect(h.signOuts).toBe(0);
+  });
+  it("unavailable session verification with forced password and old idle cookie stays unavailable", async () => {
+    h.profile.must_change_password = true;
+    gateway(SESSION, [502, 502]);
+    await expectUnavailable(await visit("/jobs", "sb-local-auth-token=original; tolra_last_active=1"));
+    expect(h.counts.get(SESSION)).toBe(2);
+  });
   it("verified enrolment requirement with an expired idle clock signs out before enrolment routing", async () => {
     h.replies.set(ENROL, [{ status: 200, body: true }]);
     const response = await visit("/jobs", "sb-local-auth-token=original; tolra_last_active=1");

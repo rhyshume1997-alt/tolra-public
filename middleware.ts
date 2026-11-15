@@ -212,9 +212,6 @@ export async function middleware(request: NextRequest) {
     return out;
   }
 
-  // An admin set this person's password: they choose their own before anything else.
-  if (profile?.must_change_password) return redirectTo("/auth/set-password?required=1");
-
   // The company this sign-in session works in comes from the database (migration 036), not from the profile's copy: a person
   // with several companies chooses one for each sign-in, and the platform owner must pick one first. The database refuses
   // business data without a chosen company whatever this redirect does.
@@ -275,6 +272,8 @@ export async function middleware(request: NextRequest) {
   }
   response.cookies.set(LAST_ACTIVE_COOKIE, String(Date.now()), { httpOnly: true, sameSite: "lax", secure: SECURE_COOKIES, path: "/", maxAge: 60 * 60 * 24 * 30 });
 
+  // A verified expired sign-in ends before password-change or MFA routing. A valid sign-in still changes its password first.
+  if (profile.must_change_password) return redirectTo("/auth/set-password?required=1");
   if (verifiedMfaTarget) return redirectTo(verifiedMfaTarget);
 
   // /mfa is also open to anyone signed in when the second step is not required (setting it up early is allowed).
