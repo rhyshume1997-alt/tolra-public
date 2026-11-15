@@ -685,12 +685,12 @@ checks(n, check_name, value, expected) AS (
               FROM pg_proc p WHERE p.oid = to_regprocedure('public.import_sliq_reconcile_rows(uuid)')), 'missing'),
     '0 / 152 / 078 / 152 before 156; 0 / 156 / 156 / 156 after (any other count, other or missing: stop, 156 refuses; a count above 0 is decided by Rhys or PM with the read-only finder in the 156 release header)'
   UNION ALL SELECT 60, '157 needs: job locks missing (triggers and flag-naming workflows) / public.jobs_integrity_guard() / trigger jobs_zzz_integrity_guard',
-    (SELECT count(*) FROM (SELECT 1 FROM unnest(ARRAY['jobs_worksheet_version', 'jobs_worksheet_version_release', 'jobs_zz_drawing_revision', 'zzz_actor_stamp', 'ad_finish_kept', 'ac_finish_guard', 'jobs_rework_stage_guard']) AS r(tg)
-                WHERE NOT EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = to_regclass('public.jobs') AND t.tgname = r.tg AND NOT t.tgisinternal)
+    (SELECT count(*) FROM (SELECT 1 FROM unnest(ARRAY['jobs_worksheet_version', 'jobs_worksheet_version_release', 'jobs_zz_drawing_revision', 'zzz_actor_stamp', 'ad_finish_kept', 'ac_finish_guard', 'jobs_rework_stage_guard']) AS tg
+                WHERE NOT EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = to_regclass('public.jobs') AND t.tgname = tg.tg AND NOT t.tgisinternal)
               UNION ALL SELECT 1 FROM (VALUES ('finish_job', 'tolra.finish_job'), ('reopen_job', 'quoteflow.job_reopen'), ('_reopen_job_signed_off', 'quoteflow.job_reopen'),
                   ('record_job_inspection', 'quoteflow.job_inspection'), ('fail_job_inspection', 'quoteflow.job_inspection'),
-                  ('open_replacement_rework', 'quoteflow.job_rework'), ('finish_job_rework', 'quoteflow.job_rework')) AS f(fn, flag)
-                WHERE NOT EXISTS (SELECT 1 FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.proname = f.fn AND position(f.flag IN p.prosrc) > 0)
+                  ('open_replacement_rework', 'quoteflow.job_rework'), ('finish_job_rework', 'quoteflow.job_rework')) AS f
+                WHERE NOT EXISTS (SELECT 1 FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.proname = f.column1 AND position(f.column2 IN p.prosrc) > 0)
               UNION ALL SELECT 1 WHERE to_regprocedure('public.has_org_role(text[])') IS NULL) m)::TEXT
     || ' / ' || coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN '4a6399c2cd5da6c05e455be32bca8c89' THEN '157' ELSE 'other' END
               FROM pg_proc p WHERE p.oid = to_regprocedure('public.jobs_integrity_guard()')), 'absent')
