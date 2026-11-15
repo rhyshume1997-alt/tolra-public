@@ -756,6 +756,11 @@ export function columnVisibility(tableKey: string, hidden: string[] | undefined)
   return (columnKey: string) => !safe.includes(columnKey);
 }
 
+/** Display preferences only: unverified preferences use default columns; page roles and RLS still enforce access. */
+export function settingsColumnVisibility(settings: Pick<OrgSettings, "loaded" | "hiddenColumns" | "deviceColumns">, tableKey: string) {
+  return columnVisibility(tableKey, settings.loaded ? effectiveHidden(settings, tableKey) : undefined);
+}
+
 /**
  * One screen's visibility: this person's own view on this device when they have one for the screen, else the company setting.
  * setColumnVisible / resetColumns change the company setting; setOwnColumnVisible / resetOwnColumns change only the own view.
@@ -763,7 +768,7 @@ export function columnVisibility(tableKey: string, hidden: string[] | undefined)
 export function useColumnVisibility(tableKey: string) {
   const settings = useOrgSettings();
   const hidden = effectiveHidden(settings, tableKey);
-  const isVisible = useMemo(() => settings.loaded ? columnVisibility(tableKey, hidden) : () => false, [tableKey, hidden, settings.loaded]);
+  const isVisible = useMemo(() => settingsColumnVisibility(settings, tableKey), [tableKey, settings]);
   const isLocked = useCallback((columnKey: string) => isColumnLocked(tableKey, columnKey), [tableKey]);
   const setColumnVisible = useCallback((columnKey: string, visible: boolean) => setColumnHidden(tableKey, columnKey, !visible), [tableKey]);
   const reset = useCallback(() => resetColumns(tableKey), [tableKey]);

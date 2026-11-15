@@ -69,7 +69,7 @@ vi.mock("@/lib/supabase-business", () => ({
 
 import {
   cleanColumns, COLUMN_TABLES, getOrgSettingsSnapshot, isSettingsDenial, loadOrgSettings, orgSettingsStorageKey, resetOrgSettings,
-  columnVisibility, resetColumns, saveOrgSettings, setColumnHidden, setNavHidden,
+  columnVisibility, settingsColumnVisibility, resetColumns, saveOrgSettings, setColumnHidden, setNavHidden,
 } from "@/lib/org-settings";
 
 const keyFor = (org: string) => orgSettingsStorageKey(h.db.user, org)!;
@@ -82,6 +82,55 @@ beforeEach(() => {
   vi.stubGlobal("navigator", { get onLine() { return !h.db.offline; } });
 });
 afterEach(() => { resetOrgSettings(); vi.unstubAllGlobals(); });
+
+describe("unverified column preferences use display defaults, never authorization", () => {
+  it("shows default and locked columns on the initial load for every registered table", () => {
+    const settings = getOrgSettingsSnapshot();
+    expect(settings.loaded).toBe(false);
+    for (const table of COLUMN_TABLES) {
+      const visible = settingsColumnVisibility(settings, table.key);
+      for (const column of table.columns) expect(visible(column.key), `${table.key}.${column.key}`).toBe(true);
+    }
+  });
+
+  it("uses defaults during forced reload, then restores verified preferences", async () => {
+    h.db.row = { hidden_nav: [], hidden_columns: { customers: ["phone"] } };
+    await loadOrgSettings(true);
+    expect(settingsColumnVisibility(getOrgSettingsSnapshot(), "customers")("phone")).toBe(false);
+    const gate = deferred();
+    h.db.selectGate = gate.promise;
+    const loading = loadOrgSettings(true);
+    await vi.waitFor(() => expect(getOrgSettingsSnapshot().availability.kind).toBe("loading"));
+    expect(settingsColumnVisibility(getOrgSettingsSnapshot(), "customers")("phone")).toBe(true);
+    gate.release();
+    await loading;
+    expect(settingsColumnVisibility(getOrgSettingsSnapshot(), "customers")("phone")).toBe(false);
+  });
+
+  it("shows defaults after online failure without turning settings into successful empty data", async () => {
+    h.db.row = { hidden_nav: ["reports:on"], hidden_columns: { customers: ["phone"] } };
+    await loadOrgSettings(true);
+    h.db.organizationError = { status: 502, message: "Bad Gateway" };
+    await loadOrgSettings(true);
+    const settings = getOrgSettingsSnapshot();
+    expect(settings).toMatchObject({ loaded: false, availability: { kind: "unavailable" }, hiddenColumns: { customers: ["phone"] } });
+    expect(settingsColumnVisibility(settings, "customers")("phone")).toBe(true);
+    expect(settingsColumnVisibility(settings, "customers")("name")).toBe(true);
+  });
+
+  it("retains verified offline company and own-view preferences and locked column rules", async () => {
+    h.db.row = { hidden_nav: [], hidden_columns: { customers: ["phone"] } };
+    await loadOrgSettings(true);
+    h.db.offline = true;
+    await loadOrgSettings(true);
+    const settings = getOrgSettingsSnapshot();
+    expect(settings.availability.kind).toBe("offline");
+    expect(settingsColumnVisibility(settings, "customers")("phone")).toBe(false);
+    const own = { ...settings, deviceColumns: { customers: ["name", "email"] } };
+    expect(settingsColumnVisibility(own, "customers")("email")).toBe(false);
+    expect(settingsColumnVisibility(own, "customers")("name")).toBe(true);
+  });
+});
 
 describe("save: per-table merge onto the row as it is now", () => {
   it("re-reads the row and changes only the toggled table; never sends hidden_nav for a column change", async () => {
