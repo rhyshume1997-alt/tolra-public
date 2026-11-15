@@ -21,6 +21,8 @@ const h = vi.hoisted(() => {
     offline: false,
     row: null as Row | null,
     selectError: null as Err,
+    selectStatus: 0,
+    organizationError: null as { status: number; message: string } | null,
     upsertError: null as Err,
     upsertStatus: 201,
     upserts: [] as Array<Record<string, unknown>>,
@@ -41,7 +43,7 @@ const h = vi.hoisted(() => {
             const gate = db.selectGate;
             db.selectGate = null;
             if (gate) await gate;
-            if (db.selectError) return { data: null, error: db.selectError, status: 0 };
+            if (db.selectError) return { data: null, error: db.selectError, status: db.selectStatus };
             return { data: db.row ? structuredClone(db.row) : null, error: null, status: 200 };
           },
         }),
@@ -62,7 +64,7 @@ const h = vi.hoisted(() => {
 vi.mock("@/lib/supabase", () => ({ supabase: h.fake }));
 vi.mock("@/lib/supabase-business", () => ({
   getCurrentOrganizationId: async () => { h.db.userAsks += 1; if (h.db.offline) throw new Error("You must be signed in."); return h.db.org; },
-  getCurrentUserAndOrganization: async () => { h.db.userAsks += 1; if (h.db.offline) throw new Error("You must be signed in."); return { userId: h.db.user, organizationId: h.db.org }; },
+  getCurrentUserAndOrganization: async () => { h.db.userAsks += 1; if (h.db.organizationError) throw h.db.organizationError; if (h.db.offline) throw new Error("You must be signed in."); return { userId: h.db.user, organizationId: h.db.org }; },
 }));
 
 import {
@@ -76,9 +78,10 @@ const deferred = () => { let release!: () => void; const promise = new Promise<v
 beforeEach(() => {
   resetOrgSettings();
   h.store.clear();
-  Object.assign(h.db, { org: "org-a", user: "user-1", offline: false, row: null, selectError: null, upsertError: null, upsertStatus: 201, upserts: [], selectGate: null, userAsks: 0 });
+  Object.assign(h.db, { org: "org-a", user: "user-1", offline: false, row: null, selectError: null, selectStatus: 0, organizationError: null, upsertError: null, upsertStatus: 201, upserts: [], selectGate: null, userAsks: 0 });
+  vi.stubGlobal("navigator", { get onLine() { return !h.db.offline; } });
 });
-afterEach(() => { resetOrgSettings(); });
+afterEach(() => { resetOrgSettings(); vi.unstubAllGlobals(); });
 
 describe("save: per-table merge onto the row as it is now", () => {
   it("re-reads the row and changes only the toggled table; never sends hidden_nav for a column change", async () => {
@@ -269,7 +272,7 @@ describe("reset: generation guard and the per-user-and-company key", () => {
     h.db.org = "org-b";
     h.db.selectError = { code: "", message: "TypeError: Failed to fetch" };
     await loadOrgSettings(true);
-    expect(getOrgSettingsSnapshot()).toMatchObject({ loaded: true, localOnly: true, hiddenNav: [], hiddenColumns: {} });
+    expect(getOrgSettingsSnapshot()).toMatchObject({ loaded: false, localOnly: false, availability: { kind: "unavailable" }, hiddenNav: [], hiddenColumns: {} });
   });
 
   it("reset removes this company's real key (and the old unkeyed / user-only keys), not other companies'", async () => {
@@ -319,5 +322,240 @@ describe("load: one auth-server check names the user and the company", () => {
     expect(h.db.userAsks).toBe(1);
     expect(getOrgSettingsSnapshot()).toMatchObject({ loaded: true, localOnly: false, hiddenNav: ["quotes"] });
     expect(h.store.has(keyFor("org-a"))).toBe(true);
+  });
+});
+
+// Module 7 reliability: online failures are not offline defaults. Existing scope/cache/save assertions remain above.
+describe("settings availability and explicit recovery", () => {
+  it("online organisation 502 is unavailable, never valid empty settings or an offline result", async () => {
+    h.db.organizationError = { status: 502, message: "An invalid response was received from the upstream server" };
+    await loadOrgSettings(true);
+    expect(getOrgSettingsSnapshot()).toMatchObject({ loaded: false, localOnly: false, availability: { kind: "unavailable", reason: "online" } });
+    expect(h.store.size).toBe(0); expect(h.db.userAsks).toBe(1); expect(h.db.upserts).toHaveLength(0);
+  });
+
+  it("online network failure is unavailable even though the browser reports online", async () => {
+    h.db.selectError = { message: "TypeError: Failed to fetch" }; h.db.selectStatus = 0;
+    await loadOrgSettings(true);
+    expect(navigator.onLine).toBe(true);
+    expect(getOrgSettingsSnapshot()).toMatchObject({ loaded: false, availability: { kind: "unavailable", reason: "online" } });
+    expect(h.store.has(keyFor("org-a"))).toBe(false);
+  });
+
+  it("retains last verified settings and their cache without promoting them to an online success", async () => {
+    h.db.row = { hidden_nav: ["reports:on"], hidden_columns: { dashboard: ["whole-floor"] } };
+    await loadOrgSettings(true);
+    const saved = h.store.get(keyFor("org-a"));
+    h.db.selectError = { message: "Bad Gateway" }; h.db.selectStatus = 502;
+    await loadOrgSettings(true);
+    expect(getOrgSettingsSnapshot()).toMatchObject({ loaded: false, availability: { kind: "unavailable", reason: "online" }, hiddenNav: ["reports:on"], hiddenColumns: { dashboard: ["whole-floor"] } });
+    expect(h.store.get(keyFor("org-a"))).toBe(saved);
+  });
+
+  it("cold-loads only the cache of the freshly verified user and company after a row failure", async () => {
+    h.store.set(keyFor("org-a"), JSON.stringify({ hiddenNav: ["reports:on"], hiddenColumns: { dashboard: ["whole-floor"] } }));
+    h.db.selectError = { message: "Bad Gateway" }; h.db.selectStatus = 502;
+    await loadOrgSettings(true);
+    expect(getOrgSettingsSnapshot()).toMatchObject({ loaded: false, availability: { kind: "unavailable" }, hiddenNav: ["reports:on"], hiddenColumns: { dashboard: ["whole-floor"] } });
+  });
+
+  it("does not guess the current company from a remembered pointer during an online organisation failure", async () => {
+    h.store.set("quoteflow-org-settings:last-org:user-1", "org-a");
+    h.store.set(keyFor("org-a"), JSON.stringify({ hiddenNav: ["reports:on"], hiddenColumns: {} }));
+    h.db.organizationError = { status: 502, message: "Bad Gateway" };
+    await loadOrgSettings(true);
+    expect(getOrgSettingsSnapshot()).toMatchObject({ loaded: false, hiddenNav: [], availability: { kind: "unavailable" } });
+    expect(h.store.has(keyFor("org-a"))).toBe(true);
+  });
+
+  it("genuine offline without a scoped cache is unavailable rather than a fabricated empty success", async () => {
+    h.db.offline = true;
+    await loadOrgSettings(true);
+    expect(getOrgSettingsSnapshot()).toMatchObject({ loaded: false, availability: { kind: "unavailable", reason: "offline-cache-missing" } });
+    expect(h.store.size).toBe(0);
+  });
+
+  it("genuine offline preserves the verified scoped settings and local preference changes", async () => {
+    h.db.row = { hidden_nav: ["reports:on"], hidden_columns: { customers: ["phone"] } };
+    await loadOrgSettings(true);
+    h.db.offline = true;
+    await loadOrgSettings(true);
+    expect(getOrgSettingsSnapshot()).toMatchObject({ loaded: true, localOnly: true, availability: { kind: "offline" }, hiddenNav: ["reports:on"] });
+    expect(await setColumnHidden("customers", "email", true)).toEqual({ localOnly: true, denied: false });
+    expect(getOrgSettingsSnapshot()).toMatchObject({ availability: { kind: "offline" }, hiddenColumns: { customers: ["phone", "email"] } });
+  });
+
+  it.each(["{}", "null", '{"hiddenNav":[7],"hiddenColumns":{}}', '{"hiddenNav":[],"hiddenColumns":null}'])("rejects malformed cache %s without treating it as verified defaults", async saved => {
+    h.store.set(keyFor("org-a"), saved);
+    h.db.selectError = { message: "Bad Gateway" }; h.db.selectStatus = 502;
+    await loadOrgSettings(true);
+    expect(getOrgSettingsSnapshot()).toMatchObject({ loaded: false, availability: { kind: "unavailable" } });
+    expect(h.store.get(keyFor("org-a"))).toBe(saved);
+  });
+
+  it("verified absence of a settings row is a legitimate default, unlike a failed read", async () => {
+    h.db.row = null;
+    await loadOrgSettings(true);
+    expect(getOrgSettingsSnapshot()).toMatchObject({ loaded: true, localOnly: false, availability: { kind: "verified" }, hiddenNav: [], hiddenColumns: {} });
+  });
+
+  it("explicit recovery succeeds without an automatic retry loop", async () => {
+    h.db.organizationError = { status: 502, message: "Bad Gateway" };
+    await loadOrgSettings(true);
+    const attempts = h.db.userAsks;
+    h.db.organizationError = null;
+    h.db.row = { hidden_nav: ["reports:on"], hidden_columns: {} };
+    await loadOrgSettings();
+    expect(h.db.userAsks).toBe(attempts);
+    expect(getOrgSettingsSnapshot().loaded).toBe(false);
+    await loadOrgSettings(true);
+    expect(h.db.userAsks).toBe(attempts + 1);
+    expect(getOrgSettingsSnapshot()).toMatchObject({ loaded: true, availability: { kind: "verified" }, hiddenNav: ["reports:on"] });
+  });
+
+  it("confirmed company change cannot expose the previous company's in-memory or persisted copy", async () => {
+    h.db.row = { hidden_nav: ["reports:on"], hidden_columns: { dashboard: ["whole-floor"] } };
+    await loadOrgSettings(true);
+    const oldCopy = h.store.get(keyFor("org-a"));
+    h.db.org = "org-b"; h.db.selectError = { message: "Bad Gateway" }; h.db.selectStatus = 502;
+    await loadOrgSettings(true);
+    expect(getOrgSettingsSnapshot()).toMatchObject({ loaded: false, hiddenNav: [], hiddenColumns: {}, availability: { kind: "unavailable" } });
+    expect(h.store.get(keyFor("org-a"))).toBe(oldCopy); expect(h.store.has(keyFor("org-b"))).toBe(false);
+  });
+
+  it("another user cannot inherit a verified in-memory settings snapshot", async () => {
+    h.db.row = { hidden_nav: ["reports:on"], hidden_columns: {} };
+    await loadOrgSettings(true);
+    h.db.user = "user-2"; h.db.selectError = { message: "Bad Gateway" }; h.db.selectStatus = 502;
+    await loadOrgSettings(true);
+    expect(getOrgSettingsSnapshot()).toMatchObject({ loaded: false, hiddenNav: [], availability: { kind: "unavailable" } });
+  });
+
+  it("a verified denial is not reclassified as offline even with a stale offline browser flag", async () => {
+    h.db.row = { hidden_nav: ["reports:on"], hidden_columns: {} };
+    await loadOrgSettings(true);
+    vi.stubGlobal("navigator", { onLine: false });
+    h.db.organizationError = { status: 403, message: "Forbidden" };
+    await loadOrgSettings(true);
+    expect(getOrgSettingsSnapshot()).toMatchObject({ loaded: false, localOnly: false, availability: { kind: "unavailable", reason: "denied" } });
+  });
+
+  it("a late failed read cannot replace newer verified recovery", async () => {
+    const slow = deferred(); h.db.selectGate = slow.promise;
+    const older = loadOrgSettings(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    h.db.row = { hidden_nav: ["reports:on"], hidden_columns: {} };
+    await loadOrgSettings(true);
+    h.db.selectError = { message: "Bad Gateway" }; h.db.selectStatus = 502;
+    slow.release(); await older;
+    expect(getOrgSettingsSnapshot()).toMatchObject({ loaded: true, availability: { kind: "verified" }, hiddenNav: ["reports:on"] });
+  });
+
+  it("a failed settings load preserves a queued setting change until its confirmed save finishes", async () => {
+    await loadOrgSettings(true);
+    const slow = deferred(); h.db.selectGate = slow.promise;
+    const saving = setColumnHidden("customers", "phone", true);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    h.db.organizationError = { status: 502, message: "Bad Gateway" };
+    await loadOrgSettings(true);
+    expect(getOrgSettingsSnapshot()).toMatchObject({ loaded: false, hiddenColumns: { customers: ["phone"] } });
+    slow.release(); await saving;
+    expect(getOrgSettingsSnapshot()).toMatchObject({ loaded: true, availability: { kind: "verified" }, hiddenColumns: { customers: ["phone"] } });
+    expect(h.db.upserts).toHaveLength(1);
+  });
+
+  it("settings failure and recovery do not discard pending offline work", async () => {
+    const { memoryBackend, setOfflineBackend } = await import("@/lib/offline/store");
+    const { enqueue, pendingEntries } = await import("@/lib/offline/outbox");
+    setOfflineBackend(memoryBackend());
+    const scope = { userId: "user-1", orgId: "org-a" };
+    try {
+      await enqueue(scope, { kind: "start", jobId: "synthetic-job", jobNo: "J-SYNTHETIC", at: "2026-11-15T00:00:00Z" });
+      const before = await pendingEntries(scope);
+      expect(before).toHaveLength(1);
+      h.db.organizationError = { status: 502, message: "Bad Gateway" };
+      await loadOrgSettings(true);
+      expect(await pendingEntries(scope)).toEqual(before);
+      h.db.organizationError = null; await loadOrgSettings(true);
+      expect(await pendingEntries(scope)).toEqual(before);
+    } finally { setOfflineBackend(null); }
+  });
+});
+
+describe("locally preserved settings deltas", () => {
+  it("a failed online save survives explicit recovery until a confirmed write", async () => {
+    await loadOrgSettings(true);
+    h.db.upsertError = { message: "Bad Gateway" }; h.db.upsertStatus = 502;
+    await setColumnHidden("customers", "phone", true);
+    expect(getOrgSettingsSnapshot()).toMatchObject({ loaded: false, hiddenColumns: { customers: ["phone"] } });
+    expect(JSON.parse(h.store.get(keyFor("org-a"))!).localChanges).toHaveLength(1);
+    h.db.upsertError = null;
+    await loadOrgSettings(true);
+    expect(getOrgSettingsSnapshot()).toMatchObject({ loaded: true, localOnly: false, availability: { kind: "verified" }, hiddenColumns: { customers: ["phone"] } });
+    expect(h.db.row?.hidden_columns.customers).toEqual(["phone"]);
+    expect(JSON.parse(h.store.get(keyFor("org-a"))!).localChanges).toEqual([]);
+    expect(h.db.upserts).toHaveLength(2);
+  });
+
+  it("an older in-flight read cannot erase a newly failed local save", async () => {
+    await loadOrgSettings(true);
+    const slow = deferred(); h.db.selectGate = slow.promise;
+    const older = loadOrgSettings(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    h.db.upsertError = { message: "Bad Gateway" }; h.db.upsertStatus = 502;
+    await setColumnHidden("customers", "phone", true);
+    slow.release(); await older;
+    expect(getOrgSettingsSnapshot()).toMatchObject({ loaded: false, availability: { kind: "unavailable" }, hiddenColumns: { customers: ["phone"] } });
+    expect(JSON.parse(h.store.get(keyFor("org-a"))!).localChanges).toHaveLength(1);
+  });
+
+  it("offline local changes survive a cold reload and an explicit online recovery", async () => {
+    await loadOrgSettings(true);
+    h.db.offline = true;
+    await setColumnHidden("customers", "phone", true);
+    vi.resetModules();
+    const fresh = await import("@/lib/org-settings");
+    await fresh.loadOrgSettings(true);
+    expect(fresh.getOrgSettingsSnapshot()).toMatchObject({ loaded: true, availability: { kind: "offline" }, hiddenColumns: { customers: ["phone"] } });
+    h.db.offline = false;
+    await fresh.loadOrgSettings(true);
+    expect(fresh.getOrgSettingsSnapshot()).toMatchObject({ loaded: true, localOnly: false, availability: { kind: "verified" }, hiddenColumns: { customers: ["phone"] } });
+    expect(h.db.row?.hidden_columns.customers).toEqual(["phone"]);
+  });
+
+  it("a later opposite change wins when a failed group is explicitly retried", async () => {
+    await loadOrgSettings(true);
+    h.db.upsertError = { message: "Bad Gateway" }; h.db.upsertStatus = 502;
+    await setColumnHidden("customers", "phone", true);
+    await setColumnHidden("customers", "phone", false);
+    h.db.upsertError = null;
+    await loadOrgSettings(true);
+    expect(getOrgSettingsSnapshot().hiddenColumns.customers ?? []).not.toContain("phone");
+    expect(h.db.row?.hidden_columns.customers ?? []).not.toContain("phone");
+    expect(h.db.upserts).toHaveLength(3); // two failed attempts, one bounded group write
+  });
+
+  it("both settings columns are retained and confirmed without one group erasing the other", async () => {
+    await loadOrgSettings(true);
+    h.db.upsertError = { message: "Bad Gateway" }; h.db.upsertStatus = 502;
+    await setNavHidden("rfq", true);
+    await setColumnHidden("customers", "phone", true);
+    h.db.upsertError = null;
+    await loadOrgSettings(true);
+    expect(getOrgSettingsSnapshot()).toMatchObject({ loaded: true, localOnly: false, hiddenNav: ["rfq"], hiddenColumns: { customers: ["phone"] } });
+    expect(h.db.row).toEqual({ hidden_nav: ["rfq"], hidden_columns: { customers: ["phone"] } });
+    expect(h.db.upserts).toHaveLength(4); // two failures, then at most one write per column
+  });
+
+  it("persistent failure keeps one local delta and makes only one new attempt per Retry", async () => {
+    await loadOrgSettings(true);
+    h.db.upsertError = { message: "Bad Gateway" }; h.db.upsertStatus = 502;
+    await setColumnHidden("customers", "phone", true);
+    await loadOrgSettings(true);
+    expect(h.db.upserts).toHaveLength(2);
+    expect(JSON.parse(h.store.get(keyFor("org-a"))!).localChanges).toHaveLength(1);
+    expect(getOrgSettingsSnapshot()).toMatchObject({ loaded: false, availability: { kind: "unavailable" }, hiddenColumns: { customers: ["phone"] } });
+    await loadOrgSettings();
+    expect(h.db.upserts).toHaveLength(2);
   });
 });
