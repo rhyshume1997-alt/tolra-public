@@ -1,4 +1,4 @@
--- Post-144 phase markers are separate from baseline markers: 145 then 146 then 147 then 148 then 149 then 150 then 151 then 152 then 153 then 154 (153 and 154: before customer portal activation only) then 156 (155 reserved, not in this candidate; 156 before the JNR SliQ import). Numbered cutover markers: 138, 140, 141, 143, 144.
+-- Post-144 phase markers are separate from baseline markers: 145 then 146 then 147 then 148 then 149 then 150 then 151 then 152 then 153 then 154 (153 and 154: before customer portal activation only) then 156 (155 reserved, not in this candidate; 156 before the JNR SliQ import) then 157 (jobs integrity guard). Numbered cutover markers: 138, 140, 141, 143, 144.
 -- Legacy AI body checks inspect preserved own-key functions after 146; the 146 marker pins every live wrapper.
 -- READ ONLY. Release preflight (docs/RELEASE-CHECKLIST.md, step 2). One query, one result table of check / value /
 -- expected, so it works in the Supabase SQL editor (which shows only the last statement's result). Nothing is
@@ -239,6 +239,7 @@ proposal_files(file, disposition) AS (
     ('supabase/proposals/p153_document_customer_link.sql', 'post-144 release 153; apply only after 152; required before customer portal activation, not for JNR core go-live (jobs and quotes linked to the customer by ID in a side table; backfill unverified; portal switch off; no issued-document guard changed)'),
     ('supabase/proposals/p154_customer_portal_signin.sql', 'post-144 release 154; apply only after 153; required before customer portal activation, not for JNR core go-live (customer portal sign-in: e-mailed link and code, sessions, read-only verified quotes and jobs; portal OFF refuses every customer call)'),
     ('supabase/proposals/p156_invoice_ref_case.sql', 'post-144 release 156; after 154 in the plan (its guard needs 152 and 078); apply before the JNR SliQ import (one invoice number per company whatever its capital letters; refuses while case-variant invoice numbers exist: row 59)'),
+    ('supabase/proposals/p157_jobs_integrity_guard.sql', 'post-144 release 157; after 156 in the plan (its guard needs the job locks of 022, 034, 035, 037, 044/061, 081, 083 and 113 only); a recorded job start is kept, a finish is set only by Finish, a workshop-only user cannot change a job''s customer or number or withdraw a passed inspection (row 60)'),
     ('supabase/proposals/builder2_chase_settings_atomic.sql', 'separate chase settings release decision; requires 138; browser fixture is not production packaging'),
     ('supabase/proposals/builder2_costing_settings_atomic.sql', 'superseded: the hardened function ships inside numbered release 143 (after 141, before 144); this original proposal is never applied'),
     ('supabase/proposals/builder2_atomic_settings.rollback.sql', 'rollback only; never forward release input')
@@ -348,6 +349,9 @@ post_release_markers(label, present) AS (
       AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.import_sliq_prepare(uuid,text,jsonb,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'a06f5525bb6770dde21c4f9453b96207')
       AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.next_doc_number(text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '75dffec8a6b52c01267aa22a64802da0')
       AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.import_sliq_reconcile_rows(uuid)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '3288cdc2d98acba018c8e417bddd77bb')), FALSE)),
+    ('post-144 marker 157 jobs_integrity_guard', coalesce((EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.jobs_integrity_guard()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '4a6399c2cd5da6c05e455be32bca8c89')
+      AND EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = to_regclass('public.jobs') AND t.tgname = 'jobs_zzz_integrity_guard' AND NOT t.tgisinternal
+                    AND t.tgfoid = to_regprocedure('public.jobs_integrity_guard()') AND t.tgtype = 19 AND t.tgattr::TEXT = '' AND t.tgnargs = 0 AND t.tgenabled = 'O' AND t.tgqual IS NULL)), FALSE)),
     ('post-144 marker 151 xero_invite_hardening', coalesce(((SELECT count(*) = 10 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'integration_connect_invites'
              AND column_name IN ('ref', 'recipient_email', 'code_hash', 'code_expires_at', 'code_sent_at', 'code_sent_count', 'code_attempts', 'locked_at', 'expired_logged_at', 'revoke_reason'))
       AND EXISTS (SELECT 1 FROM pg_constraint c WHERE c.conrelid = to_regclass('public.integration_connect_invites') AND c.conname IN ('integration_connect_invites_ref_key', 'integration_connect_invites_bound', 'integration_connect_invites_recipient') HAVING count(*) = 3)
@@ -680,6 +684,19 @@ checks(n, check_name, value, expected) AS (
     || ' / ' || coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN '315952a95ce42c75078e94026069121b' THEN '152' WHEN '3288cdc2d98acba018c8e417bddd77bb' THEN '156' ELSE 'other' END
               FROM pg_proc p WHERE p.oid = to_regprocedure('public.import_sliq_reconcile_rows(uuid)')), 'missing'),
     '0 / 152 / 078 / 152 before 156; 0 / 156 / 156 / 156 after (any other count, other or missing: stop, 156 refuses; a count above 0 is decided by Rhys or PM with the read-only finder in the 156 release header)'
+  UNION ALL SELECT 60, '157 needs: job locks missing (triggers and flag-naming workflows) / public.jobs_integrity_guard() / trigger jobs_zzz_integrity_guard',
+    (SELECT count(*) FROM (SELECT 1 FROM unnest(ARRAY['jobs_worksheet_version', 'jobs_worksheet_version_release', 'jobs_zz_drawing_revision', 'zzz_actor_stamp', 'ad_finish_kept', 'ac_finish_guard', 'jobs_rework_stage_guard']) AS r(tg)
+                WHERE NOT EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = to_regclass('public.jobs') AND t.tgname = r.tg AND NOT t.tgisinternal)
+              UNION ALL SELECT 1 FROM (VALUES ('finish_job', 'tolra.finish_job'), ('reopen_job', 'quoteflow.job_reopen'), ('_reopen_job_signed_off', 'quoteflow.job_reopen'),
+                  ('record_job_inspection', 'quoteflow.job_inspection'), ('fail_job_inspection', 'quoteflow.job_inspection'),
+                  ('open_replacement_rework', 'quoteflow.job_rework'), ('finish_job_rework', 'quoteflow.job_rework')) AS f(fn, flag)
+                WHERE NOT EXISTS (SELECT 1 FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.proname = f.fn AND position(f.flag IN p.prosrc) > 0)
+              UNION ALL SELECT 1 WHERE to_regprocedure('public.has_org_role(text[])') IS NULL) m)::TEXT
+    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN '4a6399c2cd5da6c05e455be32bca8c89' THEN '157' ELSE 'other' END
+              FROM pg_proc p WHERE p.oid = to_regprocedure('public.jobs_integrity_guard()')), 'absent')
+    || ' / ' || coalesce((SELECT CASE WHEN t.tgfoid = to_regprocedure('public.jobs_integrity_guard()') AND t.tgtype = 19 AND t.tgattr::TEXT = '' AND t.tgnargs = 0 AND t.tgenabled = 'O' AND t.tgqual IS NULL THEN '157' ELSE 'other' END
+              FROM pg_trigger t WHERE t.tgrelid = to_regclass('public.jobs') AND t.tgname = 'jobs_zzz_integrity_guard' AND NOT t.tgisinternal), 'absent'),
+    '0 / absent / absent before 157; 0 / 157 / 157 after (a count above 0, or other: stop, 157 refuses and changes nothing; absent / absent is the state before 157 and after its rollback)'
   UNION ALL SELECT 100 + row_number() OVER (), 'marker ' || migration,
     CASE WHEN present AND (migration <> '107 integrations connect' OR to_regprocedure('public.integration_invite_redeem(text,text,text)') IS NOT NULL
                            OR coalesce((SELECT pm.present FROM post_release_markers pm WHERE pm.label = 'post-144 marker 151 xero_invite_hardening'), FALSE))
@@ -690,6 +707,7 @@ checks(n, check_name, value, expected) AS (
     CASE WHEN present THEN 'applied' WHEN label IN ('post-144 marker 153 document_customer_link', 'post-144 marker 154 customer_portal_signin') THEN 'not applied (before portal activation only)' ELSE 'not applied' END,
     CASE WHEN label = 'post-144 marker 153 document_customer_link' THEN 'One-time post-144 phase 153, after 152: required before customer portal activation, not for JNR core go-live (PM, 11 Nov 2026).'
     WHEN label = 'post-144 marker 154 customer_portal_signin' THEN 'One-time post-144 phase 154, after 153: customer portal sign-in; required before customer portal activation, not for JNR core go-live (PM, 12 Nov 2026).'
+    WHEN label = 'post-144 marker 157 jobs_integrity_guard' THEN 'One-time post-144 phase 157, after 156 in the plan (155 reserved; its guard needs the job locks of 022 to 113 only): a recorded job start is kept, a finish is set only by Finish, a workshop-only user cannot change a job''s customer or number or withdraw a passed inspection; row 60 first.'
     WHEN label = 'post-144 marker 156 invoice_ref_case' THEN 'One-time post-144 phase 156, after 154 in the plan (155 reserved; its guard needs 152 and 078 only): one invoice number per company whatever its capital letters; applied before the JNR SliQ import (row 59 first).'
     ELSE 'One-time post-144 phase: 145 N5 before 146 N2 before 147 C17 before 148 job costing before 149 Xero launch hold before 150 AI cap and key-off before 151 Xero invite hardening before 152 SliQ import route; all applied before go-live. Baseline replay intentionally runs first.' END FROM post_release_markers
   UNION ALL SELECT 400 + row_number() OVER (ORDER BY file), 'proposal file ' || file, disposition,

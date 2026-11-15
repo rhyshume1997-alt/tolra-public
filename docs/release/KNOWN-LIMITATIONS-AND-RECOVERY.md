@@ -32,6 +32,7 @@ How to read this document:
 | L9 | Release 151 header said "PROPOSAL, not registered" | Resolved: 151 IS registered (plan phase 151, after 150) and CI installs it; only a header comment was stale (fixed on this branch) | Info (resolved) | Sourced |
 | L10 | Release tests ran on PostgreSQL 16; the preflight expects 17.x | Behaviour on the production database version is not proven | Medium | Sourced |
 | L11 | Release 156: the generic workbook import refuses a case-variant invoice number only with the general database refusal | `inv-1001` next to `INV-1001` is never written, but the message is the generic "database refused the import" (23505), not a named problem | Low | Proved locally (PG16) |
+| L12 | Release 157: a workshop-only user can no longer edit the worksheet, stage, customer or job number of a job that has passed inspection | The edit is refused instead of silently withdrawing the pass; the office, an admin, a failed inspection, rework and reopen still can | Low | Proved locally (PG16, plain PostgreSQL stand-in; CI runs it on the Supabase stack) |
 
 ---
 
@@ -148,6 +149,14 @@ How to read this document:
 - **Severity:** Low.
 - **Release note:** 156 refuses to install while any company already has invoice numbers that differ only in capital letters (run the read-only finder in the 156 release header first). Local index build at 4,000 invoices: about 5 ms (PG16; hosted time not measured). Credit note numbers keep the exact-case rule (follow-up).
 - **Evidence:** `tests/db/invoice-ref-case-156.test.ts` cases 11 and 14.
+
+### L12. Release 157: workshop users can no longer withdraw a passed inspection by editing the job
+
+- **What it is:** Release 157 adds one trigger, `jobs_zzz_integrity_guard`, on `jobs` (browser sessions only; the service role, the owner and the SQL editor are exempt). It keeps a recorded start time, lets a finish time be set only by Finish, stops a workshop-only user changing a job's customer or job number, and stops a workshop-only user withdrawing a passed inspection by editing the job. Before 157 such an edit (a worksheet change or a stage move on a Complete job) quietly sent the job back to Awaiting inspection.
+- **What it means for John:** A workshop user who edits the worksheet, stage, customer or job number of a Complete, despatched or invoiced job now sees a refusal (code 42501). Drawing revisions are not affected: only an admin can attach one, and that path is unchanged. Asking the office or an admin to make the change, recording a failed inspection, raising rework or reopening the job still work, and a job that has not passed inspection is edited as before.
+- **Severity:** Low.
+- **Recovery:** Run `supabase/release/157_jobs_integrity_guard.rollback.sql`: it drops the trigger and its function and touches no row (the four gaps it closes are then open again). Running it twice equals running it once.
+- **Evidence:** `tests/db/jobs-integrity-157.test.ts`.
 
 ---
 

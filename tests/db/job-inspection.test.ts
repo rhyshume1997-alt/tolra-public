@@ -118,9 +118,19 @@ describe("a later edit withdraws the sign-off", () => {
     return id;
   }
 
-  it("a worksheet change sends it back to awaiting inspection", async () => {
+  it("a worksheet change by the workshop on a Complete job is refused (release 157): the pass stands", async () => {
     const id = await released();
+    const before = await job(id);
     const edit = await as.workshop.from("jobs").update({ improvement_comments: "Use a sharper insert next time" }).eq("id", id).select("stage, inspected_at, inspected_by, worksheet_version").single();
+    expect(edit.error).toMatchObject({ code: "42501" });
+    expect(await job(id)).toEqual(before);
+    expect(await job(id)).toMatchObject({ stage: "complete", worksheet_version: 0 });
+    expect(await records(id)).toHaveLength(1);
+  });
+
+  it("a worksheet change by the office sends it back to awaiting inspection", async () => {
+    const id = await released();
+    const edit = await as.office.from("jobs").update({ improvement_comments: "Use a sharper insert next time" }).eq("id", id).select("stage, inspected_at, inspected_by, worksheet_version").single();
     expect(edit.error).toBeNull();
     expect(edit.data).toMatchObject({ stage: "inspection", inspected_at: null, inspected_by: null, worksheet_version: 1 });
     expect(await job(id)).toMatchObject({ stage: "inspection", inspected_at: null });
