@@ -20,6 +20,8 @@ const ROUTE_ROLES: Array<[string, string[]]> = [
   ["/admin", ["admin"]],
   // Numbers (the history of invoiced, received and machine time): the owner's page, admin only.
   ["/numbers", ["admin"]],
+  // Reports (company dashboard and Reports, go-live feature 3): admin and office only. The prefix covers /reports/revenue too.
+  ["/reports", ["admin", "office"]],
   ["/invoices", ["admin", "office"]],
   ["/sales-orders", ["admin", "office"]],
   ["/settings", ["admin"]],

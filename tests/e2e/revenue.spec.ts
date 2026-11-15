@@ -344,7 +344,7 @@ test("switch on: office sees the report; workshop and viewer are refused and rea
     try {
       await signIn(other, w.tenants.alpha.users[role]);
       await other.goto("/reports/revenue");
-      await expect(other.getByRole("heading", { name: "Access Denied" }), role).toBeVisible();
+      await expect(other, role).toHaveURL(/\/dashboard(\?|$|\/)/);
       await expect(other.getByTestId("revenue-page"), role).toHaveCount(0);
       await other.waitForLoadState("networkidle");
       expect(reads, `${role}: no revenue reads`).toHaveLength(0);

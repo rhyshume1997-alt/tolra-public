@@ -72,6 +72,19 @@ describe("middleware: pages by role", () => {
     }
   });
 
+  it("/reports (and /reports/revenue): admin and office open it; workshop and viewer go to the dashboard", async () => {
+    for (const allowed of ["admin", "office"]) {
+      role = allowed;
+      expect(await visit("/reports"), allowed).toBeNull();
+      expect(await visit("/reports/revenue"), allowed).toBeNull();
+    }
+    for (const refused of ["workshop", "viewer"]) {
+      role = refused;
+      expect(await visit("/reports"), refused).toBe("/dashboard");
+      expect(await visit("/reports/revenue"), refused).toBe("/dashboard");
+    }
+  });
+
   it("the existing rules are unchanged (a sample)", async () => {
     role = "workshop";
     expect(await visit("/jobs")).toBeNull();
