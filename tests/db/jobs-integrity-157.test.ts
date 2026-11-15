@@ -211,6 +211,19 @@ describe("release 157: jobs integrity guard", () => {
     expect((await row(id)).started_by).toBe(X.workshop.id);
   });
 
+  it("1d. C1: re-setting an already-set start, with a different started_by to hand the start to another user, is refused for office, admin and workshop; the row is unchanged and the original starter is still recorded", async () => {
+    for (const who of people()) {
+      const id = await open();
+      const before = await row(id);
+      const handover = await run(who.id, ...set(id, "started_at = $2, started_by = $3", ["2026-10-01T09:00:00Z", X.admin.id]));
+      expect(refused(handover), `${who.role} start and starter`).toBe("42501/start_kept");
+      expect(refused(await run(who.id, ...set(id, "started_at = $2", [T1]))), `${who.role} start only`).toBe("42501/start_kept");
+      expect(await row(id), `${who.role} row`).toEqual(before);
+      expect((await row(id)).started_by).toBe(X.workshop.id);
+      expect(iso(String((await row(id)).started_at))).toBe(iso(T0));
+    }
+  });
+
   it("1c. C1: finish_job on an unstarted job fills both times; start_machine_run still starts an unstarted job", async () => {
     const id = await job({ started_at: null });
     const fin = await run(X.workshop.id, "select public.finish_job($1, null, null) as r", [id]);
@@ -268,6 +281,30 @@ describe("release 157: jobs integrity guard", () => {
     expect(allowed(await run(null, ...set(plain, "finished_at = $2", [T1])))).toBe("allowed");
   });
 
+  it("2c. C4: a plain finished_at update by the workshop on a job with no machine run is refused and changes nothing; finish_job then finishes the same job, and replaying the same client op id changes nothing", async () => {
+    const id = await open();
+    const before = await row(id);
+    expect((await q<{ n: string }>("select count(*) as n from machine_runs where job_id = $1", [id]))[0].n).toBe("0");
+    expect(refused(await run(X.workshop.id, ...set(id, "finished_at = $2, stage = 'inspection'", ["2026-10-03T09:00:00Z"])))).toBe("42501/finish_via_rpc");
+    expect(await row(id)).toEqual(before);
+    const op = randomUUID();
+    const first = await run(X.workshop.id, "select public.finish_job($1, $2, null) as r", [id, op]);
+    expect(allowed(first)).toBe("allowed");
+    const done = (first as { ok: true; rows: Row[] }).rows[0].r as { changed: boolean; finished_at: string };
+    expect(done.changed).toBe(true);
+    const finishedRow = await row(id);
+    expect(finishedRow.finished_at).not.toBeNull();
+    expect(iso(done.finished_at)).toBe(iso(String(finishedRow.finished_at)));
+    expect(finishedRow.stage).toBe("inspection");
+    expect(finishedRow.finished_by).toBe(X.workshop.id);
+    const replay = await run(X.workshop.id, "select public.finish_job($1, $2, null) as r", [id, op]);
+    expect(allowed(replay)).toBe("allowed");
+    const again = (replay as { ok: true; rows: Row[] }).rows[0].r as { changed: boolean; finished_at: string };
+    expect(again.changed).toBe(false);
+    expect(iso(again.finished_at)).toBe(iso(done.finished_at));
+    expect(await row(id)).toEqual(finishedRow);
+  });
+
   // ---- C3: customer and job number ----------------------------------------------------------------------------------------------
   it("3a. C3: a workshop-only user cannot change customer or job_no, alone or inside a wider update, on an open, finished or Complete job; admin and office can", async () => {
     for (const make of [open, finished, complete]) {
@@ -321,6 +358,8 @@ describe("release 157: jobs integrity guard", () => {
   it.each(["complete", "despatched", "invoiced"] as const)("4a. C2/P1 (%s job): a workshop worksheet edit, a stage move and a direct inspected_at update are refused; the pass, stage and version are unchanged", async (kind) => {
     const id = await completeAs(kind);
     const before = pick(await row(id), releaseState);
+    const wholeBefore = await row(id);
+    const recordsBefore = (await q<{ n: string }>("select count(*) as n from job_inspections where job_id = $1", [id]))[0].n;
     expect(before).toMatchObject({ stage: "complete" });
     expect(refused(await run(X.workshop.id, ...set(id, "improvement_comments = 'Use a sharper insert next time'")))).toBe("42501/inspection_kept");
     expect(refused(await run(X.workshop.id, ...set(id, "quantity_required = 12")))).toBe("42501/inspection_kept");
@@ -330,6 +369,8 @@ describe("release 157: jobs integrity guard", () => {
     expect((await run(X.workshop.id, ...set(id, "inspected_at = null")) as { ok: false; e: Err }).e.code).toBe("42501");
     expect((await run(X.workshop.id, ...set(id, "inspected_at = null, stage = 'inspection'")) as { ok: false; e: Err }).e.code).toBe("42501");
     expect(pick(await row(id), releaseState)).toEqual(before);
+    expect(await row(id)).toEqual(wholeBefore);
+    expect((await q<{ n: string }>("select count(*) as n from job_inspections where job_id = $1", [id]))[0].n).toBe(recordsBefore);
     expect((await row(id)).improvement_comments).toBeNull();
   });
 

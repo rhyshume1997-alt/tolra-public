@@ -9,7 +9,7 @@
  *     connections leave exactly one open run; an admin's override ends the displaced run (end_reason override), links the new run to it
  *     and is audited; the override flag means nothing to office or workshop;
  *   * pause frees the machine and keeps the job started; finish_job ends every open run and completes the booking (a plain
- *     finished_at update is refused for every browser role since 157); a replayed Finish is a no-op; a finished job can't be started on a machine;
+ *     update of a job holding a machine is refused); a replayed Finish is a no-op; a finished job can't be started on a machine;
  *   * release_machine: admin only, audited; a run open for 12 hours shows as stale;
  *   * idempotent replay by client_op_id (Start and Pause); client times clamped to now or refused when older than 30 days;
  *   * assign_job: admin and office assign active admin/office/workshop members only; workshop staff take a job themselves or hand their
@@ -270,20 +270,15 @@ describe("pause, finish and release", () => {
     expect(new Date(last.ended_at!).toISOString()).toBe(new Date(finishedAt).toISOString());
     expect((await adminClient().from("machine_bookings").select("status").eq("id", millRun.booking_id!).single()).data).toEqual({ status: "complete" });
     expect((await audit(job.id, "FINISH_ENDS_MACHINE_RUNS")).rows[0].metadata.ended).toHaveLength(1);
-    // Replayed Finish: the recorded time is kept and returned; nothing changes. finish_job also finishes a job holding no machine (a plain update no longer does, 157).
+    // Replayed Finish: the recorded time is kept and returned; nothing changes. finish_job also finishes a job holding no machine.
     const replay = await finish(as.workshop, job.id, new Date().toISOString(), randomUUID());
     expect(replay.data).toMatchObject({ changed: false, ended: [] });
     expect(new Date(replay.data.finished_at).toISOString()).toBe(finishedAt);
     expect(new Date((await jobRow(job.id)).finished_at).toISOString()).toBe(finishedAt);
     expect((await jobRow(job.id)).finished_at).not.toBeNull();
     const free = await newJob();
-    // 157 (C4): the plain update is refused for a job holding no machine too (the row is unchanged); finish_job is how it finishes, one job after
-    // another for the board's batch completion, offline with a client op id and a device time, and a replay of the same op applies once.
-    const freeBefore = await jobRow(free.id);
-    const freePlain = await as.workshop.from("jobs").update({ finished_at: finishedAt, stage: "inspection" }).eq("id", free.id).is("finished_at", null).select("id");
-    expect(freePlain.error?.code).toBe("42501");
-    expect(freePlain.error?.hint).toBe("finish_via_rpc");
-    expect(await jobRow(free.id)).toEqual(freeBefore);
+    // finish_job finishes a job holding no machine: one job after another for the board's batch completion, offline with a client op id and a
+    // device time, and a replay of the same op applies once.
     const deviceTime = new Date(Date.now() - 3_600_000).toISOString();
     const freeOp = randomUUID();
     const freeDone = await finish(as.workshop, free.id, deviceTime, freeOp);
