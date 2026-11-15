@@ -203,11 +203,13 @@ test("offline: a Start with a machine queues on the device and syncs through sta
   await page.unrouteAll({ behavior: "ignoreErrors" });
   await page.evaluate(() => window.dispatchEvent(new Event("online")));
   await expect(page.getByText("1 offline change needs attention")).toBeVisible();
-  // E applied: a run on the mill by Dave. C: started (the plain update), no run, the conflict says why.
+  // E applied: a run on the mill by Dave. C: no run, the conflict says why. The job is NOT started: the "machine in use" fallback writes started_at directly, and release 157
+  // refuses a direct first start (only Play, the bench Start and Finish set it), so C stays unstarted. The on-screen wording below ("was started while you were offline") is
+  // corrected by the separate Offline Synchronisation change.
   const { data: eRuns } = await admin.from("machine_runs").select("machine_id, operator_id, ended_at").eq("job_id", ids[jobE]);
   expect(eRuns).toEqual([{ machine_id: mill, operator_id: w.tenants.alpha.users.workshop.id, ended_at: null }]);
   expect((await admin.from("machine_runs").select("id").eq("job_id", ids[jobC])).data).toEqual([]);
-  expect((await admin.from("jobs").select("started_at").eq("id", ids[jobC]).single()).data!.started_at).not.toBeNull();
+  expect((await admin.from("jobs").select("started_at").eq("id", ids[jobC]).single()).data!.started_at).toBeNull();
   expect((await admin.from("machine_runs").select("job_id").eq("machine_id", lathe).is("ended_at", null)).data).toEqual([{ job_id: ids[jobD] }]);
   await page.getByText("1 offline change needs attention").click();
   await expect(page.getByText(`${jobC} was started while you were offline, but when it synced the machine was already in use: ${latheName} is in use by`)).toBeVisible();

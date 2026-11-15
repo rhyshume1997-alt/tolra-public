@@ -6,14 +6,17 @@
  * PostgREST would run it: its own transaction, role authenticated (or service_role) with the person's JWT claims, so the real triggers, RLS and
  * definer functions answer. Jobs are made by the database owner (an exempt path, as the importer is). Companies are synthetic (slug t-<run>-...)
  * and removed afterwards by destroySyntheticWorld. Release, rollback and re-release run inside transactions that are always rolled back.
- * Proves: C1 a recorded start (and who started it) is never changed or cleared by editing the job; C4 a finish time is set only by finish_job;
+ * Proves: C1 a recorded start (and who started it) is never changed or cleared by editing the job, and a job's FIRST start is set only inside start_machine_run (Play, the bench
+ * Start; re-created by 157 with 049's body plus two tolra.job_start statements) or finish_job, never by editing the job (hint start_via_rpc; the marker does not leak out of the
+ * function, and names one job only); C6 a browser INSERT of a job with a start or finish time is refused for every role while every real creating path (create_job, direct insert
+ * without them, convert_sales_order, import_company_data) still works and the service role and the owner are unaffected; C4 a finish time is set only by finish_job;
  * C3 a workshop-only user cannot change customer or job number; C2/P1 a workshop-only user cannot withdraw a passed inspection (Complete,
  * despatched or invoiced job) unless record_job_inspection, fail_job_inspection, rework or reopen names the job; admin and office are unchanged on a
  * job that has not gone out; C5 (PM ruling 15 Nov 2026) office and admin, like the workshop, cannot withdraw the passed inspection of a despatched or
  * invoiced job by editing it (hint released_pass_kept), including a person whose Invoices section is hidden (the guard is SECURITY DEFINER so its lookup
  * is not filtered by row-level security), with no document number in the message, company-scoped lookups, and the authorised corrections (failed
  * inspection, replacement rework) still working; drawing-revision behaviour; another company and the service role; release, repeat install, verify,
- * rollback, re-release.
+ * rollback (which also puts 049's start_machine_run back byte for byte), re-release.
  * Not proved here: PostgREST's own error mapping, the browser screens, hosted PostgreSQL 17.
  * Must not change: this file proves; it never edits a release, verify or rollback file to make itself pass.
  */
@@ -41,6 +44,12 @@ const MARKER = "post-144 marker 157 jobs_integrity_guard";
 const CRITERIA = "Drawing rev A: bore 25.00 +0.02/-0, length 60.00 +/-0.1";
 const T0 = "2026-10-01T08:00:00Z";
 const T1 = "2026-10-02T08:00:00Z";
+const SMR = "public.start_machine_run(uuid,uuid[],uuid,timestamptz,boolean,text,jsonb,boolean)";
+const SMR_049_MD5 = "2147348075e8d7d38639bd11c9da0c30";
+const SMR_157_MD5 = "e5a66b0a8b183e1f6a51927bca89953e";
+const MARK_ON = "PERFORM set_config('tolra.job_start', p_job::text, TRUE);";
+const MARK_OFF = "PERFORM set_config('tolra.job_start', '', TRUE);";
+const FIRST_START = "UPDATE public.jobs SET started_at = v_at WHERE id = p_job;";
 
 let pool: Pool;
 type Row = Record<string, unknown>;
@@ -114,6 +123,19 @@ const state157 = async (db: PoolClient) => (await db.query(`select
   (select oid from pg_proc where oid = to_regprocedure('public.jobs_integrity_guard()')) as fn,
   (select oid from pg_trigger where tgrelid = 'public.jobs'::regclass and tgname = 'jobs_zzz_integrity_guard') as trg`)).rows[0] as { fn: number | null; trg: number | null };
 
+/** start_machine_run as installed: its body (exact and whitespace-stripped md5), definer flag, settings, grants and argument list. */
+const smrState = async (db: PoolClient) => (await db.query(`select p.prosrc as src, md5(regexp_replace(p.prosrc, '\\s', '', 'g')) as sum, p.prosecdef as definer, p.proconfig::text as cfg, coalesce(p.proacl::text, '') as acl,
+  pg_get_function_arguments(p.oid) as args, (select count(*)::int from pg_proc x where x.pronamespace = 'public'::regnamespace and x.proname = 'start_machine_run') as n from pg_proc p where p.oid = to_regprocedure('${SMR}')`)).rows[0] as
+  { src: string; sum: string; definer: boolean; cfg: string; acl: string; args: string; n: number };
+/** 049's function body exactly as the migration CI installs it has it (between AS $$ and $$;), to prove the rollback restores it verbatim. */
+function body049() {
+  const sql = read("supabase/migrations/049_paused_machine_ack.sql");
+  const from = sql.indexOf("CREATE OR REPLACE FUNCTION public.start_machine_run(");
+  const open = sql.indexOf("AS $$\n", from) + "AS $$".length;
+  const close = sql.indexOf("\n$$;", open);
+  return sql.slice(open, close + 1);
+}
+
 // ---- Synthetic companies and jobs ------------------------------------------------------------------------------------------------
 async function makeCompany() {
   const o = randomUUID();
@@ -176,11 +198,13 @@ describe("release 157: jobs integrity guard", () => {
 
   it("0. the verify script says true on every row, release preflight says applied, and the trigger is the one the release names", async () => {
     const v = await verifyRows();
-    expect(v).toHaveLength(7);
+    expect(v).toHaveLength(8);
     expect(v.filter((r) => r.ok !== true).map((r) => r.check_name)).toEqual([]);
     const pre = await preflightRows();
     expect(pre.find((r) => r.check === MARKER)?.value).toBe("applied");
-    expect(pre.find((r) => r.check.startsWith("157 needs:"))?.value).toBe("0 / 157 / 157");
+    expect(pre.find((r) => r.check.startsWith("157 needs:"))?.value).toBe("0 / 157 / 157 / 157");
+    // One trigger for INSERT and UPDATE: BEFORE (2) + INSERT (4) + UPDATE (16) + ROW (1) = 23.
+    expect((await q<{ n: number }>("select tgtype::int as n from pg_trigger where tgrelid = 'public.jobs'::regclass and tgname = 'jobs_zzz_integrity_guard'"))).toEqual([{ n: 23 }]);
     // The BEFORE UPDATE row triggers on jobs fire in byte order of their names: 157's runs after 022, 034 and 083's and before 035's actor stamp.
     const order = (await q<{ n: string }>(`select tgname as n from pg_trigger where tgrelid = 'public.jobs'::regclass and not tgisinternal and tgtype & 19 = 19 order by tgname collate "C"`)).map((r) => r.n);
     const at = (n: string) => order.indexOf(n);
@@ -206,15 +230,28 @@ describe("release 157: jobs integrity guard", () => {
     }
   });
 
-  it("1b. C1: the first start (from empty) still works and records who started it; the same value written again is not a change; then it is kept", async () => {
-    const id = await job({ started_at: null });
-    expect(allowed(await run(X.workshop.id, ...set(id, "started_at = $2", [T0])))).toBe("allowed");
-    const r = await row(id);
-    expect(iso(String(r.started_at))).toBe(iso(T0));
-    expect(r.started_by).toBe(X.workshop.id);
+  it("1b. C1 (first start): a direct first start by editing the job is refused for workshop, office and admin (start_via_rpc) and leaves the row unchanged; the same value written again on a started job is not a change; then it is kept", async () => {
+    for (const who of people()) {
+      const id = await job({ started_at: null });
+      const before = await row(id);
+      expect(refused(await run(who.id, ...set(id, "started_at = $2", [T0]))), `${who.role} direct first start`).toBe("42501/start_via_rpc");
+      expect(refused(await run(who.id, ...set(id, "started_at = now()"))), `${who.role} direct first start now()`).toBe("42501/start_via_rpc");
+      expect(refused(await run(who.id, ...set(id, "started_at = $2, started_by = $3", ["2099-01-01T00:00:00Z", who.id]))), `${who.role} far-future start and starter`).toBe("42501/start_via_rpc");
+      expect(refused(await run(who.id, ...set(id, "started_at = $2, description = 'x', stage = 'machining'", ["2001-01-01T00:00:00Z"]))), `${who.role} back-dated start inside a wider update`).toBe("42501/start_via_rpc");
+      expect(await row(id), `${who.role} row`).toEqual(before);
+      expect((await row(id)).started_at).toBeNull();
+      expect((await row(id)).started_by).toBeNull();
+    }
+    // An update that leaves the empty start empty is untouched; a started job's same value written again is not a change; a different value is kept (start_kept).
+    const empty = await job({ started_at: null });
+    expect(allowed(await run(X.workshop.id, ...set(empty, "description = 'no start touched', started_at = null")))).toBe("allowed");
+    const id = await open();
     expect(allowed(await run(X.office.id, ...set(id, "started_at = started_at, description = 'same start'")))).toBe("allowed");
     expect(refused(await run(X.office.id, ...set(id, "started_at = $2", [T1])))).toBe("42501/start_kept");
     expect((await row(id)).started_by).toBe(X.workshop.id);
+    // The message is the Job Board wording.
+    const msg = await run(X.workshop.id, ...set(await job({ started_at: null }), "started_at = $2", [T0]));
+    expect(msg.ok ? "" : msg.e.message).toMatch(/^Job J157-[0-9a-f]+-\d+: start it from the Job Board \(Play or Start on the bench\); the start time can't be set by editing the job\.$/);
   });
 
   it("1d. C1: re-setting an already-set start, with a different started_by to hand the start to another user, is refused for office, admin and workshop; the row is unchanged and the original starter is still recorded", async () => {
@@ -249,6 +286,95 @@ describe("release 157: jobs integrity guard", () => {
     expect(s.started_at).not.toBeNull();
     expect(s.started_by).toBe(X.workshop.id);
     expect(s.finished_at).toBeNull();
+  });
+
+  it("1e. C1: start_machine_run still starts an unstarted job on a machine and as a bench Start, the job's start equals the run's start, a bounded past device time is honoured as before, and who started it is recorded", async () => {
+    const at = new Date(Date.now() - 3 * 3_600_000).toISOString();
+    const onMachine = await job({ started_at: null });
+    const m = await freshMachine();
+    const a = await run(X.workshop.id, "select public.start_machine_run($1, $2::uuid[], null, $3, false, null) as r", [onMachine, [m], at]);
+    expect(allowed(a)).toBe("allowed");
+    const aRuns = await q<{ started_at: Date; machine_id: string | null }>("select started_at, machine_id from machine_runs where job_id = $1", [onMachine]);
+    expect(aRuns).toHaveLength(1);
+    expect(aRuns[0].machine_id).toBe(m);
+    expect(isoOf(aRuns[0].started_at)).toBe(iso(at));
+    const aRow = await row(onMachine);
+    expect(isoOf(aRow.started_at)).toBe(iso(at));
+    expect(isoOf(aRow.started_at)).toBe(isoOf(aRuns[0].started_at));
+    expect(aRow.started_by).toBe(X.workshop.id);
+    expect(aRow.finished_at).toBeNull();
+
+    const bench = await job({ started_at: null });
+    const b = await run(X.office.id, "select public.start_machine_run($1, '{}'::uuid[], null, $2, false, null, null, true) as r", [bench, at]);
+    expect(allowed(b)).toBe("allowed");
+    const bRuns = await q<{ started_at: Date; machine_id: string | null }>("select started_at, machine_id from machine_runs where job_id = $1", [bench]);
+    expect(bRuns).toHaveLength(1);
+    expect(bRuns[0].machine_id).toBeNull();
+    const bRow = await row(bench);
+    expect(isoOf(bRow.started_at)).toBe(isoOf(bRuns[0].started_at));
+    expect(isoOf(bRow.started_at)).toBe(iso(at));
+    expect(bRow.started_by).toBe(X.office.id);
+
+    // No time given: the server's time. A 2001 time is refused and a 2099 time is clamped, as before (start_machine_run's own checks, untouched).
+    const now = await job({ started_at: null });
+    expect(allowed(await run(X.admin.id, "select public.start_machine_run($1, $2::uuid[], null, null, false, null) as r", [now, [await freshMachine()]]))).toBe("allowed");
+    expect((await row(now)).started_at).not.toBeNull();
+    const ancient = await job({ started_at: null });
+    const old = await run(X.workshop.id, "select public.start_machine_run($1, $2::uuid[], null, '2001-01-01T00:00:00Z', false, null) as r", [ancient, [await freshMachine()]]);
+    expect(old.ok).toBe(false);
+    expect((await row(ancient)).started_at).toBeNull();
+    const future = await job({ started_at: null });
+    expect(allowed(await run(X.workshop.id, "select public.start_machine_run($1, $2::uuid[], null, '2099-01-01T00:00:00Z', false, null) as r", [future, [await freshMachine()]]))).toBe("allowed");
+    expect(new Date(String((await row(future)).started_at)).getTime()).toBeLessThanOrEqual(Date.now() + 10_000);
+    // A job that is already started keeps its start when start_machine_run is called again (it only fills an empty time).
+    const again = await run(X.workshop.id, "select public.start_machine_run($1, $2::uuid[], null, null, false, null) as r", [onMachine, [await freshMachine()]]);
+    expect(allowed(again)).toBe("allowed");
+    expect(isoOf((await row(onMachine)).started_at)).toBe(iso(at));
+  });
+
+  it("1f. C1: the start marker does not leak: after start_machine_run returns (same transaction) a direct first start on ANOTHER job and on a third job are refused; the marker is reset, and it names one job only", async () => {
+    await rolledBack(async (db) => {
+      const a = await job({ started_at: null });
+      const b = await job({ started_at: null });
+      const c = await job({ started_at: null });
+      const started = await tryIn(db, X.workshop.id, "select public.start_machine_run($1, $2::uuid[], null, null, false, null) as r", [a, [await freshMachine()]]);
+      expect(allowed(started)).toBe("allowed");
+      expect((await db.query("select started_at is not null as s from jobs where id = $1", [a])).rows[0].s).toBe(true);
+      // The function put the marker back to empty after its own update.
+      expect((await db.query("select current_setting('tolra.job_start', true) as v")).rows[0].v).toBe("");
+      for (const who of people()) {
+        expect(refused(await tryIn(db, who.id, "update jobs set started_at = now() where id = $1", [b])), `${who.role} job B`).toBe("42501/start_via_rpc");
+        expect(refused(await tryIn(db, who.id, "update jobs set started_at = $2 where id = $1", [c, T0])), `${who.role} job C`).toBe("42501/start_via_rpc");
+      }
+      expect((await db.query("select count(*)::int as n from jobs where id in ($1, $2) and started_at is not null", [b, c])).rows[0].n).toBe(0);
+      // The marker names ONE job: while it names B, a direct start on C is still refused and one on B is what the function itself would do.
+      await db.query("select set_config('tolra.job_start', $1, true)", [b]);
+      expect(refused(await tryIn(db, X.workshop.id, "update jobs set started_at = $2 where id = $1", [c, T0]))).toBe("42501/start_via_rpc");
+      expect(allowed(await tryIn(db, X.workshop.id, "update jobs set started_at = $2 where id = $1", [b, T0]))).toBe("allowed");
+      for (const value of ["", "off", "on"]) {
+        await db.query("select set_config('tolra.job_start', $1, true)", [value]);
+        expect(refused(await tryIn(db, X.workshop.id, "update jobs set started_at = $2 where id = $1", [c, T0])), `marker = ${value || "(empty)"}`).toBe("42501/start_via_rpc");
+      }
+    });
+    // A new statement (its own transaction, as PostgREST runs it) after a start_machine_run call: still refused.
+    const a2 = await job({ started_at: null });
+    const b2 = await job({ started_at: null });
+    expect(allowed(await run(X.workshop.id, "select public.start_machine_run($1, $2::uuid[], null, null, false, null) as r", [a2, [await freshMachine()]]))).toBe("allowed");
+    expect(refused(await run(X.workshop.id, ...set(b2, "started_at = now()")))).toBe("42501/start_via_rpc");
+    expect((await row(b2)).started_at).toBeNull();
+  });
+
+  it("1g. C1: the service role and the database owner (the importer's paths) can still set a first start directly; finish_job on an unstarted job still sets both", async () => {
+    const svc = await job({ started_at: null });
+    expect(allowed(await run("service", ...set(svc, "started_at = $2", ["2026-09-01T08:00:00Z"])))).toBe("allowed");
+    expect(isoOf((await row(svc)).started_at)).toBe(iso("2026-09-01T08:00:00Z"));
+    const own = await job({ started_at: null });
+    expect(allowed(await run(null, ...set(own, "started_at = $2", ["2026-09-02T08:00:00Z"])))).toBe("allowed");
+    const fin = await job({ started_at: null });
+    expect(allowed(await run(X.office.id, "select public.finish_job($1, null, null) as r", [fin]))).toBe("allowed");
+    const r = await row(fin);
+    expect(r.started_at).not.toBeNull();
+    expect(r.finished_at).not.toBeNull();
   });
 
   // ---- C4: a finish is set only by finish_job -----------------------------------------------------------------------------------
@@ -770,6 +896,82 @@ describe("release 157: jobs integrity guard", () => {
     expect(await row(own)).toMatchObject({ started_at: null, customer: "Owner Co", stage: "inspection" });
   });
 
+  // ---- C6: INSERT ---------------------------------------------------------------------------------------------------------------
+  // Paths that create a job while the request role is authenticated (migrations 033/034/043/058/068/080/135 convert_sales_order, 042 create_job, 076/079/085 import_company_data_run
+  // through import_company_data and the SliQ route, direct insert by the owner of the row): none writes started_at or finished_at, so no flag exempts an INSERT. rework (037)
+  // creates job_rework rows, not jobs. import_legacy_tenant (supabase/import) runs as the database owner, which the exemption lets through (the owner paths are tested below).
+  const insertJob = (org: string, no: string, extra = "", values: unknown[] = []): [string, unknown[]] => [
+    `insert into jobs (organization_id, job_no, customer, stage${extra ? ", " + extra.split(" = ")[0] : ""}) values ($1, $2, 'Insert Co', 'machining'${extra ? ", $3" : ""})`, [org, no, ...values]];
+  it("10a. C6: a direct browser INSERT of a job with started_at, with finished_at or with both is refused for workshop, office and admin (any value), and creates no row", async () => {
+    for (const who of people()) {
+      for (const [col, value, hint] of [["started_at", T0, "start_via_rpc"], ["started_at", "2099-01-01T00:00:00Z", "start_via_rpc"], ["finished_at", T1, "finish_via_rpc"], ["finished_at", "2020-01-01T00:00:00Z", "finish_via_rpc"]] as const) {
+        const no = `J157-${runId}-ins-${++seq}`;
+        expect(refused(await run(who.id, ...insertJob(X.o, no, `${col} = x`, [value]))), `${who.role} ${col} ${value}`).toBe(`42501/${hint}`);
+        expect(await q("select id from jobs where job_no = $1", [no])).toEqual([]);
+      }
+      const both = `J157-${runId}-ins-${++seq}`;
+      expect(refused(await run(who.id, `insert into jobs (organization_id, job_no, customer, stage, started_at, finished_at) values ($1, $2, 'Insert Co', 'machining', $3, $4)`, [X.o, both, T0, T1]))).toBe("42501/start_via_rpc");
+      expect(await q("select id from jobs where job_no = $1", [both])).toEqual([]);
+      // Another company's id does not change that (the trigger answers before row security does).
+      expect(refused(await run(who.id, ...insertJob(Y.o, `J157-${runId}-ins-${++seq}`, "started_at = x", [T0])))).toBe("42501/start_via_rpc");
+    }
+    // The message is the Job Board wording.
+    const no = `J157-${runId}-ins-${++seq}`;
+    const m1 = await run(X.admin.id, ...insertJob(X.o, no, "started_at = x", [T0]));
+    expect(m1.ok ? "" : m1.e.message).toBe(`Job ${no}: a job can't be created with a start time; start it from the Job Board (Play or Start on the bench).`);
+    const m2 = await run(X.admin.id, ...insertJob(X.o, no, "finished_at = x", [T0]));
+    expect(m2.ok ? "" : m2.e.message).toBe(`Job ${no}: a job can't be created with a finish time; finish it from the Job Board (Finish).`);
+  });
+
+  it("10b. C6: every real creating path still works: create_job (admin, office), a direct insert without the times (office, admin), convert_sales_order, import_company_data; the rows come out with no start and no finish", async () => {
+    // create_job: the path the New job screen uses.
+    for (const who of [X.admin, X.office]) {
+      const made = await run(who.id, "select public.create_job($1, 'Made by create_job', false, null, null, '[]'::jsonb, false, '[]'::jsonb, null) as r", [`Create Job Co ${who.role}`]);
+      expect(allowed(made)).toBe("allowed");
+      const r = (made as { ok: true; rows: Row[] }).rows[0].r as { job_id?: string; id?: string };
+      const jid = (r.job_id ?? r.id) as string;
+      expect(jid).toBeTruthy();
+      expect(pick(await row(jid), ["started_at", "finished_at"])).toEqual({ started_at: null, finished_at: null });
+    }
+    // A direct insert without the times (a PostgREST insert from the browser) is not touched by the guard.
+    for (const who of [X.admin, X.office]) {
+      const no = `J157-${runId}-ins-${++seq}`;
+      expect(allowed(await run(who.id, ...insertJob(X.o, no)))).toBe("allowed");
+      expect(pick((await q("select * from jobs where job_no = $1", [no]))[0], ["started_at", "finished_at"])).toEqual({ started_at: null, finished_at: null });
+    }
+    // convert_sales_order (135).
+    const so = (await q<{ id: string }>("insert into sales_orders (organization_id, so_number, customer_po, customer, total_value, status, order_date) values ($1, $2, $2, 'Convert Co', 480, 'open', '2026-10-09') returning id", [X.o, `PO-157-${runId}-${++seq}`]))[0].id;
+    const conv = await run(X.office.id, "select public.convert_sales_order($1) as r", [so]);
+    expect(allowed(conv)).toBe("allowed");
+    const cj = ((conv as { ok: true; rows: Row[] }).rows[0].r as { job_id: string; created: boolean });
+    expect(cj.created).toBe(true);
+    expect(pick(await row(cj.job_id), ["started_at", "finished_at"])).toEqual({ started_at: null, finished_at: null });
+    // The data import (076/079/085; the SliQ route calls the same function), which sets quoteflow.data_import for its own statements.
+    const impNo = `J-IMP-157-${runId}-${++seq}`;
+    const imp = await run(X.admin.id, "select public.import_company_data($1::jsonb, false, $2) as r", [JSON.stringify({ jobs: [{ job_no: impNo, customer: "Import Co" }] }), randomUUID()]);
+    expect(allowed(imp)).toBe("allowed");
+    expect((imp as { ok: true; rows: Row[] }).rows[0].r).toMatchObject({ ok: true });
+    expect(pick((await q("select * from jobs where job_no = $1 and organization_id = $2", [impNo, X.o]))[0], ["started_at", "finished_at"])).toEqual({ started_at: null, finished_at: null });
+    // Replacement rework (037 open_replacement_rework, finish_job_rework) writes job_rework rows and updates the job; it inserts no job. Tests 4g and 4n run it with 157 installed.
+  });
+
+  it("10c. C6: the service role and the database owner still INSERT jobs with start and finish times (the legacy importer's and the platform's paths); the guard changes no row it lets through", async () => {
+    const svc = `J157-${runId}-ins-${++seq}`;
+    expect(allowed(await run("service", `insert into jobs (organization_id, job_no, customer, stage, started_at, finished_at) values ($1, $2, 'Service Co', 'complete', $3, $4)`, [X.o, svc, T0, T1]))).toBe("allowed");
+    expect(pick((await q("select * from jobs where job_no = $1", [svc]))[0], ["started_at", "finished_at"])).toEqual({ started_at: iso(T0), finished_at: iso(T1) });
+    const own = `J157-${runId}-ins-${++seq}`;
+    expect(allowed(await run(null, `insert into jobs (organization_id, job_no, customer, stage, started_at, finished_at) values ($1, $2, 'Owner Co', 'complete', $3, $4)`, [X.o, own, T0, T1]))).toBe("allowed");
+    expect(pick((await q("select * from jobs where job_no = $1", [own]))[0], ["started_at", "finished_at"])).toEqual({ started_at: iso(T0), finished_at: iso(T1) });
+    // No session flag lets a browser INSERT carry a time: the import's and the finish's own flags do not (they are for the statements those functions run).
+    await rolledBack(async (db) => {
+      for (const [flag, value] of [["quoteflow.data_import", X.o], ["tolra.finish_job", "on"], ["tolra.job_start", ""]] as const) {
+        await db.query("select set_config($1, $2, true)", [flag, value]);
+        const no = `J157-${runId}-ins-${++seq}`;
+        expect(refused(await tryIn(db, X.admin.id, ...insertJob(X.o, no, "started_at = x", [T0]))), `${flag}`).toBe("42501/start_via_rpc");
+      }
+    });
+  });
+
   // ---- Release mechanics --------------------------------------------------------------------------------------------------------
   it("7. release twice = once (nothing changes); rollback twice = once and the four gaps are open again; re-release closes them; verify all true each time", async () => {
     await rolledBack(async (db) => {
@@ -780,18 +982,32 @@ describe("release 157: jobs integrity guard", () => {
       expect(await state157(db)).toEqual(installed);
       expect((await verifyRows(db)).filter((r) => r.ok !== true).map((r) => r.check_name)).toEqual([]);
       expect((await preflightRows(db)).find((r) => r.check === MARKER)?.value).toBe("applied");
+      const smrInstalled = await smrState(db);
+      expect(smrInstalled.sum).toBe(SMR_157_MD5);
 
       await db.query(body(ROLLBACK));
       await db.query(body(ROLLBACK));
       expect(await state157(db)).toEqual({ fn: null, trg: null });
+      // 049's start_machine_run is back byte for byte, with the same definer flag, settings, grants and arguments as with 157 in place.
+      const smrBack = await smrState(db);
+      expect(smrBack.src).toBe(body049());
+      expect(smrBack.sum).toBe(SMR_049_MD5);
+      expect({ ...smrBack, src: "", sum: "" }).toEqual({ ...smrInstalled, src: "", sum: "" });
       expect((await preflightRows(db)).find((r) => r.check === MARKER)?.value).toBe("not applied");
-      expect((await preflightRows(db)).find((r) => r.check.startsWith("157 needs:"))?.value).toBe("0 / absent / absent");
+      expect((await preflightRows(db)).find((r) => r.check.startsWith("157 needs:"))?.value).toBe("0 / absent / absent / 049");
       // With it gone the old behaviour is back: the start can be replaced, the finish set by editing, the pass withdrawn by the workshop, the customer changed.
       const id = await db.query("insert into jobs (organization_id, job_no, customer, stage, started_at, finished_at, inspected_at, inspected_by, quantity_required) values ($1, $2, 'Gone Co', 'complete', $3, $4, $4, 'Inspector', 10) returning id",
         [X.o, `J157-${runId}-rb-${++seq}`, T0, T1]).then((r) => r.rows[0].id as string);
       expect(allowed(await tryIn(db, X.workshop.id, "update jobs set started_at = $2 where id = $1", [id, T1]))).toBe("allowed");
       expect(allowed(await tryIn(db, X.workshop.id, "update jobs set customer = 'Else' where id = $1", [id]))).toBe("allowed");
       expect(allowed(await tryIn(db, X.workshop.id, "update jobs set improvement_comments = 'x' where id = $1", [id]))).toBe("allowed");
+      // ... a direct first start by editing the job, and a job created with a start or finish time by a browser, work as before 157; start_machine_run still starts a job.
+      const unstarted = await db.query("insert into jobs (organization_id, job_no, customer, stage, quantity_required) values ($1, $2, 'Gone Co', 'machining', 10) returning id", [X.o, `J157-${runId}-rb-${++seq}`]).then((r) => r.rows[0].id as string);
+      expect(allowed(await tryIn(db, X.workshop.id, "update jobs set started_at = $2 where id = $1", [unstarted, T0]))).toBe("allowed");
+      expect(allowed(await tryIn(db, X.admin.id, "insert into jobs (organization_id, job_no, customer, stage, started_at, finished_at) values ($1, $2, 'Gone Co', 'inspection', $3, $4)", [X.o, `J157-${runId}-rb-${++seq}`, T0, T1]))).toBe("allowed");
+      const viaRpc = await db.query("insert into jobs (organization_id, job_no, customer, stage, quantity_required) values ($1, $2, 'Gone Co', 'machining', 10) returning id", [X.o, `J157-${runId}-rb-${++seq}`]).then((r) => r.rows[0].id as string);
+      expect(allowed(await tryIn(db, X.workshop.id, "select public.start_machine_run($1, '{}'::uuid[], null, null, false, null, null, true) as r", [viaRpc]))).toBe("allowed");
+      expect((await db.query("select started_at is not null as s from jobs where id = $1", [viaRpc])).rows[0].s).toBe(true);
       expect(await db.query("select stage, inspected_at from jobs where id = $1", [id]).then((r) => r.rows[0])).toMatchObject({ stage: "inspection", inspected_at: null });
       const openJob = await db.query("insert into jobs (organization_id, job_no, customer, stage, quantity_required) values ($1, $2, 'Gone Co', 'machining', 10) returning id", [X.o, `J157-${runId}-rb-${++seq}`]).then((r) => r.rows[0].id as string);
       expect(allowed(await tryIn(db, X.workshop.id, "update jobs set finished_at = $2 where id = $1", [openJob, T1]))).toBe("allowed");
@@ -801,11 +1017,16 @@ describe("release 157: jobs integrity guard", () => {
       expect(again.fn).not.toBeNull();
       expect(again.trg).not.toBeNull();
       const v = await verifyRows(db);
-      expect(v).toHaveLength(7);
+      expect(v).toHaveLength(8);
       expect(v.filter((r) => r.ok !== true).map((r) => r.check_name)).toEqual([]);
       expect((await preflightRows(db)).find((r) => r.check === MARKER)?.value).toBe("applied");
+      expect((await smrState(db)).sum).toBe(SMR_157_MD5);
       const j2 = await db.query("insert into jobs (organization_id, job_no, customer, stage, started_at, quantity_required) values ($1, $2, 'Back Co', 'machining', $3, 10) returning id", [X.o, `J157-${runId}-rb-${++seq}`, T0]).then((r) => r.rows[0].id as string);
       expect(refused(await tryIn(db, X.workshop.id, "update jobs set started_at = $2 where id = $1", [j2, T1]))).toBe("42501/start_kept");
+      const j3 = await db.query("insert into jobs (organization_id, job_no, customer, stage, quantity_required) values ($1, $2, 'Back Co', 'machining', 10) returning id", [X.o, `J157-${runId}-rb-${++seq}`]).then((r) => r.rows[0].id as string);
+      expect(refused(await tryIn(db, X.workshop.id, "update jobs set started_at = $2 where id = $1", [j3, T1]))).toBe("42501/start_via_rpc");
+      expect(refused(await tryIn(db, X.admin.id, "insert into jobs (organization_id, job_no, customer, stage, started_at) values ($1, $2, 'Back Co', 'machining', $3)", [X.o, `J157-${runId}-rb-${++seq}`, T0]))).toBe("42501/start_via_rpc");
+      expect(allowed(await tryIn(db, X.workshop.id, "select public.start_machine_run($1, '{}'::uuid[], null, null, false, null, null, true) as r", [j3]))).toBe("allowed");
     });
   });
 
@@ -837,7 +1058,7 @@ describe("release 157: jobs integrity guard", () => {
       await db.query(body(ROLLBACK));
       await db.query("drop trigger ad_finish_kept on public.jobs");
       const pre = (await preflightRows(db)).find((r) => r.check.startsWith("157 needs:"))?.value;
-      expect(pre).toBe("1 / absent / absent");
+      expect(pre).toBe("1 / absent / absent / 049");
       await db.query("savepoint s");
       const e = await db.query(body(RELEASE)).then(() => null, (x: Err) => x);
       expect(e?.hint).toBe("jobs_integrity_prerequisite");
@@ -856,18 +1077,72 @@ describe("release 157: jobs integrity guard", () => {
     });
   });
 
+  it("8b. the release refuses, changing nothing, when start_machine_run is neither 049's nor 157's; the rollback refuses the same body while 157 is installed", async () => {
+    const foreign = `create or replace function public.start_machine_run(p_job uuid, p_machines uuid[], p_client_op_id uuid, p_started_at timestamptz, p_override boolean, p_reason text, p_paused_ack jsonb default null, p_bench boolean default null)
+      returns jsonb language plpgsql security definer set search_path = pg_catalog, public as $$ begin return '{}'::jsonb; end $$`;
+    await rolledBack(async (db) => {
+      await db.query(body(ROLLBACK));
+      await db.query(foreign);
+      await db.query("savepoint s");
+      const e = await db.query(body(RELEASE)).then(() => null, (x: Err) => x);
+      expect(e?.hint).toBe("jobs_integrity_prerequisite");
+      expect(e?.message).toContain("start_machine_run is neither 049's nor 157's");
+      await db.query("rollback to savepoint s");
+      expect(await state157(db)).toEqual({ fn: null, trg: null });
+    });
+    await rolledBack(async (db) => {
+      await db.query(foreign);
+      await db.query("savepoint s");
+      const f = await db.query(body(ROLLBACK)).then(() => null, (x: Err) => x);
+      expect(f?.message).toContain("157 rollback: public.start_machine_run is neither 157's nor 049's");
+      await db.query("rollback to savepoint s");
+      expect((await state157(db)).trg).not.toBeNull();
+    });
+    // The release also refuses when a trigger of the old shape (BEFORE UPDATE only, tgtype 19) holds the name.
+    await rolledBack(async (db) => {
+      await db.query(body(ROLLBACK));
+      await db.query("create function public.jobs_integrity_guard() returns trigger language plpgsql as $$ begin return new; end $$");
+      await db.query("create trigger jobs_zzz_integrity_guard before update on public.jobs for each row execute function public.jobs_integrity_guard()");
+      await db.query("savepoint s");
+      const e = await db.query(body(RELEASE)).then(() => null, (x: Err) => x);
+      expect(e?.hint).toBe("jobs_integrity_name_taken");
+      await db.query("rollback to savepoint s");
+    });
+  });
+
   it("9. release and rollback change no other function, trigger, policy or grant: the other triggers, policies and function bodies are identical before and after", async () => {
     const fingerprint = async (db: PoolClient) => (await db.query(`select
       (select md5(coalesce(string_agg(t.tgname || pg_get_triggerdef(t.oid), E'\\n' order by t.tgname), '')) from pg_trigger t where t.tgrelid = 'public.jobs'::regclass and not t.tgisinternal and t.tgname <> 'jobs_zzz_integrity_guard') as triggers,
       (select md5(coalesce(string_agg(p.polname || p.polcmd::text || coalesce(pg_get_expr(p.polqual, p.polrelid), '') || coalesce(pg_get_expr(p.polwithcheck, p.polrelid), ''), E'\\n' order by p.polname), '')) from pg_policy p where p.polrelid = 'public.jobs'::regclass) as policies,
-      (select md5(coalesce(string_agg(p.oid::regprocedure::text || md5(p.prosrc) || coalesce(p.proacl::text, ''), E'\\n' order by p.oid::regprocedure::text), '')) from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname <> 'jobs_integrity_guard') as functions,
+      (select md5(coalesce(string_agg(p.oid::regprocedure::text || md5(p.prosrc) || coalesce(p.proacl::text, ''), E'\\n' order by p.oid::regprocedure::text), '')) from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname not in ('jobs_integrity_guard', 'start_machine_run')) as functions,
       (select coalesce(relacl::text, '') from pg_class where oid = 'public.jobs'::regclass) as grants`)).rows[0];
     await rolledBack(async (db) => {
       const start = await fingerprint(db);
+      const installed = await smrState(db);
       await db.query(body(ROLLBACK));
       expect(await fingerprint(db)).toEqual(start);
+      const original = await smrState(db);
       await db.query(body(RELEASE));
       expect(await fingerprint(db)).toEqual(start);
+      const after = await smrState(db);
+      // Exactly jobs_integrity_guard added and start_machine_run changed by the two marker lines: nothing else in public differs (above); start_machine_run keeps its
+      // signature, definer flag, settings and grants; its body is 049's (the migration's text) plus the two statements around its own update of the job's start time.
+      expect(original.src).toBe(body049());
+      expect(original.sum).toBe(SMR_049_MD5);
+      expect(after.sum).toBe(SMR_157_MD5);
+      expect(after.src).toBe(installed.src);
+      expect({ ...after, src: "", sum: "" }).toEqual({ ...original, src: "", sum: "" });
+      expect(after.n).toBe(1);
+      const was = original.src.split("\n");
+      const now = after.src.split("\n");
+      expect(now).toHaveLength(was.length + 2);
+      const at = now.findIndex((l) => l.trim() === FIRST_START);
+      expect(at).toBeGreaterThan(0);
+      expect(now[at - 1].trim()).toBe(MARK_ON);
+      expect(now[at + 1].trim()).toBe(MARK_OFF);
+      expect(now.filter((_, i) => i !== at - 1 && i !== at + 1)).toEqual(was);
+      expect(now.filter((l) => l.includes("tolra.job_start"))).toHaveLength(2);
+      expect(was.filter((l) => l.includes("tolra.job_start"))).toHaveLength(0);
     });
   });
 });
