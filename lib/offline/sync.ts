@@ -16,7 +16,7 @@ import { CONFIRMED_USER_REUSE_MS, confirmedUser } from "@/lib/confirmed-user";
 import { authSessionGone, sessionEndedError } from "@/lib/session-end";
 import { isNetworkError, scopeKey } from "@/lib/offline/store";
 import { supabase } from "@/lib/supabase";
-import { START_MACHINE_HELD, START_LEGACY_HELD, recoverStartEntry, type HeldEntry, type StartRecoveryChoice, type StartRecoveryResult } from "@/lib/offline/outbox";
+import { START_MACHINE_HELD, START_LEGACY_HELD, START_UNCONFIRMED, recoverStartEntry, type HeldEntry, type StartRecoveryChoice, type StartRecoveryResult } from "@/lib/offline/outbox";
 import type { Scope } from "@/lib/offline/store";
 import { CLOCK_IN_NETWORK_LOCKED, reportClockInRefusal } from "@/lib/clock-in-lock";
 import { reportHeldTimeRejections, reportTimeSyncRejection } from "@/lib/time-sync-rejections";
@@ -101,7 +101,7 @@ export async function executeStartRunOp(op: StartOp, client: Rpc, fallback?: () 
   if (!error) {
     if (!fallback && !bench) {
       const answer = data as RunStartAnswer | null;
-      if (!Array.isArray(answer?.runs) || !op.machines?.every((id) => answer.runs!.some((run) => run.machine_id === id))) return { status: "conflict", code: START_MACHINE_HELD, opened: false, reason: `${op.jobNo}: the server did not confirm this Start. Retry the same machine to verify it, or choose a recovery action.` };
+      if (!Array.isArray(answer?.runs) || !op.machines?.every((id) => answer.runs!.some((run) => run.machine_id === id))) return { status: "conflict", code: START_UNCONFIRMED, opened: false, reason: `${op.jobNo}: the server did not confirm this Start. Retry the same machine to verify it, or choose a recovery action.` };
       const timed = timeConflictOutcome(op.jobNo, "Start", data);
       return timed.status === "conflict" ? { ...timed, opened: true } : timed;
     }

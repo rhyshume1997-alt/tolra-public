@@ -159,8 +159,14 @@ export type HeldEntry = OutboxEntry & { reason: string; server?: unknown; heldAt
   recoveryAttempt?: { choice: "retry" | "bench"; op: StartOp | RunStartOp; uncertain: boolean } };
 export const START_MACHINE_HELD = "start_machine_unavailable";
 export const START_LEGACY_HELD = "start_legacy_needs_choice";
+/** A success response that did not confirm the requested Start; uncertainty is data, never inferred from display text. */
+export const START_UNCONFIRMED = "start_unconfirmed" as const;
+export type StartUncertaintyCode = typeof START_UNCONFIRMED | "runs_missing";
+const START_UNCERTAINTY_CODES: readonly StartUncertaintyCode[] = [START_UNCONFIRMED, "runs_missing"];
+export const isUncertainStartOutcome = (outcome: ReplayOutcome): boolean => outcome.status === "network" ||
+  (outcome.status === "conflict" && START_UNCERTAINTY_CODES.some((code) => code === outcome.code));
 export const isRecoverableStart = (entry: Pick<HeldEntry, "op" | "code">) =>
-  (entry.op.kind === "start" || entry.op.kind === "run_start") && (entry.code === START_MACHINE_HELD || entry.code === START_LEGACY_HELD);
+  (entry.op.kind === "start" || entry.op.kind === "run_start") && (entry.code === START_MACHINE_HELD || entry.code === START_LEGACY_HELD || entry.code === START_UNCONFIRMED);
 export type StartRecoveryChoice = { kind: "retry" | "bench" } | { kind: "discard"; confirmed: boolean };
 export type StartRecoveryResult = { status: "applied" | "discarded" | "held" | "missing" | "busy" | "confirmation_required"; reason?: string };
 
@@ -204,7 +210,7 @@ export async function recoverStartEntry(scope: Scope, requested: HeldEntry, choi
       if (!current()) return { status: "held", reason: "The company or session changed. The Start is kept for verification." };
       if (outcome.status !== "applied" && !(outcome.status === "conflict" && outcome.opened === true)) {
         const reason = outcome.status === "network" ? "No confirmed response. The Start is kept; retry this same choice." : outcome.reason;
-        const uncertain = outcome.status === "network" || (outcome.status === "conflict" && (outcome.code === "runs_missing" || (outcome.code === START_MACHINE_HELD && outcome.reason.includes("did not confirm"))));
+        const uncertain = isUncertainStartOutcome(outcome);
         await store.transact([conflicts, rejected], (values) => ({ set: Object.fromEntries([conflicts, rejected].map((list) => [list, listOf<HeldEntry>(values, list).map((item) => item.id === held.id ? { ...item, reason, recoveryAttempt: { ...savedAttempt, uncertain } } : item)])) }));
         return { status: "held", reason };
       }
@@ -499,7 +505,8 @@ async function drain(scope: Scope, execute: Executor, now: () => Date) {
       } else if (held) {
         const entry: OutboxEntry = { id: next.id, queuedAt: next.queuedAt, op: next.op };
         const code = settled.status === "rejected" || settled.status === "conflict" ? settled.code : undefined;
-        set[held] = [...listOf<HeldEntry>(values, held), { ...entry, reason: settled.reason, server: settled.status === "conflict" ? settled.server : undefined, heldAt: now().toISOString(), ...(code ? { code } : {}) }];
+        set[held] = [...listOf<HeldEntry>(values, held), { ...entry, reason: settled.reason, server: settled.status === "conflict" ? settled.server : undefined, heldAt: now().toISOString(), ...(code ? { code } : {}),
+          ...(code === START_UNCONFIRMED && (sent.kind === "start" || sent.kind === "run_start") ? { recoveryAttempt: { choice: "retry" as const, op: sent, uncertain: true } } : {}) }];
       }
       let dropped = 0;
       if (startOpenedNothing && (sent.kind === "run_start" || sent.kind === "start")) {

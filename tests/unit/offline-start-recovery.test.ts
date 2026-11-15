@@ -1,11 +1,14 @@
 /** Offline Synchronisation boundary: real scoped outbox/recovery and replay with an idempotent RPC model; no SQL or client fallback. */
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { memoryBackend, scopeKey, setOfflineBackend } from "@/lib/offline/store";
-import { conflictEntries, enqueue, pendingEntries, recoverStartEntry, rejectedEntries, replayOutbox, START_LEGACY_HELD, START_MACHINE_HELD, type HeldEntry, type OutboxOp, type ReplayOutcome, type RunStartOp } from "@/lib/offline/outbox";
+import { conflictEntries, enqueue, pendingEntries, recoverStartEntry, rejectedEntries, replayOutbox, START_LEGACY_HELD, START_MACHINE_HELD, START_UNCONFIRMED, isUncertainStartOutcome, type HeldEntry, type OutboxOp, type ReplayOutcome, type RunStartOp } from "@/lib/offline/outbox";
 import { executeOutboxOp, executeRunStartOp, executeStartRunOp, recoverStart } from "@/lib/offline/sync";
-import { setOfflineScope } from "@/lib/offline/scope";
+import { setOfflineScope, refreshCounts } from "@/lib/offline/scope";
+import { OfflineBanner } from "@/components/offline-banner";
 
 const h = vi.hoisted(() => ({
   mode: "busy" as "busy" | "ok" | "lost" | "denied" | "empty",
@@ -53,6 +56,15 @@ async function heldWithPauses() {
 }
 
 describe("live Start refusal", () => {
+  it("uses a typed unconfirmed code for an incomplete keyed legacy response, independent of its message", async () => {
+    h.mode = "empty";
+    const legacy = { kind: "start", jobId: op.jobRef, jobNo: op.jobNo, at: op.at, clientOpId: op.clientOpId, machines: op.machines } as const;
+    const outcome = await executeStartRunOp(legacy, { rpc: h.rpc });
+    expect(outcome).toMatchObject({ status: "conflict", code: START_UNCONFIRMED });
+    if (outcome.status !== "conflict") throw new Error("Expected unconfirmed response");
+    expect(isUncertainStartOutcome({ ...outcome, reason: "Different display wording" })).toBe(true);
+    expect(isUncertainStartOutcome({ ...outcome, code: START_MACHINE_HELD, reason: "did not confirm" })).toBe(false);
+  });
   it("never invokes jobs update or a fallback, and holds a truthful coded machine refusal", async () => {
     const held = await heldWithPauses();
     expect(held.code).toBe(START_MACHINE_HELD);
@@ -78,6 +90,33 @@ describe("live Start refusal", () => {
 });
 
 describe("explicit recovery", () => {
+  it("the typed uncertainty code keeps the attempt and Pauses even when the reason contains no marker text", async () => {
+    const held = await heldWithPauses();
+    const result = await recoverStartEntry(scope, held, { kind: "retry" }, async () => ({ status: "conflict", code: START_UNCONFIRMED, opened: false, reason: "Response incomplete" }));
+    expect(result.status).toBe("held");
+    expect((await conflictEntries(scope))[0].recoveryAttempt?.uncertain).toBe(true);
+    expect((await recoverStartEntry(scope, held, { kind: "discard", confirmed: true }, executeOutboxOp)).status).toBe("held");
+    expect(await rejectedEntries(scope)).toHaveLength(2);
+  });
+  it("an initially unconfirmed legacy Start is held with its original retry identity, not treated as a confirmed refusal", async () => {
+    const legacy = { kind: "start", jobId: op.jobRef, jobNo: op.jobNo, at: op.at, clientOpId: op.clientOpId, machines: op.machines } as const;
+    await enqueue(scope, legacy);
+    await replayOutbox(scope, (entry) => executeStartRunOp(entry as typeof legacy, { rpc: vi.fn(async () => ({ data: null, error: null })) }));
+    const [held] = await conflictEntries(scope);
+    expect(held).toMatchObject({ code: START_UNCONFIRMED, recoveryAttempt: { choice: "retry", op: legacy, uncertain: true } });
+    expect((await recoverStartEntry(scope, held, { kind: "discard", confirmed: true }, executeOutboxOp)).status).toBe("held");
+  });
+  it("the real banner shows blocked later work and all three recovery choices without opening the issues list", async () => {
+    await heldWithPauses();
+    await enqueue(scope, { kind: "finish", jobId: op.jobRef, jobNo: op.jobNo, at: op.at });
+    await refreshCounts();
+    const html = renderToStaticMarkup(createElement(OfflineBanner));
+    const text = html.replace(/<[^>]*>/g, "");
+    expect(text).toContain("Later changes for J-A are blocked until this Start is resolved.");
+    for (const label of ["Retry on the same machine", "Start on the bench", "Discard"]) expect(html).toContain(`>${label}</button>`);
+    expect(html).toContain('data-testid="offline-start-blocked"');
+    expect(text).not.toContain("recorded as started");
+  });
   it("retries original arguments/key exactly once; a second recovery creates no duplicate", async () => {
     const held = await heldWithPauses(); const originalArgs = h.rpc.mock.calls[0][1]; h.mode = "ok";
     expect(await recoverStartEntry(scope, held, { kind: "retry" }, executeOutboxOp)).toEqual({ status: "applied" });

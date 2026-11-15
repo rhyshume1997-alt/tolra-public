@@ -292,6 +292,8 @@ test("another session takes the lathe while this one is offline: conflict notice
   expect((await office.rpc("start_machine_run", { p_job: ids[J.focus], p_machines: [lathe], p_client_op_id: null, p_started_at: null, p_override: false, p_reason: null })).error).toBeNull();
   await goOnline(page);
   await expect(page.getByText("2 offline changes need attention")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId("offline-start-blocked")).toContainText(`Later changes for ${J.clash} are blocked until this Start is resolved.`);
+  await expect(page.getByRole("button", { name: "Start on the bench", exact: true })).toBeVisible();
   await expect(playControl(r(), J.clash)).toBeVisible();
   await page.getByText("2 offline changes need attention").click();
   await expect(page.getByText(`${J.clash} was NOT started. The requested machine is taken:`, { exact: false })).toBeVisible();

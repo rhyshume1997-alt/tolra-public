@@ -203,6 +203,8 @@ test("offline: a Start with a machine queues on the device and syncs through sta
   await page.unrouteAll({ behavior: "ignoreErrors" });
   await page.evaluate(() => window.dispatchEvent(new Event("online")));
   await expect(page.getByText("1 offline change needs attention")).toBeVisible();
+  await expect(page.getByTestId("offline-start-blocked")).toContainText(`Later changes for ${jobC} are blocked until this Start is resolved.`);
+  await expect(page.getByRole("button", { name: "Retry on the same machine", exact: true })).toBeVisible();
   // Offline Synchronisation: E applied; C stays unstarted and held for an explicit recovery choice. No plain jobs update.
   const { data: eRuns } = await admin.from("machine_runs").select("machine_id, operator_id, ended_at").eq("job_id", ids[jobE]);
   expect(eRuns).toEqual([{ machine_id: mill, operator_id: w.tenants.alpha.users.workshop.id, ended_at: null }]);
