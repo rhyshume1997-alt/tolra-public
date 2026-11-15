@@ -148,6 +148,8 @@ const complete = (over: JobOver = {}) => job({ stage: "complete", started_at: T0
 const row = async (id: string) => (await q("select * from jobs where id = $1", [id]))[0];
 const pick = (r: Row, keys: string[]) => Object.fromEntries(keys.map((k) => [k, r[k] instanceof Date ? (r[k] as Date).toISOString() : r[k]]));
 const iso = (s: string) => new Date(s).toISOString();
+/** A timestamptz column comes back from pg as a Date: keep its milliseconds (String(date) drops them). */
+const isoOf = (v: unknown) => (v instanceof Date ? v : new Date(String(v))).toISOString();
 const people = (): Person[] => [X.workshop, X.office, X.admin];
 const set = (id: string, assignments: string, params: unknown[] = []): [string, unknown[]] => [`update jobs set ${assignments} where id = $1`, [id, ...params]];
 const INSPECT = `select public.inspect_job(p_job => $1, p_result => $2, p_criteria => '${CRITERIA}', p_measured => 'Bore 25.01 mm (bore gauge 0001)',
@@ -298,7 +300,7 @@ describe("release 157: jobs integrity guard", () => {
     expect(done.changed).toBe(true);
     const finishedRow = await row(id);
     expect(finishedRow.finished_at).not.toBeNull();
-    expect(iso(done.finished_at)).toBe(iso(String(finishedRow.finished_at)));
+    expect(iso(done.finished_at)).toBe(isoOf(finishedRow.finished_at));
     expect(finishedRow.stage).toBe("inspection");
     expect(finishedRow.finished_by).toBe(X.workshop.id);
     const replay = await run(X.workshop.id, "select public.finish_job($1, $2, null) as r", [id, op]);
