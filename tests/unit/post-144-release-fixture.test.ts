@@ -137,15 +137,32 @@ it("the diagnostic SQL is one read-only SELECT: no write, role switch or privile
  expect(storageObjectsDiagnosticSql.replace(/'[^']*'/g,"''")).not.toMatch(/\b(INSERT|UPDATE|DELETE|ALTER|CREATE|DROP|GRANT|REVOKE|SET|RESET|TRUNCATE|COPY|DO|CALL|EXECUTE)\b/);
  for(const word of ["pg_roles","pg_auth_members","relowner","has_table_privilege","storage.objects"]) expect(storageObjectsDiagnosticSql).toContain(word);
 });
-it("CI prints the same read-only diagnostics only on failure, without changing anything",async()=>{
+it("CI prints the read-only ownership diagnostic on every run, after the Database suite, informational and without changing anything",async()=>{
  const {readFileSync}=await import("node:fs");
  const ci=readFileSync(".github/workflows/ci.yml","utf8");
- const start=ci.indexOf("name: \"Failure diagnostic (read-only");
+ const start=ci.indexOf("name: \"Ownership diagnostic (informational, read-only");
  expect(start).toBeGreaterThan(0);
+ expect(ci.indexOf("name: Database suite (")).toBeGreaterThan(0);
+ expect(start).toBeGreaterThan(ci.indexOf("name: Database suite ("));
  const step=ci.slice(start,ci.indexOf("\n      - name:",start+10));
- expect(step).toContain("if: ${{ failure() }}");expect(step).toContain("continue-on-error: true");
+ expect(step).toContain("if: ${{ always() }}");expect(step).not.toContain("failure()");expect(step).toContain("continue-on-error: true");
+ expect(step.match(/<<'SQL'/g)).toHaveLength(1);
  for(const word of ["pg_roles","pg_auth_members","relowner","has_table_privilege","storage.objects"]) expect(step).toContain(word);
- expect(step.replace(/'[^']*'/g,"''")).not.toMatch(/\b(INSERT|UPDATE|DELETE|ALTER|CREATE|DROP|GRANT|REVOKE|RESET|TRUNCATE|COPY)\b|SET ROLE|supabase_admin/i);
+ expect(step.replace(/'[^']*'/g,"''")).not.toMatch(/\b(INSERT|UPDATE|DELETE|ALTER|CREATE|DROP|GRANT|REVOKE|RESET|TRUNCATE|COPY)\b|SET ROLE|supabase_admin|PASSWORD|TOKEN|SECRET/i);
+});
+it("ROLLBACK, the diagnostic and the unlock all failing never replace the original exception",async()=>{
+ const spy=vi.spyOn(console,"error").mockImplementation(()=>{});
+ const f=fixture(true),original=f.query;
+ f.query=async(sql:string)=>{
+  if(sql==="ROLLBACK") throw new Error("rollback refused");
+  if(sql===storageObjectsDiagnosticSql) throw new Error("diagnostic denied");
+  if(sql.includes("pg_advisory_unlock")) throw new Error("unlock refused");
+  if(sql.includes("AS check_name")) return {rows:[]};
+  return original(sql);
+ };
+ const failure=await preparePost144Fixture(f).then(()=>undefined,e=>e as Error);
+ expect(failure?.message).toBe("Release verification failed: post-144 marker 145 company_setup");
+ spy.mockRestore();
 });
 
 it("after a release fails inside its own transaction: ROLLBACK, then the diagnostic, then the unlock, and the ORIGINAL error is rethrown",async()=>{

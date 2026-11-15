@@ -265,8 +265,8 @@ jobs:
         env:
           CI_EVIDENCE_DB_JSON: evidence/db.json
         run: npm run test:db
-      - name: "Failure diagnostic (read-only SELECT, runs only when an earlier step failed: who owns storage.objects, the current role, its role membership and privileges)"
-        if: ${{ failure() }}
+      - name: "Ownership diagnostic (informational, read-only SELECT, runs every time after the Database suite: who owns storage.objects, the current role, its role membership and privileges)"
+        if: ${{ always() }}
         continue-on-error: true
         run: |
           psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=0 -X <<'SQL'
