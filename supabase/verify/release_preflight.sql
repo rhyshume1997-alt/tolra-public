@@ -1,4 +1,4 @@
--- Post-144 phase markers are separate from baseline markers: 145 then 146 then 147 then 148 then 149 then 150 then 151 then 152 then 153 then 154 (153 and 154: before customer portal activation only) then 156 (155 reserved, not in this candidate; 156 before the JNR SliQ import). Numbered cutover markers: 138, 140, 141, 143, 144.
+-- Post-144 phase markers are separate from baseline markers: 145 then 146 then 147 then 148 then 149 then 150 then 151 then 152 then 153 then 154 (153 and 154: before customer portal activation only) then 156 (155 reserved, not in this candidate; 156 before the JNR SliQ import) then 161 (customer sign-off only on a released job; after 156). Numbered cutover markers: 138, 140, 141, 143, 144.
 -- Legacy AI body checks inspect preserved own-key functions after 146; the 146 marker pins every live wrapper.
 -- READ ONLY. Release preflight (docs/RELEASE-CHECKLIST.md, step 2). One query, one result table of check / value /
 -- expected, so it works in the Supabase SQL editor (which shows only the last statement's result). Nothing is
@@ -239,6 +239,7 @@ proposal_files(file, disposition) AS (
     ('supabase/proposals/p153_document_customer_link.sql', 'post-144 release 153; apply only after 152; required before customer portal activation, not for JNR core go-live (jobs and quotes linked to the customer by ID in a side table; backfill unverified; portal switch off; no issued-document guard changed)'),
     ('supabase/proposals/p154_customer_portal_signin.sql', 'post-144 release 154; apply only after 153; required before customer portal activation, not for JNR core go-live (customer portal sign-in: e-mailed link and code, sessions, read-only verified quotes and jobs; portal OFF refuses every customer call)'),
     ('supabase/proposals/p156_invoice_ref_case.sql', 'post-144 release 156; after 154 in the plan (its guard needs 152 and 078); apply before the JNR SliQ import (one invoice number per company whatever its capital letters; refuses while case-variant invoice numbers exist: row 59)'),
+    ('supabase/proposals/p161_customer_signoff_completed.sql', 'post-144 release 161; after 156 in the plan (its guard needs 072 and 081 only): a customer sign-off is accepted only on a released job and never for a revision ahead of the job (row 60)'),
     ('supabase/proposals/builder2_chase_settings_atomic.sql', 'separate chase settings release decision; requires 138; browser fixture is not production packaging'),
     ('supabase/proposals/builder2_costing_settings_atomic.sql', 'superseded: the hardened function ships inside numbered release 143 (after 141, before 144); this original proposal is never applied'),
     ('supabase/proposals/builder2_atomic_settings.rollback.sql', 'rollback only; never forward release input')
@@ -348,6 +349,9 @@ post_release_markers(label, present) AS (
       AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.import_sliq_prepare(uuid,text,jsonb,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'a06f5525bb6770dde21c4f9453b96207')
       AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.next_doc_number(text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '75dffec8a6b52c01267aa22a64802da0')
       AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.import_sliq_reconcile_rows(uuid)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '3288cdc2d98acba018c8e417bddd77bb')), FALSE)),
+    ('post-144 marker 161 customer_signoff_completed', coalesce((EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.sign_off_job_customer(uuid,text,text,text,text,text,text,text,timestamptz,uuid,integer,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'b8b2a0f43fac263f8b913c2f9f1d8e9f' AND p.prosecdef)
+      AND coalesce(has_function_privilege('authenticated', to_regprocedure('public.sign_off_job_customer(uuid,text,text,text,text,text,text,text,timestamptz,uuid,integer,text)'), 'EXECUTE'), FALSE)
+      AND NOT coalesce(has_function_privilege('anon', to_regprocedure('public.sign_off_job_customer(uuid,text,text,text,text,text,text,text,timestamptz,uuid,integer,text)'), 'EXECUTE'), TRUE)), FALSE)),
     ('post-144 marker 151 xero_invite_hardening', coalesce(((SELECT count(*) = 10 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'integration_connect_invites'
              AND column_name IN ('ref', 'recipient_email', 'code_hash', 'code_expires_at', 'code_sent_at', 'code_sent_count', 'code_attempts', 'locked_at', 'expired_logged_at', 'revoke_reason'))
       AND EXISTS (SELECT 1 FROM pg_constraint c WHERE c.conrelid = to_regclass('public.integration_connect_invites') AND c.conname IN ('integration_connect_invites_ref_key', 'integration_connect_invites_bound', 'integration_connect_invites_recipient') HAVING count(*) = 3)
@@ -680,6 +684,12 @@ checks(n, check_name, value, expected) AS (
     || ' / ' || coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN '315952a95ce42c75078e94026069121b' THEN '152' WHEN '3288cdc2d98acba018c8e417bddd77bb' THEN '156' ELSE 'other' END
               FROM pg_proc p WHERE p.oid = to_regprocedure('public.import_sliq_reconcile_rows(uuid)')), 'missing'),
     '0 / 152 / 078 / 152 before 156; 0 / 156 / 156 / 156 after (any other count, other or missing: stop, 156 refuses; a count above 0 is decided by Rhys or PM with the read-only finder in the 156 release header)'
+  UNION ALL SELECT 60, '161 needs: public.job_release_state is 081''s / public.job_early_release_active / public.sign_off_job_customer',
+    CASE WHEN EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.job_release_state(uuid)') AND p.prosrc LIKE '%job_early_release_active%') THEN 'present' ELSE 'missing' END
+    || ' / ' || CASE WHEN to_regprocedure('public.job_early_release_active(uuid)') IS NOT NULL THEN 'present' ELSE 'missing' END
+    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN 'f3857352acdfa18b4738fc850dde461d' THEN '072' WHEN 'b8b2a0f43fac263f8b913c2f9f1d8e9f' THEN '161' ELSE 'other' END
+              FROM pg_proc p WHERE p.oid = to_regprocedure('public.sign_off_job_customer(uuid,text,text,text,text,text,text,text,timestamptz,uuid,integer,text)')), 'missing'),
+    'present / present / 072 before 161; present / present / 161 after (anything else, other or missing: stop, 161 refuses)'
   UNION ALL SELECT 100 + row_number() OVER (), 'marker ' || migration,
     CASE WHEN present AND (migration <> '107 integrations connect' OR to_regprocedure('public.integration_invite_redeem(text,text,text)') IS NOT NULL
                            OR coalesce((SELECT pm.present FROM post_release_markers pm WHERE pm.label = 'post-144 marker 151 xero_invite_hardening'), FALSE))
@@ -690,6 +700,7 @@ checks(n, check_name, value, expected) AS (
     CASE WHEN present THEN 'applied' WHEN label IN ('post-144 marker 153 document_customer_link', 'post-144 marker 154 customer_portal_signin') THEN 'not applied (before portal activation only)' ELSE 'not applied' END,
     CASE WHEN label = 'post-144 marker 153 document_customer_link' THEN 'One-time post-144 phase 153, after 152: required before customer portal activation, not for JNR core go-live (PM, 11 Nov 2026).'
     WHEN label = 'post-144 marker 154 customer_portal_signin' THEN 'One-time post-144 phase 154, after 153: customer portal sign-in; required before customer portal activation, not for JNR core go-live (PM, 12 Nov 2026).'
+    WHEN label = 'post-144 marker 161 customer_signoff_completed' THEN 'One-time post-144 phase 161, after 156 (its guard needs 072 and 081 only): a customer sign-off only on a released job, never for a revision ahead of the job''s (row 60 first).'
     WHEN label = 'post-144 marker 156 invoice_ref_case' THEN 'One-time post-144 phase 156, after 154 in the plan (155 reserved; its guard needs 152 and 078 only): one invoice number per company whatever its capital letters; applied before the JNR SliQ import (row 59 first).'
     ELSE 'One-time post-144 phase: 145 N5 before 146 N2 before 147 C17 before 148 job costing before 149 Xero launch hold before 150 AI cap and key-off before 151 Xero invite hardening before 152 SliQ import route; all applied before go-live. Baseline replay intentionally runs first.' END FROM post_release_markers
   UNION ALL SELECT 400 + row_number() OVER (ORDER BY file), 'proposal file ' || file, disposition,

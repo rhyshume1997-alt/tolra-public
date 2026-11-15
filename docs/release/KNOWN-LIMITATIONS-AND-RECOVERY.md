@@ -32,6 +32,7 @@ How to read this document:
 | L9 | Release 151 header said "PROPOSAL, not registered" | Resolved: 151 IS registered (plan phase 151, after 150) and CI installs it; only a header comment was stale (fixed on this branch) | Info (resolved) | Sourced |
 | L10 | Release tests ran on PostgreSQL 16; the preflight expects 17.x | Behaviour on the production database version is not proven | Medium | Sourced |
 | L11 | Release 156: the generic workbook import refuses a case-variant invoice number only with the general database refusal | `inv-1001` next to `INV-1001` is never written, but the message is the generic "database refused the import" (23505), not a named problem | Low | Proved locally (PG16) |
+| L12 | Release 161: a customer can sign a job only once it is released | A signature captured before the job has passed inspection (or been released early by an admin) is not recorded; offline it stays on the device with Retry and Dismiss | Low | Proved locally (PG16) |
 
 ---
 
@@ -148,6 +149,14 @@ How to read this document:
 - **Severity:** Low.
 - **Release note:** 156 refuses to install while any company already has invoice numbers that differ only in capital letters (run the read-only finder in the 156 release header first). Local index build at 4,000 invoices: about 5 ms (PG16; hosted time not measured). Credit note numbers keep the exact-case rule (follow-up).
 - **Evidence:** `tests/db/invoice-ref-case-156.test.ts` cases 11 and 14.
+
+### L12. Release 161: a customer's sign-off needs a released job
+
+- **What it is:** Release 161 closes audit finding J3 (a customer sign-off was accepted on an unfinished job). `sign_off_job_customer` now asks the same server rule that decides despatch (`job_release_state`): the customer can sign once the job has passed inspection, or an admin has released it early with a recorded reason and that release is still in force (a reopen or a failed inspection voids it). A job that is only finished, in rework, or whose early release was voided is refused (22023, hint `job_not_released`). A shown revision higher than the job's own is refused (22023, hint `shown_revision_ahead`); a lower, historical one is kept as before. Delivery without a customer signature and a late signature on a released job are unchanged (the phone clock may be up to 30 days before the upload).
+- **What it means for John:** On site, the app shows the refusal message. A signature captured offline before the job is released is kept on the device with Retry and Dismiss; Retry succeeds once the job is released. A signature already recorded is never lost or changed, and its offline retry still returns the first answer.
+- **Severity:** Low.
+- **Rollback:** `supabase/release/161_customer_signoff_completed.rollback.sql` puts 072's body back byte for byte (the defect is open again afterwards); run it before 081's rollback.
+- **Evidence:** `tests/db/customer-signoff-completed-161.test.ts`.
 
 ---
 
