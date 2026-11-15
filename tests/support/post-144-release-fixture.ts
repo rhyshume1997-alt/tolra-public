@@ -20,6 +20,7 @@ const phases = [
   { number: 154, marker: "post-144 marker 154 customer_portal_signin", file: "supabase/release/154_customer_portal_signin.release.sql", verifyFile: "supabase/verify/customer_portal_signin_154.sql" },
   { number: 156, marker: "post-144 marker 156 invoice_ref_case", file: "supabase/release/156_invoice_ref_case.release.sql", verifyFile: "supabase/verify/invoice_ref_case_156.sql" },
   { number: 157, marker: "post-144 marker 157 jobs_integrity_guard", file: "supabase/release/157_jobs_integrity_guard.release.sql", verifyFile: "supabase/verify/jobs_integrity_guard_157.sql" },
+  { number: 158, marker: "post-144 marker 158 machine_run_integrity", file: "supabase/release/158_machine_run_integrity.release.sql", verifyFile: "supabase/verify/machine_run_integrity_158.sql" },
 ];
 /** Read-only (SELECT only): who owns storage.objects, who we are, our role membership and our privileges on it (release 159 policy question). */
 export const storageObjectsDiagnosticSql = `SELECT 'storage.objects owner' AS check, (SELECT pg_get_userbyid(c.relowner) FROM pg_class c WHERE c.oid = to_regclass('storage.objects')) AS value
@@ -42,7 +43,7 @@ export async function reportStorageDiagnostics(query: (sql: string) => Promise<{
   }
 }
 export async function preparePost144Fixture(deps: {
-  through?: 145 | 146 | 147 | 148 | 149 | 150 | 151 | 152 | 153 | 154 | 156 | 157;
+  through?: 145 | 146 | 147 | 148 | 149 | 150 | 151 | 152 | 153 | 154 | 156 | 157 | 158;
   verify: () => Promise<unknown>;
   query: (sql: string) => Promise<{ rows: Array<{ check?: string; value?: string; ok?: boolean; passed?: boolean }> }>;
 }) {
@@ -51,7 +52,7 @@ export async function preparePost144Fixture(deps: {
   await deps.query("SELECT pg_advisory_lock(144145146)");
   let failure: { original: unknown } | undefined;
   try {
-    for (const phase of phases.filter(p => p.number <= (deps.through ?? 157))) {
+    for (const phase of phases.filter(p => p.number <= (deps.through ?? 158))) {
       const state = (await deps.query(read("supabase/verify/release_preflight.sql"))).rows.find(row => row.check === phase.marker);
       if (!state) throw new Error(`Missing release preflight marker: ${phase.marker}`);
       if (state.value !== "applied") {

@@ -156,6 +156,15 @@
       "rollback": "supabase/release/157_jobs_integrity_guard.rollback.sql",
       "verify": "supabase/verify/jobs_integrity_guard_157.sql",
       "marker": "post-144 marker 157 jobs_integrity_guard"
+    },
+    {
+      "number": 158,
+      "after": "157",
+      "source": "supabase/proposals/p158_machine_run_integrity.sql",
+      "release": "supabase/release/158_machine_run_integrity.release.sql",
+      "rollback": "supabase/release/158_machine_run_integrity.rollback.sql",
+      "verify": "supabase/verify/machine_run_integrity_158.sql",
+      "marker": "post-144 marker 158 machine_run_integrity"
     }
   ],
   "other_proposals": [
