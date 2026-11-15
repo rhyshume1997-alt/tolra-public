@@ -1,4 +1,4 @@
--- Post-144 phase markers are separate from baseline markers: 145 then 146 then 147 then 148 then 149 then 150 then 151 then 152 then 153 then 154 (153 and 154: before customer portal activation only) then 156 (155 reserved, not in this candidate; 156 before the JNR SliQ import) then 157 (jobs integrity guard, with start_machine_run's first-start marker). Numbered cutover markers: 138, 140, 141, 143, 144.
+-- Post-144 phase markers are separate from baseline markers: 145 then 146 then 147 then 148 then 149 then 150 then 151 then 152 then 153 then 154 (153 and 154: before customer portal activation only) then 156 (155 reserved, not in this candidate; 156 before the JNR SliQ import) then 157 (jobs integrity guard, with start_machine_run's first-start marker) then 158 (machine run integrity: the server's time when another operator has an open run or job time). Numbered cutover markers: 138, 140, 141, 143, 144.
 -- Legacy AI body checks inspect preserved own-key functions after 146; the 146 marker pins every live wrapper.
 -- READ ONLY. Release preflight (docs/RELEASE-CHECKLIST.md, step 2). One query, one result table of check / value /
 -- expected, so it works in the Supabase SQL editor (which shows only the last statement's result). Nothing is
@@ -240,6 +240,7 @@ proposal_files(file, disposition) AS (
     ('supabase/proposals/p154_customer_portal_signin.sql', 'post-144 release 154; apply only after 153; required before customer portal activation, not for JNR core go-live (customer portal sign-in: e-mailed link and code, sessions, read-only verified quotes and jobs; portal OFF refuses every customer call)'),
     ('supabase/proposals/p156_invoice_ref_case.sql', 'post-144 release 156; after 154 in the plan (its guard needs 152 and 078); apply before the JNR SliQ import (one invoice number per company whatever its capital letters; refuses while case-variant invoice numbers exist: row 59)'),
     ('supabase/proposals/p157_jobs_integrity_guard.sql', 'post-144 release 157; after 156 in the plan (its guard needs the job locks of 022, 034, 035, 037, 044/061, 081, 083 and 113 only); a recorded job start is kept and the first start is set only by Play, the bench Start or Finish (start_machine_run re-created, 049''s body plus two statements), a job cannot be created with a start or finish time, a finish is set only by Finish, a workshop-only user cannot change a job''s customer or number or withdraw a passed inspection (row 60)'),
+    ('supabase/proposals/p158_machine_run_integrity.sql', 'post-144 release 158; after 157 in the plan (its guard needs 044, 051 and 061); replaces pause_machine_run and finish_job so another operator''s open run or job time makes the effective time the server''s (row 61)'),
     ('supabase/proposals/builder2_chase_settings_atomic.sql', 'separate chase settings release decision; requires 138; browser fixture is not production packaging'),
     ('supabase/proposals/builder2_costing_settings_atomic.sql', 'superseded: the hardened function ships inside numbered release 143 (after 141, before 144); this original proposal is never applied'),
     ('supabase/proposals/builder2_atomic_settings.rollback.sql', 'rollback only; never forward release input')
@@ -353,6 +354,10 @@ post_release_markers(label, present) AS (
       AND EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = to_regclass('public.jobs') AND t.tgname = 'jobs_zzz_integrity_guard' AND NOT t.tgisinternal
                     AND t.tgfoid = to_regprocedure('public.jobs_integrity_guard()') AND t.tgtype = 23 AND t.tgattr::TEXT = '' AND t.tgnargs = 0 AND t.tgenabled = 'O' AND t.tgqual IS NULL)
       AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.start_machine_run(uuid,uuid[],uuid,timestamptz,boolean,text,jsonb,boolean)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'e5a66b0a8b183e1f6a51927bca89953e')), FALSE)),
+    ('post-144 marker 158 machine_run_integrity', coalesce((EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.pause_machine_run(uuid,uuid[],uuid,timestamptz)') AND p.prosecdef AND p.proconfig IS NOT NULL
+             AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'b00c08c8ee4934428f278fa6beadde1b')
+      AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.finish_job(uuid,uuid,timestamptz)') AND p.prosecdef AND p.proconfig IS NOT NULL
+             AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '154bb3fff8179ce2f26c1810f054e18f')), FALSE)),
     ('post-144 marker 151 xero_invite_hardening', coalesce(((SELECT count(*) = 10 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'integration_connect_invites'
              AND column_name IN ('ref', 'recipient_email', 'code_hash', 'code_expires_at', 'code_sent_at', 'code_sent_count', 'code_attempts', 'locked_at', 'expired_logged_at', 'revoke_reason'))
       AND EXISTS (SELECT 1 FROM pg_constraint c WHERE c.conrelid = to_regclass('public.integration_connect_invites') AND c.conname IN ('integration_connect_invites_ref_key', 'integration_connect_invites_bound', 'integration_connect_invites_recipient') HAVING count(*) = 3)
@@ -700,6 +705,12 @@ checks(n, check_name, value, expected) AS (
     || ' / ' || coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN '2147348075e8d7d38639bd11c9da0c30' THEN '049' WHEN 'e5a66b0a8b183e1f6a51927bca89953e' THEN '157' ELSE 'other' END
               FROM pg_proc p WHERE p.oid = to_regprocedure('public.start_machine_run(uuid,uuid[],uuid,timestamptz,boolean,text,jsonb,boolean)')), 'absent'),
     '0 / absent / absent / 049 before 157; 0 / 157 / 157 / 157 after (a count above 0, or other: stop, 157 refuses and changes nothing; absent / absent / 049 is the state before 157 and after its rollback; start_machine_run must be 049 or 157)'
+  UNION ALL SELECT 61, '158 needs: pause_machine_run / finish_job',
+    coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN '2a172ae0576c14095bc1281294789894' THEN '044' WHEN 'b00c08c8ee4934428f278fa6beadde1b' THEN '158' ELSE 'other' END
+              FROM pg_proc p WHERE p.oid = to_regprocedure('public.pause_machine_run(uuid,uuid[],uuid,timestamptz)')), 'missing')
+    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN '57e2b9a298fa8647a775f8e0a56bbe58' THEN '061' WHEN '154bb3fff8179ce2f26c1810f054e18f' THEN '158' ELSE 'other' END
+              FROM pg_proc p WHERE p.oid = to_regprocedure('public.finish_job(uuid,uuid,timestamptz)')), 'missing'),
+    '044 / 061 before 158; 158 / 158 after (other or missing: stop, 158 refuses)'
   UNION ALL SELECT 100 + row_number() OVER (), 'marker ' || migration,
     CASE WHEN present AND (migration <> '107 integrations connect' OR to_regprocedure('public.integration_invite_redeem(text,text,text)') IS NOT NULL
                            OR coalesce((SELECT pm.present FROM post_release_markers pm WHERE pm.label = 'post-144 marker 151 xero_invite_hardening'), FALSE))
@@ -712,6 +723,7 @@ checks(n, check_name, value, expected) AS (
     WHEN label = 'post-144 marker 154 customer_portal_signin' THEN 'One-time post-144 phase 154, after 153: customer portal sign-in; required before customer portal activation, not for JNR core go-live (PM, 12 Nov 2026).'
     WHEN label = 'post-144 marker 157 jobs_integrity_guard' THEN 'One-time post-144 phase 157, after 156 in the plan (155 reserved; its guard needs the job locks of 022 to 113 only): a recorded job start is kept and the first start is set only by Play, the bench Start or Finish (start_machine_run re-created), a job cannot be created with a start or finish time, a finish is set only by Finish, a workshop-only user cannot change a job''s customer or number or withdraw a passed inspection; row 60 first.'
     WHEN label = 'post-144 marker 156 invoice_ref_case' THEN 'One-time post-144 phase 156, after 154 in the plan (155 reserved; its guard needs 152 and 078 only): one invoice number per company whatever its capital letters; applied before the JNR SliQ import (row 59 first).'
+    WHEN label = 'post-144 marker 158 machine_run_integrity' THEN 'One-time post-144 phase 158, after 157 (its guard needs 044, 051 and 061 only): a Pause or Finish that affects another operator''s open run or job time is recorded at the server''s time (row 61 first).'
     ELSE 'One-time post-144 phase: 145 N5 before 146 N2 before 147 C17 before 148 job costing before 149 Xero launch hold before 150 AI cap and key-off before 151 Xero invite hardening before 152 SliQ import route; all applied before go-live. Baseline replay intentionally runs first.' END FROM post_release_markers
   UNION ALL SELECT 400 + row_number() OVER (ORDER BY file), 'proposal file ' || file, disposition,
     'Explicitly accounted for; no proposal runs merely because preflight is read.' FROM proposal_files
