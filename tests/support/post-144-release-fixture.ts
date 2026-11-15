@@ -66,7 +66,11 @@ export async function preparePost144Fixture(deps: {
     }
     await deps.query("NOTIFY pgrst, 'reload schema'");
   } catch (original) {
-    // The ORIGINAL failure is what the caller sees; diagnostics and the unlock below can never replace it.
+    // The ORIGINAL failure is what the caller sees; rollback, diagnostics and the unlock below can never replace it.
+    // A release file opens its own BEGIN, so a failed release leaves this connection in a failed transaction (25P02):
+    // ROLLBACK first (ends that transaction, changes nothing), then the read-only diagnostic, then the unlock.
+    try { await deps.query("ROLLBACK"); }
+    catch (rollbackError) { console.error(`[release fixture] rollback failed (original failure kept): ${rollbackError instanceof Error ? rollbackError.message : String(rollbackError)}`); }
     await reportStorageDiagnostics(deps.query);
     failure = { original };
     throw original;

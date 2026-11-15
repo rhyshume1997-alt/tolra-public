@@ -147,3 +147,20 @@ it("CI prints the same read-only diagnostics only on failure, without changing a
  for(const word of ["pg_roles","pg_auth_members","relowner","has_table_privilege","storage.objects"]) expect(step).toContain(word);
  expect(step.replace(/'[^']*'/g,"''")).not.toMatch(/\b(INSERT|UPDATE|DELETE|ALTER|CREATE|DROP|GRANT|REVOKE|RESET|TRUNCATE|COPY)\b|SET ROLE|supabase_admin/i);
 });
+
+it("after a release fails inside its own transaction: ROLLBACK, then the diagnostic, then the unlock, and the ORIGINAL error is rethrown",async()=>{
+ const spy=vi.spyOn(console,"error").mockImplementation(()=>{});
+ const f=fixture(),original=f.query;let aborted=false;
+ f.query=async(sql:string)=>{
+  if(sql==="ROLLBACK"){f.calls.push(sql);aborted=false;return {rows:[]};}
+  if(aborted){f.calls.push(sql);throw Object.assign(new Error("current transaction is aborted"),{code:"25P02"});}
+  if(sql.includes("-- Post-144 release step 145")){f.calls.push(sql);aborted=true;throw new Error("release 145 failed: original");}
+  if(sql===storageObjectsDiagnosticSql){f.calls.push(sql);return {rows:[{check:"storage.objects owner",value:"owner_x"}]};}
+  return original(sql);
+ };
+ await expect(preparePost144Fixture(f)).rejects.toThrow("release 145 failed: original");
+ const tail=f.calls.slice(-3);
+ expect(tail[0]).toBe("ROLLBACK");expect(tail[1]).toBe(storageObjectsDiagnosticSql);expect(tail[2]).toContain("pg_advisory_unlock");
+ expect(spy.mock.calls.map(c=>String(c[0])).join("\n")).toContain("storage.objects owner: owner_x");
+ spy.mockRestore();
+});
