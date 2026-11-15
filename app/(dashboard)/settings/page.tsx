@@ -1,5 +1,7 @@
 "use client";
 
+// Availability banner: consumes the shared settings state; presents failures without changing saves, roles or company scope.
+
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -652,7 +654,7 @@ export default function SettingsPage() {
     <RoleGate allowed={["admin"]}>
       <div className="space-y-6">
         <div><h1 className="page-title">Settings</h1><p className="mt-2 text-sm text-slate-500">Company-wide settings for {PRODUCT.name}. Only admins can change them.</p></div>
-        {settings.loaded && settings.localOnly ? <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Company settings aren&apos;t available right now. Menu and column choices are saved in this browser only.</div> : null}
+        {settings.availability.kind === "unavailable" || (settings.loaded && settings.localOnly) ? <div role="status" data-testid="settings-unavailable" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Company settings aren&apos;t available right now. {settings.availability.kind === "unavailable" ? settings.availability.message : "Menu and column choices are saved in this browser only."}</div> : null}
         <section id="setup-company"><CompanyDetailsCard timeSettings={timeSettings} /></section>
         <ArchiveSettingsCard />
         <AutoConvertCard />
