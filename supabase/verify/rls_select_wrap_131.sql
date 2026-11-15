@@ -1,5 +1,14 @@
 -- Migration 131 (row-level-security helpers asked once per statement). Read only: every row should be TRUE (4). The text md5s are
 -- of pg_policies' USING and WITH CHECK as the catalogue takes them (supabase/verify/catalogue.sql).
+-- STATE AWARE for exactly one policy, by the PM's ruling on release 159 (inputs: the policies of the database and the comment on one of
+-- them; outputs: the same four rows; must not change: every other row, which is satisfied by 131's text only). Release 159 deliberately
+-- changes "job drawings org update" on storage.objects (USING false, WITH CHECK false: nobody can replace an object in job-drawings from
+-- the browser). That row is satisfied by 131's md5 (76e489d7de7f079451629dc75177d894, the list below) while release 159 is NOT installed, and by 159's
+-- md5 (18b6c82111707e214f8aaa30c5b6e717) while it IS installed. "Installed" is decided by the one trace only release 159 writes and only its rollback
+-- removes: the comment on that policy (CTE release_159), NOT by whatever the policy says now. So 159's text without 159's comment is
+-- FALSE (unauthorised drift into 159's text), 131's text with 159's comment is FALSE (half installed), and any third text is FALSE in
+-- both states. Release preflight's "post-144 marker 159 drawings_update_roles" reads the same comment. If the comment is removed by hand
+-- on a database where 159 is installed, this row turns FALSE and says so: that is the intended alarm, not a gap.
 WITH want(schema_name, table_name, policy_name, permissive, cmd, roles, md5_131) AS (VALUES
     ('public', 'ai_helper_requests', 'ai_helper_requests office select', 'PERMISSIVE', 'SELECT', '{authenticated}', '6a18e9fed9ee8dd956c314df2b296562'),
     ('public', 'ai_helper_settings', 'ai_helper_settings office select', 'PERMISSIVE', 'SELECT', '{authenticated}', '6a18e9fed9ee8dd956c314df2b296562'),
@@ -188,10 +197,19 @@ have AS (
   SELECT p.schemaname, p.tablename, p.policyname, p.permissive, p.cmd, p.roles::TEXT AS roles,
          md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) AS m
   FROM pg_catalog.pg_policies p
+),
+-- Release 159's trace: the comment it writes on "job drawings org update" (an independent fact from the policy text).
+release_159(installed) AS (
+  SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_policy po
+                 JOIN pg_catalog.pg_description d ON d.objoid = po.oid AND d.classoid = 'pg_catalog.pg_policy'::regclass AND d.objsubid = 0
+                 WHERE po.polrelid = to_regclass('storage.objects') AND po.polname = 'job drawings org update'
+                   AND d.description = 'release 159 (supabase/release/159_drawings_update_roles.release.sql): browser roles cannot replace an object in job-drawings; rolled back by 159_drawings_update_roles.rollback.sql')
 )
--- The 182 policies 131 rewrote: each there, with main's command, roles and kind, and 131's text.
+-- The 182 policies 131 rewrote: each there, with main's command, roles and kind, and 131's text (the drawings update policy: 131's text, or 159's while 159's comment is on it).
 SELECT 'policies_131_wrapped' AS check_name,
-       (SELECT count(*) = 182 AND bool_and(h.policyname IS NOT NULL AND h.permissive = w.permissive AND h.cmd = w.cmd AND h.roles = w.roles AND h.m = w.md5_131)
+       (SELECT count(*) = 182 AND bool_and(h.policyname IS NOT NULL AND h.permissive = w.permissive AND h.cmd = w.cmd AND h.roles = w.roles
+                         AND h.m = CASE WHEN (w.schema_name, w.table_name, w.policy_name) = ('storage', 'objects', 'job drawings org update') AND (SELECT installed FROM release_159)
+                                        THEN '18b6c82111707e214f8aaa30c5b6e717' ELSE w.md5_131 END)
         FROM want w LEFT JOIN have h ON h.schemaname = w.schema_name AND h.tablename = w.table_name AND h.policyname = w.policy_name) AS ok
 -- No policy on public, storage.objects or security_audit.audit_log calls a role or company helper outside a sub-select (but the two that
 -- 102's and 120's verify scripts pin; see the migration's header). A later migration that adds such a policy makes this FALSE (write it

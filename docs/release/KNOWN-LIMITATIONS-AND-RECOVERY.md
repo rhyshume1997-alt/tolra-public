@@ -32,6 +32,7 @@ How to read this document:
 | L9 | Release 151 header said "PROPOSAL, not registered" | Resolved: 151 IS registered (plan phase 151, after 150) and CI installs it; only a header comment was stale (fixed on this branch) | Info (resolved) | Sourced |
 | L10 | Release tests ran on PostgreSQL 16; the preflight expects 17.x | Behaviour on the production database version is not proven | Medium | Sourced |
 | L11 | Release 156: the generic workbook import refuses a case-variant invoice number only with the general database refusal | `inv-1001` next to `INV-1001` is never written, but the message is the generic "database refused the import" (23505), not a named problem | Low | Proved locally (PG16) |
+| L12 | Release 159: nobody can replace an existing file in the job drawings area from the browser | Uploads still create new files; a wrong upload is corrected by uploading a new file or registering a new revision | Low | Proved locally (PG16 stand-in) |
 
 ---
 
@@ -148,6 +149,14 @@ How to read this document:
 - **Severity:** Low.
 - **Release note:** 156 refuses to install while any company already has invoice numbers that differ only in capital letters (run the read-only finder in the 156 release header first). Local index build at 4,000 invoices: about 5 ms (PG16; hosted time not measured). Credit note numbers keep the exact-case rule (follow-up).
 - **Evidence:** `tests/db/invoice-ref-case-156.test.ts` cases 11 and 14.
+
+### L12. Release 159: an existing file in the job drawings area cannot be replaced from the browser
+
+- **What it is:** Release 159 closes audit finding ST1 (P0): a signed-in workshop, office or admin user could overwrite a file that was uploaded to the job drawings area (drawings, certificates, inspection files) but not yet attached to a job. Now no browser role can update or replace any file there; the policy "job drawings org update" is refused outright (USING false, WITH CHECK false) and stays in place, so the policy count is unchanged. Files already attached to a job were already protected and still are.
+- **What it means for John:** Nobody can replace an existing file in the job drawings area from the browser. Uploading creates new files exactly as before, and so do reading, listing and deleting; an admin still registers a new drawing revision as before. A wrong upload is corrected by uploading a new file or registering a new revision. Authorised service operations are unaffected.
+- **Severity:** Low (the change only removes a path no screen uses).
+- **Rollback:** `supabase/release/159_drawings_update_roles.rollback.sql` puts release 131's exact policy text back and removes the release's comment on the policy; the overwrite defect is then open again. Roll 159 back before 131's rollback.
+- **Evidence:** `tests/db/drawings-update-roles-159.test.ts`; `supabase/verify/drawings_update_roles_159.sql`.
 
 ---
 

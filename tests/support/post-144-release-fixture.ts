@@ -14,9 +14,10 @@ const phases = [
   { number: 153, marker: "post-144 marker 153 document_customer_link", file: "supabase/release/153_document_customer_link.release.sql", verifyFile: "supabase/verify/document_customer_link_153.sql" },
   { number: 154, marker: "post-144 marker 154 customer_portal_signin", file: "supabase/release/154_customer_portal_signin.release.sql", verifyFile: "supabase/verify/customer_portal_signin_154.sql" },
   { number: 156, marker: "post-144 marker 156 invoice_ref_case", file: "supabase/release/156_invoice_ref_case.release.sql", verifyFile: "supabase/verify/invoice_ref_case_156.sql" },
+  { number: 159, marker: "post-144 marker 159 drawings_update_roles", file: "supabase/release/159_drawings_update_roles.release.sql", verifyFile: "supabase/verify/drawings_update_roles_159.sql" },
 ];
 export async function preparePost144Fixture(deps: {
-  through?: 145 | 146 | 147 | 148 | 149 | 150 | 151 | 152 | 153 | 154 | 156;
+  through?: 145 | 146 | 147 | 148 | 149 | 150 | 151 | 152 | 153 | 154 | 156 | 159;
   verify: () => Promise<unknown>;
   query: (sql: string) => Promise<{ rows: Array<{ check?: string; value?: string; ok?: boolean; passed?: boolean }> }>;
 }) {
@@ -24,7 +25,7 @@ export async function preparePost144Fixture(deps: {
   await deps.verify();
   await deps.query("SELECT pg_advisory_lock(144145146)");
   try {
-    for (const phase of phases.filter(p => p.number <= (deps.through ?? 156))) {
+    for (const phase of phases.filter(p => p.number <= (deps.through ?? 159))) {
       const state = (await deps.query(read("supabase/verify/release_preflight.sql"))).rows.find(row => row.check === phase.marker);
       if (!state) throw new Error(`Missing release preflight marker: ${phase.marker}`);
       if (state.value !== "applied") {
