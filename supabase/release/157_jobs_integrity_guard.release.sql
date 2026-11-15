@@ -1,5 +1,5 @@
 -- Post-144 release step 157 (jobs integrity guard: a recorded start time is kept, a finish time is set only by Finish, a workshop-only user can't change a
--- job's customer or number or withdraw a passed inspection; registered in supabase/release-plan.json as phase 157, after 156; 155 is reserved and not
+-- job's customer or number or withdraw a passed inspection, and nobody ordinary-edits away the passed inspection of a despatched or invoiced job; registered in supabase/release-plan.json as phase 157, after 156; 155 is reserved and not
 -- in this candidate; CI's post-144 step installs it). One transaction; never part of baseline replay. Not applied anywhere hosted: migration allowed
 -- for development, scratch and CI only (PM, 15 Nov 2026); production only with Rhys's separate yes. Canonical source:
 -- supabase/proposals/p157_jobs_integrity_guard.sql (its body between BEGIN; and COMMIT; is copied below verbatim between the fingerprint and the
@@ -9,10 +9,17 @@
 -- applied changes nothing (the function is 157's, the trigger exists and is not created again).
 -- REFUSES, changing nothing, when a job object it relies on is missing or is not as the older releases left it (HINT jobs_integrity_prerequisite), or
 -- when a function or trigger already named jobs_integrity_guard / jobs_zzz_integrity_guard is not 157's (HINT jobs_integrity_name_taken).
--- Changes no row, no existing function, trigger, grant or policy: a before/after fingerprint of the jobs triggers, policies and grants and of every
+-- Changes no row, no existing function, trigger, grant or policy (the one function it replaces is its own, jobs_integrity_guard): a before/after fingerprint of the jobs triggers, policies and grants and of every
 -- other function in public must be identical, or the self-check stops the release.
 -- BEHAVIOUR CHANGE (workshop users): editing the worksheet, stage, customer or job number of a job that has passed inspection is refused. Re-inspection,
 -- rework and reopen are unchanged (docs/release/KNOWN-LIMITATIONS-AND-RECOVERY.md, L12).
+-- BEHAVIOUR CHANGE (every browser role, office and admin too; rule C5, HINT released_pass_kept): once a job is despatched or invoiced, an ordinary edit that
+-- would withdraw its passed inspection is refused. A correction goes through a failed inspection or rework (which record a reason), never a worksheet edit.
+-- DEFINER RIGHTS (reviewed explicitly): public.jobs_integrity_guard() is SECURITY DEFINER with search_path = pg_catalog, public, following 044's
+-- jobs_finish_guard, so C5 can see delivery notes and invoices whatever the caller may read (an Invoices-hidden office or admin member would otherwise
+-- pass an invoker lookup). Its lookups are two EXISTS tests pinned to the job's own company and the job's own id / number and return only yes or no;
+-- the refusal text is fixed and quotes no document number. EXECUTE stays revoked from PUBLIC, anon and authenticated (a trigger function needs none to
+-- fire); service_role is left as 044 leaves it. See the comment at the top of the function body.
 BEGIN;
 DO $post_release_guard$
 DECLARE
@@ -38,7 +45,7 @@ BEGIN
  END IF;
  IF to_regprocedure('public.jobs_integrity_guard()') IS NOT NULL THEN
   SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) INTO v FROM pg_proc p WHERE p.oid = to_regprocedure('public.jobs_integrity_guard()');
-  IF v IS DISTINCT FROM '4a6399c2cd5da6c05e455be32bca8c89' THEN
+  IF v IS DISTINCT FROM '9b48981a3e865e1d0788e017237c7fca' THEN
    RAISE EXCEPTION '157: a function public.jobs_integrity_guard() exists and is not 157''s; stop and compare it first' USING HINT = 'jobs_integrity_name_taken';
   END IF;
  END IF;
@@ -76,12 +83,26 @@ CREATE TEMP TABLE p157_before ON COMMIT DROP AS SELECT * FROM pg_temp.p157_finge
 CREATE OR REPLACE FUNCTION public.jobs_integrity_guard()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SECURITY DEFINER
 SET search_path = pg_catalog, public
 AS $$
 DECLARE
-  v_job BOOLEAN;
+  v_job       BOOLEAN := FALSE;
+  v_withdraws BOOLEAN;
 BEGIN
   -- 157 jobs_integrity_guard (marker; the release guard and the verify script recognise this body by it and by its checksum).
+  -- SECURITY DEFINER, on the 044 precedent (public.jobs_finish_guard), for ONE reason: rule C5 must see the job's delivery notes and invoices
+  -- whatever the caller may read. An office or admin member whose Invoices section is hidden is refused every invoices row by the RESTRICTIVE policy
+  -- "invoices section access" (012, section_allowed('invoices')), so an invoker lookup would find nothing and C5 would fail open for exactly that person.
+  -- What the definer rights are used for, and nothing else: the two EXISTS tests in C5, each pinned to organization_id = OLD.organization_id and to this
+  -- job (its id; its job_no for a delivery note linked by reference only), answering the trigger only yes or no. No row, name or number is read out,
+  -- returned, logged or put in a message. The error text is fixed: it quotes no delivery-note or invoice number, so a person who may not see invoices
+  -- learns only that the job has gone out or been invoiced (reopen_job's message, which quotes them, is deliberately not copied).
+  -- The function reads and writes nothing else, takes no argument, calls no dynamic SQL, and is a trigger function only: EXECUTE is revoked from PUBLIC,
+  -- anon and authenticated below, so it is not callable from the browser. Every table and function is schema-qualified; the search_path is pinned.
+  -- Who is a browser session is decided as in 044's definer jobs_finish_guard: current_setting('role') is the request role PostgREST sets for the
+  -- request and SECURITY DEFINER does not change it (only current_user changes), and session_user is the login role; so the exemption below still
+  -- identifies anon / authenticated sessions here, and the service role, the owner, the SQL editor and imports stay exempt.
   IF coalesce(nullif(current_setting('role', TRUE), 'none'), session_user::TEXT) NOT IN ('anon', 'authenticated') THEN
     RETURN NEW;
   END IF;
@@ -95,18 +116,39 @@ BEGIN
     RAISE EXCEPTION 'Job %: finish it from the Job Board (Finish); the finish time can''t be set by editing the job.', OLD.job_no
       USING ERRCODE = '42501', HINT = 'finish_via_rpc';
   END IF;
-  -- C3 and C2 concern a workshop-only user (admin and office are unchanged). The role lookup runs only when one of them applies.
-  IF NEW.customer IS DISTINCT FROM OLD.customer OR NEW.job_no IS DISTINCT FROM OLD.job_no
-     OR (OLD.inspected_at IS NOT NULL AND NEW.inspected_at IS NULL) OR (OLD.stage = 'complete' AND NEW.stage IS DISTINCT FROM 'complete') THEN
+  -- Does this update withdraw a passed inspection? Worked out once. (034's jobs_worksheet_version_release has already turned a worksheet edit of an
+  -- inspected job into inspected_at NULL and stage 'inspection', so a worksheet edit shows up here as one of these two.)
+  v_withdraws := (OLD.inspected_at IS NOT NULL AND NEW.inspected_at IS NULL) OR (OLD.stage = 'complete' AND NEW.stage IS DISTINCT FROM 'complete');
+  IF v_withdraws THEN
+    -- An authorised workflow names this job: record_job_inspection, fail_job_inspection, open_replacement_rework, finish_job_rework (quoteflow.job_inspection),
+    -- rework (quoteflow.job_rework) or reopen (quoteflow.job_reopen). It then withdraws the pass for every role, with its own reason recorded; neither C5 nor C2 applies.
+    v_job := current_setting('quoteflow.job_inspection', TRUE) IS NOT DISTINCT FROM NEW.id::TEXT
+          OR current_setting('quoteflow.job_rework', TRUE) IS NOT DISTINCT FROM NEW.id::TEXT
+          OR current_setting('quoteflow.job_reopen', TRUE) IS NOT DISTINCT FROM NEW.id::TEXT;
+    -- C5, every browser role (office and admin included): once the job has gone out or been invoiced, an ordinary edit can't withdraw its passed inspection.
+    -- Same tests as reopen_job (081, 113), copied faithfully, scoped to this company and this job with the definer's rights (see the top of this function):
+    -- a delivery note of this company that is despatched, delivered or signed, linked by job_id or (job_id empty) by the job number; or an invoice of this
+    -- company for this job that is not draft, void, voided, cancelled or canceled.
+    IF NOT v_job AND (
+         EXISTS (SELECT 1 FROM public.delivery_notes d
+                 WHERE d.organization_id = OLD.organization_id AND d.status IN ('despatched', 'delivered', 'signed')
+                   AND (d.job_id = OLD.id OR (d.job_id IS NULL AND nullif(btrim(d.job_ref), '') = OLD.job_no)))
+         OR EXISTS (SELECT 1 FROM public.invoices i
+                    WHERE i.job_id = OLD.id AND i.organization_id = OLD.organization_id
+                      AND lower(coalesce(i.status, 'draft')) NOT IN ('draft', 'void', 'voided', 'cancelled', 'canceled'))) THEN
+      RAISE EXCEPTION 'Job %: it has been despatched or invoiced, so its passed inspection stands. If something is wrong with it, record a failed inspection or raise rework.', OLD.job_no
+        USING ERRCODE = '42501', HINT = 'released_pass_kept';
+    END IF;
+  END IF;
+  -- C3 and C2 concern a workshop-only user (admin and office are unchanged by them). The role lookup runs only when one of them applies.
+  -- has_org_role is itself SECURITY DEFINER (036) and answers from auth.uid() and the request's JWT claims, so it names the CALLER whether or not this function is definer.
+  IF NEW.customer IS DISTINCT FROM OLD.customer OR NEW.job_no IS DISTINCT FROM OLD.job_no OR v_withdraws THEN
     IF public.has_org_role(ARRAY['workshop']) AND NOT public.has_org_role(ARRAY['admin', 'office']) THEN
       IF NEW.customer IS DISTINCT FROM OLD.customer OR NEW.job_no IS DISTINCT FROM OLD.job_no THEN
         RAISE EXCEPTION 'Job %: only admin and office staff change a job''s customer or job number.', OLD.job_no
           USING ERRCODE = '42501', HINT = 'job_identity_office';
       END IF;
-      v_job := current_setting('quoteflow.job_inspection', TRUE) IS NOT DISTINCT FROM NEW.id::TEXT
-            OR current_setting('quoteflow.job_rework', TRUE) IS NOT DISTINCT FROM NEW.id::TEXT
-            OR current_setting('quoteflow.job_reopen', TRUE) IS NOT DISTINCT FROM NEW.id::TEXT;
-      IF NOT v_job THEN
+      IF v_withdraws AND NOT v_job THEN
         RAISE EXCEPTION 'Job %: its passed inspection is withdrawn only by the office or an admin, or by recording a failed inspection, raising rework or reopening the job.', OLD.job_no
           USING ERRCODE = '42501', HINT = 'inspection_kept';
       END IF;
@@ -115,6 +157,9 @@ BEGIN
   RETURN NEW;
 END
 $$;
+-- Grants (044 precedent: REVOKE ALL FROM PUBLIC, anon, authenticated; no GRANT). service_role is left as the platform default has it, as 044 leaves it
+-- for jobs_finish_guard: a trigger function needs no EXECUTE privilege to fire (it is checked when the trigger is created, by the owner), and service_role
+-- is exempt inside the body anyway; revoking it (as 156 does for its RPC helpers) is not needed to keep the browser out.
 REVOKE ALL ON FUNCTION public.jobs_integrity_guard() FROM PUBLIC, anon, authenticated;
 
 -- One trigger, created once (running this again changes nothing). Its name sorts after jobs_zz_drawing_revision and before zzz_actor_stamp.
@@ -129,9 +174,9 @@ $p157_trigger$;
 
 DO $p157_self_check$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.jobs_integrity_guard()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '4a6399c2cd5da6c05e455be32bca8c89'
-                   AND p.prorettype = 'trigger'::regtype AND NOT p.prosecdef AND p.proconfig = ARRAY['search_path=pg_catalog, public']) THEN
-    RAISE EXCEPTION '157 self-check: public.jobs_integrity_guard() must be 157''s trigger function, invoker, with its search_path pinned';
+  IF NOT EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.jobs_integrity_guard()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '9b48981a3e865e1d0788e017237c7fca'
+                   AND p.prorettype = 'trigger'::regtype AND p.prosecdef AND p.proconfig = ARRAY['search_path=pg_catalog, public']) THEN
+    RAISE EXCEPTION '157 self-check: public.jobs_integrity_guard() must be 157''s trigger function, SECURITY DEFINER (as 044''s jobs_finish_guard), with its search_path pinned';
   END IF;
   IF EXISTS (SELECT 1 FROM pg_proc p, aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a
              WHERE p.oid = to_regprocedure('public.jobs_integrity_guard()') AND (a.grantee = 0 OR a.grantee IN (SELECT oid FROM pg_roles WHERE rolname IN ('anon', 'authenticated')))) THEN

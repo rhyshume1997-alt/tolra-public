@@ -8,8 +8,12 @@
  * and removed afterwards by destroySyntheticWorld. Release, rollback and re-release run inside transactions that are always rolled back.
  * Proves: C1 a recorded start (and who started it) is never changed or cleared by editing the job; C4 a finish time is set only by finish_job;
  * C3 a workshop-only user cannot change customer or job number; C2/P1 a workshop-only user cannot withdraw a passed inspection (Complete,
- * despatched or invoiced job) unless record_job_inspection, fail_job_inspection, rework or reopen names the job; admin and office are unchanged;
- * drawing-revision behaviour; another company and the service role; release, repeat install, verify, rollback, re-release.
+ * despatched or invoiced job) unless record_job_inspection, fail_job_inspection, rework or reopen names the job; admin and office are unchanged on a
+ * job that has not gone out; C5 (PM ruling 15 Nov 2026) office and admin, like the workshop, cannot withdraw the passed inspection of a despatched or
+ * invoiced job by editing it (hint released_pass_kept), including a person whose Invoices section is hidden (the guard is SECURITY DEFINER so its lookup
+ * is not filtered by row-level security), with no document number in the message, company-scoped lookups, and the authorised corrections (failed
+ * inspection, replacement rework) still working; drawing-revision behaviour; another company and the service role; release, repeat install, verify,
+ * rollback, re-release.
  * Not proved here: PostgREST's own error mapping, the browser screens, hosted PostgreSQL 17.
  * Must not change: this file proves; it never edits a release, verify or rollback file to make itself pass.
  */
@@ -129,14 +133,14 @@ let X: { o: string; admin: Person; office: Person; workshop: Person };
 const freshMachine = async () => (await q<{ id: string }>("insert into machines (organization_id, name) values ($1, $2) returning id", [X.o, `Mill 157 ${++seq}`]))[0].id;
 let Y: { o: string; admin: Person };
 
-type JobOver = { stage?: string; started_at?: string | null; finished_at?: string | null; inspected_at?: string | null; started_by?: string | null; customer?: string | null };
+type JobOver = { job_no?: string; stage?: string; started_at?: string | null; finished_at?: string | null; inspected_at?: string | null; started_by?: string | null; customer?: string | null };
 /** A job made by the database owner (an exempt path, as the importer is). */
 async function job(over: JobOver = {}, org = X.o): Promise<string> {
   const v = { stage: "machining", started_at: null, finished_at: null, inspected_at: null, started_by: null, customer: "Integrity Co", ...over };
   return (await q<{ id: string }>(
     `insert into jobs (organization_id, job_no, customer, stage, started_at, finished_at, inspected_at, inspected_by, started_by, quantity_required)
      values ($1, $2, $3, $4, $5, $6, $7, case when $7::timestamptz is null then null else 'Inspector' end, $8, 10) returning id`,
-    [org, `J157-${runId}-${++seq}`, v.customer, v.stage, v.started_at, v.finished_at, v.inspected_at, v.started_by]))[0].id;
+    [org, over.job_no ?? `J157-${runId}-${++seq}`, v.customer, v.stage, v.started_at, v.finished_at, v.inspected_at, v.started_by]))[0].id;
 }
 const open = (over: JobOver = {}) => job({ started_at: T0, started_by: X.workshop.id, ...over });
 const finished = (over: JobOver = {}) => job({ stage: "inspection", started_at: T0, started_by: X.workshop.id, finished_at: T1, ...over });
@@ -361,10 +365,12 @@ describe("release 157: jobs integrity guard", () => {
     const wholeBefore = await row(id);
     const recordsBefore = (await q<{ n: string }>("select count(*) as n from job_inspections where job_id = $1", [id]))[0].n;
     expect(before).toMatchObject({ stage: "complete" });
-    expect(refused(await run(X.workshop.id, ...set(id, "improvement_comments = 'Use a sharper insert next time'")))).toBe("42501/inspection_kept");
-    expect(refused(await run(X.workshop.id, ...set(id, "quantity_required = 12")))).toBe("42501/inspection_kept");
-    expect(refused(await run(X.workshop.id, ...set(id, "stage = 'inspection'")))).toBe("42501/inspection_kept");
-    expect(refused(await run(X.workshop.id, ...set(id, "stage = 'machining', improvement_comments = 'x'")))).toBe("42501/inspection_kept");
+    // On a despatched or invoiced job C5 answers first (for every role), so the workshop sees released_pass_kept there and inspection_kept otherwise.
+    const hint = kind === "complete" ? "42501/inspection_kept" : "42501/released_pass_kept";
+    expect(refused(await run(X.workshop.id, ...set(id, "improvement_comments = 'Use a sharper insert next time'")))).toBe(hint);
+    expect(refused(await run(X.workshop.id, ...set(id, "quantity_required = 12")))).toBe(hint);
+    expect(refused(await run(X.workshop.id, ...set(id, "stage = 'inspection'")))).toBe(hint);
+    expect(refused(await run(X.workshop.id, ...set(id, "stage = 'machining', improvement_comments = 'x'")))).toBe(hint);
     // inspected_at has its own older lock (034: only Record inspection changes it); either way it is refused and nothing moves.
     expect((await run(X.workshop.id, ...set(id, "inspected_at = null")) as { ok: false; e: Err }).e.code).toBe("42501");
     expect((await run(X.workshop.id, ...set(id, "inspected_at = null, stage = 'inspection'")) as { ok: false; e: Err }).e.code).toBe("42501");
@@ -483,6 +489,238 @@ describe("release 157: jobs integrity guard", () => {
       expect(refused(await tryIn(db, X.workshop.id, "update jobs set customer = 'Else' where id = $1", [mine]))).toBe("42501/job_identity_office");
       expect(refused(await tryIn(db, X.workshop.id, "update jobs set started_at = now() where id = $1", [mine]))).toBe("42501/start_kept");
     });
+  });
+
+  // ---- C5: a despatched or invoiced job keeps its passed inspection (every browser role) ----------------------------------------------
+  // Helpers: the document rows are written by the database owner (an exempt path); each returns the document number so a test can prove it never leaks.
+  const jobNoOf = async (id: string) => String((await row(id)).job_no);
+  const noteFor = async (id: string | null, jobNo: string, status: string, org = X.o) => {
+    const dn = `DN-157-${runId}-${++seq}`;
+    await q("insert into delivery_notes (organization_id, dn_number, customer, status, job_id, job_ref) values ($1, $2, 'Integrity Co', $3, $4, $5)", [org, dn, status, id, jobNo]);
+    return dn;
+  };
+  const invoiceFor = async (id: string, status: string, org = X.o) => {
+    const ref = `INV-157-${runId}-${++seq}`;
+    await q("insert into invoices (organization_id, invoice_ref, customer, status, total, subtotal, vat, job_id) values ($1, $2, 'Integrity Co', $3, 12, 10, 2, $4)", [org, ref, status, id]);
+    return ref;
+  };
+  const inspectionCount = async (id: string) => (await q<{ n: string }>("select count(*) as n from job_inspections where job_id = $1", [id]))[0].n;
+  const hideInvoices = async (role: "office" | "admin") => {
+    const p = await makePerson(X.o, role);
+    // The app does this through set_member_access (093: p_hidden_sections); the column is what it writes and what section_allowed('invoices') reads.
+    await q("update organization_members set hidden_sections = $1 where user_id = $2 and organization_id = $3", [["invoices"], p.id, X.o]);
+    return p;
+  };
+  const FIXED = (jobNo: string) => `Job ${jobNo}: it has been despatched or invoiced, so its passed inspection stands. If something is wrong with it, record a failed inspection or raise rework.`;
+  const officeEdits: Array<[string, string]> = [["a worksheet edit", "improvement_comments = 'Use a sharper insert next time'"], ["a quantity edit", "quantity_required = 12"], ["a stage move", "stage = 'inspection'"]];
+
+  it("4i. C5: office and admin cannot withdraw the pass of a job with a despatched, delivered or signed delivery note (linked by job, or by job_ref only) or an issued or paid invoice; the whole row and the inspection records are unchanged", async () => {
+    const states: Array<[string, (id: string, no: string) => Promise<string>]> = [
+      ["a despatched note linked by job_id", (id, no) => noteFor(id, no, "despatched")],
+      ["a delivered note linked by job_id", (id, no) => noteFor(id, no, "delivered")],
+      ["a signed note linked by job_id", (id, no) => noteFor(id, no, "signed")],
+      ["a despatched note linked only by job_ref (job_id empty)", (_id, no) => noteFor(null, no, "despatched")],
+      ["an issued (sent) invoice", (id) => invoiceFor(id, "sent")],
+      ["a paid invoice", (id) => invoiceFor(id, "paid")],
+    ];
+    for (const [label, make] of states) {
+      for (const who of [X.office, X.admin]) {
+        const id = await complete();
+        await make(id, await jobNoOf(id));
+        const whole = await row(id);
+        const records = await inspectionCount(id);
+        for (const [edit, sql] of officeEdits) {
+          expect(refused(await run(who.id, ...set(id, sql))), `${who.role}, ${label}, ${edit}`).toBe("42501/released_pass_kept");
+        }
+        expect(await row(id), `${who.role}, ${label}: row`).toEqual(whole);
+        expect(await inspectionCount(id), `${who.role}, ${label}: inspections`).toBe(records);
+      }
+    }
+  });
+
+  it("4j. C5 DEFINER CASE: an office user and an admin whose Invoices section is hidden still cannot withdraw the pass of an invoiced job, cannot read any invoice themselves, and the refusal quotes no invoice or delivery-note number", async () => {
+    const hiddenOffice = await hideInvoices("office");
+    const hiddenAdmin = await hideInvoices("admin");
+    for (const who of [hiddenOffice, hiddenAdmin]) {
+      const id = await complete();
+      const no = await jobNoOf(id);
+      const invoice = await invoiceFor(id, "sent");
+      const note = await noteFor(id, no, "despatched");
+      // They really cannot see invoices (the RESTRICTIVE "invoices section access" policy), so a lookup running with THEIR rights would find nothing ...
+      const mine = await run(who.id, "select id, invoice_ref from invoices where organization_id = $1", [X.o]);
+      expect(mine, `${who.role} reads invoices`).toMatchObject({ ok: true, count: 0 });
+      expect(await run(who.id, "select id from invoices where job_id = $1", [id])).toMatchObject({ ok: true, count: 0 });
+      // ... while a colleague with the section sees the same invoice, and it exists.
+      expect((await run(X.office.id, "select invoice_ref from invoices where job_id = $1", [id]) as { ok: true; rows: Row[] }).rows).toEqual([{ invoice_ref: invoice }]);
+      // The invoiced-only job (no delivery note) is the one that proves the definer lookup: use a second job with the invoice alone.
+      const invoicedOnly = await complete();
+      const onlyRef = await invoiceFor(invoicedOnly, "sent");
+      const whole = await row(invoicedOnly);
+      for (const [edit, sql] of officeEdits) {
+        const o = await run(who.id, ...set(invoicedOnly, sql));
+        expect(refused(o), `${who.role} hidden invoices, invoice only, ${edit}`).toBe("42501/released_pass_kept");
+        const e = (o as { ok: false; e: Err }).e;
+        expect(e.message).toBe(FIXED(await jobNoOf(invoicedOnly)));
+        expect(e.message).not.toContain(onlyRef);
+        expect(e.message).not.toContain("INV-");
+        expect(e.message).not.toContain("DN-");
+      }
+      expect(await row(invoicedOnly), `${who.role} hidden invoices: row`).toEqual(whole);
+      // The despatched job (note and invoice both there): refused too, and neither number is in the text.
+      const refusal = await run(who.id, ...set(id, officeEdits[0][1]));
+      expect(refused(refusal)).toBe("42501/released_pass_kept");
+      const text = (refusal as { ok: false; e: Err }).e.message;
+      expect(text).toBe(FIXED(no));
+      expect(text).not.toContain(invoice);
+      expect(text).not.toContain(note);
+      expect((await row(id)).inspected_at).not.toBeNull();
+      // Not blocked without a document: a hidden-Invoices person still edits a Complete job that has gone nowhere, as before.
+      const plain = await complete();
+      expect(allowed(await run(who.id, ...set(plain, officeEdits[0][1]))), `${who.role} plain job`).toBe("allowed");
+      expect(await row(plain)).toMatchObject({ stage: "inspection", inspected_at: null });
+    }
+  });
+
+  it("4k. C5 definer rights are narrow: the guard is SECURITY DEFINER with its search_path pinned, no browser role can execute it, and calling it directly is refused", async () => {
+    const c = (await q<{ secdef: boolean; cfg: string[]; anon: boolean; authenticated: boolean; pub: boolean; owner: string }>(
+      `select p.prosecdef as secdef, p.proconfig as cfg, has_function_privilege('anon', p.oid, 'EXECUTE') as anon, has_function_privilege('authenticated', p.oid, 'EXECUTE') as authenticated,
+              coalesce(p.proacl, acldefault('f', p.proowner)) @> array[makeaclitem(0, p.proowner, 'EXECUTE', false)] as pub, pg_get_userbyid(p.proowner) as owner
+       from pg_proc p where p.oid = to_regprocedure('public.jobs_integrity_guard()')`))[0];
+    expect(c).toMatchObject({ secdef: true, cfg: ["search_path=pg_catalog, public"], anon: false, authenticated: false, pub: false });
+    for (const who of [X.office.id, X.admin.id, X.workshop.id]) {
+      expect(refused(await run(who, "select public.jobs_integrity_guard()"))).toBe("42501/-");
+    }
+    expect(refused(await run("service", "select public.jobs_integrity_guard()")), "service_role keeps the platform default (044 precedent) but a trigger function can only be fired by its trigger").not.toBe("allowed");
+  });
+
+  it("4l. C5 company boundary: another company's despatched note or invoice naming the same job number does not block an office or admin edit; another company's user still cannot update this job", async () => {
+    const mine = async () => complete();
+    for (const who of [X.office, X.admin]) {
+      const id = await mine();
+      const no = await jobNoOf(id);
+      // Company B: a despatched note naming this very job number (job_ref equal, no job), its own job with the same number, a note and an invoice on that job.
+      await noteFor(null, no, "despatched", Y.o);
+      const theirs = await job({ job_no: no, stage: "complete", started_at: T0, finished_at: T1, inspected_at: T1 }, Y.o);
+      await noteFor(theirs, no, "despatched", Y.o);
+      await invoiceFor(theirs, "sent", Y.o);
+      // An invoice of B that points at A's job can't even exist (015's cross-company guard); the database refuses it.
+      const cross = await invoiceFor(id, "sent", Y.o).then(() => "inserted", (x: Err) => x.message);
+      expect(cross).toContain("cross-organisation");
+      expect(allowed(await run(who.id, ...set(id, officeEdits[0][1]))), `${who.role}: B's documents do not block A's job`).toBe("allowed");
+      expect(await row(id)).toMatchObject({ stage: "inspection", inspected_at: null, inspected_by: null });
+    }
+    // The other way round: company A's despatched note naming B's job number does not block B's admin on B's own Complete job.
+    const mineA = await mine();
+    const noA = await jobNoOf(mineA);
+    await noteFor(null, noA, "despatched");
+    await invoiceFor(mineA, "sent");
+    const b = await job({ job_no: noA, stage: "complete", started_at: T0, finished_at: T1, inspected_at: T1 }, Y.o);
+    expect(allowed(await run(Y.admin.id, "update jobs set improvement_comments = 'B edit' where id = $1", [b]))).toBe("allowed");
+    expect(await row(b)).toMatchObject({ stage: "inspection", inspected_at: null });
+    // A user of company B updates no row of company A's despatched job at all (row security), and the pass stands.
+    const despatched = await mine();
+    await noteFor(despatched, await jobNoOf(despatched), "despatched");
+    const before = await row(despatched);
+    expect(await run(Y.admin.id, "update jobs set improvement_comments = 'Taken', stage = 'inspection' where id = $1", [despatched])).toMatchObject({ ok: true, count: 0 });
+    expect(await row(despatched)).toEqual(before);
+  });
+
+  it("4m. C5 is not over-broad: a Complete job with only a pending or awaiting delivery note, only a draft, void or cancelled invoice, a despatched note of a different job, or nothing is still edited by office and admin, which withdraws the pass as before", async () => {
+    const states: Array<[string, (id: string, no: string) => Promise<unknown>]> = [
+      ["no document", async () => undefined],
+      ["a pending delivery note", (id, no) => noteFor(id, no, "pending")],
+      ["an awaiting delivery note linked by job_ref only", (_id, no) => noteFor(null, no, "awaiting")],
+      ["a draft invoice", (id) => invoiceFor(id, "draft")],
+      ["a void invoice", (id) => invoiceFor(id, "void")],
+      ["a cancelled invoice", (id) => invoiceFor(id, "cancelled")],
+      ["a despatched note of another job (other job_ref)", async () => noteFor(null, `OTHER-${runId}-${++seq}`, "despatched")],
+    ];
+    for (const [label, make] of states) {
+      for (const who of [X.office, X.admin]) {
+        const id = await complete();
+        await make(id, await jobNoOf(id));
+        expect(allowed(await run(who.id, ...set(id, officeEdits[0][1]))), `${who.role}, ${label}`).toBe("allowed");
+        expect(pick(await row(id), ["stage", "inspected_at", "inspected_by", "worksheet_version"]), `${who.role}, ${label}`).toEqual({ stage: "inspection", inspected_at: null, inspected_by: null, worksheet_version: 1 });
+      }
+    }
+  });
+
+  it("4n. C5: a legitimate correction of a despatched or invoiced job still works with its reason recorded (fail_job_inspection, inspect_job fail, open_replacement_rework); reopen_job is still refused with its own hint", async () => {
+    // fail_job_inspection by the workshop inspector, on a despatched job.
+    const a = await complete();
+    await noteFor(a, await jobNoOf(a), "despatched");
+    const recordsA = Number(await inspectionCount(a));
+    expect(allowed(await run(X.workshop.id, "select public.fail_job_inspection($1, 'Bore 25.08', 'Bore oversize', null, 'Re-bore and re-measure', null, null, null, null) as r", [a]))).toBe("allowed");
+    expect(await row(a)).toMatchObject({ stage: "rework", inspected_at: null });
+    expect(Number(await inspectionCount(a))).toBe(recordsA + 1);
+    expect(await q("select result from job_inspections where job_id = $1 order by inspected_at desc, id desc limit 1", [a])).toEqual([{ result: "fail" }]);
+    expect((await q<{ reason: string }>("select reason from job_rework where job_id = $1 order by raised_at desc, id desc limit 1", [a]))[0].reason).toContain("Bore oversize");
+    // inspect_job fail on an invoiced job, by the office.
+    const b = await complete();
+    await invoiceFor(b, "sent");
+    expect(allowed(await run(X.office.id, INSPECT, await inspectArgs(b, "fail")))).toBe("allowed");
+    expect(await row(b)).toMatchObject({ stage: "rework", inspected_at: null });
+    expect((await q<{ reason: string }>("select reason from job_rework where job_id = $1 order by raised_at desc, id desc limit 1", [b]))[0].reason).toContain("Bore oversize 25.06");
+    // open_replacement_rework on a despatched job (fail, scrap 2, concession releases it, it goes out, then the office opens the replacements).
+    const j = await finished();
+    expect(allowed(await run(X.workshop.id, INSPECT, await inspectArgs(j, "fail")))).toBe("allowed");
+    const first = await latestRework(j);
+    expect(allowed(await run(X.workshop.id, "select public.scrap_job_quantity($1, 2, 'Cracked on re-bore') as r", [first]))).toBe("allowed");
+    expect(allowed(await run(X.admin.id, INSPECT, await inspectArgs(j, "concession", "Customer accepted the short quantity")))).toBe("allowed");
+    expect(await row(j)).toMatchObject({ stage: "complete" });
+    await noteFor(j, await jobNoOf(j), "despatched");
+    expect(allowed(await run(X.office.id, "select public.open_replacement_rework($1, 'Make 2 off to drawing') as r", [first]))).toBe("allowed");
+    expect(await row(j)).toMatchObject({ stage: "rework", inspected_at: null });
+    expect((await q<{ instructions: string }>("select instructions from job_rework where job_id = $1 order by raised_at desc, id desc limit 1", [j]))[0].instructions).toContain("Make 2 off to drawing");
+    // reopen_job is still refused, with its existing hint, for a despatched and an invoiced job; the job is unchanged.
+    const d = await complete();
+    await noteFor(d, await jobNoOf(d), "despatched");
+    const e = await complete();
+    await invoiceFor(e, "sent");
+    for (const [id, hint] of [[d, "22023/already_despatched"], [e, "22023/invoice_issued"]] as const) {
+      const before = await row(id);
+      expect(refused(await run(X.office.id, "select public.reopen_job($1, 'Customer asked for a re-check of the bore') as r", [id]))).toBe(hint);
+      expect(refused(await run(X.admin.id, "select public.reopen_job($1, 'Customer asked for a re-check of the bore') as r", [id]))).toBe(hint);
+      expect(await row(id)).toEqual(before);
+    }
+  });
+
+  it("4o. C5: the workshop alone on a despatched or invoiced job is refused released_pass_kept (C5 answers before C2) for a worksheet edit, a stage move and a stage move with a customer change; a customer-only change is still job_identity_office; a flag naming the job lets the authorised workflow through", async () => {
+    for (const make of [async () => { const id = await complete(); await noteFor(id, await jobNoOf(id), "despatched"); return id; }, async () => { const id = await complete(); await invoiceFor(id, "sent"); return id; }]) {
+      const id = await make();
+      const whole = await row(id);
+      expect(refused(await run(X.workshop.id, ...set(id, "improvement_comments = 'x'")))).toBe("42501/released_pass_kept");
+      expect(refused(await run(X.workshop.id, ...set(id, "stage = 'inspection'")))).toBe("42501/released_pass_kept");
+      expect(refused(await run(X.workshop.id, ...set(id, "stage = 'inspection', customer = 'Else Ltd'")))).toBe("42501/released_pass_kept");
+      expect(refused(await run(X.workshop.id, ...set(id, "customer = 'Else Ltd'")))).toBe("42501/job_identity_office");
+      expect(await row(id)).toEqual(whole);
+      // The authorised workflows name the job: neither C5 nor C2 then applies (fail, rework and reopen record their own reason, and reopen_job has its own refusals).
+      await rolledBack(async (db) => {
+        for (const [who, flag] of [[X.workshop.id, "quoteflow.job_inspection"], [X.workshop.id, "quoteflow.job_rework"], [X.office.id, "quoteflow.job_reopen"]] as const) {
+          await db.query("select set_config($1, $2, true)", [flag, id]);
+          expect(allowed(await tryIn(db, who, "update jobs set stage = 'inspection' where id = $1", [id])), `${flag} names this job`).toBe("allowed");
+          await db.query("update jobs set stage = 'complete' where id = $1", [id]);
+          await db.query("select set_config($1, '', true)", [flag]);
+        }
+        // Another job's id in the flag is no key.
+        await db.query("select set_config('quoteflow.job_inspection', $1, true)", [randomUUID()]);
+        expect(refused(await tryIn(db, X.office.id, "update jobs set stage = 'inspection' where id = $1", [id]))).toBe("42501/released_pass_kept");
+        expect(refused(await tryIn(db, X.workshop.id, "update jobs set stage = 'inspection' where id = $1", [id]))).toBe("42501/released_pass_kept");
+      });
+    }
+  });
+
+  it("4p. C5: an update by office or admin that does not withdraw the pass (status, specification) still works on a despatched or invoiced Complete job; the pass, stage and version are unchanged", async () => {
+    for (const make of [async () => { const id = await complete(); await noteFor(id, await jobNoOf(id), "despatched"); return id; }, async () => { const id = await complete(); await invoiceFor(id, "sent"); return id; }]) {
+      for (const who of [X.office, X.admin]) {
+        const id = await make();
+        const before = pick(await row(id), releaseState);
+        expect(allowed(await run(who.id, ...set(id, "status = 'at_risk'"))), `${who.role} status`).toBe("allowed");
+        expect(allowed(await run(who.id, ...set(id, "specification = 'Spec note'"))), `${who.role} specification`).toBe("allowed");
+        expect(pick(await row(id), releaseState)).toEqual(before);
+        expect(await row(id)).toMatchObject({ status: "at_risk", specification: "Spec note" });
+      }
+    }
   });
 
   // ---- Drawing revision ---------------------------------------------------------------------------------------------------------

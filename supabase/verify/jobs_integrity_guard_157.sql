@@ -1,11 +1,11 @@
 -- Read only: after release 157 (jobs integrity guard; registered in supabase/release-plan.json as phase 157, after 156), every row must say true. Proves:
--- the trigger function is 157's (invoker, search_path pinned, callable by no API role); the trigger is the BEFORE UPDATE row trigger without a column list
+-- the trigger function is 157's (security definer on the 044 precedent, search_path pinned, callable by no API role); the trigger is the BEFORE UPDATE row trigger without a column list
 -- and sorts after 022's, 034's and 083's job triggers and before 035's actor stamp; the job locks it relies on are all still there and the workflows still
 -- name the flags it reads (tolra.finish_job, quoteflow.job_inspection, quoteflow.job_rework, quoteflow.job_reopen); release preflight's 157 marker holds.
 -- Whether it refuses and allows what it should is proved by tests/db/jobs-integrity-157.test.ts, not here (this script reads the catalogue only).
-SELECT 'function: public.jobs_integrity_guard() is 157''s trigger function (checksum), invoker, search_path pinned' AS check_name,
-  EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.jobs_integrity_guard()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '4a6399c2cd5da6c05e455be32bca8c89'
-            AND p.prorettype = 'trigger'::regtype AND NOT p.prosecdef AND p.proconfig = ARRAY['search_path=pg_catalog, public']) AS ok
+SELECT 'function: public.jobs_integrity_guard() is 157''s trigger function (checksum), SECURITY DEFINER, search_path pinned' AS check_name,
+  EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.jobs_integrity_guard()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '9b48981a3e865e1d0788e017237c7fca'
+            AND p.prorettype = 'trigger'::regtype AND p.prosecdef AND p.proconfig = ARRAY['search_path=pg_catalog, public']) AS ok
 UNION ALL SELECT 'function: public.jobs_integrity_guard() is callable by no API role (PUBLIC, anon, authenticated)',
   to_regprocedure('public.jobs_integrity_guard()') IS NOT NULL
   AND NOT EXISTS (SELECT 1 FROM pg_proc p, aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a
@@ -28,6 +28,6 @@ UNION ALL SELECT 'flags: finish_job names tolra.finish_job; the inspection, rewo
      ('open_replacement_rework', 'quoteflow.job_rework'), ('finish_job_rework', 'quoteflow.job_rework')) AS f(fn, flag)
    WHERE EXISTS (SELECT 1 FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.proname = f.fn AND position(f.flag IN p.prosrc) > 0))
 UNION ALL SELECT 'marker: release preflight''s "post-144 marker 157 jobs_integrity_guard" condition holds',
-  coalesce((EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.jobs_integrity_guard()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '4a6399c2cd5da6c05e455be32bca8c89')
+  coalesce((EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.jobs_integrity_guard()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '9b48981a3e865e1d0788e017237c7fca')
       AND EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = to_regclass('public.jobs') AND t.tgname = 'jobs_zzz_integrity_guard' AND NOT t.tgisinternal
                     AND t.tgfoid = to_regprocedure('public.jobs_integrity_guard()') AND t.tgtype = 19 AND t.tgattr::TEXT = '' AND t.tgnargs = 0 AND t.tgenabled = 'O' AND t.tgqual IS NULL)), FALSE);

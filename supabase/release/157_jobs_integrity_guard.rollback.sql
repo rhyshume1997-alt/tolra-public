@@ -1,8 +1,9 @@
 -- Rollback of release step 157 (jobs integrity guard). One transaction.
 -- Drops the trigger jobs_zzz_integrity_guard from public.jobs and the function public.jobs_integrity_guard(). No row is touched; no other function,
--- trigger, grant or policy is touched (a before/after fingerprint must be identical). Running it twice equals running it once. After it, the four
+-- trigger, grant or policy is touched (a before/after fingerprint must be identical). Running it twice equals running it once. After it, the five
 -- defects (a start time that can be replaced or cleared by editing the job, a finish time that can be set by editing the job, a workshop-only user
--- changing a job's customer or number, and a workshop-only user withdrawing a passed inspection) are open again.
+-- changing a job's customer or number, a workshop-only user withdrawing a passed inspection, and an office or admin edit withdrawing the passed inspection
+-- of a despatched or invoiced job) are open again.
 -- Refuses, changing nothing, if a function named jobs_integrity_guard or a trigger named jobs_zzz_integrity_guard exists and is not 157's (stop and
 -- compare it first).
 BEGIN;
@@ -12,7 +13,7 @@ DECLARE
 BEGIN
  IF to_regprocedure('public.jobs_integrity_guard()') IS NOT NULL THEN
   SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) INTO v FROM pg_proc p WHERE p.oid = to_regprocedure('public.jobs_integrity_guard()');
-  IF v IS DISTINCT FROM '4a6399c2cd5da6c05e455be32bca8c89' THEN
+  IF v IS DISTINCT FROM '9b48981a3e865e1d0788e017237c7fca' THEN
    RAISE EXCEPTION '157 rollback: public.jobs_integrity_guard() is not 157''s; stop and compare it first';
   END IF;
  END IF;
