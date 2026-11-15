@@ -32,6 +32,7 @@ How to read this document:
 | L9 | Release 151 header said "PROPOSAL, not registered" | Resolved: 151 IS registered (plan phase 151, after 150) and CI installs it; only a header comment was stale (fixed on this branch) | Info (resolved) | Sourced |
 | L10 | Release tests ran on PostgreSQL 16; the preflight expects 17.x | Behaviour on the production database version is not proven | Medium | Sourced |
 | L11 | Release 156: the generic workbook import refuses a case-variant invoice number only with the general database refusal | `inv-1001` next to `INV-1001` is never written, but the message is the generic "database refused the import" (23505), not a named problem | Low | Proved locally (PG16) |
+| L12 | Release 160: the older reopen function can no longer be called from the browser | A job is reopened only through the request and sign-off screen; the app's legacy fallback call would fail visibly, but is reached only when release 113 is missing | Info | Proved locally (PG16) |
 
 ---
 
@@ -148,6 +149,15 @@ How to read this document:
 - **Severity:** Low.
 - **Release note:** 156 refuses to install while any company already has invoice numbers that differ only in capital letters (run the read-only finder in the 156 release header first). Local index build at 4,000 invoices: about 5 ms (PG16; hosted time not measured). Credit note numbers keep the exact-case rule (follow-up).
 - **Evidence:** `tests/db/invoice-ref-case-156.test.ts` cases 11 and 14.
+
+### L12. Release 160: the older reopen function is closed to the browser
+
+- **What it is:** Defect J1: a signed-in user (confirmed for office) could reopen a Complete job by calling the older database function `public.reopen_job` directly, skipping the reopen request and sign-off of release 113. Release 160 revokes browser EXECUTE on that one function (PM ruling, 15 Nov 2026); its body, service_role's grant and every other grant are unchanged. Reopening now goes through the request and sign-off screen (`reopen_preview`, `reopen_record`, `decide_reopen_request`), which call the old function as the database owner, so that workflow and every rule inside it are unchanged. The app's legacy fallback (`lib/reopen-sign-off.ts`) calls `reopen_job` directly, but only when release 113's functions are missing; it would now fail visibly (permission denied) instead of reopening.
+- **What it means for John:** Staff reopen exactly as before, through the screen. Nobody can skip the sign-off by calling the function.
+- **Severity:** Info.
+- **Release note:** 160 refuses to install without release 113. **Never re-run release 081's own file after 160**: its self-check requires signed-in users to execute `reopen_job` and would refuse; roll 160 back first. The historical check `supabase/verify/job_flow_081.sql` is unchanged and, after 160, its row `api_functions_signed_in_only` reports false by design (it still expects authenticated EXECUTE on `reopen_job`); that is the expected and only change 160 causes in its result (its two `delivery_note_try_draft` rows have been false since migration 099). Release 160's own verify file `supabase/verify/legacy_reopen_revoke_160.sql` is the current check.
+- **Rollback:** `supabase/release/160_legacy_reopen_revoke.rollback.sql` grants EXECUTE on `reopen_job` to authenticated again (081's grant); this reopens defect J1, so use it only if the screen cannot be used.
+- **Evidence:** `tests/db/legacy-reopen-revoke-160.test.ts`.
 
 ---
 
