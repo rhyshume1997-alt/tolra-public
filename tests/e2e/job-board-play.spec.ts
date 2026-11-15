@@ -294,8 +294,18 @@ test("another session takes the lathe while this one is offline: conflict notice
   await expect(page.getByText("2 offline changes need attention")).toBeVisible({ timeout: 20_000 });
   await expect(playControl(r(), J.clash)).toBeVisible();
   await page.getByText("2 offline changes need attention").click();
-  await expect(page.getByText(`${J.clash} was started while you were offline, but when it synced the machine was already in use`)).toBeVisible();
+  await expect(page.getByText(`${J.clash} was NOT started. The requested machine is taken:`, { exact: false })).toBeVisible();
+  expect((await adminClient().from("jobs").select("started_at").eq("id", ids[J.clash]).single()).data!.started_at).toBeNull();
+  await expect(page.getByRole("button", { name: "Retry on the same machine", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Start on the bench", exact: true })).toBeVisible();
   await expect(page.getByText(`Not sent: the Start before it (${J.clash} on`)).toBeVisible();
+  page.once("dialog", (dialog) => dialog.dismiss());
+  await page.getByRole("button", { name: "Discard", exact: true }).click();
+  await expect(page.getByText("2 offline changes need attention")).toBeVisible();
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Discard", exact: true }).click();
+  await expect(page.getByText("2 offline changes need attention")).toHaveCount(0);
+
   expect((await runsOf(J.clash))).toEqual([]);
   expect((await adminClient().from("machine_runs").select("job_id").eq("machine_id", lathe).is("ended_at", null)).data).toEqual([{ job_id: ids[J.focus] }]);
 });

@@ -91,15 +91,15 @@ describe("offline replay of a Start with machines and a Pause (lib/offline/sync)
     expect(fallback).not.toHaveBeenCalled();
   });
 
-  it("a machine taken meanwhile: the job's start is still recorded (the plain update) and the entry is held as a conflict that says so", async () => {
+  it("a machine taken meanwhile: live replay holds the Start without invoking the legacy callback", async () => {
     const c = client({ code: "42501", hint: "machine_in_use", message: "Mill is in use by Dave on J-0009 since 13/10 07:50. Pick a free machine, or ask an admin to take it over." });
     const fallback = vi.fn(async () => ({ status: "applied" as const }));
-    const outcome = await executeStartRunOp(startOp, c, fallback);
-    expect(fallback).toHaveBeenCalledTimes(1);
+    const outcome = await executeStartRunOp(startOp, c);
+    expect(fallback).not.toHaveBeenCalled();
     expect(outcome.status).toBe("conflict");
-    expect(outcome.status === "conflict" && outcome.reason).toContain("J-0001 was started while you were offline, but when it synced the machine was already in use: Mill is in use by Dave on J-0009");
-    expect(outcome.status === "conflict" && outcome.reason).toContain("recorded as started without the machine");
-    // Still offline when the fallback runs: the entry stays queued (nothing is filed as done).
+    expect(outcome.status === "conflict" && outcome.reason).toContain("J-0001 was NOT started. The requested machine is taken: Mill is in use by Dave on J-0009");
+    expect(outcome).toMatchObject({ code: "start_machine_unavailable", opened: false });
+    // Explicit legacy callers still propagate their callback's network outcome.
     const stillOffline = vi.fn(async () => ({ status: "network" as const }));
     expect(await executeStartRunOp(startOp, c, stillOffline)).toEqual({ status: "network" });
   });

@@ -1,5 +1,7 @@
 "use client";
 
+// Offline Synchronisation presentation boundary: scoped held entries -> explicit user choices; recovery logic stays in lib/offline.
+
 import { useEffect, useState } from "react";
 import { CloudOff, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
@@ -8,8 +10,8 @@ import { Button } from "@/components/ui/button";
 import { friendlyError } from "@/lib/friendly-error";
 import { exportFileName } from "@/lib/job-photos";
 import { type JobWorksheet, saveWorksheet } from "@/lib/job-worksheet";
-import { readAttachment, type OutboxEntry, type PhotoOp } from "@/lib/offline/outbox";
-import { discardOfflinePending, dismissOfflineIssue, retryOfflineIssue, useOfflineStatus } from "@/lib/offline/scope";
+import { readAttachment, isRecoverableStart, type HeldEntry, type StartRecoveryChoice, type OutboxEntry, type PhotoOp } from "@/lib/offline/outbox";
+import { discardOfflinePending, dismissOfflineIssue, recoverOfflineStart, retryOfflineIssue, useOfflineStatus } from "@/lib/offline/scope";
 import { discardedMessage, lastSyncedLabel, takeDiscardedNotice } from "@/lib/offline/store";
 import { clockLabel, syncNow, useOfflineSync } from "@/lib/offline/sync";
 
@@ -27,6 +29,24 @@ export function OfflineBanner() {
   const [busy, setBusy] = useState(false);
   const issues = status.conflicts.length + status.rejected.length;
   const waitingPhotos = status.pendingPhotos;
+  async function recoverStart(item: HeldEntry, kind: "retry" | "bench" | "discard") {
+    const choice: StartRecoveryChoice = kind === "discard"
+      ? { kind, confirmed: window.confirm(`Discard the held Start for ${item.op.jobNo} and its waiting Pauses? This cannot be undone.`) }
+      : { kind };
+    setBusy(true);
+    try {
+      const result = await recoverOfflineStart(item, choice);
+      if (result.status === "applied") { toast.success("Start confirmed by the server."); if (result.reason) toast.message(result.reason); }
+      else if (result.status === "discarded") toast.success("Held Start and its waiting Pauses discarded.");
+      else if (result.reason) toast.message(result.reason);
+    } catch (err) { toast.error(friendlyError(err, "Recovery could not be confirmed. The Start is kept.")); }
+    finally { setBusy(false); }
+  }
+  const recoveryButtons = (item: HeldEntry) => <div className="mt-1 flex flex-wrap gap-2">
+    <Button size="sm" variant="outline" disabled={busy} onClick={() => void recoverStart(item, "retry")}>Retry on the same machine</Button>
+    <Button size="sm" variant="outline" disabled={busy} onClick={() => void recoverStart(item, "bench")}>Start on the bench</Button>
+    <Button size="sm" variant="ghost" disabled={busy} onClick={() => void recoverStart(item, "discard")}>Discard</Button>
+  </div>;
   // Unsynced changes a forced wipe removed (the server ended the session), on the next page load: said once, never
   // silent. A wipe on this page (sign-out) is said on the sign-in page instead.
   useEffect(() => {
@@ -129,16 +149,16 @@ export function OfflineBanner() {
           {status.conflicts.map((item) => (
             <li key={item.id} className="rounded-none border border-amber-300 bg-white p-2">
               <p data-offline-conflict={item.op.kind}><strong>{item.op.jobNo || "Job"}</strong>{item.op.kind === "signoff" ? " (signature)" : ""}: {item.reason}</p>
-              <div className="mt-1 flex flex-wrap gap-2">
+              {isRecoverableStart(item) ? recoveryButtons(item) : <div className="mt-1 flex flex-wrap gap-2">
                 {item.op.kind === "worksheet" ? <Button size="sm" variant="outline" onClick={() => void applyMine(item.id, item.op as { jobId: string; worksheet: Record<string, unknown> }, item.server)}>Apply my version</Button> : null}
                 <Button size="sm" variant="ghost" onClick={() => void dismissOfflineIssue("conflicts", item.id)}>{item.op.kind === "signoff" ? "Dismiss" : "Keep theirs"}</Button>
-              </div>
+              </div>}
             </li>
           ))}
           {status.rejected.map((item) => (
             <li key={item.id} className="rounded-none border border-red-300 bg-white p-2">
               <p><strong>{item.op.jobNo || "Job"}</strong> ({label(item.op)}): not saved. {item.reason}</p>
-              {item.op.kind === "photo" ? (
+              {isRecoverableStart(item) ? recoveryButtons(item) : item.op.kind === "photo" ? (
                 <div className="mt-1 flex flex-wrap gap-2">
                   <Button size="sm" variant="outline" disabled={busy} onClick={() => void retryPhoto(item)}>Retry</Button>
                   <Button size="sm" variant="outline" onClick={() => void exportPhoto(item.op as PhotoOp)}>Export</Button>
