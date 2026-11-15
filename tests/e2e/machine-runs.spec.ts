@@ -3,7 +3,7 @@
  * IN USE (machine, who, since) to the office, who can't take that machine for another job but can group the board by machine and assign an
  * operator; the admin takes the machine over (recorded), releases it, pauses and finishes; the schedule's status cards show the live use;
  * and a Start made offline with a machine syncs through start_machine_run: applied when the machine is free, surfaced as a conflict (the
- * job still started, the machine not taken) when someone took it meanwhile.
+ * job not started since release 157, the machine not taken) when someone took it meanwhile.
  */
 import { expect, test, type Page } from "@playwright/test";
 
@@ -176,7 +176,7 @@ test("the admin takes the mill over for another job (recorded), releases it, pau
   expect((await admin.from("machine_runs").select("id").eq("machine_id", mill).is("ended_at", null)).data).toEqual([]);
 });
 
-test("offline: a Start with a machine queues on the device and syncs through start_machine_run; a machine taken meanwhile is surfaced, the job still started", async ({ page }) => {
+test("offline: a Start with a machine queues on the device and syncs through start_machine_run; a machine taken meanwhile is surfaced, the job not started (release 157)", async ({ page }) => {
   const admin = adminClient();
   await signIn(page, w.tenants.alpha.users.workshop);
   await page.goto("/jobs");
