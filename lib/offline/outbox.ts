@@ -163,10 +163,11 @@ export const START_LEGACY_HELD = "start_legacy_needs_choice";
 export const START_UNCONFIRMED = "start_unconfirmed" as const;
 export type StartUncertaintyCode = typeof START_UNCONFIRMED | "runs_missing";
 const START_UNCERTAINTY_CODES: readonly StartUncertaintyCode[] = [START_UNCONFIRMED, "runs_missing"];
+export const isUncertainStartCode = (code: string | undefined): code is StartUncertaintyCode => START_UNCERTAINTY_CODES.some((item) => item === code);
 export const isUncertainStartOutcome = (outcome: ReplayOutcome): boolean => outcome.status === "network" ||
-  (outcome.status === "conflict" && START_UNCERTAINTY_CODES.some((code) => code === outcome.code));
+  (outcome.status === "conflict" && isUncertainStartCode(outcome.code));
 export const isRecoverableStart = (entry: Pick<HeldEntry, "op" | "code">) =>
-  (entry.op.kind === "start" || entry.op.kind === "run_start") && (entry.code === START_MACHINE_HELD || entry.code === START_LEGACY_HELD || entry.code === START_UNCONFIRMED);
+  (entry.op.kind === "start" || entry.op.kind === "run_start") && (entry.code === START_MACHINE_HELD || entry.code === START_LEGACY_HELD || isUncertainStartCode(entry.code));
 export type StartRecoveryChoice = { kind: "retry" | "bench" } | { kind: "discard"; confirmed: boolean };
 export type StartRecoveryResult = { status: "applied" | "discarded" | "held" | "missing" | "busy" | "confirmation_required"; reason?: string };
 
@@ -506,7 +507,7 @@ async function drain(scope: Scope, execute: Executor, now: () => Date) {
         const entry: OutboxEntry = { id: next.id, queuedAt: next.queuedAt, op: next.op };
         const code = settled.status === "rejected" || settled.status === "conflict" ? settled.code : undefined;
         set[held] = [...listOf<HeldEntry>(values, held), { ...entry, reason: settled.reason, server: settled.status === "conflict" ? settled.server : undefined, heldAt: now().toISOString(), ...(code ? { code } : {}),
-          ...(code === START_UNCONFIRMED && (sent.kind === "start" || sent.kind === "run_start") ? { recoveryAttempt: { choice: "retry" as const, op: sent, uncertain: true } } : {}) }];
+          ...(isUncertainStartCode(code) && (sent.kind === "start" || sent.kind === "run_start") ? { recoveryAttempt: { choice: "retry" as const, op: sent, uncertain: true } } : {}) }];
       }
       let dropped = 0;
       if (startOpenedNothing && (sent.kind === "run_start" || sent.kind === "start")) {

@@ -106,6 +106,21 @@ describe("explicit recovery", () => {
     expect(held).toMatchObject({ code: START_UNCONFIRMED, recoveryAttempt: { choice: "retry", op: legacy, uncertain: true } });
     expect((await recoverStartEntry(scope, held, { kind: "discard", confirmed: true }, executeOutboxOp)).status).toBe("held");
   });
+  it("an initially incomplete modern Start also keeps uncertainty, links its Pause and exposes recovery", async () => {
+    h.mode = "empty";
+    await enqueue(scope, op);
+    await enqueue(scope, { kind: "run_pause", v: 2, jobRef: op.jobRef, jobNo: op.jobNo, at: op.at, clientOpId: "unconfirmed-pause", machines: null, afterStart: null });
+    await replayOutbox(scope, executeOutboxOp);
+    const [held] = await conflictEntries(scope);
+    expect(held).toMatchObject({ code: "runs_missing", recoveryAttempt: { choice: "retry", op, uncertain: true } });
+    expect(await rejectedEntries(scope)).toMatchObject([{ afterHeldStart: held.id }]);
+    expect((await recoverStartEntry(scope, held, { kind: "discard", confirmed: true }, executeOutboxOp)).status).toBe("held");
+    await refreshCounts();
+    const html = renderToStaticMarkup(createElement(OfflineBanner));
+    expect(html).toContain('data-testid="offline-start-blocked"');
+    for (const label of ["Retry on the same machine", "Start on the bench", "Discard"]) expect(html).toContain(`>${label}</button>`);
+    expect(h.starts).toBe(0); expect(await pendingEntries(scope)).toEqual([]);
+  });
   it("the real banner shows blocked later work and all three recovery choices without opening the issues list", async () => {
     await heldWithPauses();
     await enqueue(scope, { kind: "finish", jobId: op.jobRef, jobNo: op.jobNo, at: op.at });
