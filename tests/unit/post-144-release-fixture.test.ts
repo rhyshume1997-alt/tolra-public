@@ -1,5 +1,5 @@
-import { expect, it } from "vitest";
-import { preparePost144Fixture } from "../support/post-144-release-fixture";
+import { expect, it, vi } from "vitest";
+import { preparePost144Fixture, storageObjectsDiagnosticSql } from "../support/post-144-release-fixture";
 import { releaseRank, post144ProofFiles } from "../support/db-release-sequencer";
 function fixture(initial=false) {
   const calls:string[]=[];const states=[initial,initial,initial,initial,initial,initial,initial,initial,initial,initial,initial,initial];
@@ -94,4 +94,56 @@ it("an explicit148 financial target verifies all four dependencies without claim
 
 it.each([144,155,158,148.5,Number.NaN])("invalid focused fixture target %s refuses before SQL",async through=>{
  const f=fixture();await expect(preparePost144Fixture({...f,through:through as 148})).rejects.toThrow('Invalid release fixture target');expect(f.calls).toEqual([]);
+});
+
+it("a failed fixture prints read-only storage.objects diagnostics and rethrows the ORIGINAL failure, then unlocks",async()=>{
+ const spy=vi.spyOn(console,"error").mockImplementation(()=>{});
+ const f=fixture(true),original=f.query;
+ f.query=async(sql:string)=>{
+  if(sql===storageObjectsDiagnosticSql){f.calls.push(sql);return {rows:[{check:"storage.objects owner",value:"supabase_storage_admin"},{check:"current_user",value:"postgres"}]};}
+  if(sql.includes("AS check_name")) {f.calls.push(sql);return {rows:[{ok:false,passed:false}]};}
+  return original(sql);
+ };
+ await expect(preparePost144Fixture(f)).rejects.toThrow("Release verification failed");
+ expect(f.calls.filter(s=>s===storageObjectsDiagnosticSql)).toHaveLength(1);
+ expect(f.calls.at(-1)).toContain("pg_advisory_unlock");
+ const printed=spy.mock.calls.map(c=>String(c[0])).join("\n");
+ expect(printed).toContain("storage.objects owner: supabase_storage_admin");expect(printed).toContain("current_user: postgres");
+ spy.mockRestore();
+});
+it("a diagnostic error or an unlock error never replaces the original failure",async()=>{
+ const spy=vi.spyOn(console,"error").mockImplementation(()=>{});
+ const f=fixture(true),original=f.query;
+ f.query=async(sql:string)=>{
+  if(sql===storageObjectsDiagnosticSql) throw new Error("diagnostic denied");
+  if(sql.includes("pg_advisory_unlock")) throw new Error("unlock refused");
+  if(sql.includes("AS check_name")) return {rows:[]};
+  return original(sql);
+ };
+ await expect(preparePost144Fixture(f)).rejects.toThrow("Release verification failed");
+ spy.mockRestore();
+});
+it("an unlock error on an otherwise successful run is still reported",async()=>{
+ const f=fixture(true),original=f.query;
+ f.query=async(sql:string)=>{if(sql.includes("pg_advisory_unlock")) throw new Error("unlock refused");return original(sql);};
+ await expect(preparePost144Fixture(f)).rejects.toThrow("unlock refused");
+});
+it("a successful run prints no diagnostics",async()=>{
+ const f=fixture(true);await preparePost144Fixture(f);expect(f.calls).not.toContain(storageObjectsDiagnosticSql);
+});
+it("the diagnostic SQL is one read-only SELECT: no write, role switch or privilege change",()=>{
+ expect(storageObjectsDiagnosticSql.trimStart()).toMatch(/^SELECT /);
+ expect(storageObjectsDiagnosticSql).not.toContain(";");
+ expect(storageObjectsDiagnosticSql.replace(/'[^']*'/g,"''")).not.toMatch(/\b(INSERT|UPDATE|DELETE|ALTER|CREATE|DROP|GRANT|REVOKE|SET|RESET|TRUNCATE|COPY|DO|CALL|EXECUTE)\b/);
+ for(const word of ["pg_roles","pg_auth_members","relowner","has_table_privilege","storage.objects"]) expect(storageObjectsDiagnosticSql).toContain(word);
+});
+it("CI prints the same read-only diagnostics only on failure, without changing anything",async()=>{
+ const {readFileSync}=await import("node:fs");
+ const ci=readFileSync(".github/workflows/ci.yml","utf8");
+ const start=ci.indexOf("name: \"Failure diagnostic (read-only");
+ expect(start).toBeGreaterThan(0);
+ const step=ci.slice(start,ci.indexOf("\n      - name:",start+10));
+ expect(step).toContain("if: ${{ failure() }}");expect(step).toContain("continue-on-error: true");
+ for(const word of ["pg_roles","pg_auth_members","relowner","has_table_privilege","storage.objects"]) expect(step).toContain(word);
+ expect(step.replace(/'[^']*'/g,"''")).not.toMatch(/\b(INSERT|UPDATE|DELETE|ALTER|CREATE|DROP|GRANT|REVOKE|RESET|TRUNCATE|COPY)\b|SET ROLE|supabase_admin/i);
 });

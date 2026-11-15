@@ -265,6 +265,22 @@ jobs:
         env:
           CI_EVIDENCE_DB_JSON: evidence/db.json
         run: npm run test:db
+      - name: "Failure diagnostic (read-only SELECT, runs only when an earlier step failed: who owns storage.objects, the current role, its role membership and privileges)"
+        if: ${{ failure() }}
+        continue-on-error: true
+        run: |
+          psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=0 -X <<'SQL'
+          select 'storage.objects owner' as check, (select pg_get_userbyid(c.relowner) from pg_class c where c.oid = to_regclass('storage.objects')) as value
+          union all select 'storage.objects acl', (select c.relacl::text from pg_class c where c.oid = to_regclass('storage.objects'))
+          union all select 'storage.objects row security on', (select c.relrowsecurity::text from pg_class c where c.oid = to_regclass('storage.objects'))
+          union all select 'current_user', current_user::text
+          union all select 'session_user', session_user::text
+          union all select 'current role is superuser / bypassrls', (select rolsuper::text || ' / ' || rolbypassrls::text from pg_roles where rolname = current_user)
+          union all select 'current role is member of', (select string_agg(pg_get_userbyid(m.roleid), ', ' order by pg_get_userbyid(m.roleid)) from pg_auth_members m where m.member = (select oid from pg_roles where rolname = current_user))
+          union all select 'current role is member of storage.objects owner (member / usage)', (select pg_has_role(current_user, c.relowner, 'MEMBER')::text || ' / ' || pg_has_role(current_user, c.relowner, 'USAGE')::text from pg_class c where c.oid = to_regclass('storage.objects'))
+          union all select 'current role privileges on storage.objects (select/insert/update/delete/trigger)', (select concat_ws(' / ', has_table_privilege(current_user, c.oid, 'SELECT'), has_table_privilege(current_user, c.oid, 'INSERT'), has_table_privilege(current_user, c.oid, 'UPDATE'), has_table_privilege(current_user, c.oid, 'DELETE'), has_table_privilege(current_user, c.oid, 'TRIGGER')) from pg_class c where c.oid = to_regclass('storage.objects'))
+          union all select 'storage.objects policies', (select string_agg(policyname, ', ' order by policyname) from pg_policies where schemaname = 'storage' and tablename = 'objects');
+          SQL
       - name: "Evidence: stand-in sessions that could not LOAD pg-safeupdate (those sessions did NOT verify safeupdate enforcement)"
         if: ${{ always() }}
         run: |
