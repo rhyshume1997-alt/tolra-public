@@ -1,4 +1,6 @@
+// Module 2 worksheet interface: loaded job rows -> worksheet display/edit state. Database guards remain authoritative.
 import { fmtDateTime } from "@/lib/dates";
+import { flowStatusOf } from "@/lib/job-flow";
 import { DEMO_MODE } from "@/lib/demo";
 import { quoteNumberForJob } from "@/lib/numbering";
 import { loadOfflineSnapshot, queueOffline, reportOffline, saveOfflineSnapshot } from "@/lib/offline/scope";
@@ -72,6 +74,15 @@ export type WorksheetJobInfo = {
   quantity_required?: number | string;
   drawing_no?: string;
 };
+
+/** Display check only, based on the worksheet's own loaded row, never a parent page's potentially stale status. */
+export function worksheetEditCheck(role: string | null | undefined, row: Record<string, unknown> | undefined): { canEdit: boolean; completeReadOnly: boolean } {
+  if (role === "admin" || role === "office") return { canEdit: true, completeReadOnly: false };
+  if (role !== "workshop" || !row) return { canEdit: false, completeReadOnly: false };
+  if (!(row.stage === null || typeof row.stage === "string") || !(row.inspected_at === null || typeof row.inspected_at === "string")) return { canEdit: false, completeReadOnly: false };
+  const complete = flowStatusOf({ stage: row.stage, inspected_at: row.inspected_at }) === "complete";
+  return { canEdit: !complete, completeReadOnly: complete };
+}
 
 /**
  * A drawing on the job. `id` is its job_files row (migration 034; none for a file uploaded before that), `bucket` where the file
