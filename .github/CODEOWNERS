@@ -1,0 +1,24 @@
+# CODEOWNERS: DOCUMENTATION ONLY while "Require review from Code Owners" is OFF
+# in branch protection. Until that is switched on, this file enforces nothing and
+# does NOT claim independent approval: the only GitHub account is the owner below.
+# Module owners are named per docs/MODULES.md (module numbers in brackets).
+
+# Module 1, Auth / Company / Users / Admin: middleware.ts (frozen elsewhere, see module 10)
+/middleware.ts @rhyshume1997-alt
+
+# Module 8, Database / Migrations / Releases: supabase/** only with an explicit "migration allowed" task
+/supabase/** @rhyshume1997-alt
+
+# Not assigned to a module in docs/MODULES.md: shared test infrastructure
+# (module 10 owns only tests/{unit,db,e2e}/portal-*)
+/tests/db/** @rhyshume1997-alt
+/tests/support/** @rhyshume1997-alt
+
+# Not assigned to a module in docs/MODULES.md: CI and repository configuration
+/.github/** @rhyshume1997-alt
+
+# Module 10, Customer portal
+/lib/portal/** @rhyshume1997-alt
+
+# Not assigned to a module in docs/MODULES.md: offline support (lib/offline)
+/lib/offline/** @rhyshume1997-alt
