@@ -33,6 +33,7 @@ How to read this document:
 | L10 | Release tests ran on PostgreSQL 16; the preflight expects 17.x | Behaviour on the production database version is not proven | Medium | Sourced |
 | L11 | Release 156: the generic workbook import refuses a case-variant invoice number only with the general database refusal | `inv-1001` next to `INV-1001` is never written, but the message is the generic "database refused the import" (23505), not a named problem | Low | Proved locally (PG16) |
 | L12 | Release 157: a workshop-only user can no longer edit the worksheet, stage, customer or job number of a job that has passed inspection; nobody can withdraw the pass of a despatched or invoiced job by editing it | The edit is refused instead of silently withdrawing the pass; on a job that has not gone out or been invoiced the office and an admin still can; a failed inspection and rework still work on any job | Low | Proved locally (PG16, plain PostgreSQL stand-in; CI runs it on the Supabase stack) |
+| L13 | Release 158: a Pause or Finish that affects another operator's open run or job time is recorded at server time | A queued (offline) Pause or Finish replayed later gets the server's sync time, not the time on the device, when someone else on the job has an open machine run or job time | Medium | Proved locally (PG16) |
 
 ---
 
@@ -157,6 +158,14 @@ How to read this document:
 - **Severity:** Low.
 - **Recovery:** Run `supabase/release/157_jobs_integrity_guard.rollback.sql`: it drops the trigger and its function, puts the 049 `start_machine_run` back byte for byte, and touches no row (the gaps it closes are then open again, and the offline fallback records a start again). Running it twice equals running it once.
 - **Evidence:** `tests/db/jobs-integrity-157.test.ts`.
+
+### L13. Release 158: a Pause or Finish that affects another operator's open run or job time is recorded at server time
+
+- **What it is:** Before 158 a workshop user could Pause (or Finish) a job with a back-dated time while another operator had an open machine run or job time on it, which ended that person's run and time in the past (a 6 hour run became 0.00 hours) and let the first user back-date their own start. From 158, `pause_machine_run` and `finish_job` use the server's clock whenever anyone other than the caller has an open run or an open job time session on that job (any machine, not only the ones paused). The time sent by the device is kept in the audit log (`MACHINE_RUN_TIME_CONFLICT`, `why` other_operator_open, with `client_ended_at` or `client_finished_at`). A person alone on the job keeps the device time exactly as before.
+- **What it means for John:** Nobody who may Pause or Finish today is refused; only the time recorded changes. A Pause or Finish queued offline and sent later, while a colleague still has an open run or job time on the job, is recorded at the moment it reaches the server (the sync time), not when it was pressed. If the colleague's time is wrong, an admin corrects it on the time sheet.
+- **Severity:** Medium (accepted by the PM, 15 Nov 2026).
+- **Rollback:** `supabase/release/158_machine_run_integrity.rollback.sql` puts 044's `pause_machine_run` and 061's `finish_job` back byte for byte (no row is touched; run it before 061's or 044's own rollback). After it the back-dating hole is open again.
+- **Evidence:** `tests/db/machine-run-integrity-158.test.ts`.
 
 ---
 
