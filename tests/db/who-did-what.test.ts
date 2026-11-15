@@ -180,22 +180,67 @@ describe("actor fields are set by the database and protected from the client", (
     const attempt = await as.office.from("jobs").update({ description: "Edited", started_by: user("admin"), finished_by: user("admin"), inspected_by_user: user("admin"), created_by: user("admin") }).eq("id", id);
     expect(attempt.error).toBeNull();
     expect(await row("jobs", id)).toMatchObject({ description: "Edited", started_by: user("workshop"), finished_by: null, inspected_by_user: null, created_by: null });
-    // Setting the milestone again by the same route is not a way to hand it to somebody else either.
-    expect((await as.office.from("jobs").update({ started_at: "2026-10-01T09:00:00Z", started_by: user("admin") }).eq("id", id)).error).toBeNull();
-    expect(await row("jobs", id)).toMatchObject({ started_by: user("office") });
+    // Setting the milestone again by the same route is not a way to hand it to somebody else either: since 157 (C1) a recorded start is kept,
+    // so the second Start is refused outright and the first starter stays.
+    const startedBefore = await row("jobs", id);
+    const again = await as.office.from("jobs").update({ started_at: "2026-10-01T09:00:00Z", started_by: user("admin") }).eq("id", id);
+    expect(again.error).toMatchObject({ code: "42501" });
+    expect(again.error?.hint).toBe("start_kept");
+    expect(await row("jobs", id)).toMatchObject({ started_at: startedBefore.started_at, started_by: user("workshop") });
+    expect(await row("jobs", id)).toEqual(startedBefore);
+    // The permitted route: the first Start (from empty) by a different person still records that person, and an admin-supplied name is ignored.
+    const other = await job();
+    expect((await as.office.from("jobs").update({ started_at: "2026-10-01T09:00:00Z", started_by: user("admin") }).eq("id", other)).error).toBeNull();
+    expect(await row("jobs", other)).toMatchObject({ started_by: user("office") });
   });
 
   it("jobs: start, finish and inspection record who, and clearing a time clears the person", async () => {
     const id = await job();
     await as.workshop.from("jobs").update({ started_at: now() }).eq("id", id);
-    await as.office.from("jobs").update({ finished_at: now(), stage: "inspection" }).eq("id", id);
-    expect(await row("jobs", id)).toMatchObject({ started_by: user("workshop"), finished_by: user("office"), inspected_by_user: null });
+    // 157 (C4): a finish time is set only by finish_job, so the finisher is recorded through it (stage goes to inspection there too).
+    expect((await as.office.rpc("finish_job", { p_job: id, p_client_op_id: null, p_finished_at: null })).error).toBeNull();
+    expect(await row("jobs", id)).toMatchObject({ stage: "inspection", started_by: user("workshop"), finished_by: user("office"), inspected_by_user: null });
     const inspected = await inspect(as.admin, id, "Bore 25.01");
     expect(inspected.error).toBeNull();
     expect(await row("jobs", id)).toMatchObject({ inspected_by_user: user("admin"), inspected_by: "Admin alpha", started_by: user("workshop"), finished_by: user("office") });
     // A later worksheet change withdraws the sign-off (034) and the person with it.
     await as.workshop.from("jobs").update({ quantity_required: 7 }).eq("id", id);
     expect(await row("jobs", id)).toMatchObject({ inspected_at: null, inspected_by_user: null, finished_by: user("office") });
+  });
+
+  it("jobs (157): a direct finish is refused and changes nothing; finish_job records the finisher, one job after another, offline with a device time, and a replay applies once", async () => {
+    const id = await job();
+    expect((await as.workshop.from("jobs").update({ started_at: now() }).eq("id", id)).error).toBeNull();
+    const before = await row("jobs", id);
+    const direct = await as.office.from("jobs").update({ finished_at: now(), stage: "inspection" }).eq("id", id);
+    expect(direct.error).toMatchObject({ code: "42501" });
+    expect(direct.error?.hint).toBe("finish_via_rpc");
+    expect(await row("jobs", id)).toEqual(before);
+    // The board's batch completion is one finish_job call per job; each is stamped with whoever finished it.
+    const batch = [id, await job(), await job()];
+    const finishers = [as.office, as.workshop, as.admin];
+    for (const [i, jobId] of batch.entries()) {
+      const done = await finishers[i].rpc("finish_job", { p_job: jobId, p_client_op_id: randomUUID(), p_finished_at: null });
+      expect(done.error).toBeNull();
+      expect(done.data).toMatchObject({ job_id: jobId, changed: true });
+    }
+    expect((await Promise.all(batch.map((b) => row("jobs", b)))).map((r) => [r.stage, r.finished_by])).toEqual([["inspection", user("office")], ["inspection", user("workshop")], ["inspection", user("admin")]]);
+    // Offline replay: the same RPC with a client op id and the device's (recent, past) time applies at that time; sending it again changes nothing.
+    const offline = await job();
+    const op = randomUUID();
+    const deviceTime = new Date(Date.now() - 3_600_000).toISOString();
+    const first = await as.workshop.rpc("finish_job", { p_job: offline, p_client_op_id: op, p_finished_at: deviceTime });
+    expect(first.error).toBeNull();
+    expect(first.data).toMatchObject({ job_id: offline, changed: true });
+    expect(new Date(first.data.finished_at).toISOString()).toBe(deviceTime);
+    const stamped = await row("jobs", offline);
+    expect(new Date(stamped.finished_at as string).toISOString()).toBe(deviceTime);
+    expect(stamped).toMatchObject({ finished_by: user("workshop"), stage: "inspection" });
+    const replay = await as.office.rpc("finish_job", { p_job: offline, p_client_op_id: op, p_finished_at: deviceTime });
+    expect(replay.error).toBeNull();
+    expect(replay.data).toMatchObject({ job_id: offline, changed: false, ended: [] });
+    expect(new Date(replay.data.finished_at).toISOString()).toBe(deviceTime);
+    expect(await row("jobs", offline)).toEqual(stamped);
   });
 
   it("quotes: sent_by and accepted_by; the customer's decision on a draft leaves sent_by empty", async () => {
@@ -396,7 +441,7 @@ describe("re-send and reopen", () => {
   it("reopening a job clears finished_by and the inspection sign-off, returns it to machining, and logs REOPEN", async () => {
     const id = await job();
     await as.workshop.from("jobs").update({ started_at: now() }).eq("id", id);
-    await as.workshop.from("jobs").update({ finished_at: now(), stage: "inspection" }).eq("id", id);
+    expect((await as.workshop.rpc("finish_job", { p_job: id, p_client_op_id: null, p_finished_at: null })).error).toBeNull();
     expect((await inspect(as.office, id, "Bore 25.01")).error).toBeNull();
     expect(await row("jobs", id)).toMatchObject({ stage: "complete", finished_by: user("workshop"), inspected_by_user: user("office") });
     // 081: a Finish is kept unless the job is reopened with a reason (reopen_job); editing the job can't clear it.
@@ -407,7 +452,7 @@ describe("re-send and reopen", () => {
     expect(reopen).toHaveLength(1);
     expect(reopen[0]).toMatchObject({ actor_user_id: user("admin"), metadata: { previous_finished_by: user("workshop"), sign_off_withdrawn: true } });
     // Finishing it again records whoever finishes it now; reopening an unfinished job logs nothing.
-    await as.office.from("jobs").update({ finished_at: now(), stage: "inspection" }).eq("id", id);
+    expect((await as.office.rpc("finish_job", { p_job: id, p_client_op_id: null, p_finished_at: null })).error).toBeNull();
     expect(await row("jobs", id)).toMatchObject({ finished_by: user("office") });
     await as.office.from("jobs").update({ description: "Edited" }).eq("id", id);
     expect(await events("jobs", id, "REOPEN")).toHaveLength(1);
