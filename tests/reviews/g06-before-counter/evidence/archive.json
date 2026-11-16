@@ -1,0 +1,9 @@
+{
+  "artifact": "committed-run.tar.gz",
+  "sha256": "46043b3d1be11538f802cefc94f41c680507d448c6cd76f0789408af801589a6",
+  "tested_commit": "412fd82",
+  "passed": 3,
+  "failed": 0,
+  "skipped": 0,
+  "approval": "NOT APPROVED"
+}
