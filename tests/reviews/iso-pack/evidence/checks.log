@@ -1,0 +1,8 @@
+test_nine_templates_keep_results_and_approval_blank (supplements_test.Supplements.test_nine_templates_keep_results_and_approval_blank) ... ok
+test_numbered_public_pack_inventory (supplements_test.Supplements.test_numbered_public_pack_inventory) ... ok
+test_three_word_copies_preserve_source_lines_and_blanks (supplements_test.Supplements.test_three_word_copies_preserve_source_lines_and_blanks) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.033s
+
+OK

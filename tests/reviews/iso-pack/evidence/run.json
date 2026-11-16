@@ -1,0 +1,14 @@
+{
+  "requirement": "JNR/Marpet public ISO pack comparison",
+  "code_commit": "6e830ac5bd38279ba5eff48e86c54d4673f7020b",
+  "environment": "local Python unittest/python-docx; public drafts and blank templates only; no SQL",
+  "sql_hash": null,
+  "time_utc": "2026-11-05T07:09:02.862701+00:00",
+  "exit_code": 0,
+  "counts": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0
+  },
+  "log_sha256": "a44f68cd529ee50405be661f042c01375dbf94f931fe8f11df86990743de33b3"
+}
