@@ -1,0 +1,2136 @@
+[
+  {
+    "number": 271,
+    "state": "open",
+    "merged_at": null,
+    "head": "0d3a481524bdfbcdbfe29382b76b858f9dd203a4",
+    "base": "codex/work-ownership",
+    "classification": "DOCS",
+    "action": "Keep coordination history/ownership/handover in the documentation packet; no app change.",
+    "files": [
+      {
+        "path": "docs/TOLRA-WORK-OWNERSHIP.md",
+        "status": "modified",
+        "blob": "fecee874bf443960cee9982d084cbe9f98cf3d84",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/HANDOVER-BUILDER-3.md",
+        "status": "added",
+        "blob": "e8689a00d8172cb7bf9a8d0a5bb3e4465477bb16",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/HANDOVER-CODEX-1.md",
+        "status": "added",
+        "blob": "17ae68f8b0a5a680c90236c6cf5d5baf3079712f",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 272,
+    "state": "closed",
+    "merged_at": null,
+    "head": "ef3e76e3e6c0fdbc012a4f59bd55dddd2f26920b",
+    "base": "codex/x-final-main-candidate",
+    "classification": "CLOSED / RECONCILE",
+    "action": "Already closed unmerged. Do not reopen or call wholly duplicated: 9c3f5c6 has 140/141 packages with different blobs; only the two verify blobs match. Preserve current Code release bodies and reconcile CA prerequisite/checksum/isolation additions before deciding what remains.",
+    "files": [
+      {
+        "path": "scripts/check-cutover-imports.mjs",
+        "status": "added",
+        "blob": "3eea026b67b9b532e705c19f066b7d0d3a0205b0",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "supabase/cutover-import-plan.json",
+        "status": "added",
+        "blob": "206835988cc72e735312a3aab527a499788d30ec",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "supabase/release/140_import_source_ref.release.sql",
+        "status": "added",
+        "blob": "82d2a2c63a7c0dd26992bac596970e188509ffe1",
+        "declared9cPresent": true,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "supabase/release/140_import_source_ref.rollback.sql",
+        "status": "added",
+        "blob": "50681e85b2b08f7b53feb42959d0c63c2d69623f",
+        "declared9cPresent": true,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "supabase/release/141_opening_wip.release.sql",
+        "status": "added",
+        "blob": "7f59a93abdb90a9fedc91c6c067c47d11cf4c1e6",
+        "declared9cPresent": true,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "supabase/release/141_opening_wip.rollback.sql",
+        "status": "added",
+        "blob": "ba0325fb230a1f1a68b86ee37a2a60a0e5acdf93",
+        "declared9cPresent": true,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "supabase/release/sliq-cutover.checksums.json",
+        "status": "added",
+        "blob": "3b6f318147029235624b5a473508b5a39915d341",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "supabase/release/sources/140_import_source_ref.sql",
+        "status": "added",
+        "blob": "8e47b009bef2dd21d63e7c914c8371967c51ca83",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "supabase/release/sources/141_opening_wip.sql",
+        "status": "added",
+        "blob": "6e3e18ace3fcfd73f03bb58bf16887c2ab4431c1",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "supabase/verify/import_source_ref_140.sql",
+        "status": "added",
+        "blob": "63673b83f7e14d06c145c281200491f614fd1ee9",
+        "declared9cPresent": true,
+        "sameBlobAsDeclared9c": true
+      },
+      {
+        "path": "supabase/verify/opening_wip_141.sql",
+        "status": "added",
+        "blob": "e6e2931f6921c2a3c7b62e89535006056f7d8a5f",
+        "declared9cPresent": true,
+        "sameBlobAsDeclared9c": true
+      },
+      {
+        "path": "supabase/verify/release_preflight.sql",
+        "status": "modified",
+        "blob": "364e535dd69668471d58dde5a6041148640c2d1b",
+        "declared9cPresent": true,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/SLIQ-CUTOVER-RELEASES.md",
+        "status": "added",
+        "blob": "ba4102c5332c980a5ba907e7884db11f8a381594",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/db/sliq-import-company-isolation.test.ts",
+        "status": "added",
+        "blob": "d48c8bd16ee0131e1f2c203bd3b56b3f2da7751e",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/support/db-release-sequencer.ts",
+        "status": "modified",
+        "blob": "ea348c414296f7c0d8c47ccb2b9e27f4452a6dfb",
+        "declared9cPresent": true,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/support/sliq-cutover-release-fixture.ts",
+        "status": "added",
+        "blob": "e78e0b800aced8e7713820faf59b46932884d25b",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/unit/cutover-import-release.test.ts",
+        "status": "added",
+        "blob": "90d0952c44a52c85bac11376e18065fc0acb86f3",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/unit/go-live-candidate-order.test.ts",
+        "status": "modified",
+        "blob": "c4bcf853b77d456f4c008952e6fe98c613779ff1",
+        "declared9cPresent": true,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/unit/post-144-release-fixture.test.ts",
+        "status": "modified",
+        "blob": "55fcd07265c9d6e26106582bb48c452847079b5b",
+        "declared9cPresent": true,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 273,
+    "state": "closed",
+    "merged_at": null,
+    "head": "ff13614fcd8bd37d989faec74d387371ef7ac378",
+    "base": "codex/ca-sliq-releases",
+    "classification": "CLOSED / ANCESTOR",
+    "action": "Already closed unmerged; its gate CLI/policy/checks are inherited by the later builder stack. Use #280\u2019s stricter corrections; do not take #273 gate alone.",
+    "files": [
+      {
+        "path": "scripts/release-gate/check.mjs",
+        "status": "added",
+        "blob": "75939dacc823d050a31eb06129daa0f3908bfe74",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "scripts/release-gate/cli.mjs",
+        "status": "added",
+        "blob": "788b56070dfa2df5bb75ed3f40831cb617107e04",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "scripts/release-gate/policy.json",
+        "status": "added",
+        "blob": "26004892aa9bce5e75ae15966ded1863da0fe715",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/RELEASE-GATE.md",
+        "status": "added",
+        "blob": "7edb680880c3ccf5a7c9ed6b7fe2d132222df7d3",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/unit/release-gate.test.ts",
+        "status": "added",
+        "blob": "c7ff709adb58b7f22438d88604f59d2c60a9a44d",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 274,
+    "state": "closed",
+    "merged_at": null,
+    "head": "d88f06333556e5c2a80e183a5067c5f7117562fa",
+    "base": "codex/cb-release-gate",
+    "classification": "CLOSED / ANCESTOR",
+    "action": "Already closed unmerged; unique scripts/jnr-reconcile and tests survive through #275/#280 ancestry. Retain them if taking that stack; halfEven is not a financial-import rounding rule.",
+    "files": [
+      {
+        "path": "scripts/jnr-reconcile/check.mjs",
+        "status": "added",
+        "blob": "59b7a9defad232a0b1bf94460d65e5dc65304bd1",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "scripts/jnr-reconcile/cli.mjs",
+        "status": "added",
+        "blob": "b7d3dfe95e75631b87ae0e73967045e1d14bff7c",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/JNR-RECONCILIATION.md",
+        "status": "added",
+        "blob": "f3c20fe061098da8ab5afd06073283654c29c54e",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/unit/jnr-reconcile.test.ts",
+        "status": "added",
+        "blob": "98b3f7cd6e1330f3edcac9f6b6382c98c3bf0929",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 275,
+    "state": "open",
+    "merged_at": null,
+    "head": "d73bb240a23b38a7080c0933e4f5b62ddd529f5f",
+    "base": "codex/cc-jnr-reconcile",
+    "classification": "FOLD INTO #247",
+    "action": "Take reviewed fixed-fixture no-write scripts and unit test, retain data-load paper. Depends on inherited CC reconciliation/import source. Fake wrapper has no real-file/import mode.",
+    "files": [
+      {
+        "path": "scripts/cutover-dry-run/check.mjs",
+        "status": "added",
+        "blob": "6536a66a19cf2d723f97a7879c029358bc6ab332",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "scripts/cutover-dry-run/cli.mjs",
+        "status": "added",
+        "blob": "21d6f855f83fd325bbd08d07ae85264ceb19a296",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/GO-LIVE-DATA-LOAD.md",
+        "status": "added",
+        "blob": "eb68f67ad1cf14b57af3e020dcffae5405ec6599",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/unit/cutover-no-write.test.ts",
+        "status": "added",
+        "blob": "1cf78a2a30110bee3ceff0e3957dba1ccfd82d35",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 276,
+    "state": "closed",
+    "merged_at": null,
+    "head": "e71a80072148077a4c0f05184fe40d79688c01ee",
+    "base": "codex/cd-sliq-no-write",
+    "classification": "CLOSED / PACK CHOICE",
+    "action": "Already closed unmerged. Older 6/15/9 pack survives in later ancestry. Choose and reconcile against refreshed 6/14/8, preserve G15 transfer proof and historical evidence. Not a safe automatic duplicate of f76.",
+    "files": [
+      {
+        "path": "package.json",
+        "status": "modified",
+        "blob": "52453bc523dc08aeddf24c10a2ec73a6a63803af",
+        "declared9cPresent": true,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/MANUAL-CHECKS-GO-LIVE.md",
+        "status": "added",
+        "blob": "96aaf4182ffc8b067e71e4e1f441d82957583c57",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/COVERAGE-GAPS.md",
+        "status": "added",
+        "blob": "ddf1d110496c2231dea2940ee5d97c693560db23",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/CURRENT-RESULTS.md",
+        "status": "added",
+        "blob": "3f303602306ec9bc94e5cfe002046f1fcd0ac3a8",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/IQ.md",
+        "status": "added",
+        "blob": "c1f350a9abc1fc99e40836b75cd0c6556f5d185a",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/OQ.md",
+        "status": "added",
+        "blob": "d081faa39b83a6d99e919cb7c33c1c025879d059",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/OUTSTANDING-CHECKS.md",
+        "status": "added",
+        "blob": "32c30b2c1966df5714156bdf531f42c4131ff445",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/PQ.md",
+        "status": "added",
+        "blob": "76fa45c24ab9ec707538ba7781a254e4f753fed7",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/README.md",
+        "status": "added",
+        "blob": "54847dd62ac8d47b6e843bb892d0b748c08a4e34",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/RHYS-ACTIONS.md",
+        "status": "added",
+        "blob": "bf74c96455869d6abfe79f91b81b514606196615",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/RISK-ASSESSMENT.md",
+        "status": "added",
+        "blob": "e90e6b78e6edb4616afdb2416c63c8377882c551",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/TRACEABILITY.md",
+        "status": "added",
+        "blob": "046bfe17f6f2ddc4938882e94ad692dbffa58e95",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/URS.md",
+        "status": "added",
+        "blob": "ecfc490ecbbecbc4286fdeea3fb458546ae00a2c",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/VSR-TEMPLATE.md",
+        "status": "added",
+        "blob": "fcfa601c0ad9910c63f80ca29bd5ce28dc369631",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/check-pack.mjs",
+        "status": "added",
+        "blob": "a56a6a9f63af0b2d29b63814c4697d822f95227e",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/evidence/2026-11-03T21-04-28.722Z-fc8d02d73f06-LjG31g/additional-checks.json",
+        "status": "added",
+        "blob": "bf8e2f4ddecdd72e2eae6012182b62c504ac76c7",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/evidence/2026-11-03T21-04-28.722Z-fc8d02d73f06-LjG31g/config-load.log",
+        "status": "added",
+        "blob": "a2188d1e3fb5cbcce415b05a1a3b6faf4e431614",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/evidence/2026-11-03T21-04-28.722Z-fc8d02d73f06-LjG31g/full-unit.log",
+        "status": "added",
+        "blob": "81dadfde6f0deefee5dd09fef704fb363f795238",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/evidence/2026-11-03T21-04-28.722Z-fc8d02d73f06-LjG31g/lint.log",
+        "status": "added",
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/evidence/2026-11-03T21-04-28.722Z-fc8d02d73f06-LjG31g/mapped-unit.log",
+        "status": "added",
+        "blob": "fec1710b19dafebc1069671d58b7147f8db40b09",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/evidence/2026-11-03T21-04-28.722Z-fc8d02d73f06-LjG31g/mapping.log",
+        "status": "added",
+        "blob": "876e1ef8845f5ca7abc2f653cb176f305e022848",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/evidence/2026-11-03T21-04-28.722Z-fc8d02d73f06-LjG31g/summary.json",
+        "status": "added",
+        "blob": "f22d5904543e3cb1d4291fafe29e2caa3e10d967",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/evidence/2026-11-03T21-04-28.722Z-fc8d02d73f06-LjG31g/typecheck.log",
+        "status": "added",
+        "blob": "bc8b3b695a28f9d365391f85dcfde6ac1e7592da",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/evidence/2026-11-03T21-36-30.386Z-2cd2549880f6-XPNxXH/additional-checks.json",
+        "status": "added",
+        "blob": "5b7d611861779cf9fbb1a4d2a1c0394853062bc3",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/evidence/2026-11-03T21-36-30.386Z-2cd2549880f6-XPNxXH/full-unit.log",
+        "status": "added",
+        "blob": "a78029ba44152f817da3c27bc84d96ab18c3b461",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/evidence/2026-11-03T21-36-30.386Z-2cd2549880f6-XPNxXH/lint.log",
+        "status": "added",
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/evidence/2026-11-03T21-36-30.386Z-2cd2549880f6-XPNxXH/mapped-unit.log",
+        "status": "added",
+        "blob": "ffbeb5064f4f238fc20958bb2bdafc5b65caf985",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/evidence/2026-11-03T21-36-30.386Z-2cd2549880f6-XPNxXH/mapping.log",
+        "status": "added",
+        "blob": "876e1ef8845f5ca7abc2f653cb176f305e022848",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/evidence/2026-11-03T21-36-30.386Z-2cd2549880f6-XPNxXH/summary.json",
+        "status": "added",
+        "blob": "318fc2fe6bad45d224593259359ec84d36460b1e",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/evidence/2026-11-03T21-36-30.386Z-2cd2549880f6-XPNxXH/typecheck.log",
+        "status": "added",
+        "blob": "bc8b3b695a28f9d365391f85dcfde6ac1e7592da",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/evidence/2026-11-04-ca-cd/full-unit.log",
+        "status": "added",
+        "blob": "3053ea9107044d6bedc370ab8fe9a31fd42b9706",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/evidence/2026-11-04-ca-cd/unit-summary.json",
+        "status": "added",
+        "blob": "002eae0dd5a2c3e9475c22d4d23b0b607466fe65",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/evidence/2026-11-04T10-06-53.220Z-18aa60d51e1e-Ho0yMy/mapped-unit.log",
+        "status": "added",
+        "blob": "ea839e1e2e616f22bfc723dbb4e578fca60f89fd",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/evidence/2026-11-04T10-06-53.220Z-18aa60d51e1e-Ho0yMy/mapping.log",
+        "status": "added",
+        "blob": "61020cd0d01087cbf8df874a94b7e2c3b86d888f",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/evidence/2026-11-04T10-06-53.220Z-18aa60d51e1e-Ho0yMy/summary.json",
+        "status": "added",
+        "blob": "0b6e9431bec8823f6820d58e64c203b30e1068a4",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/evidence/README.md",
+        "status": "added",
+        "blob": "cb5469de0048bc24fd7e3e26fc82ddb936793f24",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/manifest.json",
+        "status": "added",
+        "blob": "e053b1584e98bebef14d85dc4c9bbb989b65c15c",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/run-evidence.mjs",
+        "status": "added",
+        "blob": "b72393d642619707ccf9da1b655a2f64acddfa3e",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 277,
+    "state": "open",
+    "merged_at": null,
+    "head": "87c4bbf52b895c1e618d32205e5023adb4d60cbc",
+    "base": "codex/ce-validation-final",
+    "classification": "DOCS",
+    "action": "Keep latest runbook through #280\u2019s stricter version; close this older overlapping draft only after its unique instructions are preserved.",
+    "files": [
+      {
+        "path": "tests/GO-LIVE-DB-RUNBOOK.md",
+        "status": "added",
+        "blob": "69a610a0727aad5126019ecf82a2f2a66fae90e6",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 278,
+    "state": "closed",
+    "merged_at": null,
+    "head": "8d667ffc7d779d4487fcf19eb052b123ec98baa8",
+    "base": "codex/cf-db-day-runbook",
+    "classification": "CLOSED / SUPERSEDED",
+    "action": "Already closed unmerged. Later #282/#289 is the current expanded evidence register. Keep historical source/results attached to their old heads.",
+    "files": [
+      {
+        "path": "tests/GO-NO-GO-EVIDENCE.md",
+        "status": "added",
+        "blob": "b955fbaedfe8a16b51cafcd0eb6febecb6974fc1",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 279,
+    "state": "closed",
+    "merged_at": null,
+    "head": "4bb59c0ecfda0a545ec7221ef569dcc1184418db",
+    "base": "codex/cg-go-no-go-evidence",
+    "classification": "CLOSED / SUPERSEDED",
+    "action": "Already closed unmerged. Later #283/#289 reviewer packets supersede the old file; retain history rather than reopening.",
+    "files": [
+      {
+        "path": "tests/REVIEW-PACKETS-NEXT.md",
+        "status": "added",
+        "blob": "5ce66048d7fcad5be1f8ca02c9a523a69db99499",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 280,
+    "state": "open",
+    "merged_at": null,
+    "head": "f4eacee2236e65e52fdccbdf5cf8f8045fd95d80",
+    "base": "codex/ch-review-packets",
+    "classification": "FOLD INTO #247 / SPLIT",
+    "action": "Take package lint-command fix, strict release-gate check/policy and retained refusal tests, with inherited gate CLI. Keep audit reports historical and pack/runbook changes in docs packet. Do not restart stopped52/61 audit or import an obsolete manifest wholesale.",
+    "files": [
+      {
+        "path": "package.json",
+        "status": "modified",
+        "blob": "26992d4d1496e95af2de26ab5f3545a739b2f541",
+        "declared9cPresent": true,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "scripts/release-gate/check.mjs",
+        "status": "modified",
+        "blob": "8f814b648f5e7057f78bbc77dcf0083398ddbd33",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "scripts/release-gate/policy.json",
+        "status": "modified",
+        "blob": "22ae134a6c947e4cdd2aacb31055f1ccce443dae",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/CODEX-AUDIT-PARTIAL.json",
+        "status": "added",
+        "blob": "fc34ecbfe9efbfa15ebbb5986864b663314b5936",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/CODEX-AUDIT-PARTIAL.md",
+        "status": "added",
+        "blob": "774a205fe03b2083623f3b86502be09de3e955bd",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/GO-LIVE-DB-RUNBOOK.md",
+        "status": "modified",
+        "blob": "2e59d9124026ec1e5123462c63b28f7fcf2c0ff1",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/GO-NO-GO-EVIDENCE.md",
+        "status": "modified",
+        "blob": "241a8851d5cbb5c694859d9dcf30dc028c3fdeaf",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/RELEASE-GATE.md",
+        "status": "modified",
+        "blob": "cb9f97c09df65737f801c4edb0f7e66c58b5f6ad",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/REVIEW-PACKETS-NEXT.md",
+        "status": "modified",
+        "blob": "09fb5abca1c6e36fd516b207e9b556bc436edba3",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/unit/release-gate.test.ts",
+        "status": "modified",
+        "blob": "ceaa566cb55ad9ba788c49e5dc3aa5a3bfdf2479",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/COVERAGE-GAPS.md",
+        "status": "modified",
+        "blob": "ef46c707a14262b6244dc0dbb72f46fa850e3645",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/CURRENT-RESULTS.md",
+        "status": "modified",
+        "blob": "81f247b9410b9babe4c3b3fa5801be8a17258b90",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/IQ.md",
+        "status": "modified",
+        "blob": "c501100dc555b56d423638626d7b8ff17b6d5a2b",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/OQ.md",
+        "status": "modified",
+        "blob": "1cfb3834cb991a7469d390d8a19d16dc3939b248",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/OUTSTANDING-CHECKS.md",
+        "status": "modified",
+        "blob": "804f37c46b281750723dbaae2bf355cfe1cb15ea",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/PQ.md",
+        "status": "modified",
+        "blob": "4f073abc00d878285be9d874a0ae77ae512a327b",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/README.md",
+        "status": "modified",
+        "blob": "eecc789206e75fcfc287d498033d3bc760d6cc87",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/RISK-ASSESSMENT.md",
+        "status": "modified",
+        "blob": "6ea58999905c109225c7ec6ae3793f20b81fca2c",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/TRACEABILITY.md",
+        "status": "modified",
+        "blob": "4f6c4abdb044c68a463b619bff38c302a7c0dc06",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/URS.md",
+        "status": "modified",
+        "blob": "7295c2f83d7059d5d7168b81f09455b497d1a027",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/check-pack.mjs",
+        "status": "modified",
+        "blob": "0cee11a79d9eb05cf04fd500f1c03329fbb2cd89",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/validation/manifest.json",
+        "status": "modified",
+        "blob": "9c38a41988701709ff0a3939bad6ecafeaa58a46",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 281,
+    "state": "open",
+    "merged_at": null,
+    "head": "ff29ca191879ec954e305ec0eb200501789a5bcf",
+    "base": "codex/ci-branch-checks",
+    "classification": "FOLD INTO #247",
+    "action": "Take three acceptance specs plus fail-closed require-database helper. Then #289\u2019s newer N1 Hours/day correction. Collection is not execution; real backend remains required.",
+    "files": [
+      {
+        "path": "tests/CJ-BUILDER-3-RESULTS.md",
+        "status": "added",
+        "blob": "3347096e2cda5c2c278250528334f65319d54875",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/e2e/acceptance/n1-paid-breaks.spec.ts",
+        "status": "added",
+        "blob": "bcd10612e9c6558c9a881885c21133aef1ed11c9",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/e2e/acceptance/n5-blank-setup.spec.ts",
+        "status": "added",
+        "blob": "3fbe3906f31bee5838435ed9f940b6c696dbf7df",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/e2e/acceptance/n6-email-editor.spec.ts",
+        "status": "added",
+        "blob": "f5e482e46aaa5c0747a9093a0146747a741d113f",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/e2e/acceptance/require-database.ts",
+        "status": "added",
+        "blob": "fa309783f27a9974d822085b1c993736e6590f2b",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 282,
+    "state": "open",
+    "merged_at": null,
+    "head": "b80b274b0f2b8b12444915152383564cc1b9bf52",
+    "base": "codex/cj-acceptance-specs",
+    "classification": "DOCS / SUPERSEDED FILE",
+    "action": "Take final GO-NO-GO-EVIDENCE.md from #289, which retains/expands this version. Close this older overlap only after full content/evidence lineage is preserved.",
+    "files": [
+      {
+        "path": "tests/GO-NO-GO-EVIDENCE.md",
+        "status": "modified",
+        "blob": "dc71e002d24e3d56cb715f44ff20fcbbf1baa357",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 283,
+    "state": "open",
+    "merged_at": null,
+    "head": "e40f9edb24a79769efd03b8f900c6c31d8a6729b",
+    "base": "codex/cg-ck-evidence",
+    "classification": "DOCS / SUPERSEDED FILE",
+    "action": "Take final REVIEW-PACKETS-NEXT.md from #289, preserving these packets and original source-head dates; refresh moved heads. Close older overlap after retained.",
+    "files": [
+      {
+        "path": "tests/REVIEW-PACKETS-NEXT.md",
+        "status": "modified",
+        "blob": "09dc45d0eb7006434fdb4ac1fa1e400afb6d88ef",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 284,
+    "state": "open",
+    "merged_at": null,
+    "head": "d7d6ff9dbd915becdc096d1eb365e4a73b4ae21d",
+    "base": "codex/ch-review-packets-next",
+    "classification": "FOLD INTO #247 + DOC",
+    "action": "Take ordinary-money app fixtures/unit test and real PostgreSQL parity test; keep ROUNDING-RULE.md. No engine/rate/60golden modification. DB parity still needs actual run.",
+    "files": [
+      {
+        "path": "tests/ROUNDING-RULE.md",
+        "status": "added",
+        "blob": "1b0dca4accac7afe1f740f216bb4538ab9c85305",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/db/money-rounding-parity.test.ts",
+        "status": "added",
+        "blob": "9b3ea9bc53f4bb4326a42b7d9ac3031da0251ad8",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/fixtures/money-rounding-cases.ts",
+        "status": "added",
+        "blob": "8bd79d140d4fcb7736d49332d1dbdf4451a3d284",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/unit/money-rounding-rule.test.ts",
+        "status": "added",
+        "blob": "afd7fd063b2d4c81a316a73dfde73a9d1a8b9448",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 285,
+    "state": "open",
+    "merged_at": null,
+    "head": "a4c89af3723703ba5e284bb6500553d42975f925",
+    "base": "codex/costing-sql-test-plan",
+    "classification": "HOLD / SEPARATE COSTING",
+    "action": "Keep one-line TS2559 fix targeted at held costing-sql-test-plan. Do not fold deferred costing into go-live or close as duplicate of #284. Engine behaviour unchanged.",
+    "files": [
+      {
+        "path": "tests/support/costing-proposal-setup.ts",
+        "status": "modified",
+        "blob": "d0ca39daa452cdd93d02ac943cf285ab085d7d16",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 286,
+    "state": "open",
+    "merged_at": null,
+    "head": "bfaa31b84ebb04cec74c386787806320c3dee44e",
+    "base": "codex/cl-rounding-rule",
+    "classification": "DOCS / CANONICAL CN",
+    "action": "Keep corrected CN head bfaa31b8, identical corrected file from #314. Do not overwrite it with original CN inside #315.",
+    "files": [
+      {
+        "path": "tests/JOHN-PQ-RUN-SHEET.md",
+        "status": "added",
+        "blob": "226dcb6e7b8edadc7df2ddd85465eba42f49dd95",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 287,
+    "state": "open",
+    "merged_at": null,
+    "head": "4b134cbb3f04f63938ef4537e122a43b8af6235f",
+    "base": "codex/cl-rounding-rule",
+    "classification": "DOCS",
+    "action": "Keep VSR guide with CZ #322\u2019s version notice/defined restriction meanings. Its 6/15/9 counts are older scope, not refreshed6/14/8.",
+    "files": [
+      {
+        "path": "tests/RHYS-SIGN-OFF-GUIDE.md",
+        "status": "added",
+        "blob": "618ee73e85b7173b5a140431ee02b1e0d3099756",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 288,
+    "state": "open",
+    "merged_at": null,
+    "head": "ce2e6cc1268e5965a490f839083ab0fcd17eeae7",
+    "base": "codex/cl-rounding-rule",
+    "classification": "DOCS",
+    "action": "Keep cutover checklist; reconcile its older protocol counts before using with refreshed pack. Release order and146 rollbackSTOP retained.",
+    "files": [
+      {
+        "path": "tests/CUTOVER-DAY-CHECKLIST.md",
+        "status": "added",
+        "blob": "caf4604021b2df2286fb1d7749e6b66389302224",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 289,
+    "state": "open",
+    "merged_at": null,
+    "head": "bcf29b1589dfe9a15a593c583984e6c457690b1d",
+    "base": "codex/cl-rounding-rule",
+    "classification": "FOLD TEST + DOCS",
+    "action": "Take N1 daily-view delta after #281. Keep latest evidence register/packets and CQ review report. #282/#283 overlap is absorbed, not independent proof.",
+    "files": [
+      {
+        "path": "tests/CQ-REVIEW-281-284.md",
+        "status": "added",
+        "blob": "bcb4b93a6639d46b7af35b64d064f78ac1d2ded3",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/GO-NO-GO-EVIDENCE.md",
+        "status": "modified",
+        "blob": "9cb385ea83a31c5b4e9be9786146b78e465883f4",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/REVIEW-PACKETS-NEXT.md",
+        "status": "modified",
+        "blob": "b1025ae81c55961595cf0f11bac2015bb03337e2",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/e2e/acceptance/n1-paid-breaks.spec.ts",
+        "status": "modified",
+        "blob": "b0d4a73c69e47ca9649d0090679c38ea08f754b4",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 290,
+    "state": "open",
+    "merged_at": null,
+    "head": "d9bcbc398b283e621ea4d73bcf90ef18f7ccc1b9",
+    "base": "main",
+    "classification": "DOCS",
+    "action": "Keep incident/support guide and handover; fill/test private contacts separately.",
+    "files": [
+      {
+        "path": "docs/D3-INCIDENT-AND-SUPPORT.md",
+        "status": "added",
+        "blob": "07bd5e32b0357ec0ce620a5ddf0ca5749e18346a",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/HANDOVER-BUILDER-4-D3.md",
+        "status": "added",
+        "blob": "20722eca1caef0246a3af786fc28ee9b0c9ecf3d",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 291,
+    "state": "open",
+    "merged_at": null,
+    "head": "01067cab327ddc7107a99a015522530d736519c8",
+    "base": "main",
+    "classification": "DOCS",
+    "action": "Keep both role quick guides and handover; actual printing/training remain open.",
+    "files": [
+      {
+        "path": "docs/D4-JNR-OFFICE-QUICK-GUIDE.md",
+        "status": "added",
+        "blob": "0594267de731a0becd1920996a391e0e4aa48624",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/D4-JNR-WORKSHOP-QUICK-GUIDE.md",
+        "status": "added",
+        "blob": "7babc7f4480e3152d22527c68179dfab4f1b09a2",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/HANDOVER-BUILDER-4-D4.md",
+        "status": "added",
+        "blob": "aa29e0eee3d911d539456c7d5d31c04de05225f8",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 292,
+    "state": "open",
+    "merged_at": null,
+    "head": "55ee54c3b64d812745731a7090c42b483571f7c0",
+    "base": "main",
+    "classification": "DOCS",
+    "action": "Keep paper fallback and recovery checking; no automatic replay of uncertain/queued work.",
+    "files": [
+      {
+        "path": "docs/F5-WORKSHOP-PAPER-FALLBACK.md",
+        "status": "added",
+        "blob": "f84f1bca75c6cfa4fdfdc21a60f13685bae23b78",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/HANDOVER-BUILDER-4-F5.md",
+        "status": "added",
+        "blob": "820013922c700fbf1e3deeb1bc8d4f2abb696933",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 293,
+    "state": "open",
+    "merged_at": null,
+    "head": "0cfe4495a805d0c41acbdbe7a5f8b892006df68a",
+    "base": "main",
+    "classification": "DOCS",
+    "action": "Keep D6 recovery/backup-state rules and stop after146 rollback; not SQL authority.",
+    "files": [
+      {
+        "path": "tests/D6-CUTOVER-ROLLBACK-RUNBOOK.md",
+        "status": "added",
+        "blob": "2c5facc9af8190c540188da6d9cc512bb184f6c5",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/HANDOVER-BUILDER-4-D6.md",
+        "status": "added",
+        "blob": "a4dad2b54b6803076c99ed3c0eded0a0ff12e14b",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 294,
+    "state": "open",
+    "merged_at": null,
+    "head": "ac49a303512288e76c95f74522ec3abdaf251f34",
+    "base": "main",
+    "classification": "DOCS / CLOSE AFTER REPLACED",
+    "action": "C10 source path is wrong here. Take corrected checklist from #298 and preserve this unique handover, then close #294 as superseded.",
+    "files": [
+      {
+        "path": "tests/C10-TOLRA-DOMAIN-SWITCH-CHECKLIST.md",
+        "status": "added",
+        "blob": "7cf688776791099d4962f430783a16c67e072d83",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/HANDOVER-BUILDER-4-C10.md",
+        "status": "added",
+        "blob": "d47f71eb55b2c700a688e49d3519120c775629af",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 295,
+    "state": "open",
+    "merged_at": null,
+    "head": "865058f4a3e9dfa1afdefb51d3d6b72d401cda29",
+    "base": "main",
+    "classification": "DOCS",
+    "action": "Keep exact B5 proof/fallback guide and builder4 ownership/handover. Ordinary definitely-unsent drafts only; uncertain/chase bypass forbidden.",
+    "files": [
+      {
+        "path": "docs/TOLRA-BUILDER-4-OWNERSHIP.md",
+        "status": "added",
+        "blob": "88447a46b2f912c5cd6fa5043cc9c94f3f3ec7db",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/B5-EMAIL-CONNECTION-PROOF-AND-FALLBACK.md",
+        "status": "added",
+        "blob": "6e43e5d7309da8953084bcb4da70b79337edfa0e",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/HANDOVER-BUILDER-4-B5.md",
+        "status": "added",
+        "blob": "3a78bb1bc6acad7ad048d0d5db080bcd7574a042",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/HANDOVER-BUILDER-4.md",
+        "status": "added",
+        "blob": "f5fde09e024acecff1e3a2dc945451621e1e82f2",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 296,
+    "state": "open",
+    "merged_at": null,
+    "head": "b35e5caf003fba6c6f25082bcfae311ae35e5fd4",
+    "base": "codex/x-final-main-candidate",
+    "classification": "FOLD INTO #247",
+    "action": "Apply reviewed wording deltas and matching ai-integration-card assertion first. It changes real routes/components despite plain-word intent. Then apply #298\u2019s safer cap paragraph; do not overwrite that fix.",
+    "files": [
+      {
+        "path": "app/api/accounting/[provider]/[action]/route.ts",
+        "status": "modified",
+        "blob": "45d026fa8eb2c4b8f00eb3f2bcfdc9bd8df0bfd9",
+        "declared9cPresent": true,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "app/api/chase/run/route.ts",
+        "status": "modified",
+        "blob": "b6b1e5b4d2eb240771a94d90c1e59d5bee5b3bbf",
+        "declared9cPresent": true,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "components/email-schedules/chase-steps-editor.tsx",
+        "status": "modified",
+        "blob": "36a8ae944c23b294b5cc1554f3ef07ea513df95b",
+        "declared9cPresent": true,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "components/email/email-templates-card.tsx",
+        "status": "modified",
+        "blob": "4d3eeae97c29d4d393a0d875a42592e59f08393c",
+        "declared9cPresent": true,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "components/integrations/accounting-cloud-cards.tsx",
+        "status": "modified",
+        "blob": "bb9ac9475675e80cec2b84ce2d701238903c1c8b",
+        "declared9cPresent": true,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "components/integrations/ai-connection-card.tsx",
+        "status": "modified",
+        "blob": "d9d2f4c220966dfa6b157d04a2490ac7218d87d0",
+        "declared9cPresent": true,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "components/platform/tolra-ai-caps.tsx",
+        "status": "modified",
+        "blob": "165be431506d74ca48d7a9ae2797e0fc87b3d7b9",
+        "declared9cPresent": true,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/AU-SCREEN-WORDING-REVIEW.md",
+        "status": "added",
+        "blob": "b71cde54039109ab9d3a723cfa7cdaa0b5f7bcdd",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/HANDOVER-BUILDER-4-AU.md",
+        "status": "added",
+        "blob": "b13a5a01c62a5c97469dc154135b6cccb65f7782",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/unit/ai-integration-card.test.ts",
+        "status": "modified",
+        "blob": "a0f2b853725eb33e50f8cfb9b50cca8aa85b4d3e",
+        "declared9cPresent": true,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 297,
+    "state": "open",
+    "merged_at": null,
+    "head": "b9406d136f224395a4e6f2d15f82093f1ba2f545",
+    "base": "claude/pr48-final",
+    "classification": "FOLD INTO #247 / PROOFS",
+    "action": "Transplant reviewed reverse-tenant DB proof and actual-helper input unit proof from its different #84 base. Keep final candidate sequencer, all baseline/post144 files and security plan/logs. Do not merge all #84 ancestry blindly.",
+    "files": [
+      {
+        "path": "tests/HANDOVER-BUILDER-4-S1-S4.md",
+        "status": "added",
+        "blob": "25e2e3072ba59cc0aa9c5e529a7efd6723448a7e",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/S1-S4-SECURITY-PROOF-PLAN.md",
+        "status": "added",
+        "blob": "c28f430fb4331f8e5eb309df0fa46bca2d6ce18d",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/db/s1-reverse-tenant-proof.test.ts",
+        "status": "added",
+        "blob": "bc717272612ccbad2caf89a1eddaabdbd721867e",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/evidence/builder-4-security/security-db-attempt.log",
+        "status": "added",
+        "blob": "609d5770d7c58c03b51b4b7a3e80f921dff8726f",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/evidence/builder-4-security/security-final-unit.log",
+        "status": "added",
+        "blob": "0fbfb32ba7f2718c1dac330037fd12fb45cdf195",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/evidence/builder-4-security/security-lint.log",
+        "status": "added",
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/evidence/builder-4-security/security-s3-regressions.log",
+        "status": "added",
+        "blob": "057b4fe50b711afc78864bef64d97fed1d05c740",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/evidence/builder-4-security/security-typecheck.log",
+        "status": "added",
+        "blob": "e58218152bba69244cdea51693ed959832f8751f",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/unit/s3-s4-cutover-inputs.test.ts",
+        "status": "added",
+        "blob": "8386ec873a22ff3cd10f05bcb543d3322d3af156",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 298,
+    "state": "open",
+    "merged_at": null,
+    "head": "8d161eca667cf3a64b4a9aaffb2df6ddba9d673d",
+    "base": "codex/cq-pr-corrections",
+    "classification": "FOLD CAP + DOCS",
+    "action": "After #296, take safe company-AI-off cap wording; it overrides that paragraph only. Take corrected C10 path and latest CR report. Keep new CN/CU and later #314 BA line correction.",
+    "files": [
+      {
+        "path": "components/platform/tolra-ai-caps.tsx",
+        "status": "modified",
+        "blob": "7a337dcd611629847653eea5f1cb6ef5b1ef5f20",
+        "declared9cPresent": true,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/C10-TOLRA-DOMAIN-SWITCH-CHECKLIST.md",
+        "status": "added",
+        "blob": "ef42ded37f5309a002b9adeac410f430d74e04e0",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/CR-BUILDER-4-CROSS-REVIEW.md",
+        "status": "added",
+        "blob": "df9c3b728b2e2234da69c783b159ad6e0b598ff5",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 299,
+    "state": "open",
+    "merged_at": null,
+    "head": "ecbf38f36bd4a57a9a93916bb51849b96e239cd5",
+    "base": "codex/cr-builder4-review",
+    "classification": "DOCS",
+    "action": "Keep exact-line evidence index; then apply CZ #322 notice/R8 correction. Immutable historical links stay historical.",
+    "files": [
+      {
+        "path": "tests/validation/EVIDENCE-INDEX.md",
+        "status": "added",
+        "blob": "4312b35568d75a4cc49713b9cd2b161e16889474",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 300,
+    "state": "open",
+    "merged_at": null,
+    "head": "49097c56f05e690b811872e24ff9b159b774f334",
+    "base": "codex/cs-vsr-evidence-index",
+    "classification": "DOCS",
+    "action": "Keep 35/60/64 mapping; Rhys records approved exact scope. Smaller form never waives transfer proof.",
+    "files": [
+      {
+        "path": "tests/validation/MANUAL-35-VS-64.md",
+        "status": "added",
+        "blob": "a17b1497004f7b8aac2fea50f2de9043d6cee56d",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 301,
+    "state": "open",
+    "merged_at": null,
+    "head": "475e186b5b9d4fd526c9c95028c49eeb96aa63c5",
+    "base": "main",
+    "classification": "DOCS / CLOSE AFTER #316",
+    "action": "Original sign-off master superseded by #316\u2019s plainer version. Preserve its unique HANDOVER file/provenance, verify final master retained, then close as superseded. No signature/result is implied.",
+    "files": [
+      {
+        "path": "docs/signoff/G14-GO-LIVE-DAY-AGREEMENT.md",
+        "status": "added",
+        "blob": "8e2c17858a992ced52c613c111e94bd52e53ef51",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/HANDOVER-G14.md",
+        "status": "added",
+        "blob": "4d1881d1ee5e2b75f91dbb91381e6f36da45f89c",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 302,
+    "state": "open",
+    "merged_at": null,
+    "head": "e76f1c03ee5cd60f3048d5c5a115714e4b3c54bd",
+    "base": "main",
+    "classification": "DOCS / CLOSE AFTER #316",
+    "action": "Original sign-off master superseded by #316\u2019s plainer version. Preserve its unique HANDOVER file/provenance, verify final master retained, then close as superseded. No signature/result is implied.",
+    "files": [
+      {
+        "path": "docs/signoff/F6-JOHN-ACCEPTANCE.md",
+        "status": "added",
+        "blob": "c6e16a1a167080ba782edc702515d224e95df4ba",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/HANDOVER-F6.md",
+        "status": "added",
+        "blob": "9a5dc4e759ff41464bcaf5c0d3331cd89d9456ab",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 303,
+    "state": "open",
+    "merged_at": null,
+    "head": "ca1c504cf515d82533242bf373c38d2f069642fc",
+    "base": "main",
+    "classification": "DOCS / CLOSE AFTER #316",
+    "action": "Original sign-off master superseded by #316\u2019s plainer version. Preserve its unique HANDOVER file/provenance, verify final master retained, then close as superseded. No signature/result is implied.",
+    "files": [
+      {
+        "path": "docs/signoff/AI-APPROVE-JOHN-DATA-SHARING.md",
+        "status": "added",
+        "blob": "a5123e3ab4fa165d8b81254b137f0351fe4a3a52",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/HANDOVER-AI-APPROVE.md",
+        "status": "added",
+        "blob": "a36cdab5ba51808dae2c96ada5b0db04bea28724",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 304,
+    "state": "open",
+    "merged_at": null,
+    "head": "97422fe71066c8e4d225d0d38f2da837f88b4ed5",
+    "base": "main",
+    "classification": "DOCS / CLOSE AFTER #316",
+    "action": "Original sign-off master superseded by #316\u2019s plainer version. Preserve its unique HANDOVER file/provenance, verify final master retained, then close as superseded. No signature/result is implied.",
+    "files": [
+      {
+        "path": "docs/signoff/B13-JOHN-REHEARSAL-WEEK.md",
+        "status": "added",
+        "blob": "546aec0e7ed617d47f187d3906b3d788d49bc267",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/HANDOVER-B13.md",
+        "status": "added",
+        "blob": "3771a047344ff3c3fce3a6aaa52199d27aba4876",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 305,
+    "state": "open",
+    "merged_at": null,
+    "head": "78dc5b7033592f20640b15e61b198c7fcf17930e",
+    "base": "codex/ct-manual-count-map",
+    "classification": "DOCS / CANONICAL CU",
+    "action": "Keep corrected smoke file at78dc5b70 (same correction source as #314). Do not overwrite it with the older file in #315.",
+    "files": [
+      {
+        "path": "tests/FIRST-DAY-SMOKE-CHECK.md",
+        "status": "added",
+        "blob": "08864545afae55f78665a16c90b9557a9910cb99",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 306,
+    "state": "open",
+    "merged_at": null,
+    "head": "99a1a9f6e9e10b5ce7b92183a87c778b8e9fe953",
+    "base": "main",
+    "classification": "DOCS / CLOSE AFTER #316",
+    "action": "Original sign-off master superseded by #316\u2019s plainer version. Preserve its unique HANDOVER file/provenance, verify final master retained, then close as superseded. No signature/result is implied.",
+    "files": [
+      {
+        "path": "docs/signoff/B15-REMOVE-RHUMECOACHING-ADMIN.md",
+        "status": "added",
+        "blob": "e85d5f69f54ea10695aad416e63ef1af5cf093f4",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/HANDOVER-B15.md",
+        "status": "added",
+        "blob": "90d54dffdbae6108ed01019830ab6a0a2ece6280",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 307,
+    "state": "open",
+    "merged_at": null,
+    "head": "8877aed34d009c7dc1c348d81932ffe103190805",
+    "base": "main",
+    "classification": "DOCS / CLOSE AFTER #316",
+    "action": "Original sign-off master superseded by #316\u2019s plainer version. Preserve its unique HANDOVER file/provenance, verify final master retained, then close as superseded. No signature/result is implied.",
+    "files": [
+      {
+        "path": "docs/signoff/B17-ADMIN-SIGN-IN-CODES.md",
+        "status": "added",
+        "blob": "0caf234e3efe8884c810db3b26987943c6f095b3",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/HANDOVER-B17.md",
+        "status": "added",
+        "blob": "824b32ad8faeaa0c94a20408f098970d01f20d96",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 308,
+    "state": "open",
+    "merged_at": null,
+    "head": "289eeb67ff8535a647e9c01ddb5eadef71e411fe",
+    "base": "main",
+    "classification": "DOCS / CLOSE AFTER #316",
+    "action": "Original sign-off master superseded by #316\u2019s plainer version. Preserve its unique HANDOVER file/provenance, verify final master retained, then close as superseded. No signature/result is implied.",
+    "files": [
+      {
+        "path": "docs/signoff/C8-DECISION-MAKERS-AND-SUPPORT.md",
+        "status": "added",
+        "blob": "3d2c4415d2412727372666d441f4d881cc3c987c",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/HANDOVER-C8.md",
+        "status": "added",
+        "blob": "2c8f128f2bd19851c9095a10ea0d11f13d1537e5",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 309,
+    "state": "open",
+    "merged_at": null,
+    "head": "2562523258932a489b40862bf0f9a5e2657b8305",
+    "base": "main",
+    "classification": "DOCS / CLOSE AFTER #316",
+    "action": "Original sign-off master superseded by #316\u2019s plainer version. Preserve its unique HANDOVER file/provenance, verify final master retained, then close as superseded. No signature/result is implied.",
+    "files": [
+      {
+        "path": "docs/signoff/D7-SIX-YEAR-FINANCIAL-RETENTION.md",
+        "status": "added",
+        "blob": "54a73c869ffcd7c7d64a4d373cbb9aaf4a929a73",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/HANDOVER-D7.md",
+        "status": "added",
+        "blob": "db76f89c85a75f742ee043f71a71f6d45f8a3a3c",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 310,
+    "state": "open",
+    "merged_at": null,
+    "head": "597a195c99b2d7cb20d494f489632889dfeb45da",
+    "base": "main",
+    "classification": "DOCS / CLOSE AFTER #316",
+    "action": "Original sign-off master superseded by #316\u2019s plainer version. Preserve its unique HANDOVER file/provenance, verify final master retained, then close as superseded. No signature/result is implied.",
+    "files": [
+      {
+        "path": "docs/signoff/HANDOVER-NUM-RESET.md",
+        "status": "added",
+        "blob": "244973aab08216456452b37684f0f7c91f6fc0c2",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/NUM-RESET-JOHN-NUMBERING-CHOICE.md",
+        "status": "added",
+        "blob": "9651855f032752dc4c97a6e40790241d1ad5c2e7",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 311,
+    "state": "open",
+    "merged_at": null,
+    "head": "54e28c086dd20cd6553b53e3645b6a51c8d13ec2",
+    "base": "main",
+    "classification": "DOCS / CLOSE AFTER #316",
+    "action": "Original sign-off master superseded by #316\u2019s plainer version. Preserve its unique HANDOVER file/provenance, verify final master retained, then close as superseded. No signature/result is implied.",
+    "files": [
+      {
+        "path": "docs/signoff/HANDOVER-XERO-APP.md",
+        "status": "added",
+        "blob": "f5043127f1a18e2470bf1814470be237dcfff1ad",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/XERO-APP-RHYS-REGISTRATION.md",
+        "status": "added",
+        "blob": "d1459cb2dd62780aa837280a5b54768f6cd9029b",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 312,
+    "state": "open",
+    "merged_at": null,
+    "head": "bf5396b66e163cadaf5a212b268a3519f6f4b5cb",
+    "base": "main",
+    "classification": "DOCS / CLOSE AFTER #316",
+    "action": "Original sign-off master superseded by #316\u2019s plainer version. Preserve its unique HANDOVER file/provenance, verify final master retained, then close as superseded. No signature/result is implied.",
+    "files": [
+      {
+        "path": "docs/signoff/HANDOVER-SAGE-QBO-APP.md",
+        "status": "added",
+        "blob": "eeb61261d5b497e9188e6c8549b6e55a69ae0556",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/SAGE-QBO-APP-RHYS-REGISTRATION.md",
+        "status": "added",
+        "blob": "5e934d44025f8ab367294fce337541db51b2267b",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 313,
+    "state": "open",
+    "merged_at": null,
+    "head": "7ffeb44be92ce10fcace40ddce12a509d3d675c7",
+    "base": "main",
+    "classification": "DOCS / CLOSE AFTER #316",
+    "action": "Original sign-off master superseded by #316\u2019s plainer version. Preserve its unique HANDOVER file/provenance, verify final master retained, then close as superseded. No signature/result is implied.",
+    "files": [
+      {
+        "path": "docs/signoff/HANDOVER-PAID-ROUND.md",
+        "status": "added",
+        "blob": "41be5bb2856698e8aeb4f0141f4af6ac99886f92",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/PAID-ROUND-JOHN-PAID-TIME-CHOICE.md",
+        "status": "added",
+        "blob": "2db0ad8bca22f828a0f1c22f21338646d427474c",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 314,
+    "state": "open",
+    "merged_at": null,
+    "head": "ce1118393cc0d65bfde426d31222903a802984ff",
+    "base": "codex/cu-first-day-smoke",
+    "classification": "DOCS / SELECT LATEST",
+    "action": "Keep review/ownership/handover/evidence, BA-269 historical clarification and corrected BA ledger (DAY10\u201313 links to settings CompanyDetailsCard line53). CN/CU duplicates are already in #286/#305. Keep unique docs; do not close whole PR merely because two files overlap.",
+    "files": [
+      {
+        "path": "docs/signoff/BUILDER-3-CROSS-REVIEW.md",
+        "status": "added",
+        "blob": "871d2268a91b9f12e0699ac6d738e3e9ab84aac1",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/BUILDER-4-QUEUE-2-OWNERSHIP.md",
+        "status": "added",
+        "blob": "2baf96da424b742c5d57d4cbeb4645d4224df2d5",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/HANDOVER-BUILDER-4-QUEUE-2.md",
+        "status": "added",
+        "blob": "b1e414ba80828cbaf8e9c46009e17cc9eb36fb66",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/review-evidence/CV-315-SOURCE-CHECK.txt",
+        "status": "added",
+        "blob": "680b3bb3c698ad0fded878756ad82a8ff44b1ed3",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/review-evidence/q2-cm-lint.log",
+        "status": "added",
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/review-evidence/q2-cm-typecheck.log",
+        "status": "added",
+        "blob": "e58218152bba69244cdea51693ed959832f8751f",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/review-evidence/q2-cm-unit.log",
+        "status": "added",
+        "blob": "d26470fc21f539aef951bc0eaa5f1b498972b44e",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/review-evidence/q2-cq-collection.log",
+        "status": "added",
+        "blob": "c59aa4391da16c45b5c526d5719e26406b6e7952",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/review-evidence/q2-cq-lint.log",
+        "status": "added",
+        "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/review-evidence/source-reference-check.txt",
+        "status": "added",
+        "blob": "6eb2901dbb4a7462dc8297654f3df47911b23d69",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/BA-FIRST-DAY-EVIDENCE.md",
+        "status": "added",
+        "blob": "014518e5893a6a51edd24f4e3e4b50bcf6b861e3",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/FIRST-DAY-SMOKE-CHECK.md",
+        "status": "modified",
+        "blob": "08864545afae55f78665a16c90b9557a9910cb99",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/JOHN-PQ-RUN-SHEET.md",
+        "status": "added",
+        "blob": "226dcb6e7b8edadc7df2ddd85465eba42f49dd95",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/reviews/BA-269-SOURCE-CORRECTIONS.md",
+        "status": "added",
+        "blob": "337284063af8c36732468ff5bcbeb11a8f7fc001",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 315,
+    "state": "open",
+    "merged_at": null,
+    "head": "727ff228b6bc8575bc4440f409fdd3c41fe4ce5e",
+    "base": "codex/cu-first-day-smoke",
+    "classification": "EVIDENCE ONLY / SPLIT",
+    "action": "Extract CV-CURRENT-STACK-RESULTS.md and tests/evidence/builder-3-cv only. Its aggregate also carries old CN/CO/CP; do not overwrite corrected canonical papers or call evidence commit a new executed head.",
+    "files": [
+      {
+        "path": "tests/CUTOVER-DAY-CHECKLIST.md",
+        "status": "added",
+        "blob": "caf4604021b2df2286fb1d7749e6b66389302224",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/CV-CURRENT-STACK-RESULTS.md",
+        "status": "added",
+        "blob": "014ca93ff482cb0558b7e9a1eae16f1fe1a50b24",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/JOHN-PQ-RUN-SHEET.md",
+        "status": "added",
+        "blob": "49875a7d8dfb316647d3e6148b3ee7cfc03ccbd2",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/RHYS-SIGN-OFF-GUIDE.md",
+        "status": "added",
+        "blob": "618ee73e85b7173b5a140431ee02b1e0d3099756",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/evidence/builder-3-cv/candidate-unit-files.json",
+        "status": "added",
+        "blob": "9d0089933e826ae82b63d6b132ed38acf007f664",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/evidence/builder-3-cv/cm-unit-files.json",
+        "status": "added",
+        "blob": "834b1fa73e72db1e82785dd53d99e199f13d2e2f",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/evidence/builder-3-cv/cv-candidate-locked-1.log",
+        "status": "added",
+        "blob": "844b7b8e62c18cd68d666559f23de25abca8dd98",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/evidence/builder-3-cv/cv-candidate-locked-2.log",
+        "status": "added",
+        "blob": "ee3b7e0717adca2e9e9334f23aee8b748a8a4d1c",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/evidence/builder-3-cv/cv-candidate-locked-3.log",
+        "status": "added",
+        "blob": "d1ec6f48b1b4bdb4c36b36ff7a5e7164a40549df",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/evidence/builder-3-cv/cv-candidate-locked-summary.json",
+        "status": "added",
+        "blob": "05142f3d1b2df8eaea0eaf0757d9273bb90ce2a0",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/evidence/builder-3-cv/cv-candidate-npm-ci-summary.json",
+        "status": "added",
+        "blob": "6f48b2e6a5bcae2dcada38b08c557de7e169e1a9",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/evidence/builder-3-cv/cv-candidate-npm-ci-workspace-cache-summary.json",
+        "status": "added",
+        "blob": "62412d999eeddb0131af69cfc92c4ffed93ec4e1",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/evidence/builder-3-cv/cv-candidate-npm-ci-workspace-cache.log",
+        "status": "added",
+        "blob": "d93fe5cbd1ff6eac7bf807fe487e2d44b124cc63",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/evidence/builder-3-cv/cv-candidate-npm-ci.log",
+        "status": "added",
+        "blob": "387978c2d2d54d4e8a3c3d73061f4d149aff45cb",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/evidence/builder-3-cv/cv-candidate-summary.json",
+        "status": "added",
+        "blob": "2ca32b687d72f154c6a683e87d2dd28f05211e8b",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/evidence/builder-3-cv/cv-candidate-unit-permitted-summary.json",
+        "status": "added",
+        "blob": "8f310653ed4af9606a138e8f26e15427e2baf016",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/evidence/builder-3-cv/cv-cm-1.log",
+        "status": "added",
+        "blob": "339888545d055d86403c1de545d37c47946ca86b",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/evidence/builder-3-cv/cv-cm-2.log",
+        "status": "added",
+        "blob": "ee3b7e0717adca2e9e9334f23aee8b748a8a4d1c",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/evidence/builder-3-cv/cv-cm-summary.json",
+        "status": "added",
+        "blob": "a0c3e19b0bce67468c1a9d4568150f4703c4db60",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/evidence/builder-3-cv/cv-cm-unit-permitted-summary.json",
+        "status": "added",
+        "blob": "a85f111b18e96fc897c9ea71337c42183aa0a121",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "tests/evidence/builder-3-cv/cv-cm-unit-permitted.log",
+        "status": "added",
+        "blob": "e5bd7c4777af44a78b5bec511181d24121e5c64e",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 316,
+    "state": "open",
+    "merged_at": null,
+    "head": "359249878c17b7e4586e39bbee4b7e3961c2a2e2",
+    "base": "codex/b4-builder3-review-final",
+    "classification": "DOCS / FINAL MASTERS",
+    "action": "Keep all12 plain sign-off masters plus CW review/handover. Supersedes the12 earlier master texts. Copy unique older handovers before closing those source PRs; blank masters are not approvals.",
+    "files": [
+      {
+        "path": "docs/signoff/AI-APPROVE-JOHN-DATA-SHARING.md",
+        "status": "added",
+        "blob": "d36e3b210e3a4165a5878ce2e4e50097d84651a9",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/B13-JOHN-REHEARSAL-WEEK.md",
+        "status": "added",
+        "blob": "2432ee4294eeccd7b1c2caf0ca004cd90e7b7016",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/B15-REMOVE-RHUMECOACHING-ADMIN.md",
+        "status": "added",
+        "blob": "9b4ff4778a864e66c088ad2e08b2539ec0c5ccea",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/B17-ADMIN-SIGN-IN-CODES.md",
+        "status": "added",
+        "blob": "5673a207ff40fb938bdfea14d253d3544ff6df97",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/C8-DECISION-MAKERS-AND-SUPPORT.md",
+        "status": "added",
+        "blob": "c52479c2bed1b123168a227cd01474c3fc7f6f5d",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/CW-PLAIN-WORDS-REVIEW.md",
+        "status": "added",
+        "blob": "34442856bb4717c9062d9a5a53285ac3d0498d3c",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/D7-SIX-YEAR-FINANCIAL-RETENTION.md",
+        "status": "added",
+        "blob": "ebc957afdfb20982e4a4d99d23ccc3e77c13ac1c",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/F6-JOHN-ACCEPTANCE.md",
+        "status": "added",
+        "blob": "7843ab068232f679654932035e7c98685daf6bcc",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/G14-GO-LIVE-DAY-AGREEMENT.md",
+        "status": "added",
+        "blob": "043868356ddd206ae71fcee10b64e847aaaee590",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/HANDOVER-BUILDER-4-CW.md",
+        "status": "added",
+        "blob": "7992bfe3001c254adff4e8521512983d36167b37",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/NUM-RESET-JOHN-NUMBERING-CHOICE.md",
+        "status": "added",
+        "blob": "dff24f180688d6f6c73d21598564b421c7c17402",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/PAID-ROUND-JOHN-PAID-TIME-CHOICE.md",
+        "status": "added",
+        "blob": "c176ebc4f50ac29e345dce9bc45ac2f4754bae38",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/SAGE-QBO-APP-RHYS-REGISTRATION.md",
+        "status": "added",
+        "blob": "f6136a590bffa381ac28be124161fe392009f412",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      },
+      {
+        "path": "docs/signoff/XERO-APP-RHYS-REGISTRATION.md",
+        "status": "added",
+        "blob": "343a0a44bd5259967d2879e52fdec0fa2c018720",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  },
+  {
+    "number": 317,
+    "state": "open",
+    "merged_at": null,
+    "head": "9515eda33b50878a057a431b06498a5b1f15b204",
+    "base": "codex/cv-current-stack-checks",
+    "classification": "DOCS / KEEP CORRECTED BA",
+    "action": "Keep all41 ledger rows, but take #314 ce111839\u2019s corrected DAY10\u201313 settings links at line53 and its explanatory note. Retain all missing-pack statuses. Do not overwrite corrected file with older317 blob.",
+    "files": [
+      {
+        "path": "tests/BA-FIRST-DAY-EVIDENCE.md",
+        "status": "added",
+        "blob": "8f1ef676cc7c51eafd15cbe270b9b14a246903cc",
+        "declared9cPresent": false,
+        "sameBlobAsDeclared9c": false
+      }
+    ]
+  }
+]
