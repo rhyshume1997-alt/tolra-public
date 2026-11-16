@@ -165,6 +165,15 @@
       "rollback": "supabase/release/158_machine_run_integrity.rollback.sql",
       "verify": "supabase/verify/machine_run_integrity_158.sql",
       "marker": "post-144 marker 158 machine_run_integrity"
+    },
+    {
+      "number": 159,
+      "after": "158",
+      "source": "supabase/proposals/p159_drawings_update_roles.sql",
+      "release": "supabase/release/159_drawings_update_roles.release.sql",
+      "rollback": "supabase/release/159_drawings_update_roles.rollback.sql",
+      "verify": "supabase/verify/drawings_update_roles_159.sql",
+      "marker": "post-144 marker 159 drawings_update_roles"
     }
   ],
   "other_proposals": [
