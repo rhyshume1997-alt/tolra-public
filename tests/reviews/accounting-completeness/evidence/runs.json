@@ -1,0 +1,23 @@
+{
+  "runs": [
+    {
+      "head": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+      "log": "main-focused.log",
+      "passed": 159,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "log_sha256": "0d8a6ee68657e36a3cca0053c55e79d63ccf36279e2b88cc354e9974daa1dd69"
+    },
+    {
+      "head": "8eb7f3370b7024ba36b04d299088cd475906a224",
+      "log": "pending216-focused.log",
+      "passed": 57,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "log_sha256": "e7ad7450c49466dfb929f9ffed79ade9bf2923c9c21cf2262cbd65477f68a935"
+    }
+  ],
+  "environment": "synthetic Vitest, existing source, no DB/provider/network"
+}
