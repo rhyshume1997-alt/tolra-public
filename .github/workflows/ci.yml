@@ -237,6 +237,31 @@ jobs:
           with open(os.environ["GITHUB_ENV"], "a") as target:
               target.write("\n".join(rows) + "\n")
           PY_ENV
+      # Evidence for the release 159 / storage.objects question (informational, never gates, never changes anything): which login ran the baseline
+      # migrations that `supabase start` applied, and does it differ from the login the release fixture uses (TEST_DATABASE_URL)? A table's owner is the
+      # login that created it, so the owners of the baseline's public tables and functions name the migration runner (a SET ROLE inside a migration would
+      # hide it, which is why this is evidence and not proof of effective rights; the last column is the effective check). Catalog SELECTs only: no
+      # pg_authid, no password, no connection string. The log lines are reduced to user names and counts by the filter below; nothing else is printed.
+      - name: "Baseline runner evidence (informational, read-only: which login applied the baseline migrations, and does it differ from the release fixture's login)"
+        if: ${{ always() }}
+        continue-on-error: true
+        run: |
+          set +e
+          psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=0 -X <<'SQL'
+          select 'fixture login (TEST_DATABASE_URL): name / superuser / bypassrls / canlogin' as check, r.rolname::text || ' / ' || r.rolsuper::text || ' / ' || r.rolbypassrls::text || ' / ' || r.rolcanlogin::text as value from pg_roles r where r.rolname = current_user
+          union all select 'baseline public tables owned by ' || pg_get_userbyid(c.relowner), count(*)::text from pg_class c where c.relnamespace = 'public'::regnamespace and c.relkind in ('r','p') group by c.relowner
+          union all select 'baseline public functions owned by ' || pg_get_userbyid(p.proowner), count(*)::text from pg_proc p where p.pronamespace = 'public'::regnamespace and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e') group by p.proowner
+          union all select 'owner of supabase_migrations.schema_migrations', coalesce((select pg_get_userbyid(c.relowner) from pg_class c where c.oid = to_regclass('supabase_migrations.schema_migrations')), 'not present')
+          union all select 'baseline owner ' || r.rolname || ': superuser / bypassrls / canlogin / acts as the storage.objects owner', r.rolsuper::text || ' / ' || r.rolbypassrls::text || ' / ' || r.rolcanlogin::text || ' / ' || coalesce(pg_has_role(r.oid, so.relowner, 'USAGE')::text, 'n/a') from pg_roles r left join pg_class so on so.oid = to_regclass('storage.objects') where r.oid in (select c.relowner from pg_class c where c.relnamespace = 'public'::regnamespace and c.relkind in ('r','p'))
+          union all select 'baseline runner is the same login as the fixture', case when exists (select 1 from pg_class c where c.relnamespace = 'public'::regnamespace and c.relkind in ('r','p') and pg_get_userbyid(c.relowner) <> current_user) then 'NO: some baseline tables are owned by another login' else 'yes: every baseline table is owned by the fixture login' end;
+          SQL
+          echo "== connection log: login names and counts only (no log line is printed) =="
+          db_container="$(docker ps --format '{{.Names}}' 2>/dev/null | grep -m1 '^supabase_db_')"
+          if [ -n "$db_container" ]; then
+            docker logs "$db_container" 2>&1 | grep -F 'connection authorized' | sed -nE 's/.*user=([A-Za-z0-9_]+).*/\1/p' | sort | uniq -c
+          fi
+          echo "(no lines above means connection logging is off: inconclusive, not evidence of anything)"
+          exit 0
       - name: "Permission diagnostic (read-only, informational, who may run the privileged-aal check on this stack)"
         continue-on-error: true
         run: |
