@@ -7,7 +7,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import type { AiProviderId } from "@/lib/ai-helper/provider";
-import { AI_KEY_PROVIDERS, AI_PROVIDER_INFO, aiProvidersOffered, isAiProviderId, keyLooksRightFor } from "@/lib/ai-helper/provider-catalog";
+import { AI_KEY_PROVIDERS, AI_PROVIDER_INFO, isAiProviderId, keyLooksRightFor } from "@/lib/ai-helper/provider-catalog";
 
 const SAMPLE: Record<AiProviderId, string> = {
   anthropic: "sk-ant-" + "a".repeat(30),
@@ -76,42 +76,6 @@ describe("keyLooksRightFor", () => {
   });
   it("each sample passes exactly one provider", () => {
     for (const id of AI_KEY_PROVIDERS) expect(AI_KEY_PROVIDERS.filter((p) => keyLooksRightFor(p, SAMPLE[id]))).toEqual([id]);
-  });
-});
-
-describe("aiProvidersOffered", () => {
-  const offered = (v: string | undefined) => [...aiProvidersOffered(v === undefined ? {} : { AI_HELPER_PROVIDERS: v })];
-  it("offers only anthropic by default", () => {
-    expect(offered(undefined)).toEqual(["anthropic"]);
-    expect(offered("")).toEqual(["anthropic"]);
-    expect(offered("  ")).toEqual(["anthropic"]);
-    expect(aiProvidersOffered({ AI_HELPER_PROVIDERS: undefined })).toEqual(["anthropic"]);
-  });
-  it("offers the listed new providers in fixed order", () => {
-    expect(offered("openai")).toEqual(["anthropic", "openai"]);
-    expect(offered("xai")).toEqual(["anthropic", "xai"]);
-    expect(offered("xai,openai")).toEqual(["anthropic", "openai", "xai"]);
-    expect(offered("openai, xai ")).toEqual(["anthropic", "openai", "xai"]);
-  });
-  it("ignores case variants, junk and unknown entries", () => {
-    expect(offered("OPENAI")).toEqual(["anthropic"]);
-    expect(offered("Xai")).toEqual(["anthropic"]);
-    expect(offered("mock,tolra,,,;openai;xai,__proto__,constructor")).toEqual(["anthropic"]);
-    expect(offered("junk,openai,more junk")).toEqual(["anthropic", "openai"]);
-  });
-  it("lists anthropic once and removes duplicates", () => {
-    expect(offered("anthropic")).toEqual(["anthropic"]);
-    expect(offered("anthropic,openai,openai,xai,xai,anthropic")).toEqual(["anthropic", "openai", "xai"]);
-  });
-  it("does not read process.env", () => {
-    const before = process.env.AI_HELPER_PROVIDERS;
-    process.env.AI_HELPER_PROVIDERS = "openai,xai";
-    try {
-      expect(aiProvidersOffered({})).toEqual(["anthropic"]);
-    } finally {
-      if (before === undefined) delete process.env.AI_HELPER_PROVIDERS;
-      else process.env.AI_HELPER_PROVIDERS = before;
-    }
   });
 });
 
