@@ -23,7 +23,7 @@ cs=(); args=("$@")
 for ((i=0;i<@{#args[@]};i++)); do case "@{args[i]}" in -c) cs+=("@{args[i+1]}");; esac; done
 echo CALL >> "$log"
 for ((i=0;i<@{#args[@]};i++)); do case "@{args[i]}" in -c) echo "C: @{args[i+1]}" >> "$log";; esac; done
-if [ "$mode" = leak ]; then echo "connecting to @{FAKE_URL} password=@{FAKE_PW}"; echo "boom @{FAKE_PW} @{FAKE_URL}" >&2; fi
+if [ "$mode" = leak ]; then echo "connecting to @{FAKE_URL} password=@{FAKE_PW}"; echo "boom @{FAKE_PW} @{FAKE_URL}" >&2; echo 'FATAL:  password authentication failed for user "postgres"' >&2; fi
 [ "$mode" = dead ] && exit 2
 n=0; [ -f "$log.n" ] && n=$(cat "$log.n")
 first="@{cs[0]:-}"
@@ -64,12 +64,12 @@ beforeAll(() => {
 });
 
 let counter = 0;
-function run(mode: string, opts: { url?: string } = {}) {
+function run(mode: string, opts: { url?: string; fakeUrl?: string; fakePw?: string } = {}) {
   const log = path.join(LOGDIR, `calls-${++counter}.log`);
   writeFileSync(log, "");
   const r = spawnSync("bash", [SCRIPT], {
     encoding: "utf8",
-    env: { ...process.env, PATH: `${STUB}:${process.env.PATH}`, TEST_DATABASE_URL: opts.url ?? URL_, FAKE_MODE: mode, FAKE_LOG: log, FAKE_URL: URL_, FAKE_PW: PW },
+    env: { ...process.env, PATH: `${STUB}:${process.env.PATH}`, TEST_DATABASE_URL: opts.url ?? URL_, FAKE_MODE: mode, FAKE_LOG: log, FAKE_URL: opts.fakeUrl ?? URL_, FAKE_PW: opts.fakePw ?? PW },
   });
   const calls = readFileSync(log, "utf8");
   const lines = r.stdout.trim().split("\n");
@@ -218,6 +218,35 @@ describe("credential safety", () => {
     expect(out).not.toMatch(/postgres(ql)?:\/\//i);
     expect(out).not.toMatch(/postgres:[^\s@]*@127\.0\.0\.1/);
     expect(out).toContain("[connection string redacted]");
+  });
+
+  it("the CI shape postgres:postgres@127.0.0.1 keeps the role name 'postgres' everywhere it is evidence, and still redacts the connection string", () => {
+    const ciUrl = "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
+    const { out } = run("leak", { url: ciUrl, fakeUrl: ciUrl, fakePw: "postgres" });
+    expect(out).toContain('supautils.policy_grants = {"postgres":["storage.objects"]}');
+    expect(out).toContain('password authentication failed for user "postgres"');
+    expect(out).not.toMatch(/postgres(ql)?:\/\//i);
+    expect(out).not.toMatch(/postgres:postgres@/);
+    expect(out).toContain("[connection string redacted]");
+    expect(out).toContain("password=[redacted]");
+  });
+
+  it("a distinctive password is redacted as a bare literal too, on stdout and stderr", () => {
+    const { r, out } = run("leak");
+    expect(`${r.stdout}`).not.toContain(PW);
+    expect(`${r.stderr}`).not.toContain(PW);
+    expect(out).not.toContain(PW);
+  });
+
+  it("a percent-encoded password is redacted in both its encoded and decoded forms", () => {
+    const raw = "p@ss w0rd/9!Zq";
+    const enc = encodeURIComponent(raw);
+    const url = `postgresql://postgres:${enc}@127.0.0.1:54322/postgres`;
+    const { out } = run("leak", { url, fakeUrl: url, fakePw: raw });
+    expect(out).not.toContain(raw);
+    expect(out).not.toContain(enc);
+    expect(out).not.toContain("w0rd");
+    expect(out).toContain('supautils.policy_grants = {"postgres":["storage.objects"]}');
   });
 
   it("reads exactly four settings by exact name with current_setting(name, true), and a non-listed supautils setting is never queried", () => {

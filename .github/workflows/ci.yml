@@ -267,6 +267,7 @@ jobs:
       # it always rolls back, then proves from two fresh sessions that the state is unchanged. Loopback disposable database only.
       # Residual risk, accepted for speed (it runs BEFORE the Database suite): a result of fingerprint CHANGED or UNVERIFIED, or ROLLBACK NOT CONFIRMED,
       # means this run's required results are void and must be reported as such. No lock is held past the 3-minute timeout.
+      # The script's \warn markers need psql 13 or later (the runner's psql is 16).
       - name: "Statement diagnostic (informational, disposable database only: which release 159 statement is refused, SQLSTATE and source location; always rolled back, state verified unchanged)"
         if: ${{ always() }}
         continue-on-error: true

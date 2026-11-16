@@ -28,6 +28,7 @@ HELPER="$WORK/diag.py"
 # ---------------------------------------------------------------------------------------------------------------------------------------
 cat > "$HELPER" <<'PY'
 import os, re, sys
+from urllib.parse import unquote
 
 DENY_FIRST = {"begin", "start", "commit", "end", "abort", "rollback", "savepoint", "release", "prepare", "set", "reset", "discard"}
 
@@ -156,10 +157,19 @@ def cmd_summary(text):
 
 def redact(text):
     pw = os.environ.get("DIAG_PW", "")
+    # 1) The bare password literal, first (so a password that contains a space or a punctuation mark is removed whole, before the pattern rules cut
+    #    it). It is replaced only when it cannot be mistaken for evidence: not equal to the user name (on the CI stack the URL is
+    #    postgres:postgres@..., and the role name "postgres" is exactly what this step must show) and at least 8 characters. Both the raw (as in
+    #    the URL) and the percent-decoded forms are covered.
+    user = os.environ.get("DIAG_USER", "")
+    forms = set()
+    for f in (pw, unquote(pw)):
+        if len(f) >= 8 and f not in (user, unquote(user)): forms.add(f)
+    for f in sorted(forms, key=len, reverse=True): text = text.replace(f, "[redacted]")
+    # 2) Every full connection string, user:password@host form and password= form, whatever the password is.
     text = re.sub(r"(?i)\bpostgres(?:ql)?://\S+", "[connection string redacted]", text)
     text = re.sub(r"(?i)[A-Za-z0-9_.%+-]+:[^\s:@/]+@[A-Za-z0-9_.\-\[\]]+(?::\d+)?(?:/\S*)?", "[connection string redacted]", text)
     text = re.sub(r"(?i)(password|passwd|pwd|secret|token|apikey|api_key)\s*=\s*\S+", r"\1=[redacted]", text)
-    if pw: text = text.replace(pw, "[redacted]")
     return text
 
 def cmd_settings(text, allowed):
@@ -196,7 +206,7 @@ if ! [[ "$URL" =~ ^[Pp][Oo][Ss][Tt][Gg][Rr][Ee][Ss]([Qq][Ll])?://([^@/]*)@(127\.
   say "statement diagnostic: refused, not the local disposable database; nothing was run"; exit 0
 fi
 USERINFO="${BASH_REMATCH[2]}"
-export DIAG_PW=""
+export DIAG_PW="" DIAG_USER="${USERINFO%%:*}"
 case "$USERINFO" in *:*) DIAG_PW="${USERINFO#*:}" ;; esac
 if ! command -v psql >/dev/null 2>&1; then say "statement diagnostic: psql is not available; nothing was run"; exit 0; fi
 
