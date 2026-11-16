@@ -262,6 +262,17 @@ jobs:
           fi
           echo "(no lines above means connection logging is off: inconclusive, not evidence of anything)"
           exit 0
+      # Informational (never gates, never changes the database): which of release 159's two storage.objects statements this database refuses, with the
+      # SQLSTATE and PostgreSQL source location. scripts/ci-statement-diagnostic.sh runs those two statements (verbatim) and a control inside a transaction
+      # it always rolls back, then proves from two fresh sessions that the state is unchanged. Loopback disposable database only.
+      # Residual risk, accepted for speed (it runs BEFORE the Database suite): a result of fingerprint CHANGED or UNVERIFIED, or ROLLBACK NOT CONFIRMED,
+      # means this run's required results are void and must be reported as such. No lock is held past the 3-minute timeout.
+      # The script's \warn markers need psql 13 or later (the runner's psql is 16).
+      - name: "Statement diagnostic (informational, disposable database only: which release 159 statement is refused, SQLSTATE and source location; always rolled back, state verified unchanged)"
+        if: ${{ always() }}
+        continue-on-error: true
+        timeout-minutes: 3
+        run: bash scripts/ci-statement-diagnostic.sh
       - name: "Permission diagnostic (read-only, informational, who may run the privileged-aal check on this stack)"
         continue-on-error: true
         run: |
