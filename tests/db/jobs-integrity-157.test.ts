@@ -113,6 +113,8 @@ const deniedAtTheDoor = (o: Outcome) => (o.ok ? "allowed" : `${o.e.code}/${o.e.h
 /**
  * reopen_job's own answer for `sub`, as 113's definer functions (reopen_preview, reopen_record, decide_reopen_request) get it: called with the
  * database owner's rights (which keep EXECUTE after 160) and the person's claims, so auth.uid() and has_org_role name that person. Always rolled back.
+ * It runs as the test's database login, not a browser role, so 157's trigger treats it as a non-browser session: it proves reopen_job's OWN
+ * refusal rules only (they are raised before any UPDATE), not the trigger. The trigger's behaviour on a reopen is proved by the reopen_record cases.
  */
 async function reopenJobAsOwnerFor(sub: string, id: string, reason: string): Promise<Outcome> {
   return rolledBack(async (db) => {
