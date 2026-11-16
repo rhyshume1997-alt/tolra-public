@@ -1,0 +1,5 @@
+BEGIN
+DELETE 1
+
+ERROR:  Marpet fingerprint changed: refuse
+CONTEXT:  PL/pgSQL function inline_code_block line 1 at RAISE

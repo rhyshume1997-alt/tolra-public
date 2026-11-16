@@ -1,0 +1,46 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/queue-x4
+
+ ❯ tests/reviews/x4/marpet.test.ts (20 tests | 20 skipped) 6139ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/reviews/x4/marpet.test.ts [ tests/reviews/x4/marpet.test.ts ]
+Error: psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: FATAL:  the database system is shutting down
+
+ ❯ Disposable.checked tests/reviews/x4/disposable.ts:17:61
+     15|   }
+     16|   private checked(args: string[]) {
+     17|     const r = this.command(args); if (r.status !== 0) throw new Error(…
+       |                                                             ^
+     18|   }
+     19|   async start() {
+ ❯ Disposable.identity tests/reviews/x4/disposable.ts:32:14
+ ❯ Disposable.start tests/reviews/x4/disposable.ts:23:111
+ ❯ tests/reviews/x4/marpet.test.ts:13:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/reviews/x4/marpet.test.ts [ tests/reviews/x4/marpet.test.ts ]
+Error: psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: No such file or directory
+	Is the server running locally and accepting connections on that socket?
+
+ ❯ Disposable.checked tests/reviews/x4/disposable.ts:17:61
+     15|   }
+     16|   private checked(args: string[]) {
+     17|     const r = this.command(args); if (r.status !== 0) throw new Error(…
+       |                                                             ^
+     18|   }
+     19|   async start() {
+ ❯ Disposable.identity tests/reviews/x4/disposable.ts:32:14
+ ❯ Disposable.stop tests/reviews/x4/disposable.ts:47:32
+ ❯ tests/reviews/x4/marpet.test.ts:40:17
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+ Test Files  1 failed (1)
+      Tests  20 skipped (20)
+   Start at  02:35:33
+   Duration  6.58s (transform 86ms, setup 0ms, collect 92ms, tests 6.14s, environment 0ms, prepare 96ms)
+
