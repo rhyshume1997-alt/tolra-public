@@ -182,3 +182,33 @@ it("after a release fails inside its own transaction: ROLLBACK, then the diagnos
  expect(spy.mock.calls.map(c=>String(c[0])).join("\n")).toContain("storage.objects owner: owner_x");
  spy.mockRestore();
 });
+
+it("CI prints the baseline runner's login evidence: informational, read-only, sanitised, after the environment export and before any release or suite step",async()=>{
+ const {readFileSync}=await import("node:fs");
+ const {spawnSync}=await import("node:child_process");
+ const ci=readFileSync(".github/workflows/ci.yml","utf8");
+ const start=ci.indexOf("name: \"Baseline runner evidence (informational, read-only");
+ expect(start).toBeGreaterThan(0);
+ expect(start).toBeGreaterThan(ci.indexOf("name: Export this job's disposable test environment"));
+ expect(start).toBeLessThan(ci.indexOf("name: Database suite ("));
+ const step=ci.slice(start,ci.indexOf("\n      - name:",start+10));
+ expect(step).toContain("if: ${{ always() }}");expect(step).not.toContain("failure()");expect(step).toContain("continue-on-error: true");
+ expect(step).toContain("exit 0");
+ expect(step.match(/<<'SQL'/g)).toHaveLength(1);
+ const sql=step.slice(step.indexOf("<<'SQL'"),step.indexOf("\n          SQL")).replace(/'[^']*'/g,"''");
+ expect(sql).toMatch(/\bpg_class\b/);expect(sql).toMatch(/\bpg_roles\b/);
+ expect(sql).not.toMatch(/\b(INSERT|UPDATE|DELETE|ALTER|CREATE|DROP|GRANT|REVOKE|RESET|TRUNCATE|COPY|SET|pg_authid|rolpassword)\b/i);
+ expect(step).not.toMatch(/SET ROLE|supabase_admin|set -x|printenv|\benv\b|--debug|echo "\$TEST_|-U /i);
+ // The log filter, run on a synthetic sample that carries a password, an address and a connection string: only login names and counts come out.
+ const filter=step.match(/sed -nE '[^']+'/)?.[0];
+ expect(filter).toBeDefined();
+ const sample=[
+  "2026-11-16 05:00:00 UTC [41] LOG:  connection authorized: user=postgres database=postgres application_name=supabase password=hunter2 host=10.1.2.3",
+  "2026-11-16 05:00:01 UTC [42] LOG:  connection authorized: user=supabase_admin database=postgres SSL enabled postgresql://u:pw@10.9.9.9:5432/db",
+  "2026-11-16 05:00:02 UTC [43] LOG:  connection authorized: user=postgres database=postgres",
+  "2026-11-16 05:00:03 UTC [44] LOG:  statement: select 'user=leak' password=secret",
+ ].join("\n");
+ const out=spawnSync("bash",["-c",`grep -F 'connection authorized' | ${filter} | sort | uniq -c`],{input:sample,encoding:"utf8"}).stdout;
+ expect(out.trim().split("\n").map(l=>l.trim())).toEqual(["2 postgres","1 supabase_admin"]);
+ for(const secret of ["hunter2","10.","pw","@","postgresql://","leak","secret"]) expect(out).not.toContain(secret);
+});
