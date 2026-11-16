@@ -1,0 +1,33 @@
+name: Demo seed rehearsal
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  disposable-seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: npm run test:backend
+      - name: Mark this empty disposable database with a fresh identity
+        run: |
+          set -euo pipefail
+          set -a; . ./.env.test.local; set +a
+          DEMO_DISPOSABLE_ID="$(node -e 'process.stdout.write(require("node:crypto").randomUUID())')"
+          psql "$TEST_DATABASE_URL" -X -v ON_ERROR_STOP=1 -v disposable_id="$DEMO_DISPOSABLE_ID" -f tests/demo-seed/mark-disposable.sql
+          printf 'DEMO_DISPOSABLE_ID=%s\n' "$DEMO_DISPOSABLE_ID" >> "$GITHUB_ENV"
+      - name: Seed only the verified fake database
+        run: node scripts/demo-seed/cli.mjs --yes-this-is-a-throwaway-database
+      - name: Guard and existing seed tests
+        run: npx vitest run tests/unit/demo-seed-plan.test.ts tests/unit/demo-seed-identity.test.ts
+      - if: always()
+        run: npm run test:backend:stop
