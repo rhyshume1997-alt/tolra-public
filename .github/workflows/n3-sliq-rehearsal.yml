@@ -1,0 +1,62 @@
+name: N3 synthetic SliQ preprocessor database rehearsal
+on:
+  workflow_dispatch:
+  # TEMPORARY registration trigger: remove after coordinator confirms registration.
+  push:
+    branches: [codex/b5-n3-sliq-rehearsal]
+permissions:
+  contents: read
+  packages: read
+jobs:
+  synthetic-rehearsal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 9c3f5c6cf51cfb3c41b1fe23fe532b5ddb5254a8
+          persist-credentials: false
+          path: work/n3-runtime
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: work/n3-runtime/package-lock.json
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.40.7
+      - name: Install candidate dependencies
+        working-directory: work/n3-runtime
+        run: npm ci
+      - name: Reserve local stack ports
+        run: |
+          current=$(cat /proc/sys/net/ipv4/ip_local_reserved_ports)
+          sudo sysctl -w net.ipv4.ip_local_reserved_ports="${current:+$current,}54320-54329"
+          python3 - <<'PY'
+          import socket
+          for port in range(54320, 54330):
+              with socket.socket() as s:
+                  s.bind(('0.0.0.0', port))
+          PY
+      - name: Authenticate image pulls
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
+      - name: Overlay rehearsal files only, then run fresh local database proof
+        run: |
+          cp tests/db/n3-sliq-preprocess.test.ts work/n3-runtime/tests/db/
+          cp vitest.n3.config.ts work/n3-runtime/
+          mkdir -p work/n3-runtime/scripts/n3
+          cp scripts/n3/* work/n3-runtime/scripts/n3/
+          bash work/n3-runtime/scripts/n3/run-rehearsal.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: n3-synthetic-rehearsal-results
+          path: work/n3-runtime/work/n3/results.json
+          if-no-files-found: error
+          retention-days: 7
