@@ -17,6 +17,10 @@
  * is not filtered by row-level security), with no document number in the message, company-scoped lookups, and the authorised corrections (failed
  * inspection, replacement rework) still working; drawing-revision behaviour; another company and the service role; release, repeat install, verify,
  * rollback (which also puts 049's start_machine_run back byte for byte), re-release.
+ * Release 160 (J1) closes the older public.reopen_job to the browser (the fixture installs it after 157). The reopen cases (2b, 4g, 4n) therefore
+ * reopen through 113's reopen_record, which runs reopen_job's rules as the caller, assert that the direct call is now refused (42501, permission
+ * denied), and read reopen_job's own invoice_issued answer as 113's functions get it (owner rights, the person's claims, rolled back). These
+ * cases need 160 installed: the direct-call refusals would fail on a database without it.
  * Not proved here: PostgREST's own error mapping, the browser screens, hosted PostgreSQL 17.
  * Must not change: this file proves; it never edits a release, verify or rollback file to make itself pass.
  */
@@ -103,6 +107,24 @@ async function tryIn(db: PoolClient, sub: string, sql: string, params: unknown[]
     const e = x as Err;
     return { ok: false, e: { code: e.code, hint: e.hint, message: e.message } };
   }
+}
+/** A direct reopen_job call by a browser role after release 160 (J1): refused at the door, before any rule of the function runs. */
+const deniedAtTheDoor = (o: Outcome) => (o.ok ? "allowed" : `${o.e.code}/${o.e.hint ?? "-"}/${/permission denied for function reopen_job/.test(o.e.message) ? "denied" : o.e.message}`);
+/**
+ * reopen_job's own answer for `sub`, as 113's definer functions (reopen_preview, reopen_record, decide_reopen_request) get it: called with the
+ * database owner's rights (which keep EXECUTE after 160) and the person's claims, so auth.uid() and has_org_role name that person. Always rolled back.
+ */
+async function reopenJobAsOwnerFor(sub: string, id: string, reason: string): Promise<Outcome> {
+  return rolledBack(async (db) => {
+    await db.query("select set_config('request.jwt.claims', $1, true), set_config('request.jwt.claim.sub', $2, true)", [JSON.stringify(claims(sub)), sub]);
+    try {
+      const r = await db.query("select public.reopen_job($1, $2) as r", [id, reason]);
+      return { ok: true, rows: r.rows as Row[], count: r.rowCount ?? 0 };
+    } catch (x) {
+      const e = x as Err;
+      return { ok: false, e: { code: e.code, hint: e.hint, message: e.message } };
+    }
+  });
 }
 /** A release or rollback file without its own BEGIN / COMMIT, to run inside a test transaction. */
 function body(file: string) {
@@ -391,7 +413,7 @@ describe("release 157: jobs integrity guard", () => {
     }
   });
 
-  it("2b. C4: finish_job still works, with no machine run and with an open run (which it ends); reopen_job still clears the finish; clearing it by editing stays refused by 081", async () => {
+  it("2b. C4: finish_job still works, with no machine run and with an open run (which it ends); reopen (113's reopen_record, running reopen_job's rules) still clears the finish, a direct reopen_job call is refused (160); clearing it by editing stays refused by 081", async () => {
     const plain = await open();
     expect(allowed(await run(X.workshop.id, "select public.finish_job($1, null, null) as r", [plain]))).toBe("allowed");
     const p = await row(plain);
@@ -405,9 +427,14 @@ describe("release 157: jobs integrity guard", () => {
     expect((await row(running)).finished_at).not.toBeNull();
     expect((await q<{ n: string }>("select count(*) as n from machine_runs where job_id = $1 and ended_at is null", [running]))[0].n).toBe("0");
 
-    // The existing rule for clearing a finish is untouched: editing it away is refused, reopen_job is the way.
+    // The existing rule for clearing a finish is untouched: editing it away is refused, reopening is the way. Since 160 (J1) the browser reopens
+    // through 113's reopen_record; the tick box (no admin available) runs reopen_job's rules at once as the caller, here the workshop that finished it.
     expect(refused(await run(X.workshop.id, ...set(plain, "finished_at = null")))).toBe("42501/reopen_required");
-    expect(allowed(await run(X.workshop.id, "select public.reopen_job($1, 'Put back on the machine for a second op') as r", [plain]))).toBe("allowed");
+    expect(deniedAtTheDoor(await run(X.workshop.id, "select public.reopen_job($1, 'Put back on the machine for a second op') as r", [plain]))).toBe("42501/-/denied");
+    expect((await row(plain)).finished_at).not.toBeNull();
+    const reopened = await run(X.workshop.id, "select public.reopen_record('job', $1, 'Put back on the machine for a second op', 'tick_box_notify') as r", [plain]);
+    expect(allowed(reopened)).toBe("allowed");
+    expect(reopened.ok ? reopened.rows[0].r : null).toMatchObject({ status: "pending", approval_mode: "tick_box_notify", reopened: true, result: { reopened: true, was_complete: false } });
     expect((await row(plain)).finished_at).toBeNull();
     // ... and a finish the owner (an import) writes is unaffected.
     expect(allowed(await run(null, ...set(plain, "finished_at = $2", [T1])))).toBe("allowed");
@@ -571,12 +598,20 @@ describe("release 157: jobs integrity guard", () => {
     expect(await row(c)).toMatchObject({ stage: "complete" });
   });
 
-  it("4g. C2: reopen_job and open_replacement_rework still work on a job that has passed (the office); the workshop still cannot reopen a passed job, and still makes and finishes the replacements", async () => {
-    // reopen_job: a Complete job is reopened by the office (not by the workshop: 081's rule, unchanged).
+  it("4g. C2: reopen (113's reopen_record, running reopen_job's rules) and open_replacement_rework still work on a job that has passed (the office); the workshop still cannot reopen a passed job, and still makes and finishes the replacements; a direct reopen_job call is refused (160)", async () => {
+    // Reopen: a Complete job is reopened by the office (not by the workshop: 081's rule, unchanged). Since 160 (J1) the browser reopens through
+    // 113's reopen_record, which runs reopen_job's rules as the caller in both modes; the direct call is refused at the door for both roles.
     const id = await complete();
-    expect(refused(await run(X.workshop.id, "select public.reopen_job($1, 'Customer asked for a re-check of the bore') as r", [id]))).toBe("42501/reopen_not_allowed");
+    for (const mode of ["tick_box_notify", "admin_present"]) {
+      expect(refused(await run(X.workshop.id, "select public.reopen_record('job', $1, 'Customer asked for a re-check of the bore', $2) as r", [id, mode])), mode).toBe("42501/reopen_not_allowed");
+    }
+    expect(deniedAtTheDoor(await run(X.workshop.id, "select public.reopen_job($1, 'Customer asked for a re-check of the bore') as r", [id]))).toBe("42501/-/denied");
+    expect(deniedAtTheDoor(await run(X.office.id, "select public.reopen_job($1, 'Customer asked for a re-check of the bore') as r", [id]))).toBe("42501/-/denied");
     expect(await row(id)).toMatchObject({ stage: "complete" });
-    expect(allowed(await run(X.office.id, "select public.reopen_job($1, 'Customer asked for a re-check of the bore') as r", [id]))).toBe("allowed");
+    expect(await q("select 1 from reopen_requests where record_id = $1", [id])).toEqual([]);
+    const reopened = await run(X.office.id, "select public.reopen_record('job', $1, 'Customer asked for a re-check of the bore', 'tick_box_notify') as r", [id]);
+    expect(allowed(reopened)).toBe("allowed");
+    expect(reopened.ok ? reopened.rows[0].r : null).toMatchObject({ status: "pending", reopened: true, result: { reopened: true, was_complete: true } });
     expect(await row(id)).toMatchObject({ finished_at: null, inspected_at: null });
     // open_replacement_rework: fail, scrap 2, an admin's concession releases the job, the office opens the replacements, the workshop makes them, the pass releases it again.
     const j = await finished();
@@ -773,7 +808,7 @@ describe("release 157: jobs integrity guard", () => {
     }
   });
 
-  it("4n. C5: a legitimate correction of a despatched or invoiced job still works with its reason recorded (fail_job_inspection, inspect_job fail, open_replacement_rework); reopen_job is still refused with its own hint", async () => {
+  it("4n. C5: a legitimate correction of a despatched or invoiced job still works with its reason recorded (fail_job_inspection, inspect_job fail, open_replacement_rework); reopen_job is still refused with its own hint (a direct call is refused at the door since 160)", async () => {
     // fail_job_inspection by the workshop inspector, on a despatched job.
     const a = await complete();
     await noteFor(a, await jobNoOf(a), "despatched");
@@ -800,17 +835,29 @@ describe("release 157: jobs integrity guard", () => {
     expect(allowed(await run(X.office.id, "select public.open_replacement_rework($1, 'Make 2 off to drawing') as r", [first]))).toBe("allowed");
     expect(await row(j)).toMatchObject({ stage: "rework", inspected_at: null });
     expect((await q<{ instructions: string }>("select instructions from job_rework where job_id = $1 order by raised_at desc, id desc limit 1", [j]))[0].instructions).toContain("Make 2 off to drawing");
-    // reopen_job is still refused, with its existing hint, for a despatched and an invoiced job; the job is unchanged.
+    // reopen_job is still refused, with its existing hint, for a despatched and an invoiced job; the job is unchanged. Since 160 (J1) office and
+    // admin can't call it directly (refused at the door); its own answer is read as 113's functions get it (owner rights, the person's claims).
     const d = await complete();
     await noteFor(d, await jobNoOf(d), "despatched");
     const e = await complete();
     await invoiceFor(e, "sent");
     for (const [id, hint] of [[d, "22023/already_despatched"], [e, "22023/invoice_issued"]] as const) {
       const before = await row(id);
-      expect(refused(await run(X.office.id, "select public.reopen_job($1, 'Customer asked for a re-check of the bore') as r", [id]))).toBe(hint);
-      expect(refused(await run(X.admin.id, "select public.reopen_job($1, 'Customer asked for a re-check of the bore') as r", [id]))).toBe(hint);
+      for (const who of [X.office, X.admin]) {
+        expect(deniedAtTheDoor(await run(who.id, "select public.reopen_job($1, 'Customer asked for a re-check of the bore') as r", [id])), `${who.role} direct`).toBe("42501/-/denied");
+        expect(refused(await reopenJobAsOwnerFor(who.id, id, "Customer asked for a re-check of the bore")), `${who.role} reopen_job's own rule`).toBe(hint);
+      }
       expect(await row(id)).toEqual(before);
     }
+    // Through the browser route (113's reopen_record) the despatched job is refused with the same hint: the office in both modes, the admin with
+    // an admin present (the tick box is not offered to an admin). No request row is left and the job is unchanged.
+    const beforeD = await row(d);
+    for (const mode of ["tick_box_notify", "admin_present"]) {
+      expect(refused(await run(X.office.id, "select public.reopen_record('job', $1, 'Customer asked for a re-check of the bore', $2) as r", [d, mode])), `office ${mode}`).toBe("22023/already_despatched");
+    }
+    expect(refused(await run(X.admin.id, "select public.reopen_record('job', $1, 'Customer asked for a re-check of the bore', 'admin_present') as r", [d]))).toBe("22023/already_despatched");
+    expect(await row(d)).toEqual(beforeD);
+    expect(await q("select 1 from reopen_requests where record_id = $1", [d])).toEqual([]);
   });
 
   it("4o. C5: the workshop alone on a despatched or invoiced job is refused released_pass_kept (C5 answers before C2) for a worksheet edit, a stage move and a stage move with a customer change; a customer-only change is still job_identity_office; a flag naming the job lets the authorised workflow through", async () => {
@@ -822,7 +869,7 @@ describe("release 157: jobs integrity guard", () => {
       expect(refused(await run(X.workshop.id, ...set(id, "stage = 'inspection', customer = 'Else Ltd'")))).toBe("42501/released_pass_kept");
       expect(refused(await run(X.workshop.id, ...set(id, "customer = 'Else Ltd'")))).toBe("42501/job_identity_office");
       expect(await row(id)).toEqual(whole);
-      // The authorised workflows name the job: neither C5 nor C2 then applies (fail, rework and reopen record their own reason, and reopen_job has its own refusals).
+      // The authorised workflows name the job: neither C5 nor C2 then applies (fail, rework and reopen record their own reason, and reopen_job, reached through 113's reopen_record since 160, has its own refusals).
       await rolledBack(async (db) => {
         for (const [who, flag] of [[X.workshop.id, "quoteflow.job_inspection"], [X.workshop.id, "quoteflow.job_rework"], [X.office.id, "quoteflow.job_reopen"]] as const) {
           await db.query("select set_config($1, $2, true)", [flag, id]);
