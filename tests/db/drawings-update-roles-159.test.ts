@@ -1,6 +1,7 @@
 /**
- * Release 159 (supabase/release/159_drawings_update_roles.release.sql, phase 159 after 156): nobody can replace an object in the job-drawings
- * bucket from the browser (audit finding ST1, P0). The DB proof, below the Storage API.
+ * Release 159 (supabase/release/159_drawings_update_roles.release.sql, phase 159 after 156): nobody can replace or delete an object in the
+ * job-drawings bucket from the browser (audit finding ST1, P0; the delete policy is refused too, because a delete followed by a new upload at
+ * the same path is an overwrite). The DB proof, below the Storage API.
  *
  * Access path: DIRECT SQL on storage.objects as the role `authenticated` with the request JWT claims PostgREST and Storage set
  * (sub, role, session_id, aal), exactly how the policies are evaluated for a browser user. The Storage API itself is not used (it needs the
@@ -13,12 +14,12 @@
  * each role's attempts run under a savepoint that is undone, and the release is applied again for the "after". No storage object, policy or
  * change is left behind. The synthetic companies (slug t-<run>-...) and their people are removed by destroySyntheticWorld.
  * Proves: after 159 no browser role (workshop, office, admin, viewer) can update, rename or upsert over an unregistered object in the
- * drawing, certs/ and inspection/ paths (and the object is unchanged), while before 159 workshop, office and admin could (the defect);
- * registered files, new uploads, select, delete, revision registration, the service role, the other company and the other buckets are
- * exactly as before; the policy count and every other policy are unchanged; 131's verify accepts exactly two texts for this one policy and nothing
- * else; release / repeat / rollback / re-release behave as 156's do. STATE is the policy's exact text only (there is no comment: COMMENT ON POLICY
- * needs ownership of storage.objects): absent = 131's md5, installed = 159's md5, drifted = anything else (a third text, a missing policy, another
- * kind, command or role list); the drifted shapes are proved against the release guard, the rollback guard, release preflight (marker and row 62)
+ * drawing, certs/ and inspection/ paths (and the object is unchanged), and cannot delete one and upload it again at the same path (also unchanged),
+ * while before 159 workshop, office and admin could (the defect); registered files, new uploads, select, revision registration, the service role
+ * (which can still update, rename and delete: the clean-up route), the other company and the other buckets are exactly as before; the policy count and every other policy are unchanged; 131's verify accepts exactly two texts for this one policy and nothing
+ * else; release / repeat / rollback / re-release behave as 156's do. STATE is the two policies' exact text only (there is no comment: COMMENT ON POLICY
+ * needs ownership of storage.objects): absent = both at 131's md5, installed = both at 159's md5, drifted = anything else (a third text on either, a
+ * missing policy, another kind, command or role list, or ONE policy at each text: a half install); the drifted shapes are proved against the release guard, the rollback guard, release preflight (marker and row 62)
  * and 131's verify.
  * Must not change: this file proves; it never edits a release, verify or rollback file to make itself pass.
  */
@@ -45,8 +46,12 @@ const VERIFY_131 = "supabase/verify/rls_select_wrap_131.sql";
 const PREFLIGHT = "supabase/verify/release_preflight.sql";
 const MARKER = "post-144 marker 159 drawings_update_roles";
 const POLICY = "job drawings org update";
+const POLICY_DEL = "job drawings org delete";
 const M131 = "76e489d7de7f079451629dc75177d894";
 const M159 = "18b6c82111707e214f8aaa30c5b6e717";
+/** The delete policy's md5 of coalesce(qual, '') || '|' || coalesce(with_check, ''): 131's text (pg_policies as 131 left it) and 159's USING (false) = md5('false|'). */
+const M131_DEL = "2b7ec566b4506d9dc5918f7b02dd8374";
+const M159_DEL = "a1f94f5b6390b515dc6714c2ca6f51b9";
 
 const ROLES = ["workshop", "office", "admin", "viewer"] as const;
 type Role = (typeof ROLES)[number];
@@ -139,12 +144,17 @@ async function refused(db: PoolClient, sql: string) {
 
 // ---- What the database says about the policy ------------------------------------------------------------------------------------------
 type DrawingsState = { m: string; permissive: string; cmd: string; roles: string };
-async function drawingsState(db: PoolClient): Promise<DrawingsState> {
+async function drawingsState(db: PoolClient, policy: string = POLICY): Promise<DrawingsState> {
   await asOwner(db);
   return (await db.query(`select md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) as m, p.permissive, p.cmd, p.roles::text as roles
       from pg_policies p
-      where p.schemaname = 'storage' and p.tablename = 'objects' and p.policyname = $1`, [POLICY])).rows[0] as DrawingsState;
+      where p.schemaname = 'storage' and p.tablename = 'objects' and p.policyname = $1`, [policy])).rows[0] as DrawingsState;
 }
+const deleteState = (db: PoolClient) => drawingsState(db, POLICY_DEL);
+const STATE_UPDATE = { permissive: "PERMISSIVE", cmd: "UPDATE", roles: "{authenticated}" };
+const STATE_DELETE = { permissive: "PERMISSIVE", cmd: "DELETE", roles: "{authenticated}" };
+/** Both policies as the database has them: { update, del } as md5 states. */
+async function bothStates(db: PoolClient) { return { update: await drawingsState(db), del: await deleteState(db) }; }
 type PolicyRow = { key: string; text: string };
 /** Every policy in the database as "schema.table :: name" and its whole definition. */
 async function policies(db: PoolClient): Promise<PolicyRow[]> {
@@ -158,7 +168,7 @@ async function memberships(db: PoolClient): Promise<string[]> {
   await asOwner(db);
   return (await db.query(`select to_jsonb(m)::text as t from pg_catalog.pg_auth_members m order by m.roleid, m.member, m.grantor`)).rows.map((r) => r.t as string);
 }
-const withoutDrawings = (rows: PolicyRow[]) => rows.filter((r) => r.key !== `storage.objects :: ${POLICY}`);
+const withoutDrawings = (rows: PolicyRow[]) => rows.filter((r) => r.key !== `storage.objects :: ${POLICY}` && r.key !== `storage.objects :: ${POLICY_DEL}`);
 async function verifyRows(db: PoolClient, file: string) {
   await asOwner(db);
   return (await db.query(read(file))).rows as { check_name: string; ok: boolean }[];
@@ -185,27 +195,51 @@ async function preflight(db: PoolClient, check: string) {
   await asOwner(db);
   return ((await db.query(read(PREFLIGHT))).rows as { check: string; value: string }[]).find((r) => r.check === check)?.value;
 }
-const ROW_60 = '159 needs: policy "job drawings org update" on storage.objects, its text (131 / 159 / other / missing)';
+const ROW_60 = '159 needs: policy "job drawings org update" (UPDATE) / policy "job drawings org delete" (DELETE) on storage.objects, their texts (131 / 159 / other / missing each)';
 const alterDrawings = async (db: PoolClient, text: string) => { await asOwner(db); await db.query(`alter policy "${POLICY}" on storage.objects ${text}`); };
 /** Replaces the policy by one of another shape (kind, command or roles), as a hand-made drift. Rolled back with the transaction. */
 const recreateDrawings = async (db: PoolClient, shape: string) => { await asOwner(db); await db.query(`drop policy "${POLICY}" on storage.objects`); await db.query(`create policy "${POLICY}" on storage.objects ${shape}`); };
 const dropDrawings = async (db: PoolClient) => { await asOwner(db); await db.query(`drop policy "${POLICY}" on storage.objects`); };
+const alterDelete = async (db: PoolClient, text: string) => { await asOwner(db); await db.query(`alter policy "${POLICY_DEL}" on storage.objects ${text}`); };
+const recreateDelete = async (db: PoolClient, shape: string) => { await asOwner(db); await db.query(`drop policy "${POLICY_DEL}" on storage.objects`); await db.query(`create policy "${POLICY_DEL}" on storage.objects ${shape}`); };
 const THIRD = "using (bucket_id = 'job-drawings') with check (bucket_id = 'job-drawings')";
-/** Every drifted shape: what the policy looks like, and what row 62 of release preflight reads for it ('missing' also covers a wrong kind, command or role list). */
-const DRIFTED: { name: string; make: (db: PoolClient) => Promise<void>; row62: string; release: RegExp; rollback: RegExp }[] = [
-  { name: "a third text", make: (db) => alterDrawings(db, THIRD), row62: "other", release: /^159: policy "job drawings org update" is neither 131's nor 159's/, rollback: /^159 rollback: policy "job drawings org update" is neither 159's nor 131's/ },
-  { name: "using (true) with check (true)", make: (db) => alterDrawings(db, "using (true) with check (true)"), row62: "other", release: /^159: policy "job drawings org update" is neither 131's nor 159's/, rollback: /^159 rollback: policy "job drawings org update" is neither 159's nor 131's/ },
-  { name: "159's text but FOR DELETE (wrong command)", make: (db) => recreateDrawings(db, "for delete to authenticated using (false)"), row62: "missing", release: /^159: policy "job drawings org update" on storage.objects is missing or is not the PERMISSIVE UPDATE policy/, rollback: /^159 rollback: policy "job drawings org update" is missing or is not the PERMISSIVE UPDATE policy/ },
-  { name: "159's text but roles {anon,authenticated} (wrong roles)", make: (db) => recreateDrawings(db, "for update to authenticated, anon using (false) with check (false)"), row62: "missing", release: /^159: policy "job drawings org update" on storage.objects is missing or is not the PERMISSIVE UPDATE policy/, rollback: /^159 rollback: policy "job drawings org update" is missing or is not the PERMISSIVE UPDATE policy/ },
-  { name: "159's text but RESTRICTIVE (wrong kind)", make: (db) => recreateDrawings(db, "as restrictive for update to authenticated using (false) with check (false)"), row62: "missing", release: /^159: policy "job drawings org update" on storage.objects is missing or is not the PERMISSIVE UPDATE policy/, rollback: /^159 rollback: policy "job drawings org update" is missing or is not the PERMISSIVE UPDATE policy/ },
-  { name: "131's text but roles {authenticated,anon} (wrong roles)", make: (db) => alterDrawings(db, "to authenticated, anon"), row62: "missing", release: /^159: policy "job drawings org update" on storage.objects is missing or is not the PERMISSIVE UPDATE policy/, rollback: /^159 rollback: policy "job drawings org update" is missing or is not the PERMISSIVE UPDATE policy/ },
-  { name: "the policy is missing", make: dropDrawings, row62: "missing", release: /^159: policy "job drawings org update" on storage.objects is missing/, rollback: /^159 rollback: policy "job drawings org update" is missing/ },
+const UPD_MISSING = /^159: policy "job drawings org update" on storage.objects is missing or is not the PERMISSIVE UPDATE policy/;
+const UPD_NEITHER = /^159: policy "job drawings org update" is neither 131's nor 159's/;
+const DEL_MISSING = /^159: policy "job drawings org delete" on storage.objects is missing or is not the PERMISSIVE DELETE policy/;
+const DEL_NEITHER = /^159: policy "job drawings org delete" is neither 131's nor 159's/;
+const HALF = /^159: the update and delete policies of job-drawings are in different states/;
+const rb = (re: RegExp) => new RegExp(re.source.replace("^159:", "^159 rollback:").replace("neither 131's nor 159's", "neither 159's nor 131's"));
+type Shape = { name: string; make: (db: PoolClient) => Promise<void>; row62: string; release: RegExp };
+/**
+ * Every drifted shape, each built from 131's state (both policies at 131's text), and what row 62 of release preflight reads for it
+ * ("update / delete"; 'missing' also covers a wrong kind, command or role list). The rollback's message is the release's with its prefix.
+ */
+const DRIFTED: Shape[] = [
+  // the update policy
+  { name: "update: a third text", make: (db) => alterDrawings(db, THIRD), row62: "other / 131", release: UPD_NEITHER },
+  { name: "update: using (true) with check (true)", make: (db) => alterDrawings(db, "using (true) with check (true)"), row62: "other / 131", release: UPD_NEITHER },
+  { name: "update: 159's text but FOR DELETE (wrong command)", make: (db) => recreateDrawings(db, "for delete to authenticated using (false)"), row62: "missing / 131", release: UPD_MISSING },
+  { name: "update: 159's text but roles {anon,authenticated} (wrong roles)", make: (db) => recreateDrawings(db, "for update to authenticated, anon using (false) with check (false)"), row62: "missing / 131", release: UPD_MISSING },
+  { name: "update: 159's text but RESTRICTIVE (wrong kind)", make: (db) => recreateDrawings(db, "as restrictive for update to authenticated using (false) with check (false)"), row62: "missing / 131", release: UPD_MISSING },
+  { name: "update: 131's text but roles {authenticated,anon} (wrong roles)", make: (db) => alterDrawings(db, "to authenticated, anon"), row62: "missing / 131", release: UPD_MISSING },
+  { name: "update: the policy is missing", make: dropDrawings, row62: "missing / 131", release: UPD_MISSING },
+  // the delete policy
+  { name: "delete: a third text", make: (db) => alterDelete(db, "using (bucket_id = 'job-drawings')"), row62: "131 / other", release: DEL_NEITHER },
+  { name: "delete: using (true)", make: (db) => alterDelete(db, "using (true)"), row62: "131 / other", release: DEL_NEITHER },
+  { name: "delete: 159's text but FOR SELECT (wrong command)", make: (db) => recreateDelete(db, "for select to authenticated using (false)"), row62: "131 / missing", release: DEL_MISSING },
+  { name: "delete: 159's text but roles {anon,authenticated} (wrong roles)", make: (db) => recreateDelete(db, "for delete to authenticated, anon using (false)"), row62: "131 / missing", release: DEL_MISSING },
+  { name: "delete: 159's text but RESTRICTIVE (wrong kind)", make: (db) => recreateDelete(db, "as restrictive for delete to authenticated using (false)"), row62: "131 / missing", release: DEL_MISSING },
+  { name: "delete: 131's text but roles {authenticated,anon} (wrong roles)", make: (db) => alterDelete(db, "to authenticated, anon"), row62: "131 / missing", release: DEL_MISSING },
+  { name: "delete: the policy is missing", make: async (db) => { await asOwner(db); await db.query(`drop policy "${POLICY_DEL}" on storage.objects`); }, row62: "131 / missing", release: DEL_MISSING },
+  // a MIX: one policy at 159's text, the other at 131's (a half install, in either direction)
+  { name: "MIX: update at 159's text, delete at 131's", make: (db) => alterDrawings(db, "using (false) with check (false)"), row62: "159 / 131", release: HALF },
+  { name: "MIX: update at 131's text, delete at 159's", make: (db) => alterDelete(db, "using (false)"), row62: "131 / 159", release: HALF },
 ];
 /** Puts the open transaction in release 131's state (159 absent), whatever the database had. */
 async function beforeState(db: PoolClient) {
-  const s = await drawingsState(db);
-  if (s.m === M159) await uninstall(db);
-  expect(await drawingsState(db)).toMatchObject({ m: M131 });
+  const s = await bothStates(db);
+  if (s.update.m === M159 && s.del.m === M159_DEL) await uninstall(db);
+  expect(await bothStates(db)).toEqual({ update: { m: M131, ...STATE_UPDATE }, del: { m: M131_DEL, ...STATE_DELETE } });
 }
 
 // ---- The scene: one company with a job, registered and unregistered objects in every bucket ---------------------------------------------
@@ -278,10 +312,29 @@ async function probeRest(db: PoolClient, who: Person, s: Scene, base = A.o) {
     for (const k of KINDS) out[`select-${k}`] = await seen(db, s.unreg[k]);
     out["select-registered"] = await seen(db, s.reg.draw);
     out["delete-own"] = await attempt(db, DELETE, [s.del[who.org === A.o ? who.role : "b"]]);
+    out["delete-own-still-there"] = await seen(db, s.del[who.org === A.o ? who.role : "b"]);
     for (const k of KINDS) out[`delete-registered-${k}`] = await attempt(db, DELETE, [s.reg[k]]);
     for (const k of KINDS) out[`update-registered-${k}`] = await attempt(db, UPDATE_META, [s.reg[k]]);
     for (const k of KINDS) out[`upsert-registered-${k}`] = await attempt(db, UPSERT, [s.reg[k]]);
     return out;
+  });
+}
+/**
+ * Delete, then upload again at the same path, in the drawing, certs/ and inspection/ folders, for one person: the way to overwrite an object
+ * without any UPDATE. Before 159 an admin, office or workshop user deletes and re-inserts (the object is replaced); after it the delete finds no
+ * row it may remove (0 rows, no error), the second insert then meets the object that is still there (a unique violation, 23505; a viewer or another
+ * company's user is stopped by row-level security first, 42501), and no object changed. Undone afterwards.
+ */
+async function probeDeleteReupload(db: PoolClient, who: Person, s: Scene) {
+  return isolated(db, async () => {
+    const before = await snapshot(db);
+    await asUser(db, who);
+    const out: Record<string, Out> = {};
+    for (const k of KINDS) {
+      out[`delete-${k}`] = await attempt(db, DELETE, [s.unreg[k]]);
+      out[`reupload-${k}`] = await attempt(db, INSERT, [s.unreg[k]]);
+    }
+    return { out, changed: changedObjects(before, await snapshot(db)) };
   });
 }
 /** The three other buckets (quote-attachments, org-logos, job-photos): an update attempt by one person on the company's object. */
@@ -295,8 +348,8 @@ async function probeOtherBuckets(db: PoolClient, who: Person, s: Scene) {
 /** One full matrix for the open transaction: every person of A, and company B's admin against A's folder. */
 async function matrix(db: PoolClient, s: Scene) {
   const actors: [string, Person][] = [...ROLES.map((r) => [r, A.people[r]] as [string, Person]), ["otherCompanyAdmin", B.people.admin]];
-  const m: Record<string, { updates: Awaited<ReturnType<typeof probeUpdates>>; rest: Record<string, unknown>; other: Awaited<ReturnType<typeof probeOtherBuckets>> }> = {};
-  for (const [name, who] of actors) m[name] = { updates: await probeUpdates(db, who, s), rest: await probeRest(db, who, s), other: await probeOtherBuckets(db, who, s) };
+  const m: Record<string, { updates: Awaited<ReturnType<typeof probeUpdates>>; rest: Record<string, unknown>; other: Awaited<ReturnType<typeof probeOtherBuckets>>; reup: Awaited<ReturnType<typeof probeDeleteReupload>> }> = {};
+  for (const [name, who] of actors) m[name] = { updates: await probeUpdates(db, who, s), rest: await probeRest(db, who, s), other: await probeOtherBuckets(db, who, s), reup: await probeDeleteReupload(db, who, s) };
   return m;
 }
 /** Before (release 131's state) and after (159 installed) matrices of the same scene, in one rolled-back transaction. */
@@ -306,7 +359,7 @@ async function beforeAndAfter() {
     const s = await seed(db);
     const before = await matrix(db, s);
     await install(db);
-    expect(await drawingsState(db)).toMatchObject({ m: M159 });
+    expect(await bothStates(db)).toEqual({ update: { m: M159, ...STATE_UPDATE }, del: { m: M159_DEL, ...STATE_DELETE } });
     const after = await matrix(db, s);
     return { s, before, after };
   });
@@ -390,15 +443,47 @@ describe("release 159: nobody can replace an object in the job-drawings bucket f
     }
   });
 
-  it("4. select and delete are unchanged for every role: the same outcomes before and after, and the outcomes the policies give", () => {
+  it("4. select is unchanged for every role; DELETE of an unregistered object is now REFUSED for admin, office, workshop and viewer (0 rows, the object stays)", () => {
+    // CHANGE OF MEANING (release 159, delete policy): this test used to read "select and delete are unchanged for every role" and expected
+    // delete-own to give the same result before and after (1 row for admin, office, workshop; 0 for the viewer). Browser deletes are now refused
+    // too, because a delete followed by a new upload at the same path would overwrite an object that the update policy protects. Select is still
+    // compared before and after, unchanged. The before side below still shows the defect (the three roles could delete).
     for (const role of ROLES) {
       const b = result.before[role].rest;
       const a = result.after[role].rest;
       for (const k of KINDS) expect(a[`select-${k}`], `${role} select ${k}`).toEqual(b[`select-${k}`]);
       expect(a["select-registered"]).toEqual(b["select-registered"]);
-      expect(a["delete-own"], `${role} delete`).toEqual(b["delete-own"]);
       expect(a["select-draw"], `${role} select`).toBe(1);
-      expect(a["delete-own"], `${role} delete result`).toEqual(role === "viewer" ? ZERO : ONE);
+      expect(b["delete-own"], `${role} delete before 159`).toEqual(role === "viewer" ? ZERO : ONE);
+      expect(b["delete-own-still-there"], `${role} object before 159`).toBe(role === "viewer" ? 1 : 0);
+      expect(a["delete-own"], `${role} delete after 159`).toEqual(ZERO);
+      expect(a["delete-own-still-there"], `${role} object after 159`).toBe(1);
+    }
+  });
+
+  it("4b. delete then re-upload at the same path is refused in all three folders (drawing, certs/, inspection/) for every role, and the other company is unaffected", () => {
+    // Before 159 workshop, office and admin could delete an unregistered object and upload another one at its path (an overwrite without UPDATE).
+    for (const role of ["workshop", "office", "admin"] as const) {
+      const b = result.before[role].reup;
+      for (const k of KINDS) { expect(b.out[`delete-${k}`], `${role} before delete ${k}`).toEqual(ONE); expect(b.out[`reupload-${k}`], `${role} before reupload ${k}`).toEqual(ONE); }
+      expect(b.changed.length, `${role} before: objects changed`).toBe(KINDS.length);
+    }
+    for (const k of KINDS) { expect(result.before.viewer.reup.out[`delete-${k}`]).toEqual(ZERO); expect(result.before.viewer.reup.out[`reupload-${k}`]).toEqual(REFUSED); }
+    // After 159: the delete removes nothing, the re-upload meets the object that is still there (23505) or, for the viewer, is stopped by row-level security; nothing changed.
+    const UNIQUE = { ok: false, code: "23505" } as const;
+    for (const role of ROLES) {
+      const a = result.after[role].reup;
+      for (const k of KINDS) {
+        expect(a.out[`delete-${k}`], `${role} after delete ${k}`).toEqual(ZERO);
+        expect(a.out[`reupload-${k}`], `${role} after reupload ${k}`).toEqual(role === "viewer" ? REFUSED : UNIQUE);
+      }
+      expect(a.changed, `${role} after: objects changed`).toEqual([]);
+    }
+    // The other company's admin, against company A's paths: before and after, nothing is deleted, nothing is inserted, nothing changed.
+    for (const side of ["before", "after"] as const) {
+      const o = result[side].otherCompanyAdmin.reup;
+      for (const k of KINDS) { expect(o.out[`delete-${k}`], `${side} B delete ${k}`).toEqual(ZERO); expect(o.out[`reupload-${k}`], `${side} B reupload ${k}`).toEqual(REFUSED); }
+      expect(o.changed, `${side} B: objects changed`).toEqual([]);
     }
   });
 
@@ -441,7 +526,7 @@ describe("release 159: nobody can replace an object in the job-drawings bucket f
     });
   });
 
-  it("6. the service role can still update and replace an object, and rename and delete it, before and after (authorised service operations)", async () => {
+  it("6. the service role can still update and replace an object, and rename and delete it (the clean-up route), before and after (authorised service operations)", async () => {
     for (const installed of [false, true]) {
       await rolledBack(async (db) => {
         await beforeState(db);
@@ -453,9 +538,15 @@ describe("release 159: nobody can replace an object in the job-drawings bucket f
         expect(await attempt(db, UPDATE_META, [s.reg.draw]), `registered installed=${installed}`).toEqual(ONE);
         expect(await attempt(db, UPDATE_NAME, [s.unreg.insp]), `rename installed=${installed}`).toEqual(ONE);
         expect(await attempt(db, DELETE, [s.del.admin]), `delete installed=${installed}`).toEqual(ONE);
+        expect(await seen(db, s.del.admin), `deleted installed=${installed}`).toBe(0);
         const snap = await snapshot(db);
         expect(JSON.parse(snap[`job-drawings:${s.unreg.draw}`])).toEqual({ v: 2 });
         expect(JSON.parse(snap[`job-drawings:${s.unreg.cert}`])).toEqual({ v: 2 });
+        // The clean-up route for a half-finished upload (an unregistered object): the service role deletes it, in every folder, before and after.
+        expect(await attempt(db, DELETE, [s.unreg.draw]), `cleanup drawing installed=${installed}`).toEqual(ONE);
+        expect(await attempt(db, DELETE, [s.unreg.cert]), `cleanup cert installed=${installed}`).toEqual(ONE);
+        expect(await attempt(db, DELETE, [`${s.unreg.insp}.moved`]), `cleanup renamed inspection object installed=${installed}`).toEqual(ONE);
+        expect(await seen(db, s.unreg.draw) + (await seen(db, s.unreg.cert)) + (await seen(db, `${s.unreg.insp}.moved`)), `cleaned installed=${installed}`).toBe(0);
       });
     }
   });
@@ -489,7 +580,7 @@ describe("release 159: nobody can replace an object in the job-drawings bucket f
     expect(result.after.otherCompanyAdmin.other).toEqual({ quote: ZERO, logo: ZERO, photo: ZERO });
   });
 
-  it("9. the catalogue: the policy count is unchanged, only the drawings update policy differs (159's md5), and 131's verify is true with 159 installed and after the rollback", async () => {
+  it("9. the catalogue: the policy count is unchanged, only the two drawings policies differ (159's md5s), and 131's verify is true with 159 installed and after the rollback", async () => {
     await rolledBack(async (db) => {
       await beforeState(db);
       // As the database stands (145..159 installed) only no_helper_called_per_row fails, and it fails the same with 159 absent and installed.
@@ -499,37 +590,37 @@ describe("release 159: nobody can replace an object in the job-drawings bucket f
       await uninstall(db);
       expect((await dropLaterHelperPolicies(db)).map((x) => x.split(" :: ")[0]).sort()).toEqual(expect.arrayContaining(["company_setup_progress", "import_source_batches", "import_source_rows"]));
       const was = await policies(db);
-      const wasState = await drawingsState(db);
-      expect(wasState).toEqual({ m: M131, permissive: "PERMISSIVE", cmd: "UPDATE", roles: "{authenticated}" });
+      expect(await bothStates(db)).toEqual({ update: { m: M131, ...STATE_UPDATE }, del: { m: M131_DEL, ...STATE_DELETE } });
       expect(failing(await verifyRows(db, VERIFY_131)), "131 verify, 159 absent").toEqual([]);
       await install(db);
       const now = await policies(db);
       expect(now).toHaveLength(was.length);
       expect(withoutDrawings(now)).toEqual(withoutDrawings(was));
-      expect(now.filter((r, i) => r.text !== was[i].text).map((r) => r.key)).toEqual([`storage.objects :: ${POLICY}`]);
-      expect(await drawingsState(db)).toEqual({ m: M159, permissive: "PERMISSIVE", cmd: "UPDATE", roles: "{authenticated}" });
+      expect(now.filter((r, i) => r.text !== was[i].text).map((r) => r.key)).toEqual([`storage.objects :: ${POLICY_DEL}`, `storage.objects :: ${POLICY}`]);
+      expect(await bothStates(db)).toEqual({ update: { m: M159, ...STATE_UPDATE }, del: { m: M159_DEL, ...STATE_DELETE } });
       expect(now.find((r) => r.key === `storage.objects :: ${POLICY}`)!.text).toBe("PERMISSIVE | {authenticated} | UPDATE | false | false");
+      expect(now.find((r) => r.key === `storage.objects :: ${POLICY_DEL}`)!.text).toBe("PERMISSIVE | {authenticated} | DELETE | false | ");
       expect((await verifyRows(db, VERIFY_131)).length).toBe(4);
       expect(failing(await verifyRows(db, VERIFY_131)), "131 verify, 159 installed").toEqual([]);
       expect(failing(await verifyRows(db, VERIFY)), "159 verify").toEqual([]);
       await uninstall(db);
       expect(await policies(db)).toEqual(was);
       expect(failing(await verifyRows(db, VERIFY_131)), "131 verify after rollback").toEqual([]);
-      // 159's own verify is not true once rolled back (the policy is 131's again).
+      // 159's own verify is not true once rolled back (the policies are 131's again).
       expect(failing(await verifyRows(db, VERIFY)).length).toBeGreaterThan(0);
     });
   });
 
-  it("9b. 131's verify accepts EXACTLY two texts for the drawings update policy (131's, 159's): any third text, a missing policy, or another kind, command or role list is FALSE; drift in another policy is FALSE", async () => {
+  it("9b. 131's verify accepts EXACTLY two texts for each of the two drawings policies (131's, 159's): any third text, a missing policy, or another kind, command or role list is FALSE; drift in another policy is FALSE", async () => {
     const wrapped = async (db: PoolClient) => failing(await verifyRows(db, VERIFY_131));
     await rolledBack(async (db) => {
       await beforeState(db);
       await dropLaterHelperPolicies(db);
-      // 159 absent (131's text): TRUE. Every drifted shape: FALSE.
+      // 159 absent (131's texts): TRUE. Every drifted shape that is not a MIX: FALSE. A MIX is judged by 159's own verify and preflight, not by 131's per-policy rows (each text is one of its two).
       expect(await wrapped(db)).toEqual([]);
       for (const [i, shape] of DRIFTED.entries()) {
         await db.query(`savepoint d${i}`); await shape.make(db);
-        expect(await wrapped(db), `${shape.name}, 159 absent`).toEqual(["policies_131_wrapped"]);
+        expect(await wrapped(db), `${shape.name}, 159 absent`).toEqual(shape.name.startsWith("MIX") ? [] : ["policies_131_wrapped"]);
         await db.query(`rollback to savepoint d${i}`);
       }
       // Another policy's drift is still found with 159 absent.
@@ -539,13 +630,25 @@ describe("release 159: nobody can replace an object in the job-drawings bucket f
       await db.query("rollback to savepoint s4");
       expect(await wrapped(db)).toEqual([]);
 
-      // 159 installed (159's text): TRUE, with no comment or other trace read. Every drifted shape: FALSE.
+      // 159 installed (159's texts): TRUE, with no comment or other trace read. A third text or a changed shape on either policy: FALSE.
       await install(db);
-      expect(await drawingsState(db)).toMatchObject({ m: M159 });
+      expect(await bothStates(db)).toEqual({ update: { m: M159, ...STATE_UPDATE }, del: { m: M159_DEL, ...STATE_DELETE } });
       expect(await wrapped(db)).toEqual([]);
-      for (const [i, shape] of DRIFTED.entries()) {
-        await db.query(`savepoint e${i}`); await shape.make(db);
-        expect(await wrapped(db), `${shape.name}, 159 installed`).toEqual(["policies_131_wrapped"]);
+      const installedDrift: [string, (db: PoolClient) => Promise<void>][] = [
+        ["update: third text", (d) => alterDrawings(d, THIRD)],
+        ["update: using (true)", (d) => alterDrawings(d, "using (true) with check (true)")],
+        ["update: wrong roles", (d) => alterDrawings(d, "to authenticated, anon")],
+        ["update: wrong command", (d) => recreateDrawings(d, "for delete to authenticated using (false)")],
+        ["update: missing", dropDrawings],
+        ["delete: third text", (d) => alterDelete(d, "using (bucket_id = 'job-drawings')")],
+        ["delete: using (true)", (d) => alterDelete(d, "using (true)")],
+        ["delete: wrong roles", (d) => alterDelete(d, "to authenticated, anon")],
+        ["delete: wrong command", (d) => recreateDelete(d, "for select to authenticated using (false)")],
+        ["delete: missing", async (d) => { await asOwner(d); await d.query(`drop policy "${POLICY_DEL}" on storage.objects`); }],
+      ];
+      for (const [i, [name, make]] of installedDrift.entries()) {
+        await db.query(`savepoint e${i}`); await make(db);
+        expect(await wrapped(db), `${name}, 159 installed`).toEqual(["policies_131_wrapped"]);
         await db.query(`rollback to savepoint e${i}`);
       }
       await db.query("savepoint s9");
@@ -558,28 +661,29 @@ describe("release 159: nobody can replace an object in the job-drawings bucket f
     });
   });
 
-  it("10. release mechanics: the committed state is installed and verified; repeating changes nothing; rollback restores 131's exact text and md5; re-release; role memberships untouched", async () => {
+  it("10. release mechanics: the committed state is installed and verified; repeating changes nothing; rollback restores 131's exact texts and md5s; re-release; role memberships untouched", async () => {
     // The fixture installed 159 and verified every row before this file began.
     await rolledBack(async (db) => {
-      expect(await drawingsState(db)).toMatchObject({ m: M159 });
+      expect(await bothStates(db)).toEqual({ update: { m: M159, ...STATE_UPDATE }, del: { m: M159_DEL, ...STATE_DELETE } });
       expect(failing(await verifyRows(db, VERIFY))).toEqual([]);
       expect(await preflight(db, MARKER)).toBe("applied");
-      expect(await preflight(db, ROW_60)).toBe("159");
+      expect(await preflight(db, ROW_60)).toBe("159 / 159");
       await dropLaterHelperPolicies(db);
       const installed = await policies(db);
       const members = await memberships(db);
       await install(db); // repeat: installed -> nothing changes
       expect(await policies(db)).toEqual(installed);
-      expect(await drawingsState(db)).toMatchObject({ m: M159 });
+      expect(await bothStates(db)).toEqual({ update: { m: M159, ...STATE_UPDATE }, del: { m: M159_DEL, ...STATE_DELETE } });
       expect(await memberships(db)).toEqual(members);
 
       await uninstall(db);
       const rolled = await policies(db);
-      expect(await drawingsState(db)).toEqual({ m: M131, permissive: "PERMISSIVE", cmd: "UPDATE", roles: "{authenticated}" });
+      expect(await bothStates(db)).toEqual({ update: { m: M131, ...STATE_UPDATE }, del: { m: M131_DEL, ...STATE_DELETE } });
       expect(rolled.find((r) => r.key === `storage.objects :: ${POLICY}`)!.text).toContain("job-drawings");
+      expect(rolled.find((r) => r.key === `storage.objects :: ${POLICY_DEL}`)!.text).toContain("job-drawings");
       expect(await preflight(db, MARKER)).toBe("not applied");
-      expect(await preflight(db, ROW_60)).toBe("131");
-      await uninstall(db); // rollback twice = once (absent: the rollback re-asserts 131's text and changes nothing)
+      expect(await preflight(db, ROW_60)).toBe("131 / 131");
+      await uninstall(db); // rollback twice = once (absent: the rollback re-asserts 131's texts and changes nothing)
       expect(await policies(db)).toEqual(rolled);
       expect(failing(await verifyRows(db, VERIFY_131))).toEqual([]);
 
@@ -591,29 +695,30 @@ describe("release 159: nobody can replace an object in the job-drawings bucket f
     });
   });
 
-  it("10a. rollback then re-release: the rollback's text is 131's byte for byte (the same md5 and text the ALTER in 131's migration gives), and re-releasing verifies", async () => {
+  it("10a. rollback then re-release: the rollback's texts are 131's byte for byte (the text pg_policies gave before 159), and re-releasing verifies", async () => {
+    const texts = async (db: PoolClient) => (await db.query(`select policyname, qual, with_check from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname in ($1, $2) order by policyname`, [POLICY, POLICY_DEL])).rows;
     await rolledBack(async (db) => {
       await beforeState(db);
-      const text131 = (await db.query(`select qual, with_check from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = $1`, [POLICY])).rows[0];
+      const text131 = await texts(db);
+      expect(text131).toHaveLength(2);
       await install(db);
-      expect((await db.query(`select qual, with_check from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = $1`, [POLICY])).rows[0]).toEqual({ qual: "false", with_check: "false" });
+      expect(await texts(db)).toEqual([{ policyname: POLICY_DEL, qual: "false", with_check: null }, { policyname: POLICY, qual: "false", with_check: "false" }]);
       await uninstall(db);
-      expect((await db.query(`select qual, with_check from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = $1`, [POLICY])).rows[0]).toEqual(text131);
+      expect(await texts(db)).toEqual(text131);
       await install(db);
       expect(failing(await verifyRows(db, VERIFY))).toEqual([]);
     });
   });
 
-  it("10b. DRIFTED: the release and the rollback refuse every drifted shape with a clear message and change nothing; preflight does not read 'applied'", async () => {
+  it("10b. DRIFTED (every shape, a MIX of the two policies included): the release and the rollback refuse with a clear message and change nothing; preflight does not read 'applied'", async () => {
     for (const shape of DRIFTED) {
-      // Each drifted shape is built from 131's state; the policy text alone never makes it installed.
       await rolledBack(async (db) => {
         await beforeState(db);
         await shape.make(db);
         const drifted = await policies(db);
         const members = await memberships(db);
         expect(await refused(db, body(RELEASE)), `release on ${shape.name}`).toMatch(shape.release);
-        expect(await refused(db, body(ROLLBACK)), `rollback on ${shape.name}`).toMatch(shape.rollback);
+        expect(await refused(db, body(ROLLBACK)), `rollback on ${shape.name}`).toMatch(rb(shape.release));
         expect(await policies(db), `${shape.name}: nothing changed`).toEqual(drifted);
         expect(await memberships(db)).toEqual(members);
         expect(await preflight(db, MARKER), `marker on ${shape.name}`).toBe("not applied");
@@ -621,27 +726,55 @@ describe("release 159: nobody can replace an object in the job-drawings bucket f
         expect(failing(await verifyRows(db, VERIFY)).length, `159 verify on ${shape.name}`).toBeGreaterThan(0);
       });
     }
-    // 159's text with a wrong kind, command or roles is not "installed" (the marker, 159's verify) even though the md5 of its text is 159's.
+    // Each policy at 159's text but with a wrong kind, command or roles is not "installed" (the marker, 159's verify) though the md5 of its text is 159's.
     await rolledBack(async (db) => {
       await beforeState(db);
       await install(db);
       await alterDrawings(db, "to authenticated, anon");
-      expect(await drawingsState(db)).toMatchObject({ m: M159, roles: "{anon,authenticated}" });
+      expect((await drawingsState(db)).m).toBe(M159);
       expect(await preflight(db, MARKER)).toBe("not applied");
-      expect(await preflight(db, ROW_60)).toBe("missing");
+      expect(await preflight(db, ROW_60)).toBe("missing / 159");
+      expect(failing(await verifyRows(db, VERIFY)).length).toBeGreaterThan(0);
+    });
+    await rolledBack(async (db) => {
+      await beforeState(db);
+      await install(db);
+      await alterDelete(db, "to authenticated, anon");
+      expect((await deleteState(db)).m).toBe(M159_DEL);
+      expect(await preflight(db, MARKER)).toBe("not applied");
+      expect(await preflight(db, ROW_60)).toBe("159 / missing");
       expect(failing(await verifyRows(db, VERIFY)).length).toBeGreaterThan(0);
     });
   });
 
-  it("10c. the three states in one place: absent (131's text) releases, installed (159's text) repeats unchanged, and the marker reads applied only for installed", async () => {
+  it("10c. a partial install is never accepted: from either half-installed state the marker is not applied, 159's verify is false, the release does not complete it and the rollback does not guess", async () => {
+    for (const [name, make, row62] of [
+      ["update at 159, delete at 131", (db: PoolClient) => alterDrawings(db, "using (false) with check (false)"), "159 / 131"],
+      ["update at 131, delete at 159", (db: PoolClient) => alterDelete(db, "using (false)"), "131 / 159"],
+    ] as const) {
+      await rolledBack(async (db) => {
+        await beforeState(db);
+        await make(db);
+        const half = await policies(db);
+        expect(await preflight(db, MARKER), name).toBe("not applied");
+        expect(await preflight(db, ROW_60), name).toBe(row62);
+        expect(failing(await verifyRows(db, VERIFY)).length, name).toBeGreaterThan(0);
+        expect(await refused(db, body(RELEASE)), name).toMatch(HALF);
+        expect(await refused(db, body(ROLLBACK)), name).toMatch(rb(HALF));
+        expect(await policies(db), name).toEqual(half);
+      });
+    }
+  });
+
+  it("10d. the three states in one place: absent (131's texts) releases, installed (159's texts) repeats unchanged, and the marker reads applied only for installed", async () => {
     await rolledBack(async (db) => {
       await beforeState(db);
       expect(await preflight(db, MARKER)).toBe("not applied");
-      expect(await preflight(db, ROW_60)).toBe("131");
+      expect(await preflight(db, ROW_60)).toBe("131 / 131");
       expect(await refused(db, body(RELEASE))).toBeNull();
-      expect(await drawingsState(db)).toMatchObject({ m: M159 });
+      expect(await bothStates(db)).toEqual({ update: { m: M159, ...STATE_UPDATE }, del: { m: M159_DEL, ...STATE_DELETE } });
       expect(await preflight(db, MARKER)).toBe("applied");
-      expect(await preflight(db, ROW_60)).toBe("159");
+      expect(await preflight(db, ROW_60)).toBe("159 / 159");
       const installed = await policies(db);
       expect(await refused(db, body(RELEASE))).toBeNull();
       expect(await policies(db)).toEqual(installed);

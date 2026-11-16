@@ -154,14 +154,15 @@ describe("131 rls select wrap (supabase/release)", () => {
 });
 
 /**
- * Release 159 changes exactly one of the 182 policies on purpose ("job drawings org update": USING false, WITH CHECK false). 131's verify
- * accepts exactly two texts for that one row and nothing else: 131's md5 and 159's md5 (no comment or other trace is read: COMMENT ON POLICY
- * needs ownership of storage.objects). The checks below pin that the file accepts exactly those two values, that every other row is
- * unchanged, and that the values agree with 159's own files. The behaviour (and the FALSE cases) is proved on a database in
- * tests/db/drawings-update-roles-159.test.ts.
+ * Release 159 changes exactly two of the 182 policies on purpose ("job drawings org update": USING false, WITH CHECK false; "job drawings org
+ * delete": USING false). 131's verify accepts exactly two texts for each of those two rows and nothing else: 131's md5 and 159's md5 (no
+ * comment or other trace is read: COMMENT ON POLICY needs ownership of storage.objects). The checks below pin that the file accepts exactly
+ * those values, that every other row is unchanged, and that the values agree with 159's own files. The behaviour (and the FALSE cases)
+ * is proved on a database in tests/db/drawings-update-roles-159.test.ts.
  */
-describe("131's verify accepts exactly two texts for release 159's one policy and nothing else", () => {
+describe("131's verify accepts exactly two texts for each of release 159's two policies and nothing else", () => {
   const KEY = "storage.objects :: job drawings org update";
+  const KEY_DEL = "storage.objects :: job drawings org delete";
   const md5 = (text: string) => createHash("md5").update(text).digest("hex");
   const code = (sql: string) => sql.replace(/^\s*--.*$/gm, "");
   const release159 = () => read("supabase/release/159_drawings_update_roles.release.sql");
@@ -170,35 +171,44 @@ describe("131's verify accepts exactly two texts for release 159's one policy an
   const proposal159 = () => read("supabase/proposals/p159_drawings_update_roles.sql");
   const preflight = () => read("supabase/verify/release_preflight.sql");
   const M131 = () => listed(verify()).find((x) => x.key === KEY)!.md5s[0];
+  const M131_DEL = () => listed(verify()).find((x) => x.key === KEY_DEL)!.md5s[0];
   /** pg_policies prints USING (false) as "false" and WITH CHECK (false) as "false": the md5 the database computes is of "false|false". */
   const M159 = md5("false|false");
-  const TWO_TEXT = /\(h\.m = w\.md5_131\s+OR \(\(w\.schema_name, w\.table_name, w\.policy_name\) = \('storage', 'objects', 'job drawings org update'\) AND h\.m = '([0-9a-f]{32})'\)\)/g;
+  /** The delete policy has USING (false) and no WITH CHECK (NULL, which the formula reads as ''): the md5 the database computes is of "false|". */
+  const M159_DEL = md5("false|");
+  const TWO_TEXT = /AND \(h\.m = w\.md5_131\s+OR \(\(w\.schema_name, w\.table_name, w\.policy_name, h\.m\) IN \(\('storage', 'objects', 'job drawings org update', '([0-9a-f]{32})'\),\s+\('storage', 'objects', 'job drawings org delete', '([0-9a-f]{32})'\)\)\)\)\)/g;
 
-  it("the list row of the drawings update policy is still 131's md5, the same as the 131 lists, the precheck and the catalogue snapshot; no row carries two values", () => {
-    const row = listed(verify()).find((x) => x.key === KEY)!;
-    expect(row.md5s).toEqual(["76e489d7de7f079451629dc75177d894"]);
+  it("the list rows of the two drawings policies are still 131's md5, the same as the 131 lists, the precheck and the catalogue snapshot; no row carries two values", () => {
+    for (const [key, m] of [[KEY, "76e489d7de7f079451629dc75177d894"], [KEY_DEL, "2b7ec566b4506d9dc5918f7b02dd8374"]] as const) {
+      const row = listed(verify()).find((x) => x.key === key)!;
+      expect(row.md5s, key).toEqual([m]);
+      const inLists = listed(m131().split("DO $$")[1]).find((x) => x.key === key)!;
+      expect(inLists.md5s[1], key).toBe(row.md5s[0]);
+      expect(listed(read("supabase/verify/rls_select_wrap_131_precheck.sql")).find((x) => x.key === key)!.md5s[1], key).toBe(row.md5s[0]);
+    }
     expect(listed(verify()).filter((x) => x.md5s.length !== 1)).toEqual([]);
-    const inLists = listed(m131().split("DO $$")[1]).find((x) => x.key === KEY)!;
-    expect(inLists.md5s[1]).toBe(row.md5s[0]);
-    expect(listed(read("supabase/verify/rls_select_wrap_131_precheck.sql")).find((x) => x.key === KEY)!.md5s[1]).toBe(row.md5s[0]);
   });
 
-  it("exactly two md5s are accepted for that policy: 131's and 159's; no third value, no other policy is special-cased, and no comment or other state is read", () => {
-    const found = [...verify().matchAll(TWO_TEXT)].map((m) => m[1]);
-    expect(found).toEqual([M159]);
+  it("exactly two md5s are accepted for each of the two policies: 131's and 159's; no third value, no other policy is special-cased, and no comment or other state is read", () => {
+    const found = [...verify().matchAll(TWO_TEXT)].map((m) => [m[1], m[2]]);
+    expect(found).toEqual([[M159, M159_DEL]]);
     expect(M159).toBe("18b6c82111707e214f8aaa30c5b6e717");
-    // In code (comments stripped) 159's md5 appears once and so does 131's for this policy; nothing but the policy text decides.
+    expect(M159_DEL).toBe("a1f94f5b6390b515dc6714c2ca6f51b9");
+    // In code (comments stripped) each 159 md5 appears once and so does each 131 md5 for these policies; nothing but the policy text decides.
     const body = code(verify());
     expect(body.split(M159)).toHaveLength(2);
+    expect(body.split(M159_DEL)).toHaveLength(2);
     expect(body.split(M131())).toHaveLength(2);
+    expect(body.split(M131_DEL())).toHaveLength(2);
     expect(body).not.toMatch(/release_159|pg_description|pg_policy\b|obj_description|installed/);
     expect(body.match(/job drawings org update/g)).toHaveLength(2); // the list row and the one accepted-159 comparison
+    expect(body.match(/job drawings org delete/g)).toHaveLength(2);
     // The decision is the one place where md5_131 is compared; every other row stays on 131's text only.
-    expect(body.match(/h\.m = /g)).toHaveLength(2); // 131's md5 (every row) and 159's md5 (that one row)
+    expect(body.match(/h\.m = /g)).toHaveLength(1);
     expect(body.match(/md5_131/g)).toHaveLength(2); // the column's name in the list, and the comparison
   });
 
-  it("there is no comment trace anywhere: 159's release, rollback, verify, proposal, preflight and 131's verify neither write nor read pg_description for the policy", () => {
+  it("there is no comment trace anywhere: 159's release, rollback, verify, proposal, preflight and 131's verify neither write nor read pg_description for the policies", () => {
     for (const [name, text] of [["release", release159()], ["rollback", rollback159()], ["verify159", verify159()], ["proposal", proposal159()], ["verify131", verify()]] as const) {
       expect(code(text), name).not.toMatch(/COMMENT ON|pg_description|obj_description|description\b/i);
     }
@@ -208,29 +218,45 @@ describe("131's verify accepts exactly two texts for release 159's one policy an
     expect(row62).not.toMatch(/pg_description|pg_policy\b|description/);
   });
 
-  it("159's md5 is the md5 of the text PostgreSQL prints for USING (false) WITH CHECK (false), and is the same in 159's release, rollback, verify and preflight", () => {
+  it("159's md5s are the md5s of the text PostgreSQL prints for the new policies, and are the same in 159's release, rollback, verify and preflight; the state needs BOTH policies at the same text", () => {
     for (const [name, text] of [["release", release159()], ["rollback", rollback159()], ["verify", verify159()], ["preflight", preflight()]] as const) {
       expect(text, name).toContain(M159);
+      expect(text, name).toContain(M159_DEL);
+      expect(text, name).toContain(M131());
+      expect(text, name).toContain(M131_DEL());
     }
-    expect(release159()).toContain(`v_m IS DISTINCT FROM '${M131()}' AND v_m IS DISTINCT FROM '${M159}'`);
-    expect(rollback159()).toContain(`v_m IS DISTINCT FROM '${M159}' AND v_m IS DISTINCT FROM '${M131()}'`);
+    expect(release159()).toContain(`v_u IS DISTINCT FROM '${M131()}' AND v_u IS DISTINCT FROM '${M159}'`);
+    expect(release159()).toContain(`v_d IS DISTINCT FROM '${M131_DEL()}' AND v_d IS DISTINCT FROM '${M159_DEL}'`);
+    expect(rollback159()).toContain(`v_u IS DISTINCT FROM '${M159}' AND v_u IS DISTINCT FROM '${M131()}'`);
+    expect(rollback159()).toContain(`v_d IS DISTINCT FROM '${M159_DEL}' AND v_d IS DISTINCT FROM '${M131_DEL()}'`);
+    // A MIX (one policy at each text) is refused by both guards.
+    for (const text of [release159(), rollback159()]) expect(text).toContain(`IF (v_u = '${M131()}') IS DISTINCT FROM (v_d = '${M131_DEL()}') THEN`);
     expect(rollback159()).toContain(`= '${M131()}') THEN\n    RAISE EXCEPTION '159 rollback self-check`);
+    expect(rollback159()).toContain(`= '${M131_DEL()}') THEN\n    RAISE EXCEPTION '159 rollback self-check`);
     expect(preflight()).toContain(`WHEN '${M131()}' THEN '131' WHEN '${M159}' THEN '159' ELSE 'other'`);
+    expect(preflight()).toContain(`WHEN '${M131_DEL()}' THEN '131' WHEN '${M159_DEL}' THEN '159' ELSE 'other'`);
+    // The preflight marker counts exactly two policies at 159's texts, so any mix or third text is not "applied".
+    const marker = preflight().slice(preflight().indexOf("('post-144 marker 159 drawings_update_roles'"), preflight().indexOf("('post-144 marker 151 xero_invite_hardening'"));
+    expect(marker).toContain("count(*) = 2");
+    expect(marker).toContain(`('job drawings org update', 'UPDATE', '${M159}'), ('job drawings org delete', 'DELETE', '${M159_DEL}')`);
   });
 
-  it("159 alters only that policy: USING (false) WITH CHECK (false) going forward, 131's exact USING and WITH CHECK text coming back", () => {
+  it("159 alters only those two policies: USING (false) WITH CHECK (false) and USING (false) going forward, 131's exact USING and WITH CHECK text coming back", () => {
     const forward = alters(release159());
-    expect(forward).toEqual([{ key: KEY, using: "false", check: "false" }]);
+    expect(forward).toEqual([{ key: KEY, using: "false", check: "false" }, { key: KEY_DEL, using: "false", check: undefined }]);
     expect(alters(proposal159())).toEqual(forward);
     const back = alters(rollback159());
-    expect(back).toHaveLength(1);
-    const in131 = alters(m131()).find((a) => a.key === KEY)!;
-    expect(in131).toBeDefined();
-    expect(back[0]).toEqual(in131);
-    // Nothing else is created, dropped or granted, and the policy is altered, never dropped or recreated (the count of 182 stays).
+    expect(back).toHaveLength(2);
+    const in131 = alters(m131());
+    for (const key of [KEY, KEY_DEL]) {
+      const want = in131.find((a) => a.key === key)!;
+      expect(want, key).toBeDefined();
+      expect(back.find((a) => a.key === key), key).toEqual(want);
+    }
+    // Nothing else is created, dropped or granted, and the policies are altered, never dropped or recreated (the count of 182 stays).
     for (const text of [release159(), rollback159(), proposal159()]) {
       expect(code(text)).not.toMatch(/\b(DROP POLICY|CREATE POLICY|GRANT|REVOKE|DELETE FROM|INSERT INTO|SET ROLE|SET LOCAL ROLE|COMMENT ON)\b/);
-      expect(code(text).match(/^ALTER POLICY /gm)).toHaveLength(1);
+      expect(code(text).match(/^ALTER POLICY /gm)).toHaveLength(2);
     }
   });
 

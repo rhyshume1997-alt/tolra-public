@@ -359,10 +359,10 @@ post_release_markers(label, present) AS (
              AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'b00c08c8ee4934428f278fa6beadde1b')
       AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.finish_job(uuid,uuid,timestamptz)') AND p.prosecdef AND p.proconfig IS NOT NULL
              AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '154bb3fff8179ce2f26c1810f054e18f')), FALSE)),
-    ('post-144 marker 159 drawings_update_roles', coalesce((EXISTS (SELECT 1 FROM pg_policies p
-             WHERE p.schemaname = 'storage' AND p.tablename = 'objects' AND p.policyname = 'job drawings org update'
-               AND p.permissive = 'PERMISSIVE' AND p.cmd = 'UPDATE' AND p.roles::TEXT = '{authenticated}'
-               AND md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) = '18b6c82111707e214f8aaa30c5b6e717')), FALSE)),
+    ('post-144 marker 159 drawings_update_roles', coalesce(((SELECT count(*) = 2 FROM pg_policies p
+             WHERE p.schemaname = 'storage' AND p.tablename = 'objects' AND p.permissive = 'PERMISSIVE' AND p.roles::TEXT = '{authenticated}'
+               AND ((p.policyname, p.cmd, md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, ''))) IN
+                    (('job drawings org update', 'UPDATE', '18b6c82111707e214f8aaa30c5b6e717'), ('job drawings org delete', 'DELETE', 'a1f94f5b6390b515dc6714c2ca6f51b9'))))), FALSE)),
     ('post-144 marker 151 xero_invite_hardening', coalesce(((SELECT count(*) = 10 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'integration_connect_invites'
              AND column_name IN ('ref', 'recipient_email', 'code_hash', 'code_expires_at', 'code_sent_at', 'code_sent_count', 'code_attempts', 'locked_at', 'expired_logged_at', 'revoke_reason'))
       AND EXISTS (SELECT 1 FROM pg_constraint c WHERE c.conrelid = to_regclass('public.integration_connect_invites') AND c.conname IN ('integration_connect_invites_ref_key', 'integration_connect_invites_bound', 'integration_connect_invites_recipient') HAVING count(*) = 3)
@@ -716,11 +716,14 @@ checks(n, check_name, value, expected) AS (
     || ' / ' || coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN '57e2b9a298fa8647a775f8e0a56bbe58' THEN '061' WHEN '154bb3fff8179ce2f26c1810f054e18f' THEN '158' ELSE 'other' END
               FROM pg_proc p WHERE p.oid = to_regprocedure('public.finish_job(uuid,uuid,timestamptz)')), 'missing'),
     '044 / 061 before 158; 158 / 158 after (other or missing: stop, 158 refuses)'
-  UNION ALL SELECT 62, '159 needs: policy "job drawings org update" on storage.objects, its text (131 / 159 / other / missing)',
+  UNION ALL SELECT 62, '159 needs: policy "job drawings org update" (UPDATE) / policy "job drawings org delete" (DELETE) on storage.objects, their texts (131 / 159 / other / missing each)',
     coalesce((SELECT CASE md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) WHEN '76e489d7de7f079451629dc75177d894' THEN '131' WHEN '18b6c82111707e214f8aaa30c5b6e717' THEN '159' ELSE 'other' END
               FROM pg_policies p WHERE p.schemaname = 'storage' AND p.tablename = 'objects' AND p.policyname = 'job drawings org update'
-                AND p.permissive = 'PERMISSIVE' AND p.cmd = 'UPDATE' AND p.roles::TEXT = '{authenticated}'), 'missing'),
-    '131 before 159; 159 after (131 = absent, 159 = installed, any other text, or missing (which also reads for a policy that is not the PERMISSIVE UPDATE policy for exactly authenticated) = drifted: stop, 159 refuses and changes nothing; release 131 must be in place first; installed is judged by this text only, there is no comment. Production: this row, read only, must say 131 before any production migration)'
+                AND p.permissive = 'PERMISSIVE' AND p.cmd = 'UPDATE' AND p.roles::TEXT = '{authenticated}'), 'missing')
+    || ' / ' || coalesce((SELECT CASE md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) WHEN '2b7ec566b4506d9dc5918f7b02dd8374' THEN '131' WHEN 'a1f94f5b6390b515dc6714c2ca6f51b9' THEN '159' ELSE 'other' END
+              FROM pg_policies p WHERE p.schemaname = 'storage' AND p.tablename = 'objects' AND p.policyname = 'job drawings org delete'
+                AND p.permissive = 'PERMISSIVE' AND p.cmd = 'DELETE' AND p.roles::TEXT = '{authenticated}'), 'missing'),
+    '131 / 131 before 159; 159 / 159 after (131 / 131 = absent, 159 / 159 = installed; any other reading is drifted: another text, missing (which also reads for a policy that is not the PERMISSIVE UPDATE or DELETE policy for exactly authenticated), or a MIX such as 159 / 131 or 131 / 159 (half installed): stop, 159 refuses and changes nothing; release 131 must be in place first; installed is judged by these two texts only, there is no comment. Production: this row, read only, must say 131 / 131 before any production migration)'
   UNION ALL SELECT 100 + row_number() OVER (), 'marker ' || migration,
     CASE WHEN present AND (migration <> '107 integrations connect' OR to_regprocedure('public.integration_invite_redeem(text,text,text)') IS NOT NULL
                            OR coalesce((SELECT pm.present FROM post_release_markers pm WHERE pm.label = 'post-144 marker 151 xero_invite_hardening'), FALSE))
@@ -734,7 +737,7 @@ checks(n, check_name, value, expected) AS (
     WHEN label = 'post-144 marker 157 jobs_integrity_guard' THEN 'One-time post-144 phase 157, after 156 in the plan (155 reserved; its guard needs the job locks of 022 to 113 only): a recorded job start is kept and the first start is set only by Play, the bench Start or Finish (start_machine_run re-created), a job cannot be created with a start or finish time, a finish is set only by Finish, a workshop-only user cannot change a job''s customer or number or withdraw a passed inspection; row 60 first.'
     WHEN label = 'post-144 marker 156 invoice_ref_case' THEN 'One-time post-144 phase 156, after 154 in the plan (155 reserved; its guard needs 152 and 078 only): one invoice number per company whatever its capital letters; applied before the JNR SliQ import (row 59 first).'
     WHEN label = 'post-144 marker 158 machine_run_integrity' THEN 'One-time post-144 phase 158, after 157 (its guard needs 044, 051 and 061 only): a Pause or Finish that affects another operator''s open run or job time is recorded at the server''s time (row 61 first).'
-    WHEN label = 'post-144 marker 159 drawings_update_roles' THEN 'One-time post-144 phase 159, after 158 in the plan: the browser roles can no longer update or replace an object in the job-drawings bucket; installed is judged by the policy''s exact text only, and a drifted policy (any other text, missing, or not the PERMISSIVE UPDATE policy for authenticated) does not read as applied: row 62 tells absent (131) from installed (159) from drifted (other, missing) (row 62 first).'
+    WHEN label = 'post-144 marker 159 drawings_update_roles' THEN 'One-time post-144 phase 159, after 158 in the plan: the browser roles can no longer update, replace or delete an object in the job-drawings bucket; installed is judged by the exact text of the two policies only, and a drifted state (any other text, missing, or one policy at each text) does not read as applied: row 62 tells absent (131 / 131) from installed (159 / 159) from drifted (anything else) (row 62 first).'
     ELSE 'One-time post-144 phase: 145 N5 before 146 N2 before 147 C17 before 148 job costing before 149 Xero launch hold before 150 AI cap and key-off before 151 Xero invite hardening before 152 SliQ import route; all applied before go-live. Baseline replay intentionally runs first.' END FROM post_release_markers
   UNION ALL SELECT 400 + row_number() OVER (ORDER BY file), 'proposal file ' || file, disposition,
     'Explicitly accounted for; no proposal runs merely because preflight is read.' FROM proposal_files

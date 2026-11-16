@@ -1,12 +1,13 @@
 -- Migration 131 (row-level-security helpers asked once per statement). Read only: every row should be TRUE (4). The text md5s are
 -- of pg_policies' USING and WITH CHECK as the catalogue takes them (supabase/verify/catalogue.sql).
--- TWO-TEXT RULE for exactly one policy, by the PM's ruling on release 159 (inputs: the policies of the database; outputs: the same four
+-- TWO-TEXT RULE for exactly two policies, by the PM's ruling on release 159 (inputs: the policies of the database; outputs: the same four
 -- rows; must not change: every other row, which is satisfied by 131's text only). Release 159 deliberately changes "job drawings org
--- update" on storage.objects (USING false, WITH CHECK false: nobody can replace an object in job-drawings from the browser). That one
--- row accepts exactly two texts: 131's md5 (76e489d7de7f079451629dc75177d894, the list below) and 159's md5 (18b6c82111707e214f8aaa30c5b6e717),
--- and is FALSE for any third text, a missing policy, or a different kind, command or role list. There is no comment and no other state
--- read: release 159 leaves no trace but the policy text (COMMENT ON POLICY needs ownership of storage.objects). Whether the right text
--- is the right one for the stage of the release is judged by 159's own verify and by release preflight, not here.
+-- update" (USING false, WITH CHECK false) and "job drawings org delete" (USING false) on storage.objects: nobody can replace or delete
+-- an object in job-drawings from the browser. Each of those two rows accepts exactly two texts: 131's md5 (the list below) and 159's md5
+-- (update 18b6c82111707e214f8aaa30c5b6e717, delete a1f94f5b6390b515dc6714c2ca6f51b9), and is FALSE for any third text, a missing policy, or a
+-- different kind, command or role list. There is no comment and no other state read: release 159 leaves no trace but the policy texts
+-- (COMMENT ON POLICY needs ownership of storage.objects). That the two policies are in the SAME state (both 131's or both 159's) is
+-- judged by 159's own verify and by release preflight, not here.
 WITH want(schema_name, table_name, policy_name, permissive, cmd, roles, md5_131) AS (VALUES
     ('public', 'ai_helper_requests', 'ai_helper_requests office select', 'PERMISSIVE', 'SELECT', '{authenticated}', '6a18e9fed9ee8dd956c314df2b296562'),
     ('public', 'ai_helper_settings', 'ai_helper_settings office select', 'PERMISSIVE', 'SELECT', '{authenticated}', '6a18e9fed9ee8dd956c314df2b296562'),
@@ -196,11 +197,12 @@ have AS (
          md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) AS m
   FROM pg_catalog.pg_policies p
 )
--- The 182 policies 131 rewrote: each there, with main's command, roles and kind, and 131's text (the drawings update policy alone: 131's text or 159's text, no third).
+-- The 182 policies 131 rewrote: each there, with main's command, roles and kind, and 131's text (the two drawings policies, update and delete, alone: 131's text or 159's text, no third).
 SELECT 'policies_131_wrapped' AS check_name,
        (SELECT count(*) = 182 AND bool_and(h.policyname IS NOT NULL AND h.permissive = w.permissive AND h.cmd = w.cmd AND h.roles = w.roles
                          AND (h.m = w.md5_131
-                              OR ((w.schema_name, w.table_name, w.policy_name) = ('storage', 'objects', 'job drawings org update') AND h.m = '18b6c82111707e214f8aaa30c5b6e717')))
+                              OR ((w.schema_name, w.table_name, w.policy_name, h.m) IN (('storage', 'objects', 'job drawings org update', '18b6c82111707e214f8aaa30c5b6e717'),
+                                                                                           ('storage', 'objects', 'job drawings org delete', 'a1f94f5b6390b515dc6714c2ca6f51b9')))))
         FROM want w LEFT JOIN have h ON h.schemaname = w.schema_name AND h.tablename = w.table_name AND h.policyname = w.policy_name) AS ok
 -- No policy on public, storage.objects or security_audit.audit_log calls a role or company helper outside a sub-select (but the two that
 -- 102's and 120's verify scripts pin; see the migration's header). A later migration that adds such a policy makes this FALSE (write it
