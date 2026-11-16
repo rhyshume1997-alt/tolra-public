@@ -1,5 +1,5 @@
-import { expect, it } from "vitest";
-import { preparePost144Fixture } from "../support/post-144-release-fixture";
+import { expect, it, vi } from "vitest";
+import { preparePost144Fixture, storageObjectsDiagnosticSql } from "../support/post-144-release-fixture";
 import { releaseRank, post144ProofFiles } from "../support/db-release-sequencer";
 function fixture(initial=false) {
   const calls:string[]=[];const states=[initial,initial,initial,initial,initial,initial,initial,initial,initial,initial,initial,initial,initial];
@@ -95,4 +95,90 @@ it("an explicit148 financial target verifies all four dependencies without claim
 
 it.each([144,155,159,148.5,Number.NaN])("invalid focused fixture target %s refuses before SQL",async through=>{
  const f=fixture();await expect(preparePost144Fixture({...f,through:through as 148})).rejects.toThrow('Invalid release fixture target');expect(f.calls).toEqual([]);
+});
+
+it("a failed fixture prints read-only storage.objects diagnostics and rethrows the ORIGINAL failure, then unlocks",async()=>{
+ const spy=vi.spyOn(console,"error").mockImplementation(()=>{});
+ const f=fixture(true),original=f.query;
+ f.query=async(sql:string)=>{
+  if(sql===storageObjectsDiagnosticSql){f.calls.push(sql);return {rows:[{check:"storage.objects owner",value:"supabase_storage_admin"},{check:"current_user",value:"postgres"}]};}
+  if(sql.includes("AS check_name")) {f.calls.push(sql);return {rows:[{ok:false,passed:false}]};}
+  return original(sql);
+ };
+ await expect(preparePost144Fixture(f)).rejects.toThrow("Release verification failed");
+ expect(f.calls.filter(s=>s===storageObjectsDiagnosticSql)).toHaveLength(1);
+ expect(f.calls.at(-1)).toContain("pg_advisory_unlock");
+ const printed=spy.mock.calls.map(c=>String(c[0])).join("\n");
+ expect(printed).toContain("storage.objects owner: supabase_storage_admin");expect(printed).toContain("current_user: postgres");
+ spy.mockRestore();
+});
+it("a diagnostic error or an unlock error never replaces the original failure",async()=>{
+ const spy=vi.spyOn(console,"error").mockImplementation(()=>{});
+ const f=fixture(true),original=f.query;
+ f.query=async(sql:string)=>{
+  if(sql===storageObjectsDiagnosticSql) throw new Error("diagnostic denied");
+  if(sql.includes("pg_advisory_unlock")) throw new Error("unlock refused");
+  if(sql.includes("AS check_name")) return {rows:[]};
+  return original(sql);
+ };
+ await expect(preparePost144Fixture(f)).rejects.toThrow("Release verification failed");
+ spy.mockRestore();
+});
+it("an unlock error on an otherwise successful run is still reported",async()=>{
+ const f=fixture(true),original=f.query;
+ f.query=async(sql:string)=>{if(sql.includes("pg_advisory_unlock")) throw new Error("unlock refused");return original(sql);};
+ await expect(preparePost144Fixture(f)).rejects.toThrow("unlock refused");
+});
+it("a successful run prints no diagnostics",async()=>{
+ const f=fixture(true);await preparePost144Fixture(f);expect(f.calls).not.toContain(storageObjectsDiagnosticSql);
+});
+it("the diagnostic SQL is one read-only SELECT: no write, role switch or privilege change",()=>{
+ expect(storageObjectsDiagnosticSql.trimStart()).toMatch(/^SELECT /);
+ expect(storageObjectsDiagnosticSql).not.toContain(";");
+ expect(storageObjectsDiagnosticSql.replace(/'[^']*'/g,"''")).not.toMatch(/\b(INSERT|UPDATE|DELETE|ALTER|CREATE|DROP|GRANT|REVOKE|SET|RESET|TRUNCATE|COPY|DO|CALL|EXECUTE)\b/);
+ for(const word of ["pg_roles","pg_auth_members","relowner","has_table_privilege","storage.objects"]) expect(storageObjectsDiagnosticSql).toContain(word);
+});
+it("CI prints the read-only ownership diagnostic on every run, after the Database suite, informational and without changing anything",async()=>{
+ const {readFileSync}=await import("node:fs");
+ const ci=readFileSync(".github/workflows/ci.yml","utf8");
+ const start=ci.indexOf("name: \"Ownership diagnostic (informational, read-only");
+ expect(start).toBeGreaterThan(0);
+ expect(ci.indexOf("name: Database suite (")).toBeGreaterThan(0);
+ expect(start).toBeGreaterThan(ci.indexOf("name: Database suite ("));
+ const step=ci.slice(start,ci.indexOf("\n      - name:",start+10));
+ expect(step).toContain("if: ${{ always() }}");expect(step).not.toContain("failure()");expect(step).toContain("continue-on-error: true");
+ expect(step.match(/<<'SQL'/g)).toHaveLength(1);
+ for(const word of ["pg_roles","pg_auth_members","relowner","has_table_privilege","storage.objects"]) expect(step).toContain(word);
+ expect(step.replace(/'[^']*'/g,"''")).not.toMatch(/\b(INSERT|UPDATE|DELETE|ALTER|CREATE|DROP|GRANT|REVOKE|RESET|TRUNCATE|COPY)\b|SET ROLE|supabase_admin|PASSWORD|TOKEN|SECRET/i);
+});
+it("ROLLBACK, the diagnostic and the unlock all failing never replace the original exception",async()=>{
+ const spy=vi.spyOn(console,"error").mockImplementation(()=>{});
+ const f=fixture(true),original=f.query;
+ f.query=async(sql:string)=>{
+  if(sql==="ROLLBACK") throw new Error("rollback refused");
+  if(sql===storageObjectsDiagnosticSql) throw new Error("diagnostic denied");
+  if(sql.includes("pg_advisory_unlock")) throw new Error("unlock refused");
+  if(sql.includes("AS check_name")) return {rows:[]};
+  return original(sql);
+ };
+ const failure=await preparePost144Fixture(f).then(()=>undefined,e=>e as Error);
+ expect(failure?.message).toBe("Release verification failed: post-144 marker 145 company_setup");
+ spy.mockRestore();
+});
+
+it("after a release fails inside its own transaction: ROLLBACK, then the diagnostic, then the unlock, and the ORIGINAL error is rethrown",async()=>{
+ const spy=vi.spyOn(console,"error").mockImplementation(()=>{});
+ const f=fixture(),original=f.query;let aborted=false;
+ f.query=async(sql:string)=>{
+  if(sql==="ROLLBACK"){f.calls.push(sql);aborted=false;return {rows:[]};}
+  if(aborted){f.calls.push(sql);throw Object.assign(new Error("current transaction is aborted"),{code:"25P02"});}
+  if(sql.includes("-- Post-144 release step 145")){f.calls.push(sql);aborted=true;throw new Error("release 145 failed: original");}
+  if(sql===storageObjectsDiagnosticSql){f.calls.push(sql);return {rows:[{check:"storage.objects owner",value:"owner_x"}]};}
+  return original(sql);
+ };
+ await expect(preparePost144Fixture(f)).rejects.toThrow("release 145 failed: original");
+ const tail=f.calls.slice(-3);
+ expect(tail[0]).toBe("ROLLBACK");expect(tail[1]).toBe(storageObjectsDiagnosticSql);expect(tail[2]).toContain("pg_advisory_unlock");
+ expect(spy.mock.calls.map(c=>String(c[0])).join("\n")).toContain("storage.objects owner: owner_x");
+ spy.mockRestore();
 });
