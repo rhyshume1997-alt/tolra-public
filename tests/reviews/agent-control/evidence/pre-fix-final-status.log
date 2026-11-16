@@ -1,0 +1,14 @@
+.F..
+======================================================================
+FAIL: test_each_task_has_required_columns (control_test.Control.test_each_task_has_required_columns)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/tolra-public/work/queue-control/tests/reviews/agent-control/control_test.py", line 17, in test_each_task_has_required_columns
+    if row.startswith('| ') and 'DONE' in row:self.assertIn('DONE (coded)',row)
+                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'DONE (coded)' not found in '| ACCOUNTING-ADAPTER | Shared rules and adapter policy, provider checklist | Codex | lib/integrations/{types,mapping-rules,engine}.ts; checklist | Existing Xero and export behaviour preserved; no duplicate framework | 120 / 0 / 0; TS/lint pass | #408 codex/accounting-common-adapter | DONE (coded/tested); AWAITING CHATGPT REVIEW |'
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.007s
+
+FAILED (failures=1)

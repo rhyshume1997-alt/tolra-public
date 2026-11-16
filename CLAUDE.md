@@ -1,3 +1,5 @@
+Read [current-state](docs/agent-control/current-state.md) and [decisions](docs/agent-control/decisions.md) first. Never reopen DONE work without new evidence. One task, one owner. DONE must say whether it means coded, merged, deployed or verified in production; these are different claims.
+
 @AGENTS.md
 
 # Notes for AI coding assistants
