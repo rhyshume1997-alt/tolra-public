@@ -1,6 +1,7 @@
 "use client";
 
 /**
+ * Offline Synchronisation boundary: exposes scoped status and recovery; no server or settings business logic in UI.
  * The offline scope in use (user + company), the status the banner shows, page snapshots, queueing, identity for
  * offline start-up and the wipes. No Supabase calls here (see lib/offline/sync.ts for replay).
  */
@@ -8,6 +9,7 @@ import { useSyncExternalStore } from "react";
 import { blockOfflineAccess, offlineAccessBlocked } from "@/lib/offline/access";
 
 import { conflictEntries, discardPending, exportFileName, dismissHeld, enqueue, pendingEntries, rejectedEntries, retryHeld, type HeldEntry, type OutboxEntry, type OutboxOp } from "@/lib/offline/outbox";
+import { recoverStartEntry, type StartRecoveryChoice, type StartRecoveryResult } from "@/lib/offline/outbox";
 import { describePhotos, emptySummary, loadSnapshot, saveSnapshot, type Scope, scopeKey, setSupportSession, type UnsyncedSummary, unsyncedIdsForUser, unsyncedSummary, userPrefix, wipeAllOffline, wipeScope } from "@/lib/offline/store";
 
 // ----- current scope (set by the user provider once the profile is known) -------------------------------------
@@ -149,6 +151,24 @@ export async function dismissOfflineIssue(list: "conflicts" | "rejected", id: st
   if (!currentScope) return;
   await dismissHeld(currentScope, list, id);
   await refreshCounts();
+}
+
+/** Explicit three-choice recovery of a held Start; the sync boundary verifies identity/company before sending anything. */
+export async function recoverOfflineStart(entry: HeldEntry, choice: StartRecoveryChoice): Promise<StartRecoveryResult> {
+  const scope = offlineScope();
+  if (!scope) return { status: "held", reason: "Sign in again to recover this Start." };
+  if (choice.kind === "discard") {
+    const result = await recoverStartEntry(scope, entry, choice, async () => ({ status: "network" }), () => offlineScope() !== null && scopeKey(offlineScope()!) === scopeKey(scope));
+    await refreshCounts();
+    return result;
+  }
+  const { recoverStart, syncNow } = await import("@/lib/offline/sync");
+  const result = await recoverStart(scope, entry, choice);
+  if (result.status === "applied" && offlineScope() !== null && scopeKey(offlineScope()!) === scopeKey(scope)) {
+    try { await syncNow(); } catch { result.reason = "The Start was confirmed. Later changes remain on this device until sync is available."; }
+  }
+  await refreshCounts();
+  return result;
 }
 
 /** Puts a refused change back in the queue to be sent again. */
