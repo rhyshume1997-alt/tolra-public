@@ -1,0 +1,42 @@
+{
+  "number": 197,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/197",
+  "title": "Keep plain login neutral regardless of remembered company",
+  "branch": "codex/neutral-login",
+  "observed_head": "817b6da88d6b6404f22ffa28dcf0bed2e8fda626",
+  "base_sha": "2a4ae607e9117d7da37ba6593e27536d2ef11406",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:19Z",
+  "files": [
+    "app/login/login-form.tsx",
+    "app/login/page.tsx",
+    "components/dashboard-shell.tsx",
+    "lib/server/branding.ts",
+    "tests/e2e/brand-flash.spec.ts",
+    "tests/unit/brand-flash.test.ts",
+    "tests/unit/brand-remember.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Plain `/login` now always uses Tolra's neutral design. Remembered cookies and legacy localStorage cannot restore company branding; explicit `?org=` links and company subdomains retain their existing server-side branding.\n\nThe app shell no longer calls the remember route, which remains available for compatibility. Sign-in, MFA, redirects and session behavior are unchanged.\n\nValidation: all 5,028 unit tests passed; typecheck and lint passed; Chromium verified neutral login after hydration with both remembered cookie and legacy storage set. The updated five-test browser file was collected. The backend browser suite, including the real-company query-link test, was not run because no disposable Supabase backend is available; no migrations or SQL were applied.\n",
+  "historical_test_claims": [
+    "Validation: all 5,028 unit tests passed; typecheck and lint passed; Chromium verified neutral login after hydration with both remembered cookie and legacy storage set. The updated five-test browser file was collected. The backend browser suite, including the real-company query-link test, was not run because no disposable Supabase backend is available; no migrations or SQL were applied."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41637019585,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41637019585",
+      "head_sha": "817b6da88d6b6404f22ffa28dcf0bed2e8fda626",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 41632596237,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41632596237",
+      "head_sha": "817b6da88d6b6404f22ffa28dcf0bed2e8fda626",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

@@ -1,0 +1,57 @@
+{
+  "number": 221,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/221",
+  "title": "Share accounting connections with Sage cloud and QuickBooks adapters",
+  "branch": "codex/accounting-connections",
+  "observed_head": "53030fd4224c6b2451f2af386fdb9d692b0ee8fc",
+  "base_sha": "717ac725f832023a1c3c64bda91f4e734dc360fe",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:16Z",
+  "files": [
+    "app/api/accounting/[provider]/[action]/route.ts",
+    "components/integrations-panel.tsx",
+    "components/integrations/accounting-cloud-cards.tsx",
+    "lib/accounting/cloud-adapters.ts",
+    "lib/accounting/connections.ts",
+    "lib/accounting/types.ts",
+    "lib/integrations/server.ts",
+    "lib/integrations/types.ts",
+    "supabase/migrations/144_accounting_connections.sql",
+    "supabase/release/144_accounting_connections.release.sql",
+    "supabase/release/144_accounting_connections.rollback.sql",
+    "supabase/verify/accounting_connections_144.sql",
+    "supabase/verify/release_preflight.sql",
+    "tests/accounting/DB-FAILURE-REVIEW.md",
+    "tests/accounting/SETUP-AND-CHECKS.md",
+    "tests/db/catalogue.snapshot.json",
+    "tests/unit/accounting-cloud-adapters.test.ts",
+    "tests/unit/accounting-replay-guard.test.ts",
+    "tests/unit/accounting-routes.test.ts",
+    "tests/unit/accounting-sql-shape.test.ts"
+  ],
+  "migration_verification_rollback_paths": [
+    "supabase/migrations/144_accounting_connections.sql",
+    "supabase/release/144_accounting_connections.release.sql",
+    "supabase/release/144_accounting_connections.rollback.sql",
+    "supabase/verify/accounting_connections_144.sql",
+    "supabase/verify/release_preflight.sql"
+  ],
+  "public_pr_body": "Add Sage Business Cloud Accounting and QuickBooks Online behind one connection/read-only balance interface, with Xero's Integrations Connect/Disconnect controls using the same interface. Keep Xero's reviewed tenant cleanup, refresh lease and outbound send/mapping engine. Old Xero endpoints remain available.\n\nOwn-company admins only, existing MFA, no support. New adapters stay disabled without server-only app credentials, encryption key and proposed database update 144. QuickBooks defaults to its free developer sandbox. No paid connector or subscription is installed or purchased. Sage uses its documented confidential-client OAuth flow; multiple businesses/pages are refused rather than guessed. Tokens retain company/provider/purpose encryption binding and the existing serialized refresh lease.\n\nInvoice checks resolve the signed-in company's local invoice before reading its connected provider; caller-supplied company/tenant/number is ignored. Return exact integer pence and GBP balance evidence for a person's review. A reduced balance may be a credit. No Tolra invoice is automatically marked paid; Sage/QBO never send invoices. Proposed SQL restricts outbound enqueuing to Xero and leaves send/mapping/contact provider constraints unchanged.\n\nClaim: N3 as corrected by Rhys (cloud Sage plus QuickBooks, not Sage 50). Searched main/open PRs before implementation; no adapters found. All new work branches from main. No docs/ files changed. Operator setup, official contract references and outstanding checks are in tests/accounting/SETUP-AND-CHECKS.md.\n\nValidation: full suite 5,129 tests passed (375 files); TypeScript, targeted ESLint, migration freeze/file checks and git diff check passed. Existing tests unchanged. New tests cover auth/origin/support, company filtering, unknown providers, missing registrations, disconnect after credential removal, exact pence/overflow, token context binding, ambiguous/malformed balances, sandbox endpoints and SQL proposal shape.\n\nNOT RUN: browser/database/live provider OAuth checks; migration 144 release, verification and rollback. No SQL applied anywhere. No registration or deployment performed. These remain required before enabling the adapters. Official provider docs could not be fetched from this environment; operator registration checks and live contract verification are explicitly pending. Draft for review, not a claim of live integration validation.\n\n\nR handover update (3dfb186): reproduced CI's 084 body-hash refusal offline (new test red before the fix). 144 now preserves the original 084 function and uses a separate Xero-only trigger function; rollback restores trigger targets. 219 targeted tests, types/lint and migration-file checks passed. Combined accounting #237 passed 5,134 unit tests after including this fix. See tests/accounting/DB-FAILURE-REVIEW.md for evidence and limits. No DB SQL or tests executed: the time-labour end_reason and workshop-network purge symptoms still need a clean runtime rerun; catalogue/upgrade checks remain open. No existing test or frozen migration was weakened.\n\n\nPriority update: 53030fd moves both new 144 functions before existing-object alterations and keeps matching release/rollback ordering. No function bodies, guards, grants or catalogue expectations were weakened. Based on Code catalogue commit c33c667 (retained exactly). 220 targeted file/guard tests, migration-file checks and lint passed. Code reports 128/128 DB tests before this ordering-only correction; no SQL or upgrade rehearsal was run here. Next: Code reruns the upgrade rehearsal.\n",
+  "historical_test_claims": [
+    "Claim: N3 as corrected by Rhys (cloud Sage plus QuickBooks, not Sage 50). Searched main/open PRs before implementation; no adapters found. All new work branches from main. No docs/ files changed. Operator setup, official contract references and outstanding checks are in tests/accounting/SETUP-AND-CHECKS.md.",
+    "Validation: full suite 5,129 tests passed (375 files); TypeScript, targeted ESLint, migration freeze/file checks and git diff check passed. Existing tests unchanged. New tests cover auth/origin/support, company filtering, unknown providers, missing registrations, disconnect after credential removal, exact pence/overflow, token context binding, ambiguous/malformed balances, sandbox endpoints and SQL proposal shape.",
+    "R handover update (3dfb186): reproduced CI's 084 body-hash refusal offline (new test red before the fix). 144 now preserves the original 084 function and uses a separate Xero-only trigger function; rollback restores trigger targets. 219 targeted tests, types/lint and migration-file checks passed. Combined accounting #237 passed 5,134 unit tests after including this fix. See tests/accounting/DB-FAILURE-REVIEW.md for evidence and limits. No DB SQL or tests executed: the time-labour end_reason and workshop-network purge symptoms still need a clean runtime rerun; catalogue/upgrade checks remain open. No existing test or frozen migration was weakened.",
+    "Priority update: 53030fd moves both new 144 functions before existing-object alterations and keeps matching release/rollback ordering. No function bodies, guards, grants or catalogue expectations were weakened. Based on Code catalogue commit c33c667 (retained exactly). 220 targeted file/guard tests, migration-file checks and lint passed. Code reports 128/128 DB tests before this ordering-only correction; no SQL or upgrade rehearsal was run here. Next: Code reruns the upgrade rehearsal."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41698143411,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41698143411",
+      "head_sha": "53030fd4224c6b2451f2af386fdb9d692b0ee8fc",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

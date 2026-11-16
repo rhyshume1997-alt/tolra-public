@@ -1,0 +1,29 @@
+{
+  "number": 346,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/346",
+  "title": "L5: conflicts and duplication review of PRs #298\u2013#337",
+  "branch": "codex/b6-l5-pr-conflicts",
+  "observed_head": "c695c0dfed5a20fc3b79a6bab577cbb98305b892",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:05Z",
+  "files": [
+    "docs/handover/CODEX-PR-CONFLICTS.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Records one captured review of all 40 PRs with full heads/targets, direct and inherited overlap, duplicate versus complementary papers, and what must survive reconciliation.\n\nAll 780 local head pairs checked with git merge-tree: 33 text-conflict pairs, all listed; 747 clean pairs are not semantic approval. Covers CW's twelve replacement masters, corrected PQ/BA versus frozen CV, already-reconciled smoke, restriction corrections and unique evidence/handovers.\n\nInventory/count/source/whitespace checks passed. Handover embedded in docs/handover/CODEX-PR-CONFLICTS.md. No PR closed/merged/retargeted, main merge, production SQL, Ready label or runtime pass.",
+  "historical_test_claims": [
+    "Inventory/count/source/whitespace checks passed. Handover embedded in docs/handover/CODEX-PR-CONFLICTS.md. No PR closed/merged/retargeted, main merge, production SQL, Ready label or runtime pass."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41860499611,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41860499611",
+      "head_sha": "c695c0dfed5a20fc3b79a6bab577cbb98305b892",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

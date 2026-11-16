@@ -1,0 +1,37 @@
+{
+  "number": 273,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/273",
+  "title": "CB: Add fail-closed final-commit release gate",
+  "branch": "codex/cb-release-gate",
+  "observed_head": "ff13614fcd8bd37d989faec74d387371ef7ac378",
+  "base_sha": "ef3e76e3e6c0fdbc012a4f59bd55dddd2f26920b",
+  "github_state": "closed (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:13Z",
+  "files": [
+    "scripts/release-gate/check.mjs",
+    "scripts/release-gate/cli.mjs",
+    "scripts/release-gate/policy.json",
+    "tests/RELEASE-GATE.md",
+    "tests/unit/release-gate.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "CB adds a read-only release-evidence gate tied to actual clean Git HEAD. It refuses missing/failed/empty/older-commit results, altered/missing artifacts, incorrect required migration order or 145/146 markers, unproved backup restore integrity, incomplete mandatory DB suites, post-release browsers, reconciliation and fake-only mock production evidence. Every mandatory proof is pinned in a fixed policy; the manifest cannot silently omit it.\n\nAssumptions: stack on CA #272 so required cutover order is 138/140/141/144/145/146. Only unit/browser skipped cases may carry a per-test exact-head Rhys acceptance with reason/date/review reference; mandatory DB and backup conditions cannot be waived. A complete evidence set is only READY FOR INDEPENDENT REVIEW, never an approval. Hashes establish unchanged artifacts, not truth of an untrusted/manual attestation. CI/operator evidence must be genuine. No current evidence set is asserted as passing.\n\nValidation: 66 gate tests passed, 0 failed/skipped; TypeScript, targeted ESLint and diff check passed. Real DB/browser/backup/mock production evidence remains open. No SQL or data writes by this tool, no merge/deploy/main push, no Ready label. Ownership/handover updates are separate docs-only #271; no docs/ files in this code PR.\n\n- [x] CB: automated fail-closed gate and refusal tests added.\n- [ ] Next: genuine complete evidence on the final integrated commit and external reviewer/Rhys decisions.\n\n\nCI AUDIT FOLLOW-UP REQUIRED: a real old-head run produced 5013 passed assertions but exit 1 because a jsdom UI file could not collect. This #273 head does not yet check actual command exits or unhandled/collection errors. The CI branch adds seven failing-first regressions and the refusal fix, retaining all 66 existing cases. Include that correction in the final integration; do not treat this old head alone as a complete gate. No DB/browser/restore proof is implied.\n",
+  "historical_test_claims": [
+    "CB adds a read-only release-evidence gate tied to actual clean Git HEAD. It refuses missing/failed/empty/older-commit results, altered/missing artifacts, incorrect required migration order or 145/146 markers, unproved backup restore integrity, incomplete mandatory DB suites, post-release browsers, reconciliation and fake-only mock production evidence. Every mandatory proof is pinned in a fixed policy; the manifest cannot silently omit it.",
+    "Assumptions: stack on CA #272 so required cutover order is 138/140/141/144/145/146. Only unit/browser skipped cases may carry a per-test exact-head Rhys acceptance with reason/date/review reference; mandatory DB and backup conditions cannot be waived. A complete evidence set is only READY FOR INDEPENDENT REVIEW, never an approval. Hashes establish unchanged artifacts, not truth of an untrusted/manual attestation. CI/operator evidence must be genuine. No current evidence set is asserted as passing.",
+    "Validation: 66 gate tests passed, 0 failed/skipped; TypeScript, targeted ESLint and diff check passed. Real DB/browser/backup/mock production evidence remains open. No SQL or data writes by this tool, no merge/deploy/main push, no Ready label. Ownership/handover updates are separate docs-only #271; no docs/ files in this code PR.",
+    "- [x] CB: automated fail-closed gate and refusal tests added.",
+    "CI AUDIT FOLLOW-UP REQUIRED: a real old-head run produced 5013 passed assertions but exit 1 because a jsdom UI file could not collect. This #273 head does not yet check actual command exits or unhandled/collection errors. The CI branch adds seven failing-first regressions and the refusal fix, retaining all 66 existing cases. Include that correction in the final integration; do not treat this old head alone as a complete gate. No DB/browser/restore proof is implied."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41810525853,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41810525853",
+      "head_sha": "ff13614fcd8bd37d989faec74d387371ef7ac378",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

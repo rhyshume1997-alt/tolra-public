@@ -1,0 +1,29 @@
+{
+  "number": 383,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/383",
+  "title": "G18: add a one-page build artifact provenance record",
+  "branch": "codex/g18-build-provenance-template",
+  "observed_head": "694ef5c4243072c8a19e5a7e9bb9e85fd09d95e9",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:01Z",
+  "files": [
+    "docs/audit/G18-BUILD-PROVENANCE.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds one short docs/audit template linking exact executed SHA, build run/attempt, immutable artifact ID, SHA-256 of downloaded artifact bytes, separate original-log hash, tester/checker and named approval/signature/date. Actual result stays NOT EXECUTED; all operational fields and approvals stay blank.\n\nReuses #370's profile/evidence map and #377's log-chain review. Adds the explicit build run/artifact-bytes fields rather than treating a log hash as an artifact hash. Does not claim the existing verifier automatically checks the new field. No build or acceptance executed; source/required-field and whitespace review only.\n\nG18: build template ready; existing profile/verifier work reused; actual build evidence and approval pending. Separate branch from main 68f89ca. Docs only, no production SQL/data, merge, #359/candidate edits, Ready label or message to John.",
+  "historical_test_claims": [
+    "Adds one short docs/audit template linking exact executed SHA, build run/attempt, immutable artifact ID, SHA-256 of downloaded artifact bytes, separate original-log hash, tester/checker and named approval/signature/date. Actual result stays NOT EXECUTED; all operational fields and approvals stay blank."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41957535730,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41957535730",
+      "head_sha": "694ef5c4243072c8a19e5a7e9bb9e85fd09d95e9",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

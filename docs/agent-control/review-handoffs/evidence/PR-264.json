@@ -1,0 +1,30 @@
+{
+  "number": 264,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/264",
+  "title": "AW: document JNR transfer plan and fake-only dry run",
+  "branch": "codex/aw-data-load",
+  "observed_head": "e26fd743e5145f5d9ee56878cc3733d88d147bdf",
+  "base_sha": "3593615eb34c2dd66b152ca3eaca227bd8475f5f",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:14Z",
+  "files": [
+    "tests/GO-LIVE-DATA-LOAD.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds tests/GO-LIVE-DATA-LOAD.md with guarded customer/open-job/PO/invoice/payment transfer steps, private source checksums, report-only dry-run command, exception handling, reconciliation table, repeat-run and other-company checks. Explicitly holds absent #247 release packaging 140-143.\n\nAssumption: operator uses the reviewed importer at 3593615 with separately approved database support. No live-write command, credentials or real export data included. Executed fake-fixture importer/jobs/decisions suites: 83 passed, zero skipped or failed. Dry-run creates report files only. No SQL, write rehearsal, deployment or merge executed.",
+  "historical_test_claims": [
+    "Adds tests/GO-LIVE-DATA-LOAD.md with guarded customer/open-job/PO/invoice/payment transfer steps, private source checksums, report-only dry-run command, exception handling, reconciliation table, repeat-run and other-company checks. Explicitly holds absent #247 release packaging 140-143.",
+    "Assumption: operator uses the reviewed importer at 3593615 with separately approved database support. No live-write command, credentials or real export data included. Executed fake-fixture importer/jobs/decisions suites: 83 passed, zero skipped or failed. Dry-run creates report files only. No SQL, write rehearsal, deployment or merge executed."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41801123173,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41801123173",
+      "head_sha": "e26fd743e5145f5d9ee56878cc3733d88d147bdf",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

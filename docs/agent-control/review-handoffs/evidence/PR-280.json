@@ -1,0 +1,51 @@
+{
+  "number": 280,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/280",
+  "title": "CI: exact-head branch audit and failed-command release refusals",
+  "branch": "codex/ci-branch-checks",
+  "observed_head": "f4eacee2236e65e52fdccbdf5cf8f8045fd95d80",
+  "base_sha": "4bb59c0ecfda0a545ec7221ef569dcc1184418db",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:12Z",
+  "files": [
+    "package.json",
+    "scripts/release-gate/check.mjs",
+    "scripts/release-gate/policy.json",
+    "tests/CODEX-AUDIT-PARTIAL.json",
+    "tests/CODEX-AUDIT-PARTIAL.md",
+    "tests/GO-LIVE-DB-RUNBOOK.md",
+    "tests/GO-NO-GO-EVIDENCE.md",
+    "tests/RELEASE-GATE.md",
+    "tests/REVIEW-PACKETS-NEXT.md",
+    "tests/unit/release-gate.test.ts",
+    "tests/validation/COVERAGE-GAPS.md",
+    "tests/validation/CURRENT-RESULTS.md",
+    "tests/validation/IQ.md",
+    "tests/validation/OQ.md",
+    "tests/validation/OUTSTANDING-CHECKS.md",
+    "tests/validation/PQ.md",
+    "tests/validation/README.md",
+    "tests/validation/RISK-ASSESSMENT.md",
+    "tests/validation/TRACEABILITY.md",
+    "tests/validation/URS.md",
+    "tests/validation/check-pack.mjs",
+    "tests/validation/manifest.json"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "CI STOPPED by Rhys budget priority. Head f4eacee2236e65e52fdccbdf5cf8f8045fd95d80. Completed52/61 frozen unit/typecheck heads; remaining heads and final whole suite NOT TESTED. All61 explicit app/components/lib lint runs completed,0errors3warnings each. Exact partial results: tests/CODEX-AUDIT-PARTIAL.md and .json. Do not resume without reprioritisation.\n\nFindings: historical missing-jsdom collection failure despite5013passed assertions; TS2559 ProcessEnv/Environment helper error; costing skips472 and two wording branches412each, no waivers. Held branches unchanged. New gate has100focused cases passing, keeps prior tests, checks actual exits/unhandled errors and explicitly requires the OperationsPack,18CW checks and five wipe DB proof groups. npm lint now names files. Typecheck/changedlint/pack checks pass. Final full suite deliberately not rerun.\n\nFollow-up priority drafts: CJ#281, CG/CK#282, CH#283, CL#284. No SQL applied, no real data, no merge/deploy/Ready. Software NOT VALIDATED, actual DB/browser/backup/wipe/import/OperationsPack/validation evidence remains blocked. Assumption: strict conservative evidence policy, review-only stack.\n\n- [x] Partial findings saved; tested safety corrections\n- [ ] Full audit stopped52/61, final whole suite unrun\n- [ ] Actual same-head runtime evidence and independent decisions\n",
+  "historical_test_claims": [
+    "CI STOPPED by Rhys budget priority. Head f4eacee2236e65e52fdccbdf5cf8f8045fd95d80. Completed52/61 frozen unit/typecheck heads; remaining heads and final whole suite NOT TESTED. All61 explicit app/components/lib lint runs completed,0errors3warnings each. Exact partial results: tests/CODEX-AUDIT-PARTIAL.md and .json. Do not resume without reprioritisation.",
+    "Findings: historical missing-jsdom collection failure despite5013passed assertions; TS2559 ProcessEnv/Environment helper error; costing skips472 and two wording branches412each, no waivers. Held branches unchanged. New gate has100focused cases passing, keeps prior tests, checks actual exits/unhandled errors and explicitly requires the OperationsPack,18CW checks and five wipe DB proof groups. npm lint now names files. Typecheck/changedlint/pack checks pass. Final full suite deliberately not rerun."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41821065069,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41821065069",
+      "head_sha": "f4eacee2236e65e52fdccbdf5cf8f8045fd95d80",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

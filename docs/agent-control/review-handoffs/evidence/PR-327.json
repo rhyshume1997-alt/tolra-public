@@ -1,0 +1,29 @@
+{
+  "number": 327,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/327",
+  "title": "JASON-2FA: Jason authenticator setup",
+  "branch": "codex/b4-q4-jason-2fa",
+  "observed_head": "b47ecb991f7c97c58ebb7cbc29c05fa53725e067",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:07Z",
+  "files": [
+    "docs/runbooks/JASON-2FA-AUTHENTICATOR.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds jason authenticator setup for JASON-2FA, with expected results, firm stop rules and a handover note. All deliverables are under docs/signoff/ or docs/runbooks/.\n\nValidation: Documentation checks passed (staged whitespace check); source/expected-result/stop-rule review completed. No production operations performed.\n\nOperational steps, signatures and live evidence remain NOT RUN / unsigned. Related draft sheets must enter the reviewed cutover pack before use. No new functionality, main merge, production SQL, deployment or Ready label.\n",
+  "historical_test_claims": [
+    "Validation: Documentation checks passed (staged whitespace check); source/expected-result/stop-rule review completed. No production operations performed."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41844748440,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41844748440",
+      "head_sha": "b47ecb991f7c97c58ebb7cbc29c05fa53725e067",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

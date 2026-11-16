@@ -1,0 +1,57 @@
+{
+  "number": 213,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/213",
+  "title": "Resolve the privacy-clean wording base conflict with main",
+  "branch": "codex/plain-english-main",
+  "observed_head": "09dc47b23b65cb6b13028c958231a129820bf697",
+  "base_sha": "23ca102d25b49bc3e37337ba251a01daa2096300",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:17Z",
+  "files": [
+    "app/page.tsx",
+    "app/privacy/page.tsx",
+    "components/marketing/bracket-t.tsx",
+    "components/marketing/cta.tsx",
+    "components/marketing/feature-figure.tsx",
+    "components/marketing/fonts.ts",
+    "components/marketing/glass-mark.tsx",
+    "components/marketing/job-flow.tsx",
+    "components/marketing/marketing.css",
+    "components/marketing/sheet.tsx",
+    "components/marketing/site-footer.tsx",
+    "components/marketing/site-header.tsx",
+    "components/ui/ink-orbit-features.tsx",
+    "components/ui/liquid-glass-logo-reveal.tsx",
+    "lib/marketing.ts",
+    "lib/receivables.ts",
+    "package-lock.json",
+    "package.json",
+    "tests/MANUAL-CHECKS.md",
+    "tests/stubs/next-font-google.ts",
+    "tests/unit/chase-settings-ui.test.ts",
+    "tests/unit/marketing-home.test.ts",
+    "tests/unit/money-calendar-edges.test.ts",
+    "tests/unit/money-receivables-edge.test.ts",
+    "tests/unit/money-receivables-more.test.ts",
+    "tests/unit/receivables-money-extra.test.ts",
+    "tests/unit/sliq-import-edge-cases.test.ts",
+    "tests/unit/sliq-risk-guards.test.ts",
+    "vitest.config.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Resolve the shared plain-English base's chase settings label conflict with main. Start from the five-file privacy cleanup (#206), merge current main, and retain the reviewed Days before or after due date label. No behavior or assertions are changed to settle the conflict.\n\nBase: codex/plain-english-privacy. This follows #206 and provides a clean shared base for the older wording/costing descendants (#139/#140/#145/#166/#169 and their mixed predecessors). Descendants must incorporate the base update; their old heads are not changed by this PR. No docs diff and no SQL applied.\n\nValidation: focused plain-English and costing UI tests, targeted ESLint, whitespace checks and merge-tree comparison with main 787ba18. Live browser/database tests and production build were not run.\n",
+  "historical_test_claims": [
+    "Validation: focused plain-English and costing UI tests, targeted ESLint, whitespace checks and merge-tree comparison with main 787ba18. Live browser/database tests and production build were not run."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41646855412,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41646855412",
+      "head_sha": "09dc47b23b65cb6b13028c958231a129820bf697",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

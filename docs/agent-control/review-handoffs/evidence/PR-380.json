@@ -1,0 +1,36 @@
+{
+  "number": 380,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/380",
+  "title": "G06: close the missing pre-counter issuance test case",
+  "branch": "codex/g06-before-counter-test",
+  "observed_head": "aec4d2ff38016b68f931a2517d65feafb380ff5d",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:01Z",
+  "files": [
+    "tests/reviews/g06-before-counter/README.md",
+    "tests/reviews/g06-before-counter/disposable.ts",
+    "tests/reviews/g06-before-counter/evidence/archive.json",
+    "tests/reviews/g06-before-counter/evidence/committed-run.tar.gz",
+    "tests/reviews/g06-before-counter/hold.test.ts",
+    "tests/reviews/g06-before-counter/vitest.config.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Fills the explicit before-counter issue attempt absent from #373 without duplicating its actual setter/double-run/concurrency/undo-after-use tests. Three committed-code tests passed: blank and typed number attempts refuse with dln_numbering_not_set before the allocator sentinel is reached; both companies' snapshots stay unchanged; the other company remains held after only fixture JNR's hold is lifted.\n\nLoads exact hold/guard slices from public release 147 at pinned 31f965e7 with git show; no candidate checkout or #359 edits. Creates its own random, nonce-labelled network-isolated PostgreSQL container; verifies container/image/label/ports/database before SQL; accepts no DB URL. Synthetic records only. Code tested: 412fd82; original output/SQL hash/commit/environment/time/exit records retained in tests/reviews/g06-before-counter/evidence. Scoped lint passed.\n\nG06: review done, two existing conditional SQL-role findings from #373 remain open; no new finding in these three narrow checks. Full final-candidate/browser/RLS/audit/allocator acceptance remains unverified. No source fix or security expectation change.\n\nSeparate branch from main 68f89ca. Tests/docs only. No merge, production SQL, real data, Ready label, or message to John.",
+  "historical_test_claims": [
+    "Fills the explicit before-counter issue attempt absent from #373 without duplicating its actual setter/double-run/concurrency/undo-after-use tests. Three committed-code tests passed: blank and typed number attempts refuse with dln_numbering_not_set before the allocator sentinel is reached; both companies' snapshots stay unchanged; the other company remains held after only fixture JNR's hold is lifted.",
+    "Loads exact hold/guard slices from public release 147 at pinned 31f965e7 with git show; no candidate checkout or #359 edits. Creates its own random, nonce-labelled network-isolated PostgreSQL container; verifies container/image/label/ports/database before SQL; accepts no DB URL. Synthetic records only. Code tested: 412fd82; original output/SQL hash/commit/environment/time/exit records retained in tests/reviews/g06-before-counter/evidence. Scoped lint passed.",
+    "Separate branch from main 68f89ca. Tests/docs only. No merge, production SQL, real data, Ready label, or message to John."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41957300060,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41957300060",
+      "head_sha": "aec4d2ff38016b68f931a2517d65feafb380ff5d",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

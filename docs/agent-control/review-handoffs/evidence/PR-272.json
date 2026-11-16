@@ -1,0 +1,60 @@
+{
+  "number": 272,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/272",
+  "title": "CA: required SliQ release packages",
+  "branch": "codex/ca-sliq-releases",
+  "observed_head": "ef3e76e3e6c0fdbc012a4f59bd55dddd2f26920b",
+  "base_sha": "41c685c416305637d86b580324fff9e6cda037ff",
+  "github_state": "closed (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:13Z",
+  "files": [
+    "scripts/check-cutover-imports.mjs",
+    "supabase/cutover-import-plan.json",
+    "supabase/release/140_import_source_ref.release.sql",
+    "supabase/release/140_import_source_ref.rollback.sql",
+    "supabase/release/141_opening_wip.release.sql",
+    "supabase/release/141_opening_wip.rollback.sql",
+    "supabase/release/sliq-cutover.checksums.json",
+    "supabase/release/sources/140_import_source_ref.sql",
+    "supabase/release/sources/141_opening_wip.sql",
+    "supabase/verify/import_source_ref_140.sql",
+    "supabase/verify/opening_wip_141.sql",
+    "supabase/verify/release_preflight.sql",
+    "tests/SLIQ-CUTOVER-RELEASES.md",
+    "tests/db/sliq-import-company-isolation.test.ts",
+    "tests/support/db-release-sequencer.ts",
+    "tests/support/sliq-cutover-release-fixture.ts",
+    "tests/unit/cutover-import-release.test.ts",
+    "tests/unit/go-live-candidate-order.test.ts",
+    "tests/unit/post-144-release-fixture.test.ts"
+  ],
+  "migration_verification_rollback_paths": [
+    "supabase/release/140_import_source_ref.release.sql",
+    "supabase/release/140_import_source_ref.rollback.sql",
+    "supabase/release/141_opening_wip.release.sql",
+    "supabase/release/141_opening_wip.rollback.sql",
+    "supabase/release/sliq-cutover.checksums.json",
+    "supabase/release/sources/140_import_source_ref.sql",
+    "supabase/release/sources/141_opening_wip.sql",
+    "supabase/verify/import_source_ref_140.sql",
+    "supabase/verify/opening_wip_141.sql",
+    "supabase/verify/release_preflight.sql"
+  ],
+  "public_pr_body": "CA packages the required JNR SliQ 140/141 releases on current #247 head 41c685c416305637d86b580324fff9e6cda037ff. The cutover plan is explicitly 138, 140, 141, 144, 145, 146. Copy the held owner's implementation/verification bodies and pin every input with SHA-256; add verified-138 prerequisite for 140, verified-140 prerequisite for 141, exact preflight markers and a checksum/preflight checker whose unit tests fail if either marker is removed.\n\n140 rollback retains its existing imported-reference refusal. The copied 141 rollback now additionally refuses any opening WIP rows; both rollback packages verify the reviewed object shape first. No data may be removed to force rollback. Source implementation branch claude/sliq-import at 3593615eb34c2dd66b152ca3eaca227bd8475f5f is unchanged. This is Rhys's explicitly assigned CA integration, not a takeover of that held job. Ownership/handover updates are in separate docs-only #271, so this code PR has no docs/ files.\n\nAssumption: keep frozen numbered baseline/catalogue tests unchanged. The identity-guarded disposable SQL proof is sequenced after every baseline file and before the original 145/146 proofs, and prepares imports there. That test chronology already has baseline 144; it is not proof of the separate actual cutover order, which must be rehearsed independently. No existing assertion is removed; two fixture ordering/classification assumptions were expanded to preserve every old proof while adding the new one.\n\nValidation: full unit suite 5,457 passed, 0 failed/skipped; 19 focused release/ordering checks passed; TypeScript, changed-file lint, checksum and diff checks passed. New real two-company role/write/link/source-ref SQL proof is defined but NOT TESTED yet. The local empty backend's default ECR image pull was forbidden; the pinned official CLI's supported GHCR mirror reached the image store but failed with no space left on device before any database started; no real SQL proof ran. No SQL applied to real data. No Ready label, merge, main push, deployment or secrets. This is not release/SQL/go-live approval and does not claim reviewer SAFE.\n\n- [x] CA: reviewable pinned release package and company-isolation proof added.\n- [ ] Next: real disposable ordered install/verify/rollback/isolation evidence, exact CI results and independent reviewer decision.\n",
+  "historical_test_claims": [
+    "CA packages the required JNR SliQ 140/141 releases on current #247 head 41c685c416305637d86b580324fff9e6cda037ff. The cutover plan is explicitly 138, 140, 141, 144, 145, 146. Copy the held owner's implementation/verification bodies and pin every input with SHA-256; add verified-138 prerequisite for 140, verified-140 prerequisite for 141, exact preflight markers and a checksum/preflight checker whose unit tests fail if either marker is removed.",
+    "Assumption: keep frozen numbered baseline/catalogue tests unchanged. The identity-guarded disposable SQL proof is sequenced after every baseline file and before the original 145/146 proofs, and prepares imports there. That test chronology already has baseline 144; it is not proof of the separate actual cutover order, which must be rehearsed independently. No existing assertion is removed; two fixture ordering/classification assumptions were expanded to preserve every old proof while adding the new one.",
+    "Validation: full unit suite 5,457 passed, 0 failed/skipped; 19 focused release/ordering checks passed; TypeScript, changed-file lint, checksum and diff checks passed. New real two-company role/write/link/source-ref SQL proof is defined but NOT TESTED yet. The local empty backend's default ECR image pull was forbidden; the pinned official CLI's supported GHCR mirror reached the image store but failed with no space left on device before any database started; no real SQL proof ran. No SQL applied to real data. No Ready label, merge, main push, deployment or secrets. This is not release/SQL/go-live approval and does not claim reviewer SAFE."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41809614895,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41809614895",
+      "head_sha": "ef3e76e3e6c0fdbc012a4f59bd55dddd2f26920b",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

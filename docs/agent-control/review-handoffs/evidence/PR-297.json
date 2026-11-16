@@ -1,0 +1,38 @@
+{
+  "number": 297,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/297",
+  "title": "S1\u2013S4: cutover proof plan, reverse tenant RLS and security input cases",
+  "branch": "codex/b4-security-proofs",
+  "observed_head": "b9406d136f224395a4e6f2d15f82093f1ba2f545",
+  "base_sha": "4765566e14c297da258fd440745af161b234b8bd",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:10Z",
+  "files": [
+    "tests/HANDOVER-BUILDER-4-S1-S4.md",
+    "tests/S1-S4-SECURITY-PROOF-PLAN.md",
+    "tests/db/s1-reverse-tenant-proof.test.ts",
+    "tests/evidence/builder-4-security/security-db-attempt.log",
+    "tests/evidence/builder-4-security/security-final-unit.log",
+    "tests/evidence/builder-4-security/security-lint.log",
+    "tests/evidence/builder-4-security/security-s3-regressions.log",
+    "tests/evidence/builder-4-security/security-typecheck.log",
+    "tests/unit/s3-s4-cutover-inputs.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Extends #84 on a separate branch: retains full role matrices/forward proof, adds the reverse company RLS direction using the real original SQL and 15 actual-helper header/CSRF input cases. Includes exact commands and an evidence/stop plan.\n\nValidation: 207 scoped offline checks pass; typecheck and changed-test lint pass. Actual DB attempt: 2 failed / 0 skipped, both missing TEST_SUPABASE_URL before DB access; no SQL executed. DB, live cookie/browser and actual integrated build/bundle proofs remain NOT TESTED. Unit/source checks are not release approval.\n\nCommitted job handover included. Draft only, no Ready label, production SQL, main merge or deployment. Builder 3 CM/CN/CO/CP/CQ untouched. Build/test deadline 6 November; conditional go-live 12 November 2026.\n",
+  "historical_test_claims": [
+    "Validation: 207 scoped offline checks pass; typecheck and changed-test lint pass. Actual DB attempt: 2 failed / 0 skipped, both missing TEST_SUPABASE_URL before DB access; no SQL executed. DB, live cookie/browser and actual integrated build/bundle proofs remain NOT TESTED. Unit/source checks are not release approval.",
+    "Committed job handover included. Draft only, no Ready label, production SQL, main merge or deployment. Builder 3 CM/CN/CO/CP/CQ untouched. Build/test deadline 6 November; conditional go-live 12 November 2026."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41831204728,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41831204728",
+      "head_sha": "b9406d136f224395a4e6f2d15f82093f1ba2f545",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

@@ -1,0 +1,27 @@
+{
+  "number": 267,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/267",
+  "title": "AY: database day runbook with backup and stop rules",
+  "branch": "codex/ay-db-runbook",
+  "observed_head": "9795ee1a8f5985dcaffb7823f9d55ded8698892d",
+  "base_sha": "41c685c416305637d86b580324fff9e6cda037ff",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:14Z",
+  "files": [
+    "tests/GO-LIVE-DB-RUNBOOK.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds numbered operator commands for consistent encrypted backup/dump, protected empty-target restore and full fingerprint/file comparisons, preflight, 138 then 144-146, per-phase verification and separately approved reverse rollback. Each step has a stop rule. Explicitly holds absent 140-143 and separate chase atomic release. Retains destructive rollback and 146 no-reinstall cautions.\n\nAssumptions: named baseline through 137, private credentials and separately approved rehearsal/live execution. No SQL or commands executed here. Checked shell syntax, referenced files, 12 numbered steps and diff. Runtime remains NOT TESTED.",
+  "historical_test_claims": [],
+  "workflow_runs": [
+    {
+      "id": 41802000147,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41802000147",
+      "head_sha": "9795ee1a8f5985dcaffb7823f9d55ded8698892d",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

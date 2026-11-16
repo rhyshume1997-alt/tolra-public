@@ -1,0 +1,29 @@
+{
+  "number": 335,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/335",
+  "title": "I1: Map ISO 9001 clauses to Tolra support and JNR duties",
+  "branch": "codex/b5-i1-iso9001",
+  "observed_head": "b2948a8a64086d2e6b6244633f7e0eb3a3406a46",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:06Z",
+  "files": [
+    "docs/iso9001/ISO-9001-CLAUSE-MAP.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Maps clauses 4\u201310 to pinned Tolra source/tests and separate incident, rollback and validation drafts. Marks company duties and feature limits plainly. Software/documents cannot certify JNR; JNR is audited.\n\n- [x] Source review and whitespace check; documentation only.\n- [ ] John/ISO adviser confirms scope and actual company evidence.\n\nBuilder 5 claim claims/I1. One independent job draft based on main 68f89ca7. Builders 3 and 4 untouched. No runtime validation, main merge, Ready label, production SQL or deployment. Handover will be in docs/iso9001/BUILDER-5-HANDOVER.md on I7.",
+  "historical_test_claims": [
+    "Maps clauses 4\u201310 to pinned Tolra source/tests and separate incident, rollback and validation drafts. Marks company duties and feature limits plainly. Software/documents cannot certify JNR; JNR is audited."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41844938728,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41844938728",
+      "head_sha": "b2948a8a64086d2e6b6244633f7e0eb3a3406a46",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

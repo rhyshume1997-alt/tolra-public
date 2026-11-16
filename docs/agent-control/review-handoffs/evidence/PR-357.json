@@ -1,0 +1,27 @@
+{
+  "number": 357,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/357",
+  "title": "L13 / C11: migration 143 rounding code evidence and limits",
+  "branch": "codex/b6-l13-c11-rounding-evidence",
+  "observed_head": "25c0c9a8a2ff266a8db1d59ea5a8061ad7dc429a",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:03Z",
+  "files": [
+    "docs/handover/C11-143-ROUNDING-CODE-EVIDENCE.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds docs/handover/C11-143-ROUNDING-CODE-EVIDENCE.md with immutable file/line citations: 143 only defines three costing tables/stamp trigger and scoped policies/triggers, not existing financial rounding functions or the protected costing algorithm. Shared lib/money.ts blob is byte-identical on the reviewed 143 branch and pinned candidate; 143 is deferred/absent from the six-release candidate.\n\nAvoids an unsupported stronger claim: enabling/changing rates, percentage precision and input pence conversion can change inputs and rounded prices, while the rounding algorithms remain unchanged. Separates ordinary half-away pence from Python-compatible binary64 tie-even costing and the quote handoff; lists actual catalog/parity/golden/runtime checks still required.\n\nSource objects/immutable links/blob identity and exact migration body in release wrapper checked; whitespace passes. Handover embedded. No app/SQL/golden changes or claimed engine/DB pass, main merge, production SQL, deployment or Ready label.",
+  "historical_test_claims": [],
+  "workflow_runs": [
+    {
+      "id": 41868629193,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41868629193",
+      "head_sha": "25c0c9a8a2ff266a8db1d59ea5a8061ad7dc429a",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

@@ -1,0 +1,34 @@
+{
+  "number": 289,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/289",
+  "title": "CQ: correct N1 day-view coverage and evidence/reviewer packet mistakes",
+  "branch": "codex/cq-pr-corrections",
+  "observed_head": "bcf29b1589dfe9a15a593c583984e6c457690b1d",
+  "base_sha": "d7d6ff9dbd915becdc096d1eb365e4a73b4ae21d",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:11Z",
+  "files": [
+    "tests/CQ-REVIEW-281-284.md",
+    "tests/GO-NO-GO-EVIDENCE.md",
+    "tests/REVIEW-PACKETS-NEXT.md",
+    "tests/e2e/acceptance/n1-paid-breaks.spec.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Re-read the 11 changed files in #281\u2013#284 once against the immediate real source/manual/money files. Found N1 omitted the Hours/day view required by G04.2: it now also checks planned daily totals, the actual daily Paid tile/reload and paid/unpaid explanation, retaining weekly/two-company assertions.\n\nCorrects full browser proof paths and stale backend next-action wording in the go/no-go register. Corrects twelve misleading reviewer-check paragraphs produced by earlier keyword grouping (CI/packet/runbook/handover PRs had wipe-only directions), and refreshes #281\u2013#284 source heads and actual CI conclusions. Preserves the historical 148-packet inventory; no new broad inventory/audit. CL arithmetic tests/fixtures and protected costing engine/rates/60 answers are unchanged.\n\nExact CQ head: bcf29b1589dfe9a15a593c583984e6c457690b1d. Source heads and findings are in tests/CQ-REVIEW-281-284.md. Checks: changed N1 ESLint and npx tsc --noEmit pass; three acceptance specs collect. Runtime command REVIEWER_REQUIRE_DATABASE=1 npx playwright test tests/e2e/acceptance FAILS in setup with TEST_SUPABASE_URL unset; no browser assertion or SQL ran. 22 N2/N3 rows/30 exact proof titles and all 148 packet fields checked. Local reconstructed-source/shared-dependency limits remain explicit.\n\nCQ targets #284 and leaves original #281\u2013#284 branches unchanged for review. No app logic, main merge, production SQL, Ready label, full suite or broad audit. NO GO and untested runtime conditions remain.\n\n- [x] One read, concrete corrections, type/lint/collection and mapping checks\n- [ ] Actual disposable-backend browser/parity evidence and independent review",
+  "historical_test_claims": [
+    "Corrects full browser proof paths and stale backend next-action wording in the go/no-go register. Corrects twelve misleading reviewer-check paragraphs produced by earlier keyword grouping (CI/packet/runbook/handover PRs had wipe-only directions), and refreshes #281\u2013#284 source heads and actual CI conclusions. Preserves the historical 148-packet inventory; no new broad inventory/audit. CL arithmetic tests/fixtures and protected costing engine/rates/60 answers are unchanged.",
+    "Exact CQ head: bcf29b1589dfe9a15a593c583984e6c457690b1d. Source heads and findings are in tests/CQ-REVIEW-281-284.md. Checks: changed N1 ESLint and npx tsc --noEmit pass; three acceptance specs collect. Runtime command REVIEWER_REQUIRE_DATABASE=1 npx playwright test tests/e2e/acceptance FAILS in setup with TEST_SUPABASE_URL unset; no browser assertion or SQL ran. 22 N2/N3 rows/30 exact proof titles and all 148 packet fields checked. Local reconstructed-source/shared-dependency limits remain explicit.",
+    "- [x] One read, concrete corrections, type/lint/collection and mapping checks"
+  ],
+  "workflow_runs": [
+    {
+      "id": 41830358899,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41830358899",
+      "head_sha": "bcf29b1589dfe9a15a593c583984e6c457690b1d",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

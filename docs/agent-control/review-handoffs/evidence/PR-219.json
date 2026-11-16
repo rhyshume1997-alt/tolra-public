@@ -1,0 +1,35 @@
+{
+  "number": 219,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/219",
+  "title": "Add the company AI switch to Integrations",
+  "branch": "codex/ai-integration-switch",
+  "observed_head": "02c983894e867d43c0f7eb0edf45850d72ffc3fa",
+  "base_sha": "717ac725f832023a1c3c64bda91f4e734dc360fe",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:16Z",
+  "files": [
+    "app/(dashboard)/admin/integrations/page.tsx",
+    "components/ai-helper/settings-card.tsx",
+    "components/ai-helper/use-ai-helper-status.ts",
+    "components/integrations/ai-connection-card.tsx",
+    "tests/unit/ai-company-setting-isolation.test.ts",
+    "tests/unit/ai-company-status.test.ts",
+    "tests/unit/ai-integration-card.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Add the existing company's AI on/off controls alongside Xero on Admin > Integrations, with a link from Settings. Reuse AiMasterCard and the existing authenticated settings endpoint; no second switch or SQL. Keep key and monthly spending controls in the AI section.\n\nScope AI status to the current person/company and ignore late responses from a previous company, so switching companies cannot display or overwrite the next company's AI state.\n\nClaim: N2. Checked main and open PRs: AI controls existed on /ai-helper, but not Integrations.\n\nValidation: 18 unit tests passed, including a real React DOM company-switch/late-response test and existing master-switch tests. Typecheck and targeted lint passed. Live browser/database/provider tests not run; no SQL applied. No docs files changed.\n",
+  "historical_test_claims": [
+    "Validation: 18 unit tests passed, including a real React DOM company-switch/late-response test and existing master-switch tests. Typecheck and targeted lint passed. Live browser/database/provider tests not run; no SQL applied. No docs files changed."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41691000264,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41691000264",
+      "head_sha": "02c983894e867d43c0f7eb0edf45850d72ffc3fa",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

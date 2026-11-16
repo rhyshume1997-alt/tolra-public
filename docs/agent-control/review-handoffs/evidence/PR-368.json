@@ -1,0 +1,45 @@
+{
+  "number": 368,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/368",
+  "title": "N3: Public synthetic SliQ rehearsal, nine checks and counts-only artifacts",
+  "branch": "codex/b5-n3-sliq-rehearsal",
+  "observed_head": "0b0fee32d6153a24e7b32c4bb79c08c184df26c8",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:02Z",
+  "files": [
+    ".github/workflows/n3-sliq-rehearsal.yml",
+    "scripts/n3/counts-reporter.mjs",
+    "scripts/n3/gate.mjs",
+    "scripts/n3/preprocess.d.mts",
+    "scripts/n3/preprocess.mjs",
+    "scripts/n3/run-rehearsal.sh",
+    "tests/N3-SLIQ-REHEARSAL.md",
+    "tests/db/n3-sliq-preprocess.test.ts",
+    "vitest.n3.config.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Uses a freshly written public synthetic rehearsal copy under scripts/n3/. No private checkout, private-source secret dependency or external module override. This exercises the public candidate app importer, not private-tool parity.\n\n- [x] Public rehearsal-copy header; no private source in this run.\n- [x] Counts/check-ID-only reporter and results.json-only upload; no log or stack-trace artifacts.\n- [x] N3-09 p_dry_run=true with snapshot equality; gate requires nine named passes and zero skips/todos/errors.\n- [x] Public base commit check remains 9c3f5c6cf51cfb3c41b1fe23fe532b5ddb5254a8.\n- [ ] Assess actual database proof after the authorised CI run. This revision was inspected and whitespace-checked, not executed locally.\n\nTEMPORARY: push trigger limited exactly to codex/b5-n3-sliq-rehearsal for registration. REMOVE after coordinator confirms registration. Rhys explicitly approved publication and the automatic push CI run in chat. No manual workflow dispatch performed.\n\nExact manual command for later use:\n```sh\ngh workflow run n3-sliq-rehearsal.yml --repo rhyshume1997-alt/tolra-public --ref codex/b5-n3-sliq-rehearsal\n```\n\nHandover: tests/N3-SLIQ-REHEARSAL.md. Synthetic business-record snapshots include both tenants, counters and import keys; existing audit/import bookkeeping is excluded. No production importer changes, main merge, production SQL, real data or message to John. Draft only; no Ready label.",
+  "historical_test_claims": [
+    "- [ ] Assess actual database proof after the authorised CI run. This revision was inspected and whitespace-checked, not executed locally.",
+    "Handover: tests/N3-SLIQ-REHEARSAL.md. Synthetic business-record snapshots include both tenants, counters and import keys; existing audit/import bookkeeping is excluded. No production importer changes, main merge, production SQL, real data or message to John. Draft only; no Ready label."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41912104903,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41912104903",
+      "head_sha": "0b0fee32d6153a24e7b32c4bb79c08c184df26c8",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "id": 41912097930,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41912097930",
+      "head_sha": "0b0fee32d6153a24e7b32c4bb79c08c184df26c8",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

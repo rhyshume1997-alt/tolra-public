@@ -1,0 +1,45 @@
+{
+  "number": 377,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/377",
+  "title": "G18: offline provenance integrity gate with adversarial rejection tests",
+  "branch": "codex/b5-g18-provenance-review",
+  "observed_head": "b6478066ae6ee00052586af503dad998dd2b461e",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:02Z",
+  "files": [
+    "scripts/reviewer-evidence/verify-provenance.mjs",
+    "tests/reviews/b5-g18/B5-G18-REVIEW.md",
+    "tests/reviews/b5-g18/evidence-sha256.json",
+    "tests/reviews/b5-g18/evidence/2026-11-04T21-51-28.690826+00-00-provenance-gate-2f527a/original.log",
+    "tests/reviews/b5-g18/evidence/2026-11-04T21-51-28.690826+00-00-provenance-gate-2f527a/run.json",
+    "tests/reviews/b5-g18/evidence/2026-11-04T21-51-28.690826+00-00-provenance-gate-2f527a/sql-inputs.json",
+    "tests/reviews/b5-g18/evidence/2026-11-04T21-52-14.456816+00-00-provenance-gate-named-a33e52/original.log",
+    "tests/reviews/b5-g18/evidence/2026-11-04T21-52-14.456816+00-00-provenance-gate-named-a33e52/run.json",
+    "tests/reviews/b5-g18/evidence/2026-11-04T21-52-14.456816+00-00-provenance-gate-named-a33e52/sql-inputs.json",
+    "tests/reviews/b5-g18/evidence/2026-11-04T21-57-40.488542+00-00-committed-provenance-443d3a/original.log",
+    "tests/reviews/b5-g18/evidence/2026-11-04T21-57-40.488542+00-00-committed-provenance-443d3a/run.json",
+    "tests/reviews/b5-g18/evidence/2026-11-04T21-57-40.488542+00-00-committed-provenance-443d3a/sql-inputs.json",
+    "tests/scripts/b5-provenance.test.mjs"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds an offline manifest verifier linking artifact/profile to exact checkout/executed SHA, exit, SQL hash, UTC times, environment, complete counts, identity fields and retained log bytes/hash. Requires all prod/realistic/x100 profiles to be explicitly synthetic. Fourteen named adversarial tests pass on committed reviewer code 9d580c6d; preserves the earlier file-level reporter output rather than miscounting it.\n\nRefuses wrong heads, nonzero exit, absent profile/ID/log/hash, empty/skipped results, localhost-only identity, real-data flag and reversed times. Does not execute commands or connect to databases. Metadata assertions and hashes cannot establish truth by themselves: independent execution/creation journals remain required.\n\nActual Code artifact map/profiles not supplied and remain NOT VERIFIED. Original run logs, exact commit/environment/UTC/SQL manifest/exit and hashes retained. Handover: tests/reviews/b5-g18/B5-G18-REVIEW.md.\n\n- [x] Separate owned reviewer branch; original failures retained; source/lint/type/whitespace checks scoped in report. Raw logs kept byte-for-byte, including original whitespace.\n- [ ] Independent owner assessment, actual final-candidate runtime evidence and authorised acceptance remain open.\n\nExplicit Rhys overnight allocation. New b5 test/tool/review files only; no Claude-owned source/test edits, #359 branch modification, ISO pack work, Ready label, main merge, production migrations/wipe/import/counter change, deployment, live AI/automated email or message to John. PRs targeting #359\u2019s branch are review follow-ups only; no merge is requested. Production actions remain subject to Rhys\u2019s separate approval.",
+  "historical_test_claims": [
+    "Adds an offline manifest verifier linking artifact/profile to exact checkout/executed SHA, exit, SQL hash, UTC times, environment, complete counts, identity fields and retained log bytes/hash. Requires all prod/realistic/x100 profiles to be explicitly synthetic. Fourteen named adversarial tests pass on committed reviewer code 9d580c6d; preserves the earlier file-level reporter output rather than miscounting it.",
+    "Refuses wrong heads, nonzero exit, absent profile/ID/log/hash, empty/skipped results, localhost-only identity, real-data flag and reversed times. Does not execute commands or connect to databases. Metadata assertions and hashes cannot establish truth by themselves: independent execution/creation journals remain required.",
+    "Actual Code artifact map/profiles not supplied and remain NOT VERIFIED. Original run logs, exact commit/environment/UTC/SQL manifest/exit and hashes retained. Handover: tests/reviews/b5-g18/B5-G18-REVIEW.md.",
+    "- [x] Separate owned reviewer branch; original failures retained; source/lint/type/whitespace checks scoped in report. Raw logs kept byte-for-byte, including original whitespace.",
+    "Explicit Rhys overnight allocation. New b5 test/tool/review files only; no Claude-owned source/test edits, #359 branch modification, ISO pack work, Ready label, main merge, production migrations/wipe/import/counter change, deployment, live AI/automated email or message to John. PRs targeting #359\u2019s branch are review follow-ups only; no merge is requested. Production actions remain subject to Rhys\u2019s separate approval."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41921321433,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41921321433",
+      "head_sha": "b6478066ae6ee00052586af503dad998dd2b461e",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

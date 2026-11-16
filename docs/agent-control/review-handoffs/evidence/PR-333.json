@@ -1,0 +1,31 @@
+{
+  "number": 333,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/333",
+  "title": "DB: Rhys's Friday-to-cutover plan with a stop rule each day",
+  "branch": "codex/db-rhys-cutover-week",
+  "observed_head": "8ca0aac7067bade11de78272f46d4a19aa0dab5f",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:06Z",
+  "files": [
+    "tests/RHYS-CUTOVER-WEEK-PLAN.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds tests/RHYS-CUTOVER-WEEK-PLAN.md: Friday6 backup dump plus full restore-and-compare; Saturday7 scheduled wipe conditional on exact rehearsal/review/separate authority; Monday9 meeting; Tuesday10 and Wednesday11 actual primary/cover admin-code checks; Thursday12 final cutover and opening decision. Each day has Rhys's actions, owners/evidence and STOP rule.\n\nPreserves Friday build/test deadline, frozen version/affected retests, source versus target writer boundaries, fresh Thursday recovery checkpoint/final exports (Friday's dump is not current), exact138/140/141/144/145/146 verified order, no blind repeat of Saturday clearing, signed scope and no146 reinstall after rollback. Keeps builder4's existing sign-off masters and links the new supporting sheets. This plan grants no operation/SQL authority.\n\nChecks: all six dates/weekdays and evidence paths reviewed; six explicit stop-rule rows. No actual backup/wipe/MFA/cutover/test execution or signature claimed. No main merge, production SQL, Ready label or new feature. Exact head 8ca0aac7067bade11de78272f46d4a19aa0dab5f.",
+  "historical_test_claims": [
+    "Adds tests/RHYS-CUTOVER-WEEK-PLAN.md: Friday6 backup dump plus full restore-and-compare; Saturday7 scheduled wipe conditional on exact rehearsal/review/separate authority; Monday9 meeting; Tuesday10 and Wednesday11 actual primary/cover admin-code checks; Thursday12 final cutover and opening decision. Each day has Rhys's actions, owners/evidence and STOP rule.",
+    "Preserves Friday build/test deadline, frozen version/affected retests, source versus target writer boundaries, fresh Thursday recovery checkpoint/final exports (Friday's dump is not current), exact138/140/141/144/145/146 verified order, no blind repeat of Saturday clearing, signed scope and no146 reinstall after rollback. Keeps builder4's existing sign-off masters and links the new supporting sheets. This plan grants no operation/SQL authority.",
+    "Checks: all six dates/weekdays and evidence paths reviewed; six explicit stop-rule rows. No actual backup/wipe/MFA/cutover/test execution or signature claimed. No main merge, production SQL, Ready label or new feature. Exact head 8ca0aac7067bade11de78272f46d4a19aa0dab5f."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41844856929,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41844856929",
+      "head_sha": "8ca0aac7067bade11de78272f46d4a19aa0dab5f",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

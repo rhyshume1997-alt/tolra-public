@@ -1,0 +1,48 @@
+{
+  "number": 239,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/239",
+  "title": "Q: Cover ordinary and support access to setup progress",
+  "branch": "codex/q-setup-access-tests",
+  "observed_head": "1226c15f168ae4c77b27412e96d8d2cb06763da5",
+  "base_sha": "38bb1819581ce4127b8fb306edb0b51ebd3f0e3e",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:16Z",
+  "files": [
+    "components/company-setup-guide.tsx",
+    "tests/unit/company-setup-access.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Q found no test for ordinary-user/support access to saved setup progress: the existing DB test covers cross-company admins only. Add eight DB-free tests: real React guide checks office/workshop/viewer, read-only and elevated support, mismatched company, own-admin edits and loss of access on entering support; plus a security contract check for every SELECT/INSERT/UPDATE policy clause in the unapplied proposal.\n\nFour new UI cases failed before the correction. The guide now requires the matching own-company session, active admin role, and explicit non-support/non-read-only state before loading or showing saved progress. SQL/RLS is unchanged and remains the final permission boundary. The contract test checks company/admin/support constraints in all read/write clauses; it does not claim to execute PostgreSQL policies.\n\nBased on combined N #236 (codex/n-company-setup-email-combined). Diff only components/company-setup-guide.tsx and tests/unit/company-setup-access.test.ts. No existing test weakened.\n\nValidation: 12 setup unit tests passed, typecheck and targeted lint passed. Real DB policy checks remain NOT RUN; no SQL applied, browser/live provider checks, deployment, merge or Ready label.\n\n\nQ coverage audit: two previously missing explicit cases were setup ordinary/support access (#239: 12 setup units passed including the new policy/UI cases) and Company B reading A's new-provider status/balance (#240: 9 accounting units passed). Remaining conditions already have tests: chase-approve/chase-approval-ui on #233 passed 48; tolra-ai, ai-mode-key-isolation, tolra-ai-caps, tolra-ai-caps-ui and tolra-ai-controls-ui on #234 passed 43. N's 5,138-test run includes legacy email round-trips, read-only editor behaviour and paid-break/timesheet comparisons. The actual near-limit race is covered by tests/db/tolra-ai-cap-concurrency.test.ts (two independently blocked connections), but was NOT RUN. The existing setup DB test covers cross-company admins; the new role/support contract tests do not claim live PostgreSQL policy execution. No remaining listed condition is wholly without a test; runtime DB/browser/provider proof remains open.\n",
+  "historical_test_claims": [
+    "Q found no test for ordinary-user/support access to saved setup progress: the existing DB test covers cross-company admins only. Add eight DB-free tests: real React guide checks office/workshop/viewer, read-only and elevated support, mismatched company, own-admin edits and loss of access on entering support; plus a security contract check for every SELECT/INSERT/UPDATE policy clause in the unapplied proposal.",
+    "Four new UI cases failed before the correction. The guide now requires the matching own-company session, active admin role, and explicit non-support/non-read-only state before loading or showing saved progress. SQL/RLS is unchanged and remains the final permission boundary. The contract test checks company/admin/support constraints in all read/write clauses; it does not claim to execute PostgreSQL policies.",
+    "Based on combined N #236 (codex/n-company-setup-email-combined). Diff only components/company-setup-guide.tsx and tests/unit/company-setup-access.test.ts. No existing test weakened.",
+    "Validation: 12 setup unit tests passed, typecheck and targeted lint passed. Real DB policy checks remain NOT RUN; no SQL applied, browser/live provider checks, deployment, merge or Ready label.",
+    "Q coverage audit: two previously missing explicit cases were setup ordinary/support access (#239: 12 setup units passed including the new policy/UI cases) and Company B reading A's new-provider status/balance (#240: 9 accounting units passed). Remaining conditions already have tests: chase-approve/chase-approval-ui on #233 passed 48; tolra-ai, ai-mode-key-isolation, tolra-ai-caps, tolra-ai-caps-ui and tolra-ai-controls-ui on #234 passed 43. N's 5,138-test run includes legacy email round-trips, read-only editor behaviour and paid-break/timesheet comparisons. The actual near-limit race is covered by tests/db/tolra-ai-cap-concurrency.test.ts (two independently blocked connections), but was NOT RUN. The existing setup DB test covers cross-company admins; the new role/support contract tests do not claim live PostgreSQL policy execution. No remaining listed condition is wholly without a test; runtime DB/browser/provider proof remains open."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41732861801,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41732861801",
+      "head_sha": "1226c15f168ae4c77b27412e96d8d2cb06763da5",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "id": 41695645972,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41695645972",
+      "head_sha": "1226c15f168ae4c77b27412e96d8d2cb06763da5",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "id": 41680692377,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41680692377",
+      "head_sha": "1226c15f168ae4c77b27412e96d8d2cb06763da5",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

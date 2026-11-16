@@ -1,0 +1,30 @@
+{
+  "number": 358,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/358",
+  "title": "L14 / C15: indirect auth, cache and polling effects of lag fixes",
+  "branch": "codex/b6-l14-c15-lag-effects",
+  "observed_head": "2eb65485de82ba91b9f009422acdb6e2f0976388",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:04Z",
+  "files": [
+    "docs/handover/C15-LAG-INDIRECT-EFFECTS-AND-TESTS.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds docs/handover/C15-LAG-INDIRECT-EFFECTS-AND-TESTS.md, pinned to lag-1 auth, #343 and #344 independently, with effect/source/retest/evidence matrix and blank reviewer pass sheet.\n\nCovers extra auth RPCs and changed early-redirect/throw/slow-call timing, role/company/MFA/cookies, unchanged cache mechanisms, dashboard burst/read-clock/pool effects, 5-minute jobs live-state polling versus full list reload, hidden timer versus in-flight/coalesced/sync traffic, offline scopes, named fields/export/print, shared pagination/cap changes and comparable test-only measurements. #343 remains documentation-only, not an implemented customer/time speedup.\n\nSource/diff/immutable-line and whitespace checks pass. Handover embedded; combined browser/runtime/load/latency proof remains open. No original implementation edits, new scope, main merge, production SQL, deployment or Ready label.",
+  "historical_test_claims": [
+    "Adds docs/handover/C15-LAG-INDIRECT-EFFECTS-AND-TESTS.md, pinned to lag-1 auth, #343 and #344 independently, with effect/source/retest/evidence matrix and blank reviewer pass sheet.",
+    "Covers extra auth RPCs and changed early-redirect/throw/slow-call timing, role/company/MFA/cookies, unchanged cache mechanisms, dashboard burst/read-clock/pool effects, 5-minute jobs live-state polling versus full list reload, hidden timer versus in-flight/coalesced/sync traffic, offline scopes, named fields/export/print, shared pagination/cap changes and comparable test-only measurements. #343 remains documentation-only, not an implemented customer/time speedup."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41868647211,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41868647211",
+      "head_sha": "2eb65485de82ba91b9f009422acdb6e2f0976388",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

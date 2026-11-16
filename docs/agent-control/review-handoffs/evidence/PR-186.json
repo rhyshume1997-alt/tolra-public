@@ -1,0 +1,60 @@
+{
+  "number": 186,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/186",
+  "title": "Assemble chase UI and reviewed approval fixes; progression conflict held",
+  "branch": "codex/chase-join",
+  "observed_head": "474a90f63c4625cd29a8253343cd0899aa28f1cc",
+  "base_sha": "12dce0957b411131449cd1d22feb3cb111d075f9",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:20Z",
+  "files": [
+    "app/(dashboard)/approval/page.tsx",
+    "app/(dashboard)/invoices/page.tsx",
+    "app/api/chase/approve/route.ts",
+    "components/chase/approval-card.tsx",
+    "components/chase/connected-approval.tsx",
+    "components/chase/connected-settings.tsx",
+    "components/chase/customer-says-paid.tsx",
+    "components/chase/settings-card.tsx",
+    "components/email-schedules/chase-steps-editor.tsx",
+    "components/email-schedules/settings-card.tsx",
+    "lib/chase/steps.ts",
+    "lib/chase/ui-store.ts",
+    "lib/email/chase/approve.ts",
+    "package-lock.json",
+    "package.json",
+    "scripts/test-atomic-proposals.mjs",
+    "supabase/proposals/builder2_atomic_settings.rollback.sql",
+    "supabase/proposals/builder2_chase_settings_atomic.sql",
+    "supabase/proposals/builder2_costing_settings_atomic.sql",
+    "tests/postgres/atomic-settings-fixture.sql",
+    "tests/postgres/atomic-settings.test.mjs",
+    "tests/unit/chase-approval-ui.test.ts",
+    "tests/unit/chase-approve.test.ts",
+    "tests/unit/chase-more.test.ts",
+    "tests/unit/chase-settings-ui.test.ts",
+    "tests/unit/chase-steps.test.ts",
+    "tests/unit/chase-ui-wiring.test.ts",
+    "tests/unit/chase-wording.test.ts",
+    "tests/unit/customer-says-paid-ui.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Joins the existing settings/approval/customer-claim cards, live page wiring and #153/#154 approval and atomic-proposal checks on Claude's chase base. Includes current progression helper and wording tests. No docs/ files or SQL application.\n\nHOLD: the inherited chase-steps test expects a firm reminder after a final reminder was already sent, whereas current #108/#119 progression refuses to go backwards. Both assertions are preserved; the focused suite therefore exposes a conflict rather than weakening tests. Resolve the intended progression before release.\n\nExact-text approval tests and snapshot invalidation are retained. Original card callback assertions now also check the exact reviewed subject/body required by the new callback contract. Initial 94 focused cases and 34 additional progression/wording cases passed separately; combined focused run exposes the inherited progression conflict. Full suite and tsc/lint are running. SQL fixture/rollback tests are included but NOT executed because this task prohibits applying proposals. No Ready label, merge or deployment.\n\n## AS progression resolution\nFull head 474a90f63c4625cd29a8253343cd0899aa28f1cc corrects the obsolete test fixture without changing production behaviour. Assumption, supported by existing #119 tests: reminders progress forward and must never fall back after final. The original highest-eligible-unsent requirement is retained with a friendly-sent/firm-due case, plus explicit final-sent refusal and firm-to-final progression. Focused run: 43 passed, zero failed or skipped. Previous progression HOLD above is superseded by this result; database/runtime holds remain.",
+  "historical_test_claims": [
+    "Joins the existing settings/approval/customer-claim cards, live page wiring and #153/#154 approval and atomic-proposal checks on Claude's chase base. Includes current progression helper and wording tests. No docs/ files or SQL application.",
+    "HOLD: the inherited chase-steps test expects a firm reminder after a final reminder was already sent, whereas current #108/#119 progression refuses to go backwards. Both assertions are preserved; the focused suite therefore exposes a conflict rather than weakening tests. Resolve the intended progression before release.",
+    "Exact-text approval tests and snapshot invalidation are retained. Original card callback assertions now also check the exact reviewed subject/body required by the new callback contract. Initial 94 focused cases and 34 additional progression/wording cases passed separately; combined focused run exposes the inherited progression conflict. Full suite and tsc/lint are running. SQL fixture/rollback tests are included but NOT executed because this task prohibits applying proposals. No Ready label, merge or deployment.",
+    "Full head 474a90f63c4625cd29a8253343cd0899aa28f1cc corrects the obsolete test fixture without changing production behaviour. Assumption, supported by existing #119 tests: reminders progress forward and must never fall back after final. The original highest-eligible-unsent requirement is retained with a friendly-sent/firm-due case, plus explicit final-sent refusal and firm-to-final progression. Focused run: 43 passed, zero failed or skipped. Previous progression HOLD above is superseded by this result; database/runtime holds remain."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41785813522,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41785813522",
+      "head_sha": "474a90f63c4625cd29a8253343cd0899aa28f1cc",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

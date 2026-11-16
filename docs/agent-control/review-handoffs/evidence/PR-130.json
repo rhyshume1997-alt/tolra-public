@@ -1,0 +1,28 @@
+{
+  "number": 130,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/130",
+  "title": "Establish shared ownership tracker and Codex verification handover",
+  "branch": "codex/work-ownership",
+  "observed_head": "b6db532209e1cea1bfcf1533a09b4c668124401d",
+  "base_sha": "a546c3a9b37ad53d3ab235b1c545b577b84db9f5",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:20Z",
+  "files": [
+    "docs/TOLRA-CODEX-BUILD-HANDOVER.md",
+    "docs/TOLRA-WORK-OWNERSHIP.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds the requested ownership tracker while preserving existing builders' branches and PRs. Records missing job-code mappings and reserves Codex's coordination/read-only verification scope. Verification evidence will be added to the Codex handover as checks complete.\n\nNo application changes, merge, deployment or production SQL. No Ready label.",
+  "historical_test_claims": [],
+  "workflow_runs": [
+    {
+      "id": 41803437182,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41803437182",
+      "head_sha": "b6db532209e1cea1bfcf1533a09b4c668124401d",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

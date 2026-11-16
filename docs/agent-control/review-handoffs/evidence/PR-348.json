@@ -1,0 +1,31 @@
+{
+  "number": 348,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/348",
+  "title": "L2: small Playwright page timing script for test servers",
+  "branch": "codex/b6-l2-page-timings",
+  "observed_head": "a8702f6a407ffe996c9bb112db75e104c7b9eb8b",
+  "base_sha": "9c3f5c6cf51cfb3c41b1fe23fe532b5ddb5254a8",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:05Z",
+  "files": [
+    "docs/handover/BUILDER-6-L2.md",
+    "tests/perf/README.md",
+    "tests/perf/page-timings.mjs"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds a standalone script for dashboard, jobs, timesheets and customers: five cold and five warm navigations each, median, slowest and raw samples. Documents test authentication, cache/readiness definitions and comparable before/after use; fails redirects/error/unfinished screens without a partial median. No automatic CI job added.\n\nValidation: Node syntax/help, unchanged-config ESLint and whitespace checks pass. Real Chromium against task-owned loopback fixtures produced all 40 samples; a login-redirect fixture produced eight FAIL rows and exit 1. These validate the tool only; no authenticated Tolra app baseline or production timing claimed.\n\nHandover: docs/handover/BUILDER-6-L2.md. Based on 9c3f5c6 and targets the pinned review branch; no original builder branch changes, main merge, production SQL, deployment or Ready label.",
+  "historical_test_claims": [
+    "Adds a standalone script for dashboard, jobs, timesheets and customers: five cold and five warm navigations each, median, slowest and raw samples. Documents test authentication, cache/readiness definitions and comparable before/after use; fails redirects/error/unfinished screens without a partial median. No automatic CI job added."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41860990802,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41860990802",
+      "head_sha": "a8702f6a407ffe996c9bb112db75e104c7b9eb8b",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

@@ -1,0 +1,27 @@
+{
+  "number": 365,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/365",
+  "title": "M3: required delivery-note UAT and six questions for John",
+  "branch": "codex/m3-delivery-note-uat",
+  "observed_head": "1970388d390df9f8c8af9dcd7d94d1d5f71aa174",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:03Z",
+  "files": [
+    "docs/handover/DELIVERY-NOTES-UAT-JOHN.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds docs/handover/DELIVERY-NOTES-UAT-JOHN.md: exactly six John questions and18 click/expected/Pass-Fail-Not-run rows covering creation, numbering including paper continuity/invoice-derived route, partial quantities/inspection hold, print/PDF/pack, controlled email receipt/uncertain sends, real-versus-text job link, customer list, receipt evidence and save/financial boundaries. Separate John/Code/office/reviewer/Rhys signatures.\n\nDelivery notes remain required from JNR go-live, not deferred. Checked actual labels/source against #359 head4991e088. Explicitly exposes its current no-sales-order-job and starting-number gaps; manual text fallback is not a strong job link or automatic waiver. No counter SQL, placeholder import or new feature built. Uses private practice trials/controlled recipient only; no actual send/print/dispatch or signature.\n\nStatic check: six questions,18 unique result rows, source labels/role/path limits and whitespace pass. Browser/provider/job-link/physical print and required route results remain unrun. No main merge, production SQL, Ready label or deployment. Exact head 1970388d390df9f8c8af9dcd7d94d1d5f71aa174.",
+  "historical_test_claims": [],
+  "workflow_runs": [
+    {
+      "id": 41888283373,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41888283373",
+      "head_sha": "1970388d390df9f8c8af9dcd7d94d1d5f71aa174",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

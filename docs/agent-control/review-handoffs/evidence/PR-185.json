@@ -1,0 +1,36 @@
+{
+  "number": 185,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/185",
+  "title": "Test VAT penny amounts and receivable date boundaries",
+  "branch": "codex/money-edge-tests",
+  "observed_head": "c857559f517c77ccaed4bac1446757c260bb52e3",
+  "base_sha": "0f22f94c6804691f3cea9dd796e050f5b6af6492",
+  "github_state": "merged",
+  "merged_at": "2026-11-03T12:52:55Z",
+  "observed_at": "2026-11-05T07:22:20Z",
+  "files": [
+    "tests/unit/money-calendar-edges.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds 16 regression cases for exact signed pennies, 20% VAT on odd penny amounts, zero/negative collectible balances, refunds and overdue calendar dates across month/year ends, leap day and both UK clock changes. No calculation rules or application code changed.\n\nFocused tests: 16 passed. Full suite, TypeScript and ESLint are running; totals will be recorded on codex/work-ownership. No docs/ files, migrations, Ready label or deployment.",
+  "historical_test_claims": [
+    "Focused tests: 16 passed. Full suite, TypeScript and ESLint are running; totals will be recorded on codex/work-ownership. No docs/ files, migrations, Ready label or deployment."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41624121928,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41624121928",
+      "head_sha": "c857559f517c77ccaed4bac1446757c260bb52e3",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 41589072678,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41589072678",
+      "head_sha": "c857559f517c77ccaed4bac1446757c260bb52e3",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

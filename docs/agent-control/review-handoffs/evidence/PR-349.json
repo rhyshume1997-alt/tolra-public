@@ -1,0 +1,31 @@
+{
+  "number": 349,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/349",
+  "title": "L3: Rhys start page and complete dated Codex guide index",
+  "branch": "codex/b6-l3-rhys-start",
+  "observed_head": "05a36581b3b6fd03de06ae5a98d3d885a33254ca",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:04Z",
+  "files": [
+    "docs/signoff/BUILDER-6-GUIDE-CATALOG.md",
+    "docs/signoff/START-HERE-RHYS.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds docs/signoff/START-HERE-RHYS.md as a short front page covering every day Wed 4\u2013Thu 12 November, with PRs, named owners and plain actions. A linked supporting catalogue lists all 138 captured published Codex guide paths across docs/signoff, docs/runbooks, docs/iso9001 and tests, including historical guides/handovers and exact immutable links. New L1\u2013L5 papers are linked separately.\n\nKeeps #316's corrected masters, #314/#305 safety/source corrections, #315's distinct results and #322's qualified restrictions; avoids duplicate signing and distinguishes missing actual/private evidence from paperwork. Friday build/test deadline and conditional Thursday opening retained.\n\nValidation: 138 unique guide paths, 140 immutable file links resolve in Git, nine dated groups and whitespace checked. Handover embedded in the catalogue. Documentation only; no runtime/physical-print fit or acceptance claimed, main merge, production SQL, deployment or Ready label.",
+  "historical_test_claims": [
+    "Adds docs/signoff/START-HERE-RHYS.md as a short front page covering every day Wed 4\u2013Thu 12 November, with PRs, named owners and plain actions. A linked supporting catalogue lists all 138 captured published Codex guide paths across docs/signoff, docs/runbooks, docs/iso9001 and tests, including historical guides/handovers and exact immutable links. New L1\u2013L5 papers are linked separately.",
+    "Keeps #316's corrected masters, #314/#305 safety/source corrections, #315's distinct results and #322's qualified restrictions; avoids duplicate signing and distinguishes missing actual/private evidence from paperwork. Friday build/test deadline and conditional Thursday opening retained."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41861450002,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41861450002",
+      "head_sha": "05a36581b3b6fd03de06ae5a98d3d885a33254ca",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

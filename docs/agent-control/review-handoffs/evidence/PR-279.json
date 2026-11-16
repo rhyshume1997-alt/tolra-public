@@ -1,0 +1,30 @@
+{
+  "number": 279,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/279",
+  "title": "CH: exact-head review packets and explicit missing proofs",
+  "branch": "codex/ch-review-packets",
+  "observed_head": "4bb59c0ecfda0a545ec7221ef569dcc1184418db",
+  "base_sha": "8d667ffc7d779d4487fcf19eb052b123ec98baa8",
+  "github_state": "closed (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:13Z",
+  "files": [
+    "tests/REVIEW-PACKETS-NEXT.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Paste-ready review packets for every CA to CG artifact include full exact head SHA, scoped test counts, assumptions and what is not proved, followed by SAFE, SAFE WITH CONDITIONS or NOT SAFE. Coordination and this reporting PR use an external exact-head companion because a file cannot contain the SHA of its own containing commit.\n\nCH exact head: 4bb59c0ecfda0a545ec7221ef569dcc1184418db. Checks: seven artifact packet links/full SHAs, nine verdict questions and no em dashes checked; diff check passes. Full exact-head unit/typecheck/lint result will be appended by CI job. No database, browser, restore, wipe/import or reviewer verdict is claimed. The authoritative Operations Pack remains unavailable and blocks completeness.\n\nAssumption: these are independently reviewable staged drafts based on #247, not release approval; real JNR requires 140 and 141. Existing owner branches unchanged. Coordination #271.\n\n- [x] CH packets, exact-head evidence scopes and missing proofs\n- [ ] CI full branch runs and final companion results\n- [ ] Actual final-head runtime evidence and independent decisions\n",
+  "historical_test_claims": [
+    "Paste-ready review packets for every CA to CG artifact include full exact head SHA, scoped test counts, assumptions and what is not proved, followed by SAFE, SAFE WITH CONDITIONS or NOT SAFE. Coordination and this reporting PR use an external exact-head companion because a file cannot contain the SHA of its own containing commit.",
+    "CH exact head: 4bb59c0ecfda0a545ec7221ef569dcc1184418db. Checks: seven artifact packet links/full SHAs, nine verdict questions and no em dashes checked; diff check passes. Full exact-head unit/typecheck/lint result will be appended by CI job. No database, browser, restore, wipe/import or reviewer verdict is claimed. The authoritative Operations Pack remains unavailable and blocks completeness."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41813309228,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41813309228",
+      "head_sha": "4bb59c0ecfda0a545ec7221ef569dcc1184418db",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

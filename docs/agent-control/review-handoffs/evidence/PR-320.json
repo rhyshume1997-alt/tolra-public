@@ -1,0 +1,29 @@
+{
+  "number": 320,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/320",
+  "title": "G9/C6: John's SliQ export request, exact code examples and Rhys message",
+  "branch": "codex/g9-c6-sliq-export-request",
+  "observed_head": "bf664425f819677b6f4256e627444940164f0793",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:08Z",
+  "files": [
+    "tests/SLIQ-EXPORT-EXAMPLES.md",
+    "tests/SLIQ-EXPORT-MESSAGE-RHYS.md",
+    "tests/SLIQ-EXPORT-REQUEST-JOHN.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds a 440-word handout listing all 16 needed import/comparison reports and their data columns, with a companion containing current code header names and one made-up CSV row per file, plus a separate warm short message Rhys can send John. Message checked: no full stops or em dashes. Draft only, not sent.\n\nGrounded in GO-LIVE-DATA-LOAD.md and importer/reconciliation mapping, loader, CLI and writer at e7581c43. Explicitly distinguishes unconfirmed actual SliQ headings, provisional mappings, unmapped credits/allocations and six comparison-only report types. Does not promise jobs/orders/deliveries will be written by this importer. Practice/final export sets, freeze time, exact-pence/identity/WIP/next-number checks and missing-report STOP are clear.\n\nStatic checks: 16 unique file examples, matching CSV header/value widths; message punctuation rule. No actual export/import/dry-run result or physical print proof claimed. No importer change, original-owner takeover, production SQL, main merge, Ready label or new feature. Claims G9/C6 apply only to this expressly assigned request document. Exact head bf664425f819677b6f4256e627444940164f0793.",
+  "historical_test_claims": [],
+  "workflow_runs": [
+    {
+      "id": 41842418634,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41842418634",
+      "head_sha": "bf664425f819677b6f4256e627444940164f0793",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

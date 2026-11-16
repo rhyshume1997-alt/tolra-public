@@ -1,0 +1,29 @@
+{
+  "number": 269,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/269",
+  "title": "BA: explicit go/no-go evidence ledger and source coverage gaps",
+  "branch": "codex/ba-evidence",
+  "observed_head": "89849ae3331bb6703a7d076d540843c4f63b6bc9",
+  "base_sha": "41c685c416305637d86b580324fff9e6cda037ff",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:14Z",
+  "files": [
+    "tests/GO-NO-GO-EVIDENCE.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Maps all 41 repository first-day boxes, 36 manual rehearsal steps and eight candidate reviewer conditions, plus release/transfer gates. Four PASS rows cite historical executed counts and exact heads; missing runtime proof stays NOT TESTED. Absent 140-143 packaging is a demonstrated FAIL.\n\nAssumption/limitation: no exact Go Live Operations Pack was found in fetched history. This ledger names the repository sources used, and full private/external pack coverage remains BLOCKED until matched. No completeness or release verdict invented. Initial validation expected nine matrix rows; inspection confirmed eight source conditions, and exact source-to-ledger comparison passed for all eight. 41/36 source counts, evidence fields and diff checks passed. No runtime tests/SQL/deployment.",
+  "historical_test_claims": [
+    "Assumption/limitation: no exact Go Live Operations Pack was found in fetched history. This ledger names the repository sources used, and full private/external pack coverage remains BLOCKED until matched. No completeness or release verdict invented. Initial validation expected nine matrix rows; inspection confirmed eight source conditions, and exact source-to-ledger comparison passed for all eight. 41/36 source counts, evidence fields and diff checks passed. No runtime tests/SQL/deployment."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41802704485,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41802704485",
+      "head_sha": "89849ae3331bb6703a7d076d540843c4f63b6bc9",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

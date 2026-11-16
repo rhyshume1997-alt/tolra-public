@@ -1,0 +1,29 @@
+{
+  "number": 268,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/268",
+  "title": "AZ: named N1 N5 N6 browser and persisted-state acceptance",
+  "branch": "codex/az-acceptance",
+  "observed_head": "94449be9b8a711b2f8eae96f5b30403b22296c7b",
+  "base_sha": "41c685c416305637d86b580324fff9e6cda037ff",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:14Z",
+  "files": [
+    "tests/e2e/go-live-acceptance.spec.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds three named real-browser acceptance specs using fresh synthetic companies. N1 saves both break rules through the page, reloads, reads stored settings and compares planned/clocked minutes. N5 checks empty business records and persistent own-company setup progress. N6 checks untouched legacy text, explicit exact-text saving and reload. Every case checks the other company's relevant state is unchanged.\n\nAssumption: reviewed 145 is already present in the separately authorised isolated rehearsal; missing schema fails, never skips or auto-installs. Existing guarded browser global setup and synthetic cleanup retained. Playwright collection: 3 tests. Supporting units: 39 passed, 0 failed/skipped. TypeScript and changed-file ESLint passed. Browser/SQL runtime NOT RUN under no-SQL rule; these results are not acceptance proof. No production changes, docs files or external emails.",
+  "historical_test_claims": [
+    "Assumption: reviewed 145 is already present in the separately authorised isolated rehearsal; missing schema fails, never skips or auto-installs. Existing guarded browser global setup and synthetic cleanup retained. Playwright collection: 3 tests. Supporting units: 39 passed, 0 failed/skipped. TypeScript and changed-file ESLint passed. Browser/SQL runtime NOT RUN under no-SQL rule; these results are not acceptance proof. No production changes, docs files or external emails."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41802454373,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41802454373",
+      "head_sha": "94449be9b8a711b2f8eae96f5b30403b22296c7b",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

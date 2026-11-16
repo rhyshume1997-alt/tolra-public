@@ -1,0 +1,30 @@
+{
+  "number": 287,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/287",
+  "title": "CO: plain-word VSR sign-off guide and sourced R1\u2013R8 meanings",
+  "branch": "codex/co-rhys-sign-off-guide",
+  "observed_head": "4b134cbb3f04f63938ef4537e122a43b8af6235f",
+  "base_sha": "d7d6ff9dbd915becdc096d1eb365e4a73b4ae21d",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:12Z",
+  "files": [
+    "tests/RHYS-SIGN-OFF-GUIDE.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds tests/RHYS-SIGN-OFF-GUIDE.md mapping every VSR field, result/deviation cell, decision choice and signature to the actual evidence file or responsible person. Keeps 6 IQ, 15 OQ and 9 PQ planned steps; explains John's eight-check sheet cannot close PQ-009, unit counts cannot fill protocol totals, old-version logs cannot prove the final version, and a failed high-risk check blocks release.\n\nThe current VSR/risk register has no unified R1\u2013R8 sign-off key. The guide cites actual older standalone R1/R2/R3/R4/R5/R7 audit references, distinguishes combined R2/R3 wording, and explicitly says no standalone R6 or R8 definition was found. It does not equate them with RISK-001\u2013015 or unrelated #6/#8 tests.\n\nChecks: actual VSR/PQ/risk/evidence sources reviewed; field/count/decision/signature coverage and all eight labels checked. Documentation only; no result, acceptance, signature or shared template filled. No new audit/suite, main merge, production SQL or Ready label. Source head d7d6ff9dbd915becdc096d1eb365e4a73b4ae21d.\n\n- [x] Cell-by-cell source guide, decision rules and sourced audit-label explanation\n- [ ] Rhys and independent reviewer complete their actual report and signatures",
+  "historical_test_claims": [
+    "Adds tests/RHYS-SIGN-OFF-GUIDE.md mapping every VSR field, result/deviation cell, decision choice and signature to the actual evidence file or responsible person. Keeps 6 IQ, 15 OQ and 9 PQ planned steps; explains John's eight-check sheet cannot close PQ-009, unit counts cannot fill protocol totals, old-version logs cannot prove the final version, and a failed high-risk check blocks release.",
+    "The current VSR/risk register has no unified R1\u2013R8 sign-off key. The guide cites actual older standalone R1/R2/R3/R4/R5/R7 audit references, distinguishes combined R2/R3 wording, and explicitly says no standalone R6 or R8 definition was found. It does not equate them with RISK-001\u2013015 or unrelated #6/#8 tests."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41828752369,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41828752369",
+      "head_sha": "4b134cbb3f04f63938ef4537e122a43b8af6235f",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

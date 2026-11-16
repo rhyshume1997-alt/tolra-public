@@ -1,0 +1,29 @@
+{
+  "number": 330,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/330",
+  "title": "G18: John yard-to-yard sign-off",
+  "branch": "codex/b4-q4-g18",
+  "observed_head": "7ce4e30d49cf9d8907bd53f23ec943139affef43",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:06Z",
+  "files": [
+    "docs/signoff/G18-JOHN-YARD-TO-YARD.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds john yard-to-yard sign-off for G18, with expected results, firm stop rules and a handover note. All deliverables are under docs/signoff/ or docs/runbooks/.\n\nValidation: Documentation checks passed (staged whitespace check); source/expected-result/stop-rule review completed. No production operations performed.\n\nOperational steps, signatures and live evidence remain NOT RUN / unsigned. Related draft sheets must enter the reviewed cutover pack before use. No new functionality, main merge, production SQL, deployment or Ready label.\n",
+  "historical_test_claims": [
+    "Validation: Documentation checks passed (staged whitespace check); source/expected-result/stop-rule review completed. No production operations performed."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41844800519,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41844800519",
+      "head_sha": "7ce4e30d49cf9d8907bd53f23ec943139affef43",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

@@ -1,0 +1,41 @@
+{
+  "number": 391,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/391",
+  "title": "Review #378: two adversarial penny-precision failures",
+  "branch": "codex/pr378-profitability-adversarial-review",
+  "observed_head": "a00378c93208143a4569f5861ea44bfe823dc9cd",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:21:59Z",
+  "files": [
+    "docs/audit/PR378-ADVERSARIAL-REVIEW.md",
+    "tests/reviews/profitability/adversarial.test.ts",
+    "tests/reviews/profitability/evidence/initial-sandbox-failure.log",
+    "tests/reviews/profitability/evidence/initial-typecheck.log",
+    "tests/reviews/profitability/evidence/lint.log",
+    "tests/reviews/profitability/evidence/run.json",
+    "tests/reviews/profitability/evidence/typecheck.log",
+    "tests/reviews/profitability/evidence/vitest.log",
+    "tests/reviews/profitability/fixtures/actuals.ts",
+    "tests/reviews/profitability/original.test.ts",
+    "tests/reviews/profitability/vitest.config.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Independent docs/tests-only review of public #378 at ccd74ea513307c5584a11f7cd368f38b742ce769. No changes to its branch or feature.\n\n34 passed, 2 failed, 0 skipped: all 32 original calculation cases pass, two independent source checks pass, two new penny assertions fail. Unsafe intermediate revenue aggregation returns a complete profit 1p low; microsecond timestamps accumulating to half a penny also return 1p low. Failures and original setup logs retained. Final TypeScript and targeted ESLint pass.\n\nSource/default and legacy-calculator checks support disabled-by-default and unchanged old maths. Overlap, missing costs, credit and allocation cases pass within tested inputs. Migration 148 has a separate number from 147; combined migration execution, database permissions, browser regression and production operation are explicitly NOT EXECUTED in this review. No database/SQL, private files, real records, merge, candidate edits or John messages. Review done: 2 defects, fixes pending.",
+  "historical_test_claims": [
+    "Independent docs/tests-only review of public #378 at ccd74ea513307c5584a11f7cd368f38b742ce769. No changes to its branch or feature.",
+    "34 passed, 2 failed, 0 skipped: all 32 original calculation cases pass, two independent source checks pass, two new penny assertions fail. Unsafe intermediate revenue aggregation returns a complete profit 1p low; microsecond timestamps accumulating to half a penny also return 1p low. Failures and original setup logs retained. Final TypeScript and targeted ESLint pass.",
+    "Source/default and legacy-calculator checks support disabled-by-default and unchanged old maths. Overlap, missing costs, credit and allocation cases pass within tested inputs. Migration 148 has a separate number from 147; combined migration execution, database permissions, browser regression and production operation are explicitly NOT EXECUTED in this review. No database/SQL, private files, real records, merge, candidate edits or John messages. Review done: 2 defects, fixes pending."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41984901354,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41984901354",
+      "head_sha": "a00378c93208143a4569f5861ea44bfe823dc9cd",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

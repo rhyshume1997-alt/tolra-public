@@ -1,0 +1,34 @@
+{
+  "number": 370,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/370",
+  "title": "Audit batch 2: six blank rounding, provenance and release acceptance documents",
+  "branch": "codex/b5-audit-batch-2",
+  "observed_head": "cdb3d4592575f9ecff4d6d3cecb58ceaaf173595",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:02Z",
+  "files": [
+    "docs/audit/G07-CANDIDATE-CHANGE-RECORD.md",
+    "docs/audit/G09-ROUNDING-SPECIFICATION.md",
+    "docs/audit/G18-ARTIFACT-PROVENANCE-MAP.md",
+    "docs/audit/PRODUCTION-RESTORE-ACCEPTANCE-REPORT.md",
+    "docs/audit/RELEASE-IMPACT-AND-DEVIATION-LOG.md",
+    "docs/audit/SLIQ-LOAD-RECONCILIATION-CERTIFICATE.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds exactly six short Markdown files under docs/audit/:\n\n- G09 versioned nearest-penny halves-up specification, with negative ties away from zero, per-line VAT, display/payment/reconciliation scope and costing excluded. Links the pinned 38-case table and money-parity run 41904817337; Rhys\u2019s signature stays blank.\n- G07 change/impact record from 9c3f5c6 to an exact new delivery-note SHA (blank), covering release 147, day-of DLN counter, matching/replay fixes, reuse and rerun decisions.\n- G18 Code\u2019s artifact/profile (prod, realistic, x100)/checkout/exit/log-hash provenance template; profile labels do not authorise production or real data.\n- SliQ source/destination counts and penny reconciliation certificate, exclusions, independent check and sign-off.\n- Production restore acceptance report with backup/target/object comparisons, measured duration, accepted RPO/RTO and approvals.\n- Final-SHA release impact/deviation log with recheck, closure and go/hold records.\n\nAll record forms include requirement ID, expected result, blank actual result marked NOT EXECUTED, evidence reference, tester, date and approval. No PASS entry or filled operational signature. Six concise templates, 388\u2013463 words each; print layout must be checked before controlled issue. Existing rounding run is linked evidence, not approval of a new final SHA.\n\n- [x] Source/links/required fields and git diff --check reviewed; remote/local trees match.\n- [ ] John/Rhys/Code supplies exact versions, private evidence, assessments and approvals after actual work.\n\nBuilder 5, explicit second document-batch assignment. G07/G09 claims recorded; existing G18 claim/implementation and earlier audit batch #369 remain untouched. This G18 scope is a new blank audit template. One draft PR, six docs additions only. No code, runtime checks, workflow dispatch, Ready label, main merge, production SQL, real data or message to John.",
+  "historical_test_claims": [
+    "All record forms include requirement ID, expected result, blank actual result marked NOT EXECUTED, evidence reference, tester, date and approval. No PASS entry or filled operational signature. Six concise templates, 388\u2013463 words each; print layout must be checked before controlled issue. Existing rounding run is linked evidence, not approval of a new final SHA."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41917373411,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41917373411",
+      "head_sha": "cdb3d4592575f9ecff4d6d3cecb58ceaaf173595",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

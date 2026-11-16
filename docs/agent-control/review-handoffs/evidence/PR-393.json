@@ -1,0 +1,40 @@
+{
+  "number": 393,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/393",
+  "title": "A: reconcile public agent control facts and approved decisions",
+  "branch": "codex/agent-control-reconcile",
+  "observed_head": "e1ee1526b8ad513d23eea1c3519bd52d8f2fe877",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:26:02Z",
+  "files": [
+    "AGENTS.md",
+    "CLAUDE.md",
+    "docs/agent-control/current-state.md",
+    "docs/agent-control/decisions.md",
+    "docs/agent-control/handover.md",
+    "docs/agent-control/open-prs.json",
+    "docs/agent-control/release-gates.md",
+    "docs/agent-control/task-board.md",
+    "tests/reviews/agent-control/control_test.py",
+    "tests/reviews/agent-control/evidence/checks.log",
+    "tests/reviews/agent-control/evidence/status-wording-failure.log"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Reuses root guidance and public handovers; main has no public docs/control equivalent. Adds five short control records and an exact open-PR snapshot, not a master plan. Keeps all original Next.js guidance byte-for-byte and adds the required read-first / no-reopen / one-owner rule to both root files.\n\nRecords Rhys's AI, cap, cutover, alert, profitability, accounting and November dates decisions without claiming deployment or acceptance. Distinguishes blockers, disabled optional work and configuration. Task rows include owner/files/acceptance/tests/branch/status; DONE is qualified.\n\n3 document checks passed, 0 failed/skipped. Production configuration, deployment and acceptance unproven. No private files, production SQL, merge, #359/go-live edits or John messages.",
+  "historical_test_claims": [
+    "Records Rhys's AI, cap, cutover, alert, profitability, accounting and November dates decisions without claiming deployment or acceptance. Distinguishes blockers, disabled optional work and configuration. Task rows include owner/files/acceptance/tests/branch/status; DONE is qualified.",
+    "3 document checks passed, 0 failed/skipped. Production configuration, deployment and acceptance unproven. No private files, production SQL, merge, #359/go-live edits or John messages."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41987148209,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41987148209",
+      "head_sha": "e1ee1526b8ad513d23eea1c3519bd52d8f2fe877",
+      "status": "pending",
+      "conclusion": null
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

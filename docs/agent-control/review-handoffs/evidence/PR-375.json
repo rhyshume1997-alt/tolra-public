@@ -1,0 +1,56 @@
+{
+  "number": 375,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/375",
+  "title": "G20/G27: retain failing \u00a35-cap contracts and disabled-launch review",
+  "branch": "codex/b5-g20-g27-security-review",
+  "observed_head": "52aa6dd8c6d3cdb372cdd09abb8de8a5364a0a19",
+  "base_sha": "31f965e7f0cbb2d9caf336b0a2067411bec8fb45",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:02Z",
+  "files": [
+    "tests/reviews/b5-g20-g27/B5-G20-G27-REVIEW.md",
+    "tests/reviews/b5-g20-g27/evidence-sha256.json",
+    "tests/reviews/b5-g20-g27/evidence/2026-11-04T21-45-05.698840+00-00-empty-stack-start-412e86/original.log",
+    "tests/reviews/b5-g20-g27/evidence/2026-11-04T21-45-05.698840+00-00-empty-stack-start-412e86/run.json",
+    "tests/reviews/b5-g20-g27/evidence/2026-11-04T21-45-05.698840+00-00-empty-stack-start-412e86/sql-inputs.json",
+    "tests/reviews/b5-g20-g27/evidence/2026-11-04T21-45-07.017329+00-00-security-units-6c3e1d/original.log",
+    "tests/reviews/b5-g20-g27/evidence/2026-11-04T21-45-07.017329+00-00-security-units-6c3e1d/run.json",
+    "tests/reviews/b5-g20-g27/evidence/2026-11-04T21-45-07.017329+00-00-security-units-6c3e1d/sql-inputs.json",
+    "tests/reviews/b5-g20-g27/evidence/2026-11-04T21-50-27.747510+00-00-adversarial-security-05c333/original.log",
+    "tests/reviews/b5-g20-g27/evidence/2026-11-04T21-50-27.747510+00-00-adversarial-security-05c333/run.json",
+    "tests/reviews/b5-g20-g27/evidence/2026-11-04T21-50-27.747510+00-00-adversarial-security-05c333/sql-inputs.json",
+    "tests/reviews/b5-g20-g27/evidence/2026-11-04T21-51-26.929456+00-00-adversarial-security-ready-8b7b17/original.log",
+    "tests/reviews/b5-g20-g27/evidence/2026-11-04T21-51-26.929456+00-00-adversarial-security-ready-8b7b17/run.json",
+    "tests/reviews/b5-g20-g27/evidence/2026-11-04T21-51-26.929456+00-00-adversarial-security-ready-8b7b17/sql-inputs.json",
+    "tests/reviews/b5-g20-g27/evidence/2026-11-04T21-52-14.610616+00-00-changed-types-e9e6d5/original.log",
+    "tests/reviews/b5-g20-g27/evidence/2026-11-04T21-52-14.610616+00-00-changed-types-e9e6d5/run.json",
+    "tests/reviews/b5-g20-g27/evidence/2026-11-04T21-52-14.610616+00-00-changed-types-e9e6d5/sql-inputs.json",
+    "tests/reviews/b5-g20-g27/evidence/2026-11-04T21-53-05.289564+00-00-changed-lint-04f1f7/original.log",
+    "tests/reviews/b5-g20-g27/evidence/2026-11-04T21-53-05.289564+00-00-changed-lint-04f1f7/run.json",
+    "tests/reviews/b5-g20-g27/evidence/2026-11-04T21-53-05.289564+00-00-changed-lint-04f1f7/sql-inputs.json",
+    "tests/reviews/b5-g20-g27/evidence/2026-11-04T21-57-40.685546+00-00-committed-ai-security-6f6299/original.log",
+    "tests/reviews/b5-g20-g27/evidence/2026-11-04T21-57-40.685546+00-00-committed-ai-security-6f6299/run.json",
+    "tests/reviews/b5-g20-g27/evidence/2026-11-04T21-57-40.685546+00-00-committed-ai-security-6f6299/sql-inputs.json",
+    "tests/unit/b5-g20-g27-adversarial.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Finds one brief-to-code mismatch in two places: provided-AI UI/default constant and release 146 company rows default to 1000p (\u00a310), while the requested per-company cap is 500p (\u00a35). Own-key migration 122 already defaults to 500p. Two strict assertions remain failed; no implementation or migration changed, no expected value raised. Rhys/owner must align scope/defaults; no claim that a live company overspent.\n\nCommitted test run 241f434f: 10 passed, 2 failed. Passing new checks cover malformed/off switches, both assistant flags, off company features, empty-config Sage/QBO and company-scoped assistant context without money/free text/customer identity. Existing 280-test baseline includes accounting/AI mocks. Preserve original server-only import setup failure and corrected Node-only setup; production guards untouched.\n\nActual deployment provider connections/flags and full concurrent reservation/key/tenant DB proof remain unverified; Supabase image registry denied. No live provider, production key or AI enablement used. Handover: tests/reviews/b5-g20-g27/B5-G20-G27-REVIEW.md.\n\n- [x] Separate owned reviewer branch; original failures retained; source/lint/type/whitespace checks scoped in report. Raw logs kept byte-for-byte, including original whitespace.\n- [ ] Independent owner assessment, actual final-candidate runtime evidence and authorised acceptance remain open.\n\nExplicit Rhys overnight allocation. New b5 test/tool/review files only; no Claude-owned source/test edits, #359 branch modification, ISO pack work, Ready label, main merge, production migrations/wipe/import/counter change, deployment, live AI/automated email or message to John. PRs targeting #359\u2019s branch are review follow-ups only; no merge is requested. Production actions remain subject to Rhys\u2019s separate approval.",
+  "historical_test_claims": [
+    "Finds one brief-to-code mismatch in two places: provided-AI UI/default constant and release 146 company rows default to 1000p (\u00a310), while the requested per-company cap is 500p (\u00a35). Own-key migration 122 already defaults to 500p. Two strict assertions remain failed; no implementation or migration changed, no expected value raised. Rhys/owner must align scope/defaults; no claim that a live company overspent.",
+    "Committed test run 241f434f: 10 passed, 2 failed. Passing new checks cover malformed/off switches, both assistant flags, off company features, empty-config Sage/QBO and company-scoped assistant context without money/free text/customer identity. Existing 280-test baseline includes accounting/AI mocks. Preserve original server-only import setup failure and corrected Node-only setup; production guards untouched.",
+    "Actual deployment provider connections/flags and full concurrent reservation/key/tenant DB proof remain unverified; Supabase image registry denied. No live provider, production key or AI enablement used. Handover: tests/reviews/b5-g20-g27/B5-G20-G27-REVIEW.md.",
+    "- [x] Separate owned reviewer branch; original failures retained; source/lint/type/whitespace checks scoped in report. Raw logs kept byte-for-byte, including original whitespace.",
+    "Explicit Rhys overnight allocation. New b5 test/tool/review files only; no Claude-owned source/test edits, #359 branch modification, ISO pack work, Ready label, main merge, production migrations/wipe/import/counter change, deployment, live AI/automated email or message to John. PRs targeting #359\u2019s branch are review follow-ups only; no merge is requested. Production actions remain subject to Rhys\u2019s separate approval."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41921285362,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41921285362",
+      "head_sha": "52aa6dd8c6d3cdb372cdd09abb8de8a5364a0a19",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

@@ -1,0 +1,34 @@
+{
+  "number": 218,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/218",
+  "title": "Use company paid-break settings across hours screens",
+  "branch": "codex/company-paid-breaks",
+  "observed_head": "cc2d3f2a89b4c32276d014fa6f2bb0cbc40d0678",
+  "base_sha": "717ac725f832023a1c3c64bda91f4e734dc360fe",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:17Z",
+  "files": [
+    "app/(dashboard)/settings/page.tsx",
+    "components/time/day-sheet.tsx",
+    "components/time/time-settings-card.tsx",
+    "lib/working-hours.ts",
+    "tests/unit/company-paid-breaks.test.ts",
+    "tests/unit/paid-breaks-two-companies.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Working hours deducted fixed unpaid breaks even when the company's Hours setting paid them. Read the existing saved company time settings for planned day/week totals and use the same explanation on the daily hours sheet. Missing settings show no paid-hours preview; JNR defaults remain unpaid. No new setting, SQL or pay-rate logic.\n\nClaim: N1. Searched main and open PRs; the company setting already existed, but this preview connection did not. No docs files changed.\n\nValidation: 39 tests passed (company-paid-breaks, working-hours, time-sheet); TypeScript and targeted ESLint passed. Browser/database tests not run (no disposable database); no SQL applied.\n",
+  "historical_test_claims": [
+    "Validation: 39 tests passed (company-paid-breaks, working-hours, time-sheet); TypeScript and targeted ESLint passed. Browser/database tests not run (no disposable database); no SQL applied."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41688876182,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41688876182",
+      "head_sha": "cc2d3f2a89b4c32276d014fa6f2bb0cbc40d0678",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

@@ -1,0 +1,30 @@
+{
+  "number": 321,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/321",
+  "title": "CY: 9 November go/no-go meeting agenda with decision owners and evidence",
+  "branch": "codex/cy-go-no-go-meeting",
+  "observed_head": "09ca7ea87fa8c8dc7839c33f5e1813b313adfc6d",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:08Z",
+  "files": [
+    "tests/GO-NO-GO-MEETING-9-NOV.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds tests/GO-NO-GO-MEETING-9-NOV.md: ten ordered plain questions, named decision roles and exact evidence filenames, with Monday outcome/owner/deadline/signature spaces. Monday readiness does not pass the later admin-code checks or authorise Thursday operation; failed/missing evidence stops affected use. Rhys signs the VSR only with complete evidence.\n\nSource checked against CP, CS/CT/BA, corrected CN, new device/export sheets, exact B5 filename and builder4's updated #316 sign-off masters. Blank forms remain requests for actual private reports. Date Monday 9 November verified. Documentation only; no runtime test, actual meeting, signature, production SQL, main merge or Ready label. Final head 09ca7ea87fa8c8dc7839c33f5e1813b313adfc6d; agenda tightened to 490 words with exact evidence paths. Documentation CI41845171602 completed success. Print layout/actual meeting remain unrun.",
+  "historical_test_claims": [
+    "Adds tests/GO-NO-GO-MEETING-9-NOV.md: ten ordered plain questions, named decision roles and exact evidence filenames, with Monday outcome/owner/deadline/signature spaces. Monday readiness does not pass the later admin-code checks or authorise Thursday operation; failed/missing evidence stops affected use. Rhys signs the VSR only with complete evidence.",
+    "Source checked against CP, CS/CT/BA, corrected CN, new device/export sheets, exact B5 filename and builder4's updated #316 sign-off masters. Blank forms remain requests for actual private reports. Date Monday 9 November verified. Documentation only; no runtime test, actual meeting, signature, production SQL, main merge or Ready label. Final head 09ca7ea87fa8c8dc7839c33f5e1813b313adfc6d; agenda tightened to 490 words with exact evidence paths. Documentation CI41845171602 completed success. Print layout/actual meeting remain unrun."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41845171602,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41845171602",
+      "head_sha": "09ca7ea87fa8c8dc7839c33f5e1813b313adfc6d",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

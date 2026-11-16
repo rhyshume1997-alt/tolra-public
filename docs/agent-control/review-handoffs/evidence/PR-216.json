@@ -1,0 +1,47 @@
+{
+  "number": 216,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/216",
+  "title": "Integrate paid-claim and bank evidence checks without automatic payment writes",
+  "branch": "codex/chase-evidence-integration",
+  "observed_head": "8eb7f3370b7024ba36b04d299088cd475906a224",
+  "base_sha": "29c9a18165a860e665c7fb27c1c3e9b7a62bea9f",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:17Z",
+  "files": [
+    "lib/bank/confirmation.ts",
+    "lib/bank/match-statement.ts",
+    "lib/chase/paid-claim-adapter.ts",
+    "lib/chase/paid-claim.ts",
+    "tests/fixtures/chase-evidence/bank.csv",
+    "tests/fixtures/chase-evidence/paid-email.json",
+    "tests/unit/bank-csv-formats.test.ts",
+    "tests/unit/bank-csv-reconcile.test.ts",
+    "tests/unit/bank-followup.test.ts",
+    "tests/unit/bank-match-statement.test.ts",
+    "tests/unit/bank-more.test.ts",
+    "tests/unit/chase-evidence-integration.test.ts",
+    "tests/unit/paid-claim-adapter.test.ts",
+    "tests/unit/paid-claim-reconcile.test.ts",
+    "tests/unit/paid-claim-sender-review.test.ts",
+    "tests/unit/paid-claim-sender-safety.test.ts",
+    "tests/unit/paid-claim-uk-more.test.ts",
+    "tests/unit/paid-claim.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Merge #176 (reconciled paid-claim adapter) and #177 (reconciled bank parser) on top of the combined chase branch (#208). Both merge cleanly without conflict or source behavior changes.\n\nAdd one end-to-end unit flow per input: a fake email through the detector/adapter to a review flag, and a fake bank CSV through parsing/matching to its flagged invoice. Frozen invoice rows retain sent status, zero paid amount and the exact 12050-pence balance; spoofed sender evidence is refused. Evidence never automatically records a payment. Fixtures use fictional example.test addresses only.\n\nBase: codex/chase-layout-main. Unit coverage proves review suggestions, not real database claim persistence; the existing explicit human confirmation/RPC path remains separate. No docs changes, SQL or real data.\n\nValidation: paid-claim/bank integration unit suites, typecheck and targeted ESLint run. Live inbox/bank UI, database persistence and actual bank/mail services are not run.\n",
+  "historical_test_claims": [
+    "Add one end-to-end unit flow per input: a fake email through the detector/adapter to a review flag, and a fake bank CSV through parsing/matching to its flagged invoice. Frozen invoice rows retain sent status, zero paid amount and the exact 12050-pence balance; spoofed sender evidence is refused. Evidence never automatically records a payment. Fixtures use fictional example.test addresses only.",
+    "Validation: paid-claim/bank integration unit suites, typecheck and targeted ESLint run. Live inbox/bank UI, database persistence and actual bank/mail services are not run."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41649039893,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41649039893",
+      "head_sha": "8eb7f3370b7024ba36b04d299088cd475906a224",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

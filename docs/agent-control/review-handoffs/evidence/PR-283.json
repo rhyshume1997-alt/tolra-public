@@ -1,0 +1,30 @@
+{
+  "number": 283,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/283",
+  "title": "CH: priority review packets with exact heads and remaining work",
+  "branch": "codex/ch-review-packets-next",
+  "observed_head": "e40f9edb24a79769efd03b8f900c6c31d8a6729b",
+  "base_sha": "b80b274b0f2b8b12444915152383564cc1b9bf52",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:12Z",
+  "files": [
+    "tests/REVIEW-PACKETS-NEXT.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "CH expands tests/REVIEW-PACKETS-NEXT.md from 11 packets to all 148 open PRs in the 4 November metadata snapshot. Each packet has the full head SHA, actual PR-triggered CI run IDs/status, concrete reviewer checks and verdict question. No comments or review verdicts were posted.\n\nExact CH head companion: e40f9edb24a79769efd03b8f900c6c31d8a6729b. All 148 packet/head/CI fields checked. CI run 41826384400: success; documentation only, no suites or broad audits run. Moved heads, this self-reporting head and the CL follow-up are refreshed by tests/HANDOVER-BUILDER-3.md on coordination #271; recheck live heads before pasting.\n\nCarries updated CJ and CG/CK evidence forward in the existing draft stack. Historical audit stays stopped at 52/61. No main merge, Ready label or production SQL.\n\n- [x] Paste-ready packets, heads, CI IDs and reviewer checks\n- [ ] Independent reviews and actual unresolved runtime proofs",
+  "historical_test_claims": [
+    "CH expands tests/REVIEW-PACKETS-NEXT.md from 11 packets to all 148 open PRs in the 4 November metadata snapshot. Each packet has the full head SHA, actual PR-triggered CI run IDs/status, concrete reviewer checks and verdict question. No comments or review verdicts were posted.",
+    "Exact CH head companion: e40f9edb24a79769efd03b8f900c6c31d8a6729b. All 148 packet/head/CI fields checked. CI run 41826384400: success; documentation only, no suites or broad audits run. Moved heads, this self-reporting head and the CL follow-up are refreshed by tests/HANDOVER-BUILDER-3.md on coordination #271; recheck live heads before pasting."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41826384400,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41826384400",
+      "head_sha": "e40f9edb24a79769efd03b8f900c6c31d8a6729b",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

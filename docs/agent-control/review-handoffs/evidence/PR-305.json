@@ -1,0 +1,31 @@
+{
+  "number": 305,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/305",
+  "title": "CU: Rhys's six first-day smoke checks after verified 146",
+  "branch": "codex/cu-first-day-smoke",
+  "observed_head": "78dc5b7033592f20640b15e61b198c7fcf17930e",
+  "base_sha": "49097c56f05e690b811872e24ff9b159b774f334",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:09Z",
+  "files": [
+    "tests/FIRST-DAY-SMOKE-CHECK.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds tests/FIRST-DAY-SMOKE-CHECK.md: login, one approved check job, draft quote, timesheet, prepared controlled chase draft and AI off. Each has clicks, expected result, stop rule and unticked result/evidence box. Preserves JNR unpaid breaks, normal numbering, drafts/no sends and no 146 reinstall after rollback.\n\nReal UI scope checked: Chase All Overdue drafts every eligible overdue invoice, so the sheet requires an approved prepared check draft instead of pretending there is a safe one-invoice test button. No genuine staff hours, imported work or customer sends are manufactured. Six passes are not full validation or operational release authority.\n\nChecks: six complete rows, actual action scope, release sequence and stop rules reviewed. Documentation only, no SQL/data/mail action, main merge, Ready label or duplicate docs/signoff paper.\n\n- [x] Short six-check smoke list with concrete expected/stop results\n- [ ] Rhys runs the approved checks with Code after actual release verification\n\nCR follow-through: exact reviewed #314 wording is now retained here (CN blocks external AI on restored real data and limits export checks to Xero; CU requires actual admin MFA challenge and scopes AI-off evidence). Current head 78dc5b7033592f20640b15e61b198c7fcf17930e. These documentation corrections were made after CV's frozen test snapshot; no new runtime pass is claimed.",
+  "historical_test_claims": [
+    "Adds tests/FIRST-DAY-SMOKE-CHECK.md: login, one approved check job, draft quote, timesheet, prepared controlled chase draft and AI off. Each has clicks, expected result, stop rule and unticked result/evidence box. Preserves JNR unpaid breaks, normal numbering, drafts/no sends and no 146 reinstall after rollback.",
+    "Real UI scope checked: Chase All Overdue drafts every eligible overdue invoice, so the sheet requires an approved prepared check draft instead of pretending there is a safe one-invoice test button. No genuine staff hours, imported work or customer sends are manufactured. Six passes are not full validation or operational release authority.",
+    "CR follow-through: exact reviewed #314 wording is now retained here (CN blocks external AI on restored real data and limits export checks to Xero; CU requires actual admin MFA challenge and scopes AI-off evidence). Current head 78dc5b7033592f20640b15e61b198c7fcf17930e. These documentation corrections were made after CV's frozen test snapshot; no new runtime pass is claimed."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41839392247,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41839392247",
+      "head_sha": "78dc5b7033592f20640b15e61b198c7fcf17930e",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

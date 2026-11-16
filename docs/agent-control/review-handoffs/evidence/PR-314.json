@@ -1,0 +1,44 @@
+{
+  "number": 314,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/314",
+  "title": "Cross-review builder 3 CR\u2013CV and BA with source-backed corrections",
+  "branch": "codex/b4-builder3-review-final",
+  "observed_head": "ce1118393cc0d65bfde426d31222903a802984ff",
+  "base_sha": "73e35550b41df9f7799bf20c24b4b47b05438780",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:08Z",
+  "files": [
+    "docs/signoff/BUILDER-3-CROSS-REVIEW.md",
+    "docs/signoff/BUILDER-4-QUEUE-2-OWNERSHIP.md",
+    "docs/signoff/HANDOVER-BUILDER-4-QUEUE-2.md",
+    "docs/signoff/review-evidence/CV-315-SOURCE-CHECK.txt",
+    "docs/signoff/review-evidence/q2-cm-lint.log",
+    "docs/signoff/review-evidence/q2-cm-typecheck.log",
+    "docs/signoff/review-evidence/q2-cm-unit.log",
+    "docs/signoff/review-evidence/q2-cq-collection.log",
+    "docs/signoff/review-evidence/q2-cq-lint.log",
+    "docs/signoff/review-evidence/source-reference-check.txt",
+    "tests/BA-FIRST-DAY-EVIDENCE.md",
+    "tests/FIRST-DAY-SMOKE-CHECK.md",
+    "tests/JOHN-PQ-RUN-SHEET.md",
+    "tests/reviews/BA-269-SOURCE-CORRECTIONS.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "CR\u2013CV and BA cross-review, retaining earlier CM\u2013CQ corrections. The corrected guides prevent external AI sharing during a real-data rehearsal without written approval, limit Sage/QBO checks to implemented balance reads, and require the admin-code challenge in the smoke check.\n\nCR/CS/CT/CU exact heads are unchanged. CV subsequently published as #315 at 727ff228b6bc8575bc4440f409fdd3c41fe4ce5e. Its reported tested candidate/CM inventories (5,622/415 and 5,357/373), successful log hashes and locked candidate install were checked against the exact source files; no new mistake found. These are reviewed local results, not builder-4 execution or DB/browser/release approval. Earlier branch-only notes are historical. BA #269's G01\u2013G06 scope summary is corrected to G01\u2013G08; its historical missing-140/141 condition is distinguished from deferred 142/143. The complete newer evidence register is preserved.\n\nFindings/full heads: docs/signoff/BUILDER-3-CROSS-REVIEW.md. BA correction: tests/reviews/BA-269-SOURCE-CORRECTIONS.md. Prior queue handover: docs/signoff/HANDOVER-BUILDER-4-QUEUE-2.md. CW and CX use separate drafts.\n\nValidation is scoped: earlier CM 9 tests/types/lint and CQ 3-test collection/lint retained; CS/CT anchors/count sets and exact source/tree comparisons. No new runtime claim or sign-off; actual DB/provider/browser/restore/manual proofs stay open. Draft only, no Ready/main merge/production SQL/deployment.\n\nNew BA #317 (9515eda33b50878a057a431b06498a5b1f15b204) is also reviewed. Four DAY-10\u201313 links incorrectly targeted the year-end ZIP description; the carried tests/BA-FIRST-DAY-EVIDENCE.md fixes them to CompanyDetailsCard in the same pinned source. All 41 item texts, missing-pack statuses and required proof remain unchanged.\n",
+  "historical_test_claims": [
+    "Findings/full heads: docs/signoff/BUILDER-3-CROSS-REVIEW.md. BA correction: tests/reviews/BA-269-SOURCE-CORRECTIONS.md. Prior queue handover: docs/signoff/HANDOVER-BUILDER-4-QUEUE-2.md. CW and CX use separate drafts.",
+    "Validation is scoped: earlier CM 9 tests/types/lint and CQ 3-test collection/lint retained; CS/CT anchors/count sets and exact source/tree comparisons. No new runtime claim or sign-off; actual DB/provider/browser/restore/manual proofs stay open. Draft only, no Ready/main merge/production SQL/deployment.",
+    "New BA #317 (9515eda33b50878a057a431b06498a5b1f15b204) is also reviewed. Four DAY-10\u201313 links incorrectly targeted the year-end ZIP description; the carried tests/BA-FIRST-DAY-EVIDENCE.md fixes them to CompanyDetailsCard in the same pinned source. All 41 item texts, missing-pack statuses and required proof remain unchanged."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41840258775,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41840258775",
+      "head_sha": "ce1118393cc0d65bfde426d31222903a802984ff",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

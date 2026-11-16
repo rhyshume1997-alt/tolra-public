@@ -1,0 +1,37 @@
+{
+  "number": 201,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/201",
+  "title": "Prove duplicate chase customers are refused across database pages",
+  "branch": "codex/chase-draft-pages",
+  "observed_head": "ccad65bcd30ec6bae8acfc4fd1b01731b1eadb26",
+  "base_sha": "46807ed5b58b2c4cba313ce12ddcfb2bca8c0505",
+  "github_state": "merged",
+  "merged_at": "2026-11-03T14:16:32Z",
+  "observed_at": "2026-11-05T07:22:19Z",
+  "files": [
+    "lib/email/chase/run.ts",
+    "tests/unit/chase-draft-customer-match.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Add 2,002 customer records with matching names on pages one and three. Assert all three exact database ranges are read and that neither automatic nor fixed-recipient drafts are written when the later duplicate is discovered.\n\nValidation: 63 customer matching/chase runner tests passed. No application change was necessary. Targets `chatgpt2/chase-customer-review-code-only`, the same base as #189.\n",
+  "historical_test_claims": [
+    "Validation: 63 customer matching/chase runner tests passed. No application change was necessary. Targets `chatgpt2/chase-customer-review-code-only`, the same base as #189."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41637029134,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41637029134",
+      "head_sha": "ccad65bcd30ec6bae8acfc4fd1b01731b1eadb26",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 41634305811,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41634305811",
+      "head_sha": "ccad65bcd30ec6bae8acfc4fd1b01731b1eadb26",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

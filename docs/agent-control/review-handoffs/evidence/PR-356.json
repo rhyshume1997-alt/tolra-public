@@ -1,0 +1,27 @@
+{
+  "number": 356,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/356",
+  "title": "L12 / C10: one-time migration 146 runbook and transaction failures",
+  "branch": "codex/b6-l12-c10-146-one-time",
+  "observed_head": "74f8cb84258d856ccee2eed16b0c522fa803cf73",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:04Z",
+  "files": [
+    "docs/handover/C10-146-ONE-TIME-MIGRATION-RUNBOOK.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds docs/handover/C10-146-ONE-TIME-MIGRATION-RUNBOOK.md: run the complete file once under separate authority, verify immediately, stop on error/uncertain commit, never auto-rollback after live use and never reinstall after rollback.\n\nPins BEGIN/COMMIT and line 37 ADD COLUMN key_source. Explains that its existing-column error aborts the current transaction, so preceding pending table/seed changes cannot commit, while pre-existing committed history/column survive; split/autocommitting execution requires separate investigation. Covers later error, connection loss around COMMIT, verification failure and retained-history/reservation recovery limits.\n\nExact immutable file/line citations, source ordering, 237-line release/rollback and whitespace checked. Handover embedded. Documentation only; no runtime recovery claim, source SQL changes, main merge, production SQL, deployment or Ready label.",
+  "historical_test_claims": [],
+  "workflow_runs": [
+    {
+      "id": 41868615712,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41868615712",
+      "head_sha": "74f8cb84258d856ccee2eed16b0c522fa803cf73",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

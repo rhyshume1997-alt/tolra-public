@@ -1,0 +1,42 @@
+{
+  "number": 214,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/214",
+  "title": "Test a complete fictional SliQ export without writes",
+  "branch": "codex/sliq-fake-export",
+  "observed_head": "8b805d5098cc4fb577fc00eeb116516b0d43c67e",
+  "base_sha": "b838afafa5323a9029600a285195852b35961232",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:17Z",
+  "files": [
+    "tests/fixtures/sliq/fake-export/README.md",
+    "tests/fixtures/sliq/fake-export/allocations.csv",
+    "tests/fixtures/sliq/fake-export/credit-notes.csv",
+    "tests/fixtures/sliq/fake-export/customers.csv",
+    "tests/fixtures/sliq/fake-export/invoice-lines.csv",
+    "tests/fixtures/sliq/fake-export/invoices.csv",
+    "tests/fixtures/sliq/fake-export/payments.csv",
+    "tests/fixtures/sliq/fake-export/products.csv",
+    "tests/fixtures/sliq/fake-export/purchase-orders.csv",
+    "tests/fixtures/sliq/fake-export/quotes.csv",
+    "tests/fixtures/sliq/fake-export/suppliers.csv",
+    "tests/unit/sliq-fake-export.test.ts",
+    "tests/unit/sliq-numeric-range-review.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Add an entirely fictional ten-file SliQ export: two customers, supplier, product, quote, PO, invoice/line, partial payment, linked credit note and allocation. All mailboxes use example.test. Cover BOM/padded headers, blank rows, quoted commas, oversized amounts, unknown invoice links and an extra report-banner row.\n\nExercise both the importer analysis and independent read-only reconciliation engine. Check exact pennies (72000 - 12000 - 6000 = 54000), retained source hashes, refused overflow and an explicit blocker against a deliberately mismatched fake target. No write mode, database or real data is used.\n\nBase: codex2/sliq-more-tests (#193), incorporating #181's numeric validation without changing its behavior. Validation: 132 parser/reconciliation tests passed; typecheck and targeted ESLint passed. No new parse bug was found. Live DB import not run; no SQL applied.\n",
+  "historical_test_claims": [
+    "Add an entirely fictional ten-file SliQ export: two customers, supplier, product, quote, PO, invoice/line, partial payment, linked credit note and allocation. All mailboxes use example.test. Cover BOM/padded headers, blank rows, quoted commas, oversized amounts, unknown invoice links and an extra report-banner row.",
+    "Base: codex2/sliq-more-tests (#193), incorporating #181's numeric validation without changing its behavior. Validation: 132 parser/reconciliation tests passed; typecheck and targeted ESLint passed. No new parse bug was found. Live DB import not run; no SQL applied."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41648183293,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41648183293",
+      "head_sha": "8b805d5098cc4fb577fc00eeb116516b0d43c67e",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

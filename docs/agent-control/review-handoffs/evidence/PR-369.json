@@ -1,0 +1,36 @@
+{
+  "number": 369,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/369",
+  "title": "Audit pack: six blank JNR access, records, recovery and office templates",
+  "branch": "codex/b5-audit-g10-g22",
+  "observed_head": "7ade27b800f9f922b80df27647ca500a7ee08bec",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:03Z",
+  "files": [
+    "docs/audit/G10-USER-ACCESS-REGISTER.md",
+    "docs/audit/G11-RETENTION-AND-RETRIEVAL.md",
+    "docs/audit/G13-RECOVERY-DECISION-TREE.md",
+    "docs/audit/G16-OFFICE-SOPS-AND-COMPETENCE.md",
+    "docs/audit/G19-SLIQ-EXCLUSIONS-REGISTER.md",
+    "docs/audit/G22-POST-CUTOVER-RETRIEVAL-TEST.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds exactly six files under docs/audit/ for Rhys\u2019s document-only G10/G11/G13/G16/G19/G22 assignment:\n\n- G10: per-user production access/MFA/departure review and negative checks.\n- G11: retention/deletion decision schedule and retrieval sheet.\n- G13: live-use recovery decisions; never re-apply 146 after rollback; restore loses later live activity; blank RPO/RTO.\n- G16: office steps for invoicing, email review, delivery notes with/without an order, payment claims and mistakes; training/competence record.\n- G19: proposed SliQ exclusions/limits, original-record retrieval and John approval.\n- G22: timed historic invoice, signed note, audit and excluded-record retrieval samples.\n\nEvery complete record template includes requirement ID, expected result, blank actual result marked NOT EXECUTED, evidence reference, tester, date and approval. No operational result or signature is filled. Tolra supports JNR; it cannot certify the company.\n\n- [x] Reviewed current screen labels/source, required fields, NOT EXECUTED status and git diff --check; published/local trees match.\n- [ ] John/Rhys reviews/adopts templates, chooses owners/limits/retention and completes actual evidence privately.\n\nBuilder 5. Atomic claims G10/G11/G13/G19/G22; the pre-existing G16 paid-hours claim and #329 remain untouched. G16 here is the explicitly assigned separate office-document scope. One draft PR, six Markdown additions only. No code, Ready label, main merge, production SQL, real data, test execution or message to John. Pack handover is embedded in G22.",
+  "historical_test_claims": [
+    "Every complete record template includes requirement ID, expected result, blank actual result marked NOT EXECUTED, evidence reference, tester, date and approval. No operational result or signature is filled. Tolra supports JNR; it cannot certify the company.",
+    "- [x] Reviewed current screen labels/source, required fields, NOT EXECUTED status and git diff --check; published/local trees match.",
+    "Builder 5. Atomic claims G10/G11/G13/G19/G22; the pre-existing G16 paid-hours claim and #329 remain untouched. G16 here is the explicitly assigned separate office-document scope. One draft PR, six Markdown additions only. No code, Ready label, main merge, production SQL, real data, test execution or message to John. Pack handover is embedded in G22."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41916806582,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41916806582",
+      "head_sha": "7ade27b800f9f922b80df27647ca500a7ee08bec",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

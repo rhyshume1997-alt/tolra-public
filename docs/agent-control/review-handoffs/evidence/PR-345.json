@@ -1,0 +1,31 @@
+{
+  "number": 345,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/345",
+  "title": "L1: independent cross-review of lag drafts #343 and #344",
+  "branch": "codex/b6-l1-lag-cross-review",
+  "observed_head": "8e08782d229b69fb6b8be4d04a85515fd99c4586",
+  "base_sha": "40ad1d6e6aeb6a47c715d0e0aa8072e3426fdc86",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:05Z",
+  "files": [
+    "docs/handover/BUILDER-6-L1.md",
+    "tests/unit/lag-review-boundary.test.ts",
+    "tests/unit/page-loading-lag.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Independently checks #343 findings and #344 implementation against 9c3f5c6. No production mistake found; adds actual CSV/Excel getter parity and the real default 20,000-row boundary cases. Traces Word/PDF and separate worksheet/print reads, smaller-cap pagination and hidden-tab polling.\n\nValidation: 42 focused tests pass across four files, no failures/skips; changed-test ESLint and whitespace checks pass. Four unchanged snapshots also match the untouched candidate (selective baseline run). No full-suite/runtime/latency proof claimed.\n\nHandover: docs/handover/BUILDER-6-L1.md. Follow-up targets builder 4's branch; original branches untouched. Draft only; no main merge, production SQL, deployment or Ready label.",
+  "historical_test_claims": [
+    "Validation: 42 focused tests pass across four files, no failures/skips; changed-test ESLint and whitespace checks pass. Four unchanged snapshots also match the untouched candidate (selective baseline run). No full-suite/runtime/latency proof claimed."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41860002965,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41860002965",
+      "head_sha": "8e08782d229b69fb6b8be4d04a85515fd99c4586",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

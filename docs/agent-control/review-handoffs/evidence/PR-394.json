@@ -1,0 +1,32 @@
+{
+  "number": 394,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/394",
+  "title": "B: reconcile implemented features, pending PRs and configuration",
+  "branch": "codex/feature-state-reconcile",
+  "observed_head": "a825d5e646de2a2a1b3dfd09ae4b4d0f68832442",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:21:59Z",
+  "files": [
+    "docs/agent-control/feature-reconciliation.md",
+    "tests/reviews/feature-state/evidence/targeted.log"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Targeted public main/open-PR reconciliation across the requested feature areas, with exact code/test paths and explicit DONE (coded, merged), IN PROGRESS, BLOCKED, NOT STARTED and scoped SUPERSEDED findings. No full audit or master plan.\n\n217 focused tests passed, 0 failed/skipped across 12 files. No database/provider calls. Main has real Anthropic/Xero source; pending #221 targets Sage Business Cloud Accounting API v3.1 review-only lookup, not Sage 50 or outbound transfer. Actual-profit replacement remains disabled/pending precision fixes. Production deployment/configuration and release acceptance unproven.\n\nDocs/test evidence only. No private files, merge, production SQL, #359/go-live changes or John messages.",
+  "historical_test_claims": [
+    "Targeted public main/open-PR reconciliation across the requested feature areas, with exact code/test paths and explicit DONE (coded, merged), IN PROGRESS, BLOCKED, NOT STARTED and scoped SUPERSEDED findings. No full audit or master plan.",
+    "217 focused tests passed, 0 failed/skipped across 12 files. No database/provider calls. Main has real Anthropic/Xero source; pending #221 targets Sage Business Cloud Accounting API v3.1 review-only lookup, not Sage 50 or outbound transfer. Actual-profit replacement remains disabled/pending precision fixes. Production deployment/configuration and release acceptance unproven.",
+    "Docs/test evidence only. No private files, merge, production SQL, #359/go-live changes or John messages."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41985974167,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41985974167",
+      "head_sha": "a825d5e646de2a2a1b3dfd09ae4b4d0f68832442",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

@@ -1,0 +1,41 @@
+{
+  "number": 390,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/390",
+  "title": "DEV-001: failing staff hold-alert tests for Code pickup",
+  "branch": "codex/dev001-held-staff-alert-tests",
+  "observed_head": "b1c47c06e504c7e26ecdfa31d0d477777ee45de4",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:21:59Z",
+  "files": [
+    "tests/reviews/dev001/README.md",
+    "tests/reviews/dev001/evidence/committed-original.log",
+    "tests/reviews/dev001/evidence/corrected-committed-original.log",
+    "tests/reviews/dev001/evidence/first-original.log",
+    "tests/reviews/dev001/evidence/original-typecheck-failure.log",
+    "tests/reviews/dev001/evidence/run.json",
+    "tests/reviews/dev001/fixtures/job-delivery-note-form.tsx",
+    "tests/reviews/dev001/fixtures/job-delivery-note-no-order.ts",
+    "tests/reviews/dev001/held-alert.test.ts",
+    "tests/reviews/dev001/vitest.config.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Tests first only; no application implementation. Committed corrected harness 2f3d3f1 reports 2 passed, 4 failed, zero skipped (exit 1), reproducing actual generic Nothing was saved / permission wording rather than a module/setup failure. Original failed logs remain. Lint and TypeScript pass after a test-only local fixture import correction; its earlier typecheck failure is retained too.\n\nThe real 147 dln_numbering_not_set hint must produce plain staff wording and an accessible alert; a proposed distinct company_on_hold signal has a separate sentence, which Code must implement and verify server-side. Unknown permission/network errors must not be mislabelled as holds. Tests also verify input preservation and no success callback/toast/audit on refusal.\n\nPinned public 9d7725e form/helper fixtures exercise the existing UI on a main-based branch. Component logic is unchanged; only the helper import is relocated for TypeScript. No candidate/go-live/app file is edited. A persistent company-wide banner, authenticated signal, navigation/offline/reset rules and full wiring remain implementation work for Code. No raw DB/other-company details should be shown.\n\nDEV-001: red contracts ready, 2 pass / 4 expected fail / 0 skipped. Separate branch from main, tests/docs only, no SQL/provider/real data/private files, no merge, no #359/go-live edit and no message to John.",
+  "historical_test_claims": [
+    "Tests first only; no application implementation. Committed corrected harness 2f3d3f1 reports 2 passed, 4 failed, zero skipped (exit 1), reproducing actual generic Nothing was saved / permission wording rather than a module/setup failure. Original failed logs remain. Lint and TypeScript pass after a test-only local fixture import correction; its earlier typecheck failure is retained too.",
+    "The real 147 dln_numbering_not_set hint must produce plain staff wording and an accessible alert; a proposed distinct company_on_hold signal has a separate sentence, which Code must implement and verify server-side. Unknown permission/network errors must not be mislabelled as holds. Tests also verify input preservation and no success callback/toast/audit on refusal.",
+    "Pinned public 9d7725e form/helper fixtures exercise the existing UI on a main-based branch. Component logic is unchanged; only the helper import is relocated for TypeScript. No candidate/go-live/app file is edited. A persistent company-wide banner, authenticated signal, navigation/offline/reset rules and full wiring remain implementation work for Code. No raw DB/other-company details should be shown.",
+    "DEV-001: red contracts ready, 2 pass / 4 expected fail / 0 skipped. Separate branch from main, tests/docs only, no SQL/provider/real data/private files, no merge, no #359/go-live edit and no message to John."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41984349921,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41984349921",
+      "head_sha": "b1c47c06e504c7e26ecdfa31d0d477777ee45de4",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

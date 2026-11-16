@@ -1,0 +1,39 @@
+{
+  "number": 386,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/386",
+  "title": "G30: add synthetic-only AI request count and identity checker",
+  "branch": "codex/g30-ai-request-wipe-reconciliation",
+  "observed_head": "fa74b117973b29580a2c354e095bb8c4177f3c61",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:01Z",
+  "files": [
+    "tests/reviews/g30/README.md",
+    "tests/reviews/g30/compare.d.mts",
+    "tests/reviews/g30/compare.mjs",
+    "tests/reviews/g30/disposable.ts",
+    "tests/reviews/g30/evidence/archive.json",
+    "tests/reviews/g30/evidence/synthetic-run.tar.gz",
+    "tests/reviews/g30/ownership.test.ts",
+    "tests/reviews/g30/snapshot.sql",
+    "tests/reviews/g30/vitest.config.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Delivers only a reusable read-only snapshot, offline comparator and synthetic tests. Real scenario B comparison: unverified here, owned by Code. Its evidence, report and wipe-kit files remain private and are not inputs to this PR or public CI. No private source or actual scenario record-level comparison is included.\n\nsnapshot.sql captures all-company counts, record UUIDs, company UUIDs and UTC full-row hashes without request text/model responses/keys. A tenant-filtered capture refuses rather than silently omitting other companies. compare.mjs accepts before/after files and an explicitly approved WIPE/KEEP policy, validates counts against every identity, checks other-company preservation, and lists every added/removed/moved/changed row without truncation. It binds input file hashes and exits nonzero on violations or invalid evidence. No DB URL or network access in the comparator.\n\nCommitted synthetic-only code d3c4d76: 9 passed, zero failed/skipped; lint and TypeScript passed. Tests create and verify their own nonce-labelled, pinned-image, network-isolated PostgreSQL container, no published ports, no existing DB. The public main 101 table definition and 82 synthetic rows (41 per company) exercise correct removals, wrong-company removals, owner changes, same-count identity replacement, content changes, malformed/duplicate/count evidence, filtered capture refusal and CLI output/exit behaviour. Complete synthetic before/after/difference manifests and SQL/identity provenance are archived with SHA-256; container removed.\n\nG30: reusable checker ready, 9 synthetic tests passed. Real scenario B comparison: unverified here, owned by Code. Handover and usage: tests/reviews/g30/README.md. Separate clean branch from main 68f89ca; docs/tests only. No merge, production SQL, real data, #359/candidate edits, Ready label or message to John.",
+  "historical_test_claims": [
+    "Delivers only a reusable read-only snapshot, offline comparator and synthetic tests. Real scenario B comparison: unverified here, owned by Code. Its evidence, report and wipe-kit files remain private and are not inputs to this PR or public CI. No private source or actual scenario record-level comparison is included.",
+    "Committed synthetic-only code d3c4d76: 9 passed, zero failed/skipped; lint and TypeScript passed. Tests create and verify their own nonce-labelled, pinned-image, network-isolated PostgreSQL container, no published ports, no existing DB. The public main 101 table definition and 82 synthetic rows (41 per company) exercise correct removals, wrong-company removals, owner changes, same-count identity replacement, content changes, malformed/duplicate/count evidence, filtered capture refusal and CLI output/exit behaviour. Complete synthetic before/after/difference manifests and SQL/identity provenance are archived with SHA-256; container removed.",
+    "G30: reusable checker ready, 9 synthetic tests passed. Real scenario B comparison: unverified here, owned by Code. Handover and usage: tests/reviews/g30/README.md. Separate clean branch from main 68f89ca; docs/tests only. No merge, production SQL, real data, #359/candidate edits, Ready label or message to John."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41968499944,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41968499944",
+      "head_sha": "fa74b117973b29580a2c354e095bb8c4177f3c61",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

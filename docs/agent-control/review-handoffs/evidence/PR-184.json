@@ -1,0 +1,44 @@
+{
+  "number": 184,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/184",
+  "title": "Join costing engine, screens and atomic settings save",
+  "branch": "codex/costing-join",
+  "observed_head": "a4bd28f9d2b287001cdb6ee7ab11ac6728e7c0e2",
+  "base_sha": "8c4c7fe056119b1d9cff6bb70be96d751cbe3f5d",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:20Z",
+  "files": [
+    "app/(dashboard)/quotes/page.tsx",
+    "app/(dashboard)/settings/page.tsx",
+    "components/costing/connected-costing.tsx",
+    "components/costing/costing-rates-editor.tsx",
+    "components/costing/price-this-part.tsx",
+    "components/costing/types.ts",
+    "lib/costing/atomic-settings.ts",
+    "lib/costing/engine.ts",
+    "supabase/proposals/builder2_costing_settings_atomic.sql",
+    "tests/unit/costing-atomic-review.test.ts",
+    "tests/unit/costing-engine-parity.test.ts",
+    "tests/unit/costing-extra-edge.test.ts",
+    "tests/unit/costing-followup.test.ts",
+    "tests/unit/costing-ui.test.ts",
+    "tests/unit/costing-wiring.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Joins #110's price engine and #123's live screen wiring on the costing base, retaining the reviewed atomic-save client/proposal from #155. Machine labour overrides (including zero) survive display, saving and pricing; fractional pennies are refused before any request. Saving uses one RPC with no partial-write fallback. The proposal is included for review and has NOT been applied anywhere; settings cannot save until its separately reviewed deployment.\n\nAll 60 frozen golden prices run and pass. Focused costing suite: 627 passed, zero skipped, including 412 Python rounding comparisons. Exposing the rounding helper uncovered a large-value double-rounding defect; conversion now rounds once from the exact integer decimal. Existing UI assertions retain their checks with the newer plain-language labels. TypeScript passed; full suite/lint verification in progress.\n\nFailed-save client tests assert no fallback writes and unchanged saved/draft objects. These do not prove database rollback: proposal execution is prohibited in this task. No docs files, Ready label, migration application, merge or deployment.",
+  "historical_test_claims": [
+    "All 60 frozen golden prices run and pass. Focused costing suite: 627 passed, zero skipped, including 412 Python rounding comparisons. Exposing the rounding helper uncovered a large-value double-rounding defect; conversion now rounds once from the exact integer decimal. Existing UI assertions retain their checks with the newer plain-language labels. TypeScript passed; full suite/lint verification in progress.",
+    "Failed-save client tests assert no fallback writes and unchanged saved/draft objects. These do not prove database rollback: proposal execution is prohibited in this task. No docs files, Ready label, migration application, merge or deployment."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41588801415,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41588801415",
+      "head_sha": "a4bd28f9d2b287001cdb6ee7ab11ac6728e7c0e2",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

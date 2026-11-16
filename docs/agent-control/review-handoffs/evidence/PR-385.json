@@ -1,0 +1,42 @@
+{
+  "number": 385,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/385",
+  "title": "G33: rehearse guarded SliQ-shaped imports through release 147",
+  "branch": "codex/g33-release147-import-rehearsal",
+  "observed_head": "d849a4221508325401c570f50f96a1d99474ed96",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:01Z",
+  "files": [
+    "tests/reviews/g33/README.md",
+    "tests/reviews/g33/bootstrap.sql",
+    "tests/reviews/g33/disposable.ts",
+    "tests/reviews/g33/evidence/archive.json",
+    "tests/reviews/g33/evidence/committed-run.tar.gz",
+    "tests/reviews/g33/import.test.ts",
+    "tests/reviews/g33/payload.ts",
+    "tests/reviews/g33/prepare-safeupdate.sh",
+    "tests/reviews/g33/preprocess.d.mts",
+    "tests/reviews/g33/preprocess.mjs",
+    "tests/reviews/g33/vitest.config.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Runs the unchanged full public migration chain through 144 (including 138 \u2192 140 \u2192 141 \u2192 144), then complete releases 145 \u2192 146 \u2192 147 from pinned 9d7725e. Creates its own nonce-labelled, pinned-image, network-isolated PostgreSQL container; verifies identity before SQL, accepts no DB URL, synthetic records only. Auth/Storage prerequisites are explicit test-only schema/JWT functions, not running services.\n\nCommitted code 84c3920: 8 passed, zero failed/skipped. Five ungated equivalents replace the direct safeupdate skips in CI 41936446385: G33-SU1 unqualified UPDATE/DELETE including nested function; SU2 small dry-run/commit/count/replay; SU3 whole-file bad-row refusal; SU4 multipart stage/validate/commit/undo; SU5 small+large credit/delivery-note import and undo. Original five cases are named in tests/reviews/g33/README.md; original files/gates remain untouched. The two optional timing skips are separate and not claimed replaced.\n\nReal unmodified pg-safeupdate is built from pinned public source/headers and LOADed before authenticated SQL calls; absence fails rather than skips. All original import kinds remain covered. Public #368's synthetic preprocessor handles report-shaped invoices/payments, followed by the identical app mapper/build functions and guarded importer; supplemental canonical credit/delivery sheets and remaining record kinds exercise 147's live triggers. Reconciliation: invoice total 144.06, linked payment 60.00, credit 12.00, balance 72.06; repeat adds no duplicates. Business/counter/hold/key snapshots are checked; import/audit bookkeeping is explicitly outside the zero-business-write claim.\n\nPaused companies refuse import. The separate DLN numbering hold blocks new notes but deliberately permits authorised historical imports; both hold rows/timestamps and Marpet business snapshots remain unchanged. No trigger, release guard, expected value or safeupdate check was weakened.\n\nOriginal image-unpack disk failure and extension-file-mode setup failure are retained with final SQL hashes, source/commit/environment/time/exits, dependency hashes and identity receipts in the evidence archive. Lint and TypeScript passed. G33: rehearsal done, 8 passed, 5 ungated replacements; complete Auth/Storage/PostgREST/browser and final release approval are not claimed.\n\nSeparate codex branch from main 68f89ca, tests/docs only. No #359/candidate edits, merge, production SQL, real data/private source, Ready label, provider call or message to John.",
+  "historical_test_claims": [
+    "Runs the unchanged full public migration chain through 144 (including 138 \u2192 140 \u2192 141 \u2192 144), then complete releases 145 \u2192 146 \u2192 147 from pinned 9d7725e. Creates its own nonce-labelled, pinned-image, network-isolated PostgreSQL container; verifies identity before SQL, accepts no DB URL, synthetic records only. Auth/Storage prerequisites are explicit test-only schema/JWT functions, not running services.",
+    "Committed code 84c3920: 8 passed, zero failed/skipped. Five ungated equivalents replace the direct safeupdate skips in CI 41936446385: G33-SU1 unqualified UPDATE/DELETE including nested function; SU2 small dry-run/commit/count/replay; SU3 whole-file bad-row refusal; SU4 multipart stage/validate/commit/undo; SU5 small+large credit/delivery-note import and undo. Original five cases are named in tests/reviews/g33/README.md; original files/gates remain untouched. The two optional timing skips are separate and not claimed replaced.",
+    "Original image-unpack disk failure and extension-file-mode setup failure are retained with final SQL hashes, source/commit/environment/time/exits, dependency hashes and identity receipts in the evidence archive. Lint and TypeScript passed. G33: rehearsal done, 8 passed, 5 ungated replacements; complete Auth/Storage/PostgREST/browser and final release approval are not claimed.",
+    "Separate codex branch from main 68f89ca, tests/docs only. No #359/candidate edits, merge, production SQL, real data/private source, Ready label, provider call or message to John."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41967764866,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41967764866",
+      "head_sha": "d849a4221508325401c570f50f96a1d99474ed96",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

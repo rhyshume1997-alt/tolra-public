@@ -1,0 +1,56 @@
+{
+  "number": 237,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/237",
+  "title": "O: Combine accounting adapters and encrypted isolation proofs",
+  "branch": "codex/o-accounting-combined",
+  "observed_head": "86eda4bd48b1237b42140dbd72ace7cb73442f4b",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:16Z",
+  "files": [
+    "app/api/accounting/[provider]/[action]/route.ts",
+    "components/integrations-panel.tsx",
+    "components/integrations/accounting-cloud-cards.tsx",
+    "lib/accounting/cloud-adapters.ts",
+    "lib/accounting/connections.ts",
+    "lib/accounting/types.ts",
+    "lib/integrations/server.ts",
+    "lib/integrations/types.ts",
+    "supabase/migrations/144_accounting_connections.sql",
+    "supabase/release/144_accounting_connections.release.sql",
+    "supabase/release/144_accounting_connections.rollback.sql",
+    "supabase/verify/accounting_connections_144.sql",
+    "supabase/verify/release_preflight.sql",
+    "tests/accounting/DB-FAILURE-REVIEW.md",
+    "tests/accounting/SETUP-AND-CHECKS.md",
+    "tests/db/catalogue.snapshot.json",
+    "tests/unit/accounting-cloud-adapters.test.ts",
+    "tests/unit/accounting-replay-guard.test.ts",
+    "tests/unit/accounting-routes.test.ts",
+    "tests/unit/accounting-sql-shape.test.ts",
+    "tests/unit/accounting-token-isolation.test.ts"
+  ],
+  "migration_verification_rollback_paths": [
+    "supabase/migrations/144_accounting_connections.sql",
+    "supabase/release/144_accounting_connections.release.sql",
+    "supabase/release/144_accounting_connections.rollback.sql",
+    "supabase/verify/accounting_connections_144.sql",
+    "supabase/verify/release_preflight.sql"
+  ],
+  "public_pr_body": "Accounting-only combination of #221/#230 feature contents plus R's replay correction. No AI changes. Priority update copies Code's c33c667 catalogue snapshot exactly and the matching 144 function-first migration/release/rollback ordering from 53030fd. Snapshot bytes match Code's supplied version; no catalogue assertion or function guard was relaxed.\n\nThe original 084 enqueue body stays intact; 144 owns the same Xero-only filter in accounting_cloud_enqueue and rebinds the same two document triggers. New functions are created before alterations to existing objects. Rollback restores old targets before removing new functions. R's failure evidence and test remain in tests/accounting/DB-FAILURE-REVIEW.md and tests/unit/accounting-replay-guard.test.ts.\n\nFinal validation: 5,135 unit tests passed (377 files), typecheck, full lint, migration-file integrity and diff checks passed. No conflicts while applying the supplied snapshot/order changes; no docs/ diff or weakened source test.\n\nNOT RUN here: SQL/DB, upgrade rehearsal, the two reported labour/network DB symptoms, browser or live providers. Code reported #221's DB suite at 128/128 with the catalogue correction; that is not a local rerun of this combined head. No SQL applied, deployment, Ready label, GitHub merge or manual CI dispatch.\n",
+  "historical_test_claims": [
+    "The original 084 enqueue body stays intact; 144 owns the same Xero-only filter in accounting_cloud_enqueue and rebinds the same two document triggers. New functions are created before alterations to existing objects. Rollback restores old targets before removing new functions. R's failure evidence and test remain in tests/accounting/DB-FAILURE-REVIEW.md and tests/unit/accounting-replay-guard.test.ts.",
+    "Final validation: 5,135 unit tests passed (377 files), typecheck, full lint, migration-file integrity and diff checks passed. No conflicts while applying the supplied snapshot/order changes; no docs/ diff or weakened source test."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41700473717,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41700473717",
+      "head_sha": "86eda4bd48b1237b42140dbd72ace7cb73442f4b",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

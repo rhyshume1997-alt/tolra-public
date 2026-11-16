@@ -1,0 +1,43 @@
+{
+  "number": 355,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/355",
+  "title": "L11 / C07: genuine safeupdate disposable import proof",
+  "branch": "codex/b6-l11-c07-safeupdate",
+  "observed_head": "008f63a7553f06e235ebdb528a5c40e0e42e1f87",
+  "base_sha": "9c3f5c6cf51cfb3c41b1fe23fe532b5ddb5254a8",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:04Z",
+  "files": [
+    ".github/workflows/c07-safeupdate.yml",
+    "docs/handover/C07-SAFEUPDATE-IMPORT-PROOF.md",
+    "scripts/c07/enable-safeupdate.mjs",
+    "scripts/c07/run-safeupdate.sh",
+    "tests/db/c07-safeupdate.test.ts",
+    "tests/db/data-import-pr2.test.ts",
+    "tests/db/safeupdate-support.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds a fresh-stack local runner and targeted PR/manual CI job with genuine pg-safeupdate from the disposable Supabase Postgres image. Its bootstrap administrator configures scoped preload without promoting importer/authenticated roles; fresh direct connections must prove on, unsafe UPDATE/DELETE/PLpgSQL refusal and qualified control. Existing and new credit/delivery RPC and actual SliQ CLI tests run; JSON gate refuses all skips/pending/empty/failures.\n\nPASSED: targeted Actions run 41871020772, 25 tests across all three required files, zero skips/pending. Tested source db75ea2ec941f194b7e96f77b0e015267d201cf7 / actual PR merge 62af6ae1655e55a09fae81e4da611b4990ba10fa. Artifact 13344811572, SHA256 294f92b8a4a4a85b69d0141eec6699f71788df70df80044ffc8015aa6e083cc3. Final follow-up changes evidence text only; executable tree matches the passing source. Syntax, explicit changed-file lint and candidate typecheck also passed.\n\nCovers normal credit/delivery import, invalid refusal, business-state/counter-preserving dry run, injected mid-write rollback, retry/idempotence, staged undo and other-company isolation. Path distinction remains explicit: credit/delivery notes use migration-085 import_company_data RPC engine; SliQ CLI uses import_legacy_tenant and has no credit/delivery writer/undo API. Actual final cutover route/independent approval remain separate.\n\nHandover docs/handover/C07-SAFEUPDATE-IMPORT-PROOF.md preserves initial local image-store ENOSPC and three corrected CI setup failures, plus exact passing run/artifact. Safeupdate is available and active in CI; no library-install impossibility remains. Targeted proof only, not full release validation. Draft into pinned 9c3f5c6 review base; no source migration changes, main merge, production SQL, deployment or Ready label.",
+  "historical_test_claims": [
+    "Adds a fresh-stack local runner and targeted PR/manual CI job with genuine pg-safeupdate from the disposable Supabase Postgres image. Its bootstrap administrator configures scoped preload without promoting importer/authenticated roles; fresh direct connections must prove on, unsafe UPDATE/DELETE/PLpgSQL refusal and qualified control. Existing and new credit/delivery RPC and actual SliQ CLI tests run; JSON gate refuses all skips/pending/empty/failures.",
+    "PASSED: targeted Actions run 41871020772, 25 tests across all three required files, zero skips/pending. Tested source db75ea2ec941f194b7e96f77b0e015267d201cf7 / actual PR merge 62af6ae1655e55a09fae81e4da611b4990ba10fa. Artifact 13344811572, SHA256 294f92b8a4a4a85b69d0141eec6699f71788df70df80044ffc8015aa6e083cc3. Final follow-up changes evidence text only; executable tree matches the passing source. Syntax, explicit changed-file lint and candidate typecheck also passed."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41871935137,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41871935137",
+      "head_sha": "008f63a7553f06e235ebdb528a5c40e0e42e1f87",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 41871935092,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41871935092",
+      "head_sha": "008f63a7553f06e235ebdb528a5c40e0e42e1f87",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

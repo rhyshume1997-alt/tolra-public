@@ -1,0 +1,29 @@
+{
+  "number": 325,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/325",
+  "title": "VERCEL-PREV: preview build capacity and stop controls",
+  "branch": "codex/b4-q4-vercel-prev",
+  "observed_head": "02fcd8f077385740122858da8e0a488acb79d0d8",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:07Z",
+  "files": [
+    "docs/runbooks/VERCEL-PREV-BUILD-CAPACITY.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds preview build capacity and stop controls for VERCEL-PREV, with expected results, firm stop rules and a handover note. All deliverables are under docs/signoff/ or docs/runbooks/.\n\nValidation: Documentation checks passed (staged whitespace check); source/expected-result/stop-rule review completed. No production operations performed.\n\nOperational steps, signatures and live evidence remain NOT RUN / unsigned. Related draft sheets must enter the reviewed cutover pack before use. No new functionality, main merge, production SQL, deployment or Ready label.\n",
+  "historical_test_claims": [
+    "Validation: Documentation checks passed (staged whitespace check); source/expected-result/stop-rule review completed. No production operations performed."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41844713879,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41844713879",
+      "head_sha": "02fcd8f077385740122858da8e0a488acb79d0d8",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

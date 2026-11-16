@@ -1,0 +1,37 @@
+{
+  "number": 381,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/381",
+  "title": "G27: retain runtime \u00a35-cap failure and concurrent key-security tests",
+  "branch": "codex/g27-concurrency-key-tests",
+  "observed_head": "47a79816e4d879a0c45abffa4a9aa96c0cb50b28",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:01Z",
+  "files": [
+    "tests/reviews/g27/README.md",
+    "tests/reviews/g27/budget.test.ts",
+    "tests/reviews/g27/disposable.ts",
+    "tests/reviews/g27/evidence/archive.json",
+    "tests/reviews/g27/evidence/committed-run.tar.gz",
+    "tests/reviews/g27/key-logging.test.ts",
+    "tests/reviews/g27/vitest.config.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds real concurrent SQL execution beyond #375's source/unit review. Committed-code 7a63e36 run: 13 passed, 1 failed, zero skipped; overall exit 1. The strict provided-mode DEFAULT contract expected 10 accepted 50p requests/500p total but measured 20/1000p. This reproduces the existing default mismatch under concurrency; expected values remain 500p and application code is unchanged.\n\nPassing checks cover shared mixed-feature ledgers at configured 500p, independent company budgets, concurrent settlement, replay refusal, stale-reservation charging, disabled company/global defaults, admin switch approval, no ciphertext in reservation/request/audit output and five synthetic-key error paths with console/outcome leak assertions. The main server path uses a fake provider, not the network.\n\nCreates and identifies a fresh nonce-labelled, pinned-image network-isolated PostgreSQL container, no ports, before SQL. No DB URL accepted. Actual main 101/133/134 tables/functions and pinned public release 146 at 31f965e7 run against minimal synthetic prerequisites; unrelated 145 readiness dependency returns false. This is narrow DB execution, not full Supabase/Auth/browser/final-candidate deployment proof. Default-off checks do not establish actual launch settings.\n\nG27: review done, one existing cap finding now reproduced at runtime; fixes pending owner. Explicitly configured 500p passes do not repair or approve the 1000p default, nor prove an immutable maximum against authorised cap changes. Original first/final logs, SQL hashes, exact commit/environment/times/exits and identity receipts retained in an evidence archive with SHA-256. Lint and TypeScript passed. Handover: tests/reviews/g27/README.md.\n\nSeparate branch from main 68f89ca. Tests/docs only; no edits to #359/candidate branch, implementation, production SQL, real keys/data, live AI, merge, Ready label, or message to John.",
+  "historical_test_claims": [
+    "Adds real concurrent SQL execution beyond #375's source/unit review. Committed-code 7a63e36 run: 13 passed, 1 failed, zero skipped; overall exit 1. The strict provided-mode DEFAULT contract expected 10 accepted 50p requests/500p total but measured 20/1000p. This reproduces the existing default mismatch under concurrency; expected values remain 500p and application code is unchanged.",
+    "G27: review done, one existing cap finding now reproduced at runtime; fixes pending owner. Explicitly configured 500p passes do not repair or approve the 1000p default, nor prove an immutable maximum against authorised cap changes. Original first/final logs, SQL hashes, exact commit/environment/times/exits and identity receipts retained in an evidence archive with SHA-256. Lint and TypeScript passed. Handover: tests/reviews/g27/README.md.",
+    "Separate branch from main 68f89ca. Tests/docs only; no edits to #359/candidate branch, implementation, production SQL, real keys/data, live AI, merge, Ready label, or message to John."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41957332791,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41957332791",
+      "head_sha": "47a79816e4d879a0c45abffa4a9aa96c0cb50b28",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

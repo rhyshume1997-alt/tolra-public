@@ -1,0 +1,36 @@
+{
+  "number": 396,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/396",
+  "title": "D: hold ambiguous or incomplete Xero reconciliation replies",
+  "branch": "codex/xero-readback-reconciliation-fix",
+  "observed_head": "638a12c5fcd494597e1e99da95d77bb430256195",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:21:59Z",
+  "files": [
+    "docs/agent-control/xero-finish-verification.md",
+    "lib/integrations/xero/client.ts",
+    "tests/reviews/xero-finish/evidence/after.log",
+    "tests/reviews/xero-finish/evidence/before.log",
+    "tests/reviews/xero-finish/evidence/lint.log",
+    "tests/reviews/xero-finish/evidence/runs.json",
+    "tests/reviews/xero-finish/evidence/typecheck.log",
+    "tests/unit/xero-readback-safety.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Existing Xero read-back picked the first matching number and silently converted absent totals to zero. This could report a false match or unsafe absence on retry. The smallest client fix holds ambiguous/incomplete responses, requires numeric totals and identifies sales credits correctly. No connector redesign, migration, credential/configuration or activation changes.\n\nTests first: 2 passed / 11 failed / 0 skipped; original failure log retained. After fix: 233 passed / 0 failed / 0 skipped across 14 mocked suites (16 new tests). TypeScript and targeted ESLint pass. Existing OAuth, mapping, contacts, invoice/credit mapping, retries/idempotency, reconciliation, routes/admin and default disconnected/unconfigured gates reviewed.\n\nAll Xero/fetch/DB dependencies mocked; real consent/tenant/DB permissions/live responses and business acceptance remain unproven. Transfers remain off without connection/configuration; existing connected companies must be checked before launch. No live calls, SQL, merge, private files, #359/go-live edits or John messages.",
+  "historical_test_claims": [
+    "Tests first: 2 passed / 11 failed / 0 skipped; original failure log retained. After fix: 233 passed / 0 failed / 0 skipped across 14 mocked suites (16 new tests). TypeScript and targeted ESLint pass. Existing OAuth, mapping, contacts, invoice/credit mapping, retries/idempotency, reconciliation, routes/admin and default disconnected/unconfigured gates reviewed."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41986450659,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41986450659",
+      "head_sha": "638a12c5fcd494597e1e99da95d77bb430256195",
+      "status": "in_progress",
+      "conclusion": null
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

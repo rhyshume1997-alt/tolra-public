@@ -1,0 +1,29 @@
+{
+  "number": 328,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/328",
+  "title": "LOGINS: John workshop and Marpet device setup",
+  "branch": "codex/b4-q4-logins",
+  "observed_head": "e98bc56ccef1dc0a35a1f3b62ce038f926a03af0",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:07Z",
+  "files": [
+    "docs/runbooks/LOGINS-WORKSHOP-TABLETS-AND-MARPET.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds john workshop and marpet device setup for LOGINS, with expected results, firm stop rules and a handover note. All deliverables are under docs/signoff/ or docs/runbooks/.\n\nValidation: Documentation checks passed (staged whitespace check); source/expected-result/stop-rule review completed. No production operations performed.\n\nOperational steps, signatures and live evidence remain NOT RUN / unsigned. Related draft sheets must enter the reviewed cutover pack before use. No new functionality, main merge, production SQL, deployment or Ready label.\n",
+  "historical_test_claims": [
+    "Validation: Documentation checks passed (staged whitespace check); source/expected-result/stop-rule review completed. No production operations performed."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41844771057,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41844771057",
+      "head_sha": "e98bc56ccef1dc0a35a1f3b62ce038f926a03af0",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

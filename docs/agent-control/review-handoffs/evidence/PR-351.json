@@ -1,0 +1,29 @@
+{
+  "number": 351,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/351",
+  "title": "L7 / C04: plain-English VSR draft for Rhys",
+  "branch": "codex/b6-l7-c04-vsr",
+  "observed_head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:04Z",
+  "files": [
+    "docs/handover/C04-VSR-DRAFT.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds docs/handover/C04-VSR-DRAFT.md with exact version/scope/evidence fields, IQ/OQ/PQ planned and actual results, deviations/retests, all eight proposed limits and other risks, and blank Rhys/reviewer/John decisions/signatures. Actual results and approved counts remain human entries; refreshed reference counts do not silently discard older transfer scope.\n\nDistinguishes validation, independent review and operational GO; missing/high-risk pre-use controls still block use. No test/log is promoted to human acceptance.\n\nChecks: source sections/count distinctions, complete evidence/risk/deviation fields, no prefilled results/signatures, whitespace pass. Handover embedded. Documentation only; one independent draft, no main merge, production SQL, deployment or Ready label.",
+  "historical_test_claims": [
+    "Distinguishes validation, independent review and operational GO; missing/high-risk pre-use controls still block use. No test/log is promoted to human acceptance."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41863517550,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41863517550",
+      "head_sha": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

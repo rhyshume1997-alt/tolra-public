@@ -1,0 +1,33 @@
+{
+  "number": 275,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/275",
+  "title": "CD: fake-only SliQ dry run with no write entry point",
+  "branch": "codex/cd-sliq-no-write",
+  "observed_head": "d73bb240a23b38a7080c0933e4f5b62ddd529f5f",
+  "base_sha": "d88f06333556e5c2a80e183a5067c5f7117562fa",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:13Z",
+  "files": [
+    "scripts/cutover-dry-run/check.mjs",
+    "scripts/cutover-dry-run/cli.mjs",
+    "tests/GO-LIVE-DATA-LOAD.md",
+    "tests/unit/cutover-no-write.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds a fixed fake-fixture SliQ dry run that writes no files or database rows, accepts no write, output or connection arguments, and uses the existing analyser and reconciliation engine unchanged. Input hashes are checked before and after.\n\nAssumption: CD is an offline supplement, not an import permission or replacement for the owner's tools. Actual fake report: errors 0, held 2, needs review 0; reconciliation INCOMPLETE with 1 UNVERIFIED WIP valuation requiring the accountant, 0 BLOCKER/WARN. Nothing is called a complete reconciliation or real rehearsal.\n\nChecks: 9 focused tests pass, 0 failures/skips, typecheck and changed-file ESLint pass. Subprocess cases were rerun with subprocess access after sandbox EPERM; no assertions were removed. Full combined suite is being measured separately. No real data or SQL used. tests/GO-LIVE-DATA-LOAD.md lists remaining restore, wipe, mapping, import and browser work. Coordination #271.\n\n- [x] CD no-write fake run and refusal tests\n- [ ] Real export mapping, WIP valuation, exact combined wipe/import rehearsal\n- [ ] Independent reviewer and Rhys decision\n",
+  "historical_test_claims": [
+    "Checks: 9 focused tests pass, 0 failures/skips, typecheck and changed-file ESLint pass. Subprocess cases were rerun with subprocess access after sandbox EPERM; no assertions were removed. Full combined suite is being measured separately. No real data or SQL used. tests/GO-LIVE-DATA-LOAD.md lists remaining restore, wipe, mapping, import and browser work. Coordination #271.",
+    "- [x] CD no-write fake run and refusal tests"
+  ],
+  "workflow_runs": [
+    {
+      "id": 41811642750,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41811642750",
+      "head_sha": "d73bb240a23b38a7080c0933e4f5b62ddd529f5f",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

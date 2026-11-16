@@ -1,0 +1,29 @@
+{
+  "number": 347,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/347",
+  "title": "L4: one-page R1\u2013R8 acceptance sheet for Rhys",
+  "branch": "codex/b6-l4-r1-r8-accept",
+  "observed_head": "380f60c5ce8dfc543f482b5a23086a0b5a85a1f5",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:05Z",
+  "files": [
+    "docs/signoff/R1-R8-ACCEPT-SHEET.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds eight plain restriction sentences, proof-to-attach and unproved limits, with separate blank Accept / Not accept choices and Rhys signature/date lines.\n\nUses the requested claude/258-refresh fallback pinned to cd3ca6ee; private wording was not available in the checked public sources. Retains #322's source-backed qualifications so unsupported past-tense proof/Accepted wording and Sage/QBO export or blanket timesheet-email exclusions are not repeated as facts.\n\nSource/ID/blank-decision and whitespace checks passed. Handover embedded in the sheet. No actual validation evidence, acceptance or signature claimed; draft only, no main merge, production SQL or Ready label.",
+  "historical_test_claims": [
+    "Source/ID/blank-decision and whitespace checks passed. Handover embedded in the sheet. No actual validation evidence, acceptance or signature claimed; draft only, no main merge, production SQL or Ready label."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41860515538,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41860515538",
+      "head_sha": "380f60c5ce8dfc543f482b5a23086a0b5a85a1f5",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

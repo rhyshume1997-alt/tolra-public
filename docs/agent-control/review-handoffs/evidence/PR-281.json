@@ -1,0 +1,35 @@
+{
+  "number": 281,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/281",
+  "title": "CJ: named fail-closed N1 N5 N6 browser acceptance specs",
+  "branch": "codex/cj-acceptance-specs",
+  "observed_head": "ff29ca191879ec954e305ec0eb200501789a5bcf",
+  "base_sha": "f4eacee2236e65e52fdccbdf5cf8f8045fd95d80",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:12Z",
+  "files": [
+    "tests/CJ-BUILDER-3-RESULTS.md",
+    "tests/e2e/acceptance/n1-paid-breaks.spec.ts",
+    "tests/e2e/acceptance/n5-blank-setup.spec.ts",
+    "tests/e2e/acceptance/n6-email-editor.spec.ts",
+    "tests/e2e/acceptance/require-database.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "CJ supplies the three named browser specs for N1 paid/unpaid breaks, N5 blank-company setup and N6 both email editors. Builder 3 continued the existing draft and committed tests/CJ-BUILDER-3-RESULTS.md.\n\nExact head: ff29ca191879ec954e305ec0eb200501789a5bcf. Collection command: `REVIEWER_REQUIRE_DATABASE=1 npx playwright test tests/e2e/acceptance --list` \u2014 PASS, 3 tests in 3 files. Runtime command: `REVIEWER_REQUIRE_DATABASE=1 npx playwright test tests/e2e/acceptance` \u2014 FAIL in global setup, TEST_SUPABASE_URL unset; browser assertions NOT TESTED. Current local Docker socket access is denied, distinct from the historical ENOSPC.\n\nCI run 41825174221: failure (web success, integration skipped, ci-gate failed). No Ready workaround or production SQL. Claude Code must run against the independently verified fake backend with reviewed releases. Exact environment/limits and remaining manual coverage are in the results file; final handover on coordination #271.\n\n- [x] Three specs and exact-command execution evidence\n- [ ] Actual disposable-backend browser pass and independent review",
+  "historical_test_claims": [
+    "CJ supplies the three named browser specs for N1 paid/unpaid breaks, N5 blank-company setup and N6 both email editors. Builder 3 continued the existing draft and committed tests/CJ-BUILDER-3-RESULTS.md.",
+    "Exact head: ff29ca191879ec954e305ec0eb200501789a5bcf. Collection command: `REVIEWER_REQUIRE_DATABASE=1 npx playwright test tests/e2e/acceptance --list` \u2014 PASS, 3 tests in 3 files. Runtime command: `REVIEWER_REQUIRE_DATABASE=1 npx playwright test tests/e2e/acceptance` \u2014 FAIL in global setup, TEST_SUPABASE_URL unset; browser assertions NOT TESTED. Current local Docker socket access is denied, distinct from the historical ENOSPC.",
+    "CI run 41825174221: failure (web success, integration skipped, ci-gate failed). No Ready workaround or production SQL. Claude Code must run against the independently verified fake backend with reviewed releases. Exact environment/limits and remaining manual coverage are in the results file; final handover on coordination #271."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41825174221,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41825174221",
+      "head_sha": "ff29ca191879ec954e305ec0eb200501789a5bcf",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

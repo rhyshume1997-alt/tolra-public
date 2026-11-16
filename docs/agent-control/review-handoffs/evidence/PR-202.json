@@ -1,0 +1,53 @@
+{
+  "number": 202,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/202",
+  "title": "Add disposable database rehearsal for atomic costing saves",
+  "branch": "codex/costing-sql-test-plan",
+  "observed_head": "6431e60284a4591ab6c9552de5bc0dd0468973f3",
+  "base_sha": "8c4c7fe056119b1d9cff6bb70be96d751cbe3f5d",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:19Z",
+  "files": [
+    "app/(dashboard)/quotes/page.tsx",
+    "app/(dashboard)/settings/page.tsx",
+    "components/costing/connected-costing.tsx",
+    "components/costing/costing-rates-editor.tsx",
+    "components/costing/price-this-part.tsx",
+    "components/costing/types.ts",
+    "lib/costing/atomic-settings.ts",
+    "lib/costing/engine.ts",
+    "supabase/proposals/builder2_costing_settings_atomic.sql",
+    "tests/db/costing-atomic-proposal.test.ts",
+    "tests/scripts/costing-atomic-install-check.sql",
+    "tests/scripts/costing-atomic-plan.md",
+    "tests/scripts/costing-atomic-rollback.sql",
+    "tests/support/costing-proposal-setup.ts",
+    "tests/unit/costing-atomic-review.test.ts",
+    "tests/unit/costing-engine-parity.test.ts",
+    "tests/unit/costing-extra-edge.test.ts",
+    "tests/unit/costing-followup.test.ts",
+    "tests/unit/costing-golden.test.ts",
+    "tests/unit/costing-port-golden.test.ts",
+    "tests/unit/costing-proposal-setup.test.ts",
+    "tests/unit/costing-ui.test.ts",
+    "tests/unit/costing-wiring.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "The atomic costing database suite stopped in CI because it required the operator-only COSTING_ATOMIC_THROWAWAY=yes acknowledgement. It also expected the proposal function to have been installed manually.\n\nTest setup now accepts CI only after verifyBackendIdentity proves a loopback disposable Supabase stack with synthetic tenants. It installs a missing proposal as a per-suite fixture and removes only the fixture it installed. Existing proposals are neither overwritten nor removed; manual runs retain explicit acknowledgement and installation. All ten database assertions are unchanged. No production configuration, workflow or application code changes.\n\nIncludes the original operator commands, preflight, rollback and ten SQL integration checks under tests/, covering two companies, ordinary staff/admin/support, foreign IDs, concurrent saves and late-error rollback. Base remains claude/costing-in-app.\n\nValidation of this correction: 32 focused unit tests passed, including nine setup safety/cleanup tests; typecheck and targeted ESLint passed; all ten database tests collect. Live database execution remains unrun locally, and no SQL or migrations were applied locally. CI's failure annotation identified the exact acknowledgement guard; raw Actions logs were blocked by the log-download host policy. CI results after this push remain pending.\n",
+  "historical_test_claims": [
+    "Test setup now accepts CI only after verifyBackendIdentity proves a loopback disposable Supabase stack with synthetic tenants. It installs a missing proposal as a per-suite fixture and removes only the fixture it installed. Existing proposals are neither overwritten nor removed; manual runs retain explicit acknowledgement and installation. All ten database assertions are unchanged. No production configuration, workflow or application code changes.",
+    "Includes the original operator commands, preflight, rollback and ten SQL integration checks under tests/, covering two companies, ordinary staff/admin/support, foreign IDs, concurrent saves and late-error rollback. Base remains claude/costing-in-app.",
+    "Validation of this correction: 32 focused unit tests passed, including nine setup safety/cleanup tests; typecheck and targeted ESLint passed; all ten database tests collect. Live database execution remains unrun locally, and no SQL or migrations were applied locally. CI's failure annotation identified the exact acknowledgement guard; raw Actions logs were blocked by the log-download host policy. CI results after this push remain pending."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41642018718,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41642018718",
+      "head_sha": "6431e60284a4591ab6c9552de5bc0dd0468973f3",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

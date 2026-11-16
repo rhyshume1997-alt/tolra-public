@@ -1,0 +1,59 @@
+{
+  "number": 236,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/236",
+  "title": "N: Combine company breaks, blank setup and email editor",
+  "branch": "codex/n-company-setup-email-combined",
+  "observed_head": "d54d90b0408fbd490f03ada687b27af03bba9800",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:16Z",
+  "files": [
+    ".github/workflows/ci.yml",
+    "app/(dashboard)/settings/page.tsx",
+    "components/company-setup-guide.tsx",
+    "components/dashboard-shell.tsx",
+    "components/email/email-templates-card.tsx",
+    "components/email/template-detail-field.tsx",
+    "components/time/day-sheet.tsx",
+    "components/time/time-settings-card.tsx",
+    "lib/company-setup/progress.ts",
+    "lib/email/templates/editor.ts",
+    "lib/working-hours.ts",
+    "supabase/proposals/n5_company_setup.sql",
+    "supabase/release/n5_company_setup.rollback.sql",
+    "supabase/verify/n5_company_setup.sql",
+    "tests/db/company-setup-isolation.test.ts",
+    "tests/unit/company-paid-breaks.test.ts",
+    "tests/unit/company-setup.test.ts",
+    "tests/unit/email-template-editor-parts.test.ts",
+    "tests/unit/email-template-editor-ui.test.ts",
+    "tests/unit/paid-breaks-two-companies.test.ts"
+  ],
+  "migration_verification_rollback_paths": [
+    "supabase/release/n5_company_setup.rollback.sql",
+    "supabase/verify/n5_company_setup.sql"
+  ],
+  "public_pr_body": "Combine the reviewed paid-break settings, two-company regression, blank company setup and plain email editor on main 68f89ca. Includes exact heads #218 42124ef, #235 46c8249, #222 970e918 and #223 f1ed216; every head is an ancestor. No source test changed or weakened.\n\nOne conflicted file, while including #222:\n- app/(dashboard)/settings/page.tsx: kept setup-company/setup-breaks anchor sections from #222 and the CompanyDetailsCard timeSettings prop plus TimeSettingsCard company key/onSettings callback from #218. The setup-email anchor merged automatically. No other conflicts; #223 merged cleanly. No behaviour changes beyond combining those reviewed features.\n\nValidation: full unit suite 5,138 passed (377 files), zero failures/skips; typecheck and full lint passed; git diff check passed. No docs/ diff.\n\nNot run: database/browser/proposal runtime checks. N5's existing supabase/proposals/n5_company_setup.sql remains unapplied and needs separate reviewer approval/testing on a disposable database. No SQL executed, deployment, GitHub merge, Ready label or CI dispatch.\n",
+  "historical_test_claims": [
+    "Combine the reviewed paid-break settings, two-company regression, blank company setup and plain email editor on main 68f89ca. Includes exact heads #218 42124ef, #235 46c8249, #222 970e918 and #223 f1ed216; every head is an ancestor. No source test changed or weakened.",
+    "Validation: full unit suite 5,138 passed (377 files), zero failures/skips; typecheck and full lint passed; git diff check passed. No docs/ diff."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41732856836,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41732856836",
+      "head_sha": "d54d90b0408fbd490f03ada687b27af03bba9800",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "id": 41693048362,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41693048362",
+      "head_sha": "d54d90b0408fbd490f03ada687b27af03bba9800",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

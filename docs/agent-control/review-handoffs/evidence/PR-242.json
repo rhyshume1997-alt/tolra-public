@@ -1,0 +1,35 @@
+{
+  "number": 242,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/242",
+  "title": "T: Build marketing fonts from local assets",
+  "branch": "codex/t-offline-marketing-fonts",
+  "observed_head": "25b792572c7a5df0e141fdbc91cdd54afa46daa8",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:15Z",
+  "files": [
+    "components/marketing/fonts.ts",
+    "package-lock.json",
+    "package.json",
+    "tests/stubs/next-font-local.ts",
+    "tests/unit/marketing-local-fonts.test.ts",
+    "vitest.config.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Replace marketing next/font/google downloads with next/font/local reading installed Fontsource WOFF2 files. Preserve the same Barlow Condensed 600, IBM Plex Sans 400/600 and IBM Plex Mono 400/500 families, scoped CSS variables and swap behaviour. Add only the two missing font packages and their lock entries. No remote font URL or Google loader remains in the marketing font module.\n\nPlain Node unit tests use the normal local-loader stub because Next's compiler is absent there, just as the existing Google loader was stubbed. New tests verify the local loader, all five real WOFF2 assets and unchanged marketing variables. The actual production build exercises the real font compiler.\n\nValidation: 20 targeted units passed; typecheck, full lint and production build passed. Build retains an unrelated optional @react-email/render warning from Resend; no scope expansion. No DB/browser visual comparison, SQL, deployment, merge or Ready label.\n\nAssumption: preserve exact installed font families instead of approximating the design with fallback stacks. Dependencies are downloaded by npm ci, not by Next's build-time font fetch. Branch is from main 68f89ca; draft only.\n",
+  "historical_test_claims": [
+    "Plain Node unit tests use the normal local-loader stub because Next's compiler is absent there, just as the existing Google loader was stubbed. New tests verify the local loader, all five real WOFF2 assets and unchanged marketing variables. The actual production build exercises the real font compiler.",
+    "Validation: 20 targeted units passed; typecheck, full lint and production build passed. Build retains an unrelated optional @react-email/render warning from Resend; no scope expansion. No DB/browser visual comparison, SQL, deployment, merge or Ready label."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41695080863,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41695080863",
+      "head_sha": "25b792572c7a5df0e141fdbc91cdd54afa46daa8",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

@@ -1,0 +1,28 @@
+{
+  "number": 342,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/342",
+  "title": "I7: Record ISO feature gaps, go-live workarounds and builder 5 handover",
+  "branch": "codex/b5-i7-iso9001",
+  "observed_head": "7a4529edc1844d9d792bf6467de8cf1b92c5990d",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:05Z",
+  "files": [
+    "docs/iso9001/BUILDER-5-HANDOVER.md",
+    "docs/iso9001/ISO-9001-FEATURE-GAPS.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Lists incomplete quality workflows, existing partial features, proposed external controls before relying on Tolra and optional software after go-live. No feature is built or commissioned. Includes builder 5 ownership, I1\u2013I7 delivery/verification boundaries and decisions reserved to John, an ISO adviser and Rhys/operator.\n\nTolra supports JNR. Software/documents cannot make JNR certified; JNR is audited.\n\n- [x] Source review, local commits, exact-tree and whitespace checks.\n- [ ] John/adviser adapts and approves actual JNR processes; private document reconciliation and real evidence remain open.\n\nIndependent draft on main 68f89ca7, claim claims/I7. All files under docs/iso9001/. Builders 3 and 4 untouched. No runtime validation, new feature, Ready label, main merge, production SQL or deployment.",
+  "historical_test_claims": [],
+  "workflow_runs": [
+    {
+      "id": 41845595950,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41845595950",
+      "head_sha": "7a4529edc1844d9d792bf6467de8cf1b92c5990d",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

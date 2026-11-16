@@ -1,0 +1,30 @@
+{
+  "number": 246,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/246",
+  "title": "test: hand over Codex PRs and remaining validation",
+  "branch": "codex/w-codex-1-handover",
+  "observed_head": "d5ab1c7edbb72e33cd032f9a65860a95e4229160",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:15Z",
+  "files": [
+    "tests/HANDOVER-CODEX-1.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Updates tests/HANDOVER-CODEX-1.md with every Codex PR, refreshed states, #247/#248/#249, AA clean combination and tests, AB post-144 145/146 release-phase assumption and checks, AC proposed wipe classifications/retention blocker, and remaining runtime proof. U/#244 is explicitly superseded by #243 and stopped.\n\nValidation: all Codex-branch PRs in the current GitHub inventory represented once; source metadata, links and git diff --check reviewed. Documentation only; no runtime tests rerun, no private data copied, SQL applied, deployments or merges. This updates the existing draft rather than opening a duplicate handover PR.",
+  "historical_test_claims": [
+    "Updates tests/HANDOVER-CODEX-1.md with every Codex PR, refreshed states, #247/#248/#249, AA clean combination and tests, AB post-144 145/146 release-phase assumption and checks, AC proposed wipe classifications/retention blocker, and remaining runtime proof. U/#244 is explicitly superseded by #243 and stopped.",
+    "Validation: all Codex-branch PRs in the current GitHub inventory represented once; source metadata, links and git diff --check reviewed. Documentation only; no runtime tests rerun, no private data copied, SQL applied, deployments or merges. This updates the existing draft rather than opening a duplicate handover PR."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41707827461,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41707827461",
+      "head_sha": "d5ab1c7edbb72e33cd032f9a65860a95e4229160",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

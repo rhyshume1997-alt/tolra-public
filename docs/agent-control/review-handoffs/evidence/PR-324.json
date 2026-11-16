@@ -1,0 +1,30 @@
+{
+  "number": 324,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/324",
+  "title": "DA: merge-order and conditional closure sheet for PRs #271\u2013#317",
+  "branch": "codex/da-codex-merge-order",
+  "observed_head": "19b1d6a3f09502d798c1d09618cefa3f17f8cc01",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:07Z",
+  "files": [
+    "tests/CODEX-PR-MERGE-ORDER.md",
+    "tests/DA-PR-INVENTORY.json"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds tests/CODEX-PR-MERGE-ORDER.md and DA-PR-INVENTORY.json: all 47 numbers, 41 open drafts and six closed unmerged, full heads/current targets and actual changed-file/blob inventories. Classifies candidate code/test folds, docs/evidence, held costing, already-closed history and conditional superseded closures. No PR was merged, closed, retargeted or labelled.\n\nFirst resolve actual #247 head41c685c4 versus refreshed pack's declared application9c3f5c6. 140/141 release bodies differ, so reconcile CA additions rather than call the entire closed PR duplicate or overwrite newer packages. Preserve inherited closed CC/gate foundations, #280 safety corrections, #281\u2192#289, #296\u2192#298 cap override, #297's distinct base, corrected CN/CU, #314 BA line53 correction, CV evidence-only extraction, and #316 final twelve masters plus unique older handovers.\n\nClosure suggestions are conditional on replacement commit/path and unique evidence preserved. Includes all open Codex/builder4 PRs in requested range. Static inventory checks: 47/47, 41 open/6 closed, largest file response38 below100-page cap; no broad behaviour audit or runtime run. No main merge, production SQL, Ready label or release approval. Exact head 19b1d6a3f09502d798c1d09618cefa3f17f8cc01.",
+  "historical_test_claims": [
+    "Adds tests/CODEX-PR-MERGE-ORDER.md and DA-PR-INVENTORY.json: all 47 numbers, 41 open drafts and six closed unmerged, full heads/current targets and actual changed-file/blob inventories. Classifies candidate code/test folds, docs/evidence, held costing, already-closed history and conditional superseded closures. No PR was merged, closed, retargeted or labelled."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41844705802,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41844705802",
+      "head_sha": "19b1d6a3f09502d798c1d09618cefa3f17f8cc01",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

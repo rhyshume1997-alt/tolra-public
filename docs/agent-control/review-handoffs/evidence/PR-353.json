@@ -1,0 +1,27 @@
+{
+  "number": 353,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/353",
+  "title": "L9 / C16: Thursday 12 November ordered cutover controls",
+  "branch": "codex/b6-l9-c16-cutover-controls",
+  "observed_head": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:04Z",
+  "files": [
+    "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md: 21 sequential owner-ticked gates, fresh backup/restore and preflight before 138\u2192140\u2192141\u2192144\u2192145\u2192146, each with exact reviewed release/verify paths and explicit STOP. Covers actual clearing state, separate transfer authority, protected records, complete reconciliation, VSR/operational decisions, smoke and controlled writer resumption.\n\nRetains no-146-reinstall/history guards, Saturday-versus-Thursday boundaries and separate live authority; no executable production commands or SQL run.\n\nChecks: all six ordered release/verify paths exist at the pinned source, gate IDs/owners/evidence/stop points and whitespace pass. Handover embedded. All operational ticks/results remain blank; one independent draft, no main merge, production SQL, deployment or Ready label.",
+  "historical_test_claims": [],
+  "workflow_runs": [
+    {
+      "id": 41863544770,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41863544770",
+      "head_sha": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

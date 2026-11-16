@@ -1,0 +1,35 @@
+{
+  "number": 284,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/284",
+  "title": "CL: penny half-up rule and unchanged costing rounding exceptions",
+  "branch": "codex/cl-rounding-rule",
+  "observed_head": "d7d6ff9dbd915becdc096d1eb365e4a73b4ae21d",
+  "base_sha": "e40f9edb24a79769efd03b8f900c6c31d8a6729b",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:12Z",
+  "files": [
+    "tests/ROUNDING-RULE.md",
+    "tests/db/money-rounding-parity.test.ts",
+    "tests/fixtures/money-rounding-cases.ts",
+    "tests/unit/money-rounding-rule.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "CL documents Rhys's normal-money penny rule, 0.135 -> 0.14, and adds 21 app regression cases plus a real PostgreSQL parity test. Fixed vectors cover ties that distinguish half-up from half-even, fractional lines, existing negative half-away behaviour and per-line VAT before summing. Database test uses actual numeric SELECTs after disposable-backend verification; no optional skip or schema/business writes.\n\nCosting remains the deliberate half-to-even exception: no costing engine, rates or any of its 60 golden answers changed. The optional offline CC half-even helper mismatch stays explicit for review.\n\nExact head: d7d6ff9dbd915becdc096d1eb365e4a73b4ae21d. `npx vitest run tests/unit/money-rounding-rule.test.ts tests/unit/money-decimal.test.ts`: 29 passed, zero failed/skipped. Changed-test ESLint and `npx tsc --noEmit` pass. `npx vitest run -c vitest.db.config.ts tests/db/money-rounding-parity.test.ts`: 1 failed/0 skipped at missing TEST_SUPABASE_URL; no SQL parity query ran. Current Docker socket permission denied. Local source/dependency limits are documented in tests/ROUNDING-RULE.md; real parity remains NOT TESTED. CI run 41826433316 was pending when recorded; recheck it.\n\nRetains the updated CJ/CG/CH stack. No main merge, Ready label or production SQL. Claude Code handover: tests/HANDOVER-BUILDER-3.md on #271.\n\n- [x] Rule, protected costing exception, app tests and real DB parity test\n- [ ] Run parity on verified disposable backend, final-head CI and independent review",
+  "historical_test_claims": [
+    "CL documents Rhys's normal-money penny rule, 0.135 -> 0.14, and adds 21 app regression cases plus a real PostgreSQL parity test. Fixed vectors cover ties that distinguish half-up from half-even, fractional lines, existing negative half-away behaviour and per-line VAT before summing. Database test uses actual numeric SELECTs after disposable-backend verification; no optional skip or schema/business writes.",
+    "Exact head: d7d6ff9dbd915becdc096d1eb365e4a73b4ae21d. `npx vitest run tests/unit/money-rounding-rule.test.ts tests/unit/money-decimal.test.ts`: 29 passed, zero failed/skipped. Changed-test ESLint and `npx tsc --noEmit` pass. `npx vitest run -c vitest.db.config.ts tests/db/money-rounding-parity.test.ts`: 1 failed/0 skipped at missing TEST_SUPABASE_URL; no SQL parity query ran. Current Docker socket permission denied. Local source/dependency limits are documented in tests/ROUNDING-RULE.md; real parity remains NOT TESTED. CI run 41826433316 was pending when recorded; recheck it.",
+    "Retains the updated CJ/CG/CH stack. No main merge, Ready label or production SQL. Claude Code handover: tests/HANDOVER-BUILDER-3.md on #271.",
+    "- [x] Rule, protected costing exception, app tests and real DB parity test"
+  ],
+  "workflow_runs": [
+    {
+      "id": 41826433316,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41826433316",
+      "head_sha": "d7d6ff9dbd915becdc096d1eb365e4a73b4ae21d",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

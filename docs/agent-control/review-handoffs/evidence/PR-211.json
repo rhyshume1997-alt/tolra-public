@@ -1,0 +1,53 @@
+{
+  "number": 211,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/211",
+  "title": "Resolve manual checklist conflict with strict sender matching intact",
+  "branch": "codex/manual-checks-main",
+  "observed_head": "321a2a7ef560296f56e52164fe11d9ae71a4d889",
+  "base_sha": "6200405e7c6d34f653a6460069738c7db71aa05c",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:18Z",
+  "files": [
+    "app/page.tsx",
+    "app/privacy/page.tsx",
+    "components/marketing/bracket-t.tsx",
+    "components/marketing/cta.tsx",
+    "components/marketing/feature-figure.tsx",
+    "components/marketing/fonts.ts",
+    "components/marketing/glass-mark.tsx",
+    "components/marketing/job-flow.tsx",
+    "components/marketing/marketing.css",
+    "components/marketing/sheet.tsx",
+    "components/marketing/site-footer.tsx",
+    "components/marketing/site-header.tsx",
+    "components/ui/ink-orbit-features.tsx",
+    "components/ui/liquid-glass-logo-reveal.tsx",
+    "lib/marketing.ts",
+    "lib/receivables.ts",
+    "tests/MANUAL-CHECKS.md",
+    "tests/stubs/next-font-google.ts",
+    "tests/unit/marketing-home.test.ts",
+    "tests/unit/money-calendar-edges.test.ts",
+    "tests/unit/money-receivables-edge.test.ts",
+    "tests/unit/money-receivables-more.test.ts",
+    "tests/unit/receivables-money-extra.test.ts",
+    "vitest.config.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Resolve #183's tests/MANUAL-CHECKS.md conflict with current main. Keep the explicit fractional-penny example (1.005) and main's strict rule that plus-addresses must match exactly. Remove the obsolete provenance sentence that claimed the contrary address rule. All other manual checks are retained.\n\nBase: codex/manual-checks. Main is merged locally on this new branch; merge-tree confirms the resulting head merges cleanly with main 787ba18. No SQL applied and no docs-directory changes. Validation: checklist content reviewed, both required safety checks asserted present, obsolete stripping instruction absent, whitespace checks passed. Live manual/browser checks were not executed.\n",
+  "historical_test_claims": [
+    "Resolve #183's tests/MANUAL-CHECKS.md conflict with current main. Keep the explicit fractional-penny example (1.005) and main's strict rule that plus-addresses must match exactly. Remove the obsolete provenance sentence that claimed the contrary address rule. All other manual checks are retained.",
+    "Base: codex/manual-checks. Main is merged locally on this new branch; merge-tree confirms the resulting head merges cleanly with main 787ba18. No SQL applied and no docs-directory changes. Validation: checklist content reviewed, both required safety checks asserted present, obsolete stripping instruction absent, whitespace checks passed. Live manual/browser checks were not executed."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41646430848,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41646430848",
+      "head_sha": "321a2a7ef560296f56e52164fe11d9ae71a4d889",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}
