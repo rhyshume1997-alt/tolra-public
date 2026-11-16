@@ -1,6 +1,6 @@
 "use client";
 
-/** Replays queued offline changes against Supabase and runs the sync loop (on reconnect, on focus, every minute). */
+/** Offline Synchronisation boundary: scoped queued operations -> authorised RPC outcomes. No direct start/finish writes. */
 import { useEffect } from "react";
 
 import { friendlyError } from "@/lib/friendly-error";
@@ -16,6 +16,8 @@ import { CONFIRMED_USER_REUSE_MS, confirmedUser } from "@/lib/confirmed-user";
 import { authSessionGone, sessionEndedError } from "@/lib/session-end";
 import { isNetworkError, scopeKey } from "@/lib/offline/store";
 import { supabase } from "@/lib/supabase";
+import { START_MACHINE_HELD, START_LEGACY_HELD, START_UNCONFIRMED, recoverStartEntry, type HeldEntry, type StartRecoveryChoice, type StartRecoveryResult } from "@/lib/offline/outbox";
+import type { Scope } from "@/lib/offline/store";
 import { CLOCK_IN_NETWORK_LOCKED, reportClockInRefusal } from "@/lib/clock-in-lock";
 import { reportHeldTimeRejections, reportTimeSyncRejection } from "@/lib/time-sync-rejections";
 
@@ -25,6 +27,20 @@ export const PHOTOS_BUCKET = "job-photos";
 const refusal = (err: unknown): ReplayOutcome => (isNetworkError(err) ? { status: "network" } : { status: "rejected", reason: friendlyError(err, "The server refused this change.") });
 /** The same for a Play Start or Pause (049): a held run entry always carries a code (see requeueHeldRunOps). */
 const runOpRefusal = (err: unknown): ReplayOutcome => (isNetworkError(err) ? { status: "network" } : { status: "rejected", code: "refused", reason: friendlyError(err, "The server refused this change.") });
+const heldStartClash = (jobNo: string, detail: string): ReplayOutcome => ({ status: "conflict", code: START_MACHINE_HELD, opened: false,
+  reason: `${jobNo} was NOT started. The requested machine is taken: ${detail.replace(/\s*Pick a free machine[\s\S]*$/i, "")} Choose Retry on the same machine, Start on the bench, or Discard.`, server: { machine_in_use: true } });
+
+/** Recovery uses the same verified user/company boundary and replay lock as normal sync; UI never calls the server directly. */
+export async function recoverStart(scope: Scope, entry: HeldEntry, choice: StartRecoveryChoice): Promise<StartRecoveryResult> {
+  const current = () => !organizationSwitchAffects(scope.orgId) && offlineScope() !== null && scopeKey(offlineScope()!) === scopeKey(scope);
+  if (!supabase || !current()) return { status: "held", reason: "Sign in to this company before recovering this Start." };
+  const { data, error } = await confirmedUser({ maxAgeMs: 0 });
+  if (error || data.user?.id !== scope.userId || !current()) return { status: "held", reason: "The user could not be verified. Nothing was sent." };
+  const { data: session, error: sessionError } = await supabase.rpc("my_session");
+  const info = !sessionError ? parseSessionInfo(session) : null;
+  if (!info || info.user_id !== scope.userId || info.organization_id !== scope.orgId || !offlineCopyAllowed(info) || !current()) return { status: "held", reason: "The company session could not be verified. Nothing was sent." };
+  return recoverStartEntry(scope, entry, choice, (op) => current() ? executeOutboxOp(op, scope.orgId) : Promise.resolve({ status: "network" }), current);
+}
 
 type Rpc = { rpc: (fn: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown; error: { message: string; hint?: string | null; code?: string } | null }> };
 type Uploader = { upload: (path: string, body: Blob, options: { contentType: string; upsert: boolean }) => PromiseLike<{ error: { message: string; statusCode?: string } | null }> };
@@ -76,13 +92,19 @@ function timeConflictOutcome(jobNo: string, action: "Start" | "Pause" | "Finish"
 
 /**
  * A Start with machines (migration 044): start_machine_run under the entry's client key, with the time from the device. A machine taken
- * meanwhile is never dropped silently: the job's own start is still recorded (the plain update, `fallback`) and the entry is held as a
- * conflict that says which machine, who has it and what to do. A job that is gone, or was finished meanwhile, is held as rejected.
+ * meanwhile is held unstarted for explicit recovery. An explicitly supplied legacy callback retains its historical semantics;
+ * live replay never supplies one. A job that is gone, or was finished meanwhile, is held as rejected.
  */
-export async function executeStartRunOp(op: StartOp, client: Rpc, fallback: () => Promise<ReplayOutcome>): Promise<ReplayOutcome> {
+export async function executeStartRunOp(op: StartOp, client: Rpc, fallback?: () => Promise<ReplayOutcome>): Promise<ReplayOutcome> {
   const bench = !op.machines?.length;
   const { data, error } = await client.rpc("start_machine_run", { p_job: op.jobId, p_machines: op.machines ?? [], p_client_op_id: op.clientOpId ?? null, p_started_at: op.at, p_override: false, p_reason: null });
   if (!error) {
+    if (!fallback && !bench) {
+      const answer = data as RunStartAnswer | null;
+      if (!Array.isArray(answer?.runs) || !op.machines?.every((id) => answer.runs!.some((run) => run.machine_id === id))) return { status: "conflict", code: START_UNCONFIRMED, opened: false, reason: `${op.jobNo}: the server did not confirm this Start. Retry the same machine to verify it, or choose a recovery action.` };
+      const timed = timeConflictOutcome(op.jobNo, "Start", data);
+      return timed.status === "conflict" ? { ...timed, opened: true } : timed;
+    }
     if (!bench) return timeConflictOutcome(op.jobNo, "Start", data);
     // A bench Start (migration 046): applied when it started the job or opened its bench run; a job someone started meanwhile (another
     // way) keeps their time, as the plain update's replay did: applied when the times agree, else held as a conflict that says so.
@@ -97,6 +119,9 @@ export async function executeStartRunOp(op: StartOp, client: Rpc, fallback: () =
   if ((error as { code?: string }).code === "P0002") return { status: "rejected", reason: "This job no longer exists or you no longer have access to it." };
   const refusal_ = runRefusal(error);
   if (refusal_?.hint === "machine_in_use") {
+    // Explicit three-argument legacy callers retain their callback semantics (including the frozen old-client fixture).
+    // Live replay never supplies this callback; it must leave the job unstarted and offer explicit recovery.
+    if (!fallback) return heldStartClash(op.jobNo, refusal_.message);
     const kept = await fallback();
     if (kept.status === "network") return kept;
     return { status: "conflict", reason: replayedStartClashReason(op.jobNo, refusal_.message), server: { machine_in_use: true, detail: (error as { details?: unknown }).details ?? null } };
@@ -137,11 +162,11 @@ export function runStartArgs(op: Pick<RunStartOp, "jobRef" | "machines" | "clien
  *  - success: applied only when every requested machine is in `runs` and, for a bench Start, `bench_run` is there; otherwise held as a
  *    conflict naming what is missing (opened nothing: the Pause after it is never sent). A device time the server couldn't use: a
  *    conflict that still opened the runs (the Pause after it is sent);
- *  - a machine taken meanwhile: the job's own start is still recorded (the plain update, `fallback`) and the entry is held as a conflict
- *    that opened nothing; a job finished meanwhile, gone, or a run overlap: rejected.
+ *  - a machine taken meanwhile: live replay holds it unstarted for explicit recovery; a supplied legacy callback retains its
+ *    historical behaviour. A job finished meanwhile, gone, or a run overlap: rejected.
  * Every held outcome carries a code (so a later build can tell them from entries an older build held, see requeueHeldRunOps).
  */
-export async function executeRunStartOp(op: RunStartOp, client: Rpc, fallback: () => Promise<ReplayOutcome> = async () => ({ status: "applied" })): Promise<ReplayOutcome> {
+export async function executeRunStartOp(op: RunStartOp, client: Rpc, fallback?: () => Promise<ReplayOutcome>): Promise<ReplayOutcome> {
   const { data, error } = await client.rpc("start_machine_run", runStartArgs(op));
   if (!error) {
     const answer = data as RunStartAnswer | null;
@@ -163,6 +188,7 @@ export async function executeRunStartOp(op: RunStartOp, client: Rpc, fallback: (
   }
   const refused = runRefusal(error);
   if (refused?.hint === "machine_in_use") {
+    if (!fallback) return heldStartClash(op.jobNo, refused.message);
     const kept = await fallback();
     if (kept.status === "network") return kept;
     return { status: "conflict", code: "machine_in_use", opened: false, reason: replayedStartClashReason(op.jobNo, refused.message), server: { machine_in_use: true, detail: (error as { details?: unknown }).details ?? null } };
@@ -431,7 +457,7 @@ export async function executeOutboxOp(op: OutboxOp, orgId: string | null = offli
   }
   if (op.kind === "run_start") {
     try {
-      const outcome = await executeRunStartOp(op, supabase, () => executeOutboxOp({ kind: "start", jobId: op.jobRef, jobNo: op.jobNo, at: op.at }));
+      const outcome = await executeRunStartOp(op, supabase);
       // The stage the Start chose, once the Start opened its runs on the server (best effort, as for the 044/046 Start).
       if (op.stage && (outcome.status === "applied" || (outcome.status === "conflict" && outcome.opened))) await advanceStartStage(supabase, op.jobRef, op.stage).catch(() => undefined);
       return outcome;
@@ -443,7 +469,7 @@ export async function executeOutboxOp(op: OutboxOp, orgId: string | null = offli
   // started_at update below.
   if (op.kind === "start" && op.clientOpId && Array.isArray(op.machines)) {
     try {
-      const outcome = await executeStartRunOp(op, supabase, () => executeOutboxOp({ kind: "start", jobId: op.jobId, jobNo: op.jobNo, at: op.at }));
+      const outcome = await executeStartRunOp(op, supabase);
       // The stage the Start chose (Machining by default), once the Start is on the server: only a job still at an earlier stage moves
       // (the update is filtered on the stage). Best effort: the Start's outcome stands whatever happens here.
       const timesOnly = outcome.status === "conflict" && Boolean((outcome.server as { time_conflicts?: unknown } | undefined)?.time_conflicts);
@@ -473,25 +499,9 @@ export async function executeOutboxOp(op: OutboxOp, orgId: string | null = offli
       return refusal(err);
     }
   }
-  const column = "started_at";
-  const patch = { started_at: op.at };
-  try {
-    // Only fills an empty time: a Start someone already recorded is never overwritten.
-    const { data, error } = await supabase.from("jobs").update(patch).eq("id", op.jobId).is(column, null).select("id");
-    if (error) return refusal(error);
-    if (data?.length === 1) return { status: "applied" };
-    const { data: row, error: readError } = await supabase.from("jobs").select(`id, ${column}`).eq("id", op.jobId).maybeSingle();
-    if (readError) return refusal(readError);
-    if (!row) return { status: "rejected", reason: "This job no longer exists or you no longer have access to it." };
-    // A Start queued before 044 has no client key, so the server can't recognise a resend. The update above only fills an empty time,
-    // so a resend (the first answer lost, the entry still in flight) never starts the job twice; the time it finds being this entry's
-    // own is this entry applied, not someone else's Start.
-    const recorded = (row as Record<string, unknown>)[column];
-    if (typeof recorded === "string" && new Date(recorded).getTime() === new Date(op.at).getTime()) return { status: "applied" };
-    return { status: "conflict", reason: "This job was already started at a different time while you were offline. Their time is kept.", server: row };
-  } catch (err) {
-    return refusal(err);
-  }
+  return { status: "conflict", code: START_LEGACY_HELD, opened: false,
+    reason: `${op.jobNo} was NOT started. This older Start needs an explicit recovery choice; no job time was written. Retry the saved machine if available, choose Start on the bench, or Discard.` };
+
 }
 
 const syncListeners = new Set<(event: SyncPassEvent) => void>();

@@ -118,9 +118,9 @@ describe("a later edit withdraws the sign-off", () => {
     return id;
   }
 
-  it("a worksheet change sends it back to awaiting inspection", async () => {
+  it("a worksheet change by the office sends it back to awaiting inspection", async () => {
     const id = await released();
-    const edit = await as.workshop.from("jobs").update({ improvement_comments: "Use a sharper insert next time" }).eq("id", id).select("stage, inspected_at, inspected_by, worksheet_version").single();
+    const edit = await as.office.from("jobs").update({ improvement_comments: "Use a sharper insert next time" }).eq("id", id).select("stage, inspected_at, inspected_by, worksheet_version").single();
     expect(edit.error).toBeNull();
     expect(edit.data).toMatchObject({ stage: "inspection", inspected_at: null, inspected_by: null, worksheet_version: 1 });
     expect(await job(id)).toMatchObject({ stage: "inspection", inspected_at: null });
