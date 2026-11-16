@@ -41,3 +41,8 @@ The Quote Builder can price lines from the CNC costing engine in
 `services/costing-engine` (see its README). Set `COSTING_ENGINE_URL` and
 `COSTING_ENGINE_TOKEN` in `.env.local`; without them the builder falls back to
 manual pricing.
+
+## Staff guide
+
+For simple steps on payment chasing, timesheet emails and quote prices, see
+[the staff walkthrough](docs/staff-walkthrough.md).
