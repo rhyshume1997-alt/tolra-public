@@ -1,0 +1,9 @@
+{
+  "tested_commit": "42878a7",
+  "passed": 2,
+  "failed": 4,
+  "skipped": 0,
+  "exit_code": 1,
+  "implemented": false,
+  "log_sha256": "10681334545946f80ca7865d5413e9d081efced63c291da86e75e22d9716c75d"
+}
