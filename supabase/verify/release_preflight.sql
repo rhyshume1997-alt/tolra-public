@@ -360,12 +360,9 @@ post_release_markers(label, present) AS (
       AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.finish_job(uuid,uuid,timestamptz)') AND p.prosecdef AND p.proconfig IS NOT NULL
              AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '154bb3fff8179ce2f26c1810f054e18f')), FALSE)),
     ('post-144 marker 159 drawings_update_roles', coalesce((EXISTS (SELECT 1 FROM pg_policies p
-             JOIN pg_policy po ON po.polrelid = to_regclass('storage.objects') AND po.polname = p.policyname
-             JOIN pg_description d ON d.objoid = po.oid AND d.classoid = 'pg_policy'::regclass AND d.objsubid = 0
              WHERE p.schemaname = 'storage' AND p.tablename = 'objects' AND p.policyname = 'job drawings org update'
                AND p.permissive = 'PERMISSIVE' AND p.cmd = 'UPDATE' AND p.roles::TEXT = '{authenticated}'
-               AND md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) = '18b6c82111707e214f8aaa30c5b6e717'
-               AND d.description = 'release 159 (supabase/release/159_drawings_update_roles.release.sql): browser roles cannot replace an object in job-drawings; rolled back by 159_drawings_update_roles.rollback.sql')), FALSE)),
+               AND md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) = '18b6c82111707e214f8aaa30c5b6e717')), FALSE)),
     ('post-144 marker 151 xero_invite_hardening', coalesce(((SELECT count(*) = 10 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'integration_connect_invites'
              AND column_name IN ('ref', 'recipient_email', 'code_hash', 'code_expires_at', 'code_sent_at', 'code_sent_count', 'code_attempts', 'locked_at', 'expired_logged_at', 'revoke_reason'))
       AND EXISTS (SELECT 1 FROM pg_constraint c WHERE c.conrelid = to_regclass('public.integration_connect_invites') AND c.conname IN ('integration_connect_invites_ref_key', 'integration_connect_invites_bound', 'integration_connect_invites_recipient') HAVING count(*) = 3)
@@ -719,14 +716,11 @@ checks(n, check_name, value, expected) AS (
     || ' / ' || coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN '57e2b9a298fa8647a775f8e0a56bbe58' THEN '061' WHEN '154bb3fff8179ce2f26c1810f054e18f' THEN '158' ELSE 'other' END
               FROM pg_proc p WHERE p.oid = to_regprocedure('public.finish_job(uuid,uuid,timestamptz)')), 'missing'),
     '044 / 061 before 158; 158 / 158 after (other or missing: stop, 158 refuses)'
-  UNION ALL SELECT 62, '159 needs: policy "job drawings org update" on storage.objects, its text (131 / 159 / other / missing) / its comment (none / 159 / other)',
+  UNION ALL SELECT 62, '159 needs: policy "job drawings org update" on storage.objects, its text (131 / 159 / other / missing)',
     coalesce((SELECT CASE md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) WHEN '76e489d7de7f079451629dc75177d894' THEN '131' WHEN '18b6c82111707e214f8aaa30c5b6e717' THEN '159' ELSE 'other' END
               FROM pg_policies p WHERE p.schemaname = 'storage' AND p.tablename = 'objects' AND p.policyname = 'job drawings org update'
-                AND p.permissive = 'PERMISSIVE' AND p.cmd = 'UPDATE' AND p.roles::TEXT = '{authenticated}'), 'missing')
-    || ' / ' || coalesce((SELECT CASE d.description WHEN 'release 159 (supabase/release/159_drawings_update_roles.release.sql): browser roles cannot replace an object in job-drawings; rolled back by 159_drawings_update_roles.rollback.sql' THEN '159' ELSE 'other' END
-              FROM pg_policy po JOIN pg_description d ON d.objoid = po.oid AND d.classoid = 'pg_policy'::regclass AND d.objsubid = 0
-              WHERE po.polrelid = to_regclass('storage.objects') AND po.polname = 'job drawings org update'), 'none'),
-    '131 / none before 159; 159 / 159 after (any other text, a comment that is not 159''s, or 131 with 159''s comment: stop, 159 refuses; release 131 must be in place first)'
+                AND p.permissive = 'PERMISSIVE' AND p.cmd = 'UPDATE' AND p.roles::TEXT = '{authenticated}'), 'missing'),
+    '131 before 159; 159 after (131 = absent, 159 = installed, any other text, or missing (which also reads for a policy that is not the PERMISSIVE UPDATE policy for exactly authenticated) = drifted: stop, 159 refuses and changes nothing; release 131 must be in place first; installed is judged by this text only, there is no comment. Production: this row, read only, must say 131 before any production migration)'
   UNION ALL SELECT 100 + row_number() OVER (), 'marker ' || migration,
     CASE WHEN present AND (migration <> '107 integrations connect' OR to_regprocedure('public.integration_invite_redeem(text,text,text)') IS NOT NULL
                            OR coalesce((SELECT pm.present FROM post_release_markers pm WHERE pm.label = 'post-144 marker 151 xero_invite_hardening'), FALSE))
@@ -740,7 +734,7 @@ checks(n, check_name, value, expected) AS (
     WHEN label = 'post-144 marker 157 jobs_integrity_guard' THEN 'One-time post-144 phase 157, after 156 in the plan (155 reserved; its guard needs the job locks of 022 to 113 only): a recorded job start is kept and the first start is set only by Play, the bench Start or Finish (start_machine_run re-created), a job cannot be created with a start or finish time, a finish is set only by Finish, a workshop-only user cannot change a job''s customer or number or withdraw a passed inspection; row 60 first.'
     WHEN label = 'post-144 marker 156 invoice_ref_case' THEN 'One-time post-144 phase 156, after 154 in the plan (155 reserved; its guard needs 152 and 078 only): one invoice number per company whatever its capital letters; applied before the JNR SliQ import (row 59 first).'
     WHEN label = 'post-144 marker 158 machine_run_integrity' THEN 'One-time post-144 phase 158, after 157 (its guard needs 044, 051 and 061 only): a Pause or Finish that affects another operator''s open run or job time is recorded at the server''s time (row 61 first).'
-    WHEN label = 'post-144 marker 159 drawings_update_roles' THEN 'One-time post-144 phase 159, after 158 in the plan: the browser roles can no longer update or replace an object in the job-drawings bucket; the trace is a comment on the policy (row 62 first).'
+    WHEN label = 'post-144 marker 159 drawings_update_roles' THEN 'One-time post-144 phase 159, after 158 in the plan: the browser roles can no longer update or replace an object in the job-drawings bucket; installed is judged by the policy''s exact text only, and a drifted policy (any other text, missing, or not the PERMISSIVE UPDATE policy for authenticated) does not read as applied: row 62 tells absent (131) from installed (159) from drifted (other, missing) (row 62 first).'
     ELSE 'One-time post-144 phase: 145 N5 before 146 N2 before 147 C17 before 148 job costing before 149 Xero launch hold before 150 AI cap and key-off before 151 Xero invite hardening before 152 SliQ import route; all applied before go-live. Baseline replay intentionally runs first.' END FROM post_release_markers
   UNION ALL SELECT 400 + row_number() OVER (ORDER BY file), 'proposal file ' || file, disposition,
     'Explicitly accounted for; no proposal runs merely because preflight is read.' FROM proposal_files

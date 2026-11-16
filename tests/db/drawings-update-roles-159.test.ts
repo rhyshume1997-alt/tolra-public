@@ -11,12 +11,15 @@
  * Inputs: the disposable database (TEST_DATABASE_URL, isolation-checked); the post-144 fixture installs 145..159. Every observation
  * runs inside a transaction that is ALWAYS rolled back: the release is rolled back inside it to read the "before" (release 131's state),
  * each role's attempts run under a savepoint that is undone, and the release is applied again for the "after". No storage object, policy or
- * comment is left behind. The synthetic companies (slug t-<run>-...) and their people are removed by destroySyntheticWorld.
+ * change is left behind. The synthetic companies (slug t-<run>-...) and their people are removed by destroySyntheticWorld.
  * Proves: after 159 no browser role (workshop, office, admin, viewer) can update, rename or upsert over an unregistered object in the
  * drawing, certs/ and inspection/ paths (and the object is unchanged), while before 159 workshop, office and admin could (the defect);
  * registered files, new uploads, select, delete, revision registration, the service role, the other company and the other buckets are
- * exactly as before; the policy count and every other policy are unchanged; 131's verify is state aware for this one policy and for nothing
- * else; release / repeat / rollback / re-release behave as 156's do.
+ * exactly as before; the policy count and every other policy are unchanged; 131's verify accepts exactly two texts for this one policy and nothing
+ * else; release / repeat / rollback / re-release behave as 156's do. STATE is the policy's exact text only (there is no comment: COMMENT ON POLICY
+ * needs ownership of storage.objects): absent = 131's md5, installed = 159's md5, drifted = anything else (a third text, a missing policy, another
+ * kind, command or role list); the drifted shapes are proved against the release guard, the rollback guard, release preflight (marker and row 62)
+ * and 131's verify.
  * Must not change: this file proves; it never edits a release, verify or rollback file to make itself pass.
  */
 import { randomBytes, randomUUID } from "node:crypto";
@@ -44,7 +47,6 @@ const MARKER = "post-144 marker 159 drawings_update_roles";
 const POLICY = "job drawings org update";
 const M131 = "76e489d7de7f079451629dc75177d894";
 const M159 = "18b6c82111707e214f8aaa30c5b6e717";
-const COMMENT_159 = "release 159 (supabase/release/159_drawings_update_roles.release.sql): browser roles cannot replace an object in job-drawings; rolled back by 159_drawings_update_roles.rollback.sql";
 
 const ROLES = ["workshop", "office", "admin", "viewer"] as const;
 type Role = (typeof ROLES)[number];
@@ -136,11 +138,11 @@ async function refused(db: PoolClient, sql: string) {
 }
 
 // ---- What the database says about the policy ------------------------------------------------------------------------------------------
-type DrawingsState = { m: string; comment: string | null; permissive: string; cmd: string; roles: string };
+type DrawingsState = { m: string; permissive: string; cmd: string; roles: string };
 async function drawingsState(db: PoolClient): Promise<DrawingsState> {
   await asOwner(db);
-  return (await db.query(`select md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) as m, obj_description(po.oid, 'pg_policy') as comment, p.permissive, p.cmd, p.roles::text as roles
-      from pg_policies p join pg_policy po on po.polrelid = 'storage.objects'::regclass and po.polname = p.policyname
+  return (await db.query(`select md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) as m, p.permissive, p.cmd, p.roles::text as roles
+      from pg_policies p
       where p.schemaname = 'storage' and p.tablename = 'objects' and p.policyname = $1`, [POLICY])).rows[0] as DrawingsState;
 }
 type PolicyRow = { key: string; text: string };
@@ -150,6 +152,11 @@ async function policies(db: PoolClient): Promise<PolicyRow[]> {
   return (await db.query(`select schemaname || '.' || tablename || ' :: ' || policyname as key,
       concat_ws(' | ', permissive, roles::text, cmd, coalesce(qual, ''), coalesce(with_check, '')) as text
       from pg_policies order by 1`)).rows as PolicyRow[];
+}
+/** Every role membership as a stable text (the whole pg_auth_members row), to show a release or a refusal changed none. */
+async function memberships(db: PoolClient): Promise<string[]> {
+  await asOwner(db);
+  return (await db.query(`select to_jsonb(m)::text as t from pg_catalog.pg_auth_members m order by m.roleid, m.member, m.grantor`)).rows.map((r) => r.t as string);
 }
 const withoutDrawings = (rows: PolicyRow[]) => rows.filter((r) => r.key !== `storage.objects :: ${POLICY}`);
 async function verifyRows(db: PoolClient, file: string) {
@@ -178,14 +185,27 @@ async function preflight(db: PoolClient, check: string) {
   await asOwner(db);
   return ((await db.query(read(PREFLIGHT))).rows as { check: string; value: string }[]).find((r) => r.check === check)?.value;
 }
-const ROW_60 = '159 needs: policy "job drawings org update" on storage.objects, its text (131 / 159 / other / missing) / its comment (none / 159 / other)';
+const ROW_60 = '159 needs: policy "job drawings org update" on storage.objects, its text (131 / 159 / other / missing)';
 const alterDrawings = async (db: PoolClient, text: string) => { await asOwner(db); await db.query(`alter policy "${POLICY}" on storage.objects ${text}`); };
-const setComment = async (db: PoolClient, text: string | null) => { await asOwner(db); await db.query(`comment on policy "${POLICY}" on storage.objects is ${text === null ? "null" : `'${text.replace(/'/g, "''")}'`}`); };
+/** Replaces the policy by one of another shape (kind, command or roles), as a hand-made drift. Rolled back with the transaction. */
+const recreateDrawings = async (db: PoolClient, shape: string) => { await asOwner(db); await db.query(`drop policy "${POLICY}" on storage.objects`); await db.query(`create policy "${POLICY}" on storage.objects ${shape}`); };
+const dropDrawings = async (db: PoolClient) => { await asOwner(db); await db.query(`drop policy "${POLICY}" on storage.objects`); };
+const THIRD = "using (bucket_id = 'job-drawings') with check (bucket_id = 'job-drawings')";
+/** Every drifted shape: what the policy looks like, and what row 62 of release preflight reads for it ('missing' also covers a wrong kind, command or role list). */
+const DRIFTED: { name: string; make: (db: PoolClient) => Promise<void>; row62: string; release: RegExp; rollback: RegExp }[] = [
+  { name: "a third text", make: (db) => alterDrawings(db, THIRD), row62: "other", release: /^159: policy "job drawings org update" is neither 131's nor 159's/, rollback: /^159 rollback: policy "job drawings org update" is neither 159's nor 131's/ },
+  { name: "using (true) with check (true)", make: (db) => alterDrawings(db, "using (true) with check (true)"), row62: "other", release: /^159: policy "job drawings org update" is neither 131's nor 159's/, rollback: /^159 rollback: policy "job drawings org update" is neither 159's nor 131's/ },
+  { name: "159's text but FOR DELETE (wrong command)", make: (db) => recreateDrawings(db, "for delete to authenticated using (false)"), row62: "missing", release: /^159: policy "job drawings org update" on storage.objects is missing or is not the PERMISSIVE UPDATE policy/, rollback: /^159 rollback: policy "job drawings org update" is missing or is not the PERMISSIVE UPDATE policy/ },
+  { name: "159's text but roles {anon,authenticated} (wrong roles)", make: (db) => recreateDrawings(db, "for update to authenticated, anon using (false) with check (false)"), row62: "missing", release: /^159: policy "job drawings org update" on storage.objects is missing or is not the PERMISSIVE UPDATE policy/, rollback: /^159 rollback: policy "job drawings org update" is missing or is not the PERMISSIVE UPDATE policy/ },
+  { name: "159's text but RESTRICTIVE (wrong kind)", make: (db) => recreateDrawings(db, "as restrictive for update to authenticated using (false) with check (false)"), row62: "missing", release: /^159: policy "job drawings org update" on storage.objects is missing or is not the PERMISSIVE UPDATE policy/, rollback: /^159 rollback: policy "job drawings org update" is missing or is not the PERMISSIVE UPDATE policy/ },
+  { name: "131's text but roles {authenticated,anon} (wrong roles)", make: (db) => alterDrawings(db, "to authenticated, anon"), row62: "missing", release: /^159: policy "job drawings org update" on storage.objects is missing or is not the PERMISSIVE UPDATE policy/, rollback: /^159 rollback: policy "job drawings org update" is missing or is not the PERMISSIVE UPDATE policy/ },
+  { name: "the policy is missing", make: dropDrawings, row62: "missing", release: /^159: policy "job drawings org update" on storage.objects is missing/, rollback: /^159 rollback: policy "job drawings org update" is missing/ },
+];
 /** Puts the open transaction in release 131's state (159 absent), whatever the database had. */
 async function beforeState(db: PoolClient) {
   const s = await drawingsState(db);
-  if (s.comment !== null || s.m === M159) await uninstall(db);
-  expect(await drawingsState(db)).toMatchObject({ m: M131, comment: null });
+  if (s.m === M159) await uninstall(db);
+  expect(await drawingsState(db)).toMatchObject({ m: M131 });
 }
 
 // ---- The scene: one company with a job, registered and unregistered objects in every bucket ---------------------------------------------
@@ -286,7 +306,7 @@ async function beforeAndAfter() {
     const s = await seed(db);
     const before = await matrix(db, s);
     await install(db);
-    expect(await drawingsState(db)).toMatchObject({ m: M159, comment: COMMENT_159 });
+    expect(await drawingsState(db)).toMatchObject({ m: M159 });
     const after = await matrix(db, s);
     return { s, before, after };
   });
@@ -480,14 +500,14 @@ describe("release 159: nobody can replace an object in the job-drawings bucket f
       expect((await dropLaterHelperPolicies(db)).map((x) => x.split(" :: ")[0]).sort()).toEqual(expect.arrayContaining(["company_setup_progress", "import_source_batches", "import_source_rows"]));
       const was = await policies(db);
       const wasState = await drawingsState(db);
-      expect(wasState).toEqual({ m: M131, comment: null, permissive: "PERMISSIVE", cmd: "UPDATE", roles: "{authenticated}" });
+      expect(wasState).toEqual({ m: M131, permissive: "PERMISSIVE", cmd: "UPDATE", roles: "{authenticated}" });
       expect(failing(await verifyRows(db, VERIFY_131)), "131 verify, 159 absent").toEqual([]);
       await install(db);
       const now = await policies(db);
       expect(now).toHaveLength(was.length);
       expect(withoutDrawings(now)).toEqual(withoutDrawings(was));
       expect(now.filter((r, i) => r.text !== was[i].text).map((r) => r.key)).toEqual([`storage.objects :: ${POLICY}`]);
-      expect(await drawingsState(db)).toEqual({ m: M159, comment: COMMENT_159, permissive: "PERMISSIVE", cmd: "UPDATE", roles: "{authenticated}" });
+      expect(await drawingsState(db)).toEqual({ m: M159, permissive: "PERMISSIVE", cmd: "UPDATE", roles: "{authenticated}" });
       expect(now.find((r) => r.key === `storage.objects :: ${POLICY}`)!.text).toBe("PERMISSIVE | {authenticated} | UPDATE | false | false");
       expect((await verifyRows(db, VERIFY_131)).length).toBe(4);
       expect(failing(await verifyRows(db, VERIFY_131)), "131 verify, 159 installed").toEqual([]);
@@ -500,24 +520,18 @@ describe("release 159: nobody can replace an object in the job-drawings bucket f
     });
   });
 
-  it("9b. 131's verify recognises ONLY the authorised transition: any other text, a missing or foreign comment, or drift in another policy is FALSE in both states", async () => {
-    const THIRD = "using (bucket_id = 'job-drawings') with check (bucket_id = 'job-drawings')";
+  it("9b. 131's verify accepts EXACTLY two texts for the drawings update policy (131's, 159's): any third text, a missing policy, or another kind, command or role list is FALSE; drift in another policy is FALSE", async () => {
     const wrapped = async (db: PoolClient) => failing(await verifyRows(db, VERIFY_131));
     await rolledBack(async (db) => {
       await beforeState(db);
       await dropLaterHelperPolicies(db);
-      // 159 not installed: 131's text is TRUE; a third text is FALSE; 159's text without 159's comment (drift into 159's text) is FALSE.
+      // 159 absent (131's text): TRUE. Every drifted shape: FALSE.
       expect(await wrapped(db)).toEqual([]);
-      await db.query("savepoint s1"); await alterDrawings(db, THIRD);
-      expect(await wrapped(db), "third text, 159 absent").toEqual(["policies_131_wrapped"]);
-      await db.query("rollback to savepoint s1");
-      await db.query("savepoint s2"); await alterDrawings(db, "using (false) with check (false)");
-      expect(await drawingsState(db)).toMatchObject({ m: M159, comment: null });
-      expect(await wrapped(db), "159's text without 159's comment").toEqual(["policies_131_wrapped"]);
-      await db.query("rollback to savepoint s2");
-      await db.query("savepoint s3"); await alterDrawings(db, "using (false) with check (false)"); await setComment(db, "some other comment");
-      expect(await wrapped(db), "159's text with a foreign comment").toEqual(["policies_131_wrapped"]);
-      await db.query("rollback to savepoint s3");
+      for (const [i, shape] of DRIFTED.entries()) {
+        await db.query(`savepoint d${i}`); await shape.make(db);
+        expect(await wrapped(db), `${shape.name}, 159 absent`).toEqual(["policies_131_wrapped"]);
+        await db.query(`rollback to savepoint d${i}`);
+      }
       // Another policy's drift is still found with 159 absent.
       await db.query("savepoint s4");
       await asOwner(db); await db.query(`alter policy "job drawings org select" on storage.objects using (bucket_id = 'job-drawings')`);
@@ -525,23 +539,15 @@ describe("release 159: nobody can replace an object in the job-drawings bucket f
       await db.query("rollback to savepoint s4");
       expect(await wrapped(db)).toEqual([]);
 
-      // 159 installed: its text and comment are TRUE; a third text is FALSE; 131's text with 159's comment (half installed) is FALSE.
+      // 159 installed (159's text): TRUE, with no comment or other trace read. Every drifted shape: FALSE.
       await install(db);
+      expect(await drawingsState(db)).toMatchObject({ m: M159 });
       expect(await wrapped(db)).toEqual([]);
-      await db.query("savepoint s5"); await alterDrawings(db, THIRD);
-      expect(await drawingsState(db)).toMatchObject({ comment: COMMENT_159 });
-      expect(await wrapped(db), "third text, 159 installed").toEqual(["policies_131_wrapped"]);
-      await db.query("rollback to savepoint s5");
-      await db.query("savepoint s6"); await alterDrawings(db, "using (true) with check (true)");
-      expect(await wrapped(db), "using true, 159 installed").toEqual(["policies_131_wrapped"]);
-      await db.query("rollback to savepoint s6");
-      await db.query("savepoint s7"); await uninstall(db); await setComment(db, COMMENT_159);
-      expect(await drawingsState(db)).toMatchObject({ m: M131, comment: COMMENT_159 });
-      expect(await wrapped(db), "131's text with 159's comment").toEqual(["policies_131_wrapped"]);
-      await db.query("rollback to savepoint s7");
-      await db.query("savepoint s8"); await setComment(db, null);
-      expect(await wrapped(db), "159's text, comment removed by hand").toEqual(["policies_131_wrapped"]);
-      await db.query("rollback to savepoint s8");
+      for (const [i, shape] of DRIFTED.entries()) {
+        await db.query(`savepoint e${i}`); await shape.make(db);
+        expect(await wrapped(db), `${shape.name}, 159 installed`).toEqual(["policies_131_wrapped"]);
+        await db.query(`rollback to savepoint e${i}`);
+      }
       await db.query("savepoint s9");
       await asOwner(db); await db.query(`alter policy "job drawings org select" on storage.objects using (bucket_id = 'job-drawings')`);
       expect(await wrapped(db), "another policy, 159 installed").toEqual(["policies_131_wrapped"]);
@@ -552,26 +558,28 @@ describe("release 159: nobody can replace an object in the job-drawings bucket f
     });
   });
 
-  it("10. release mechanics: the committed state is installed and verified; repeating changes nothing; rollback restores 131's exact text and md5; re-release; refusals change nothing", async () => {
+  it("10. release mechanics: the committed state is installed and verified; repeating changes nothing; rollback restores 131's exact text and md5; re-release; role memberships untouched", async () => {
     // The fixture installed 159 and verified every row before this file began.
     await rolledBack(async (db) => {
-      expect(await drawingsState(db)).toMatchObject({ m: M159, comment: COMMENT_159 });
+      expect(await drawingsState(db)).toMatchObject({ m: M159 });
       expect(failing(await verifyRows(db, VERIFY))).toEqual([]);
       expect(await preflight(db, MARKER)).toBe("applied");
-      expect(await preflight(db, ROW_60)).toBe("159 / 159");
+      expect(await preflight(db, ROW_60)).toBe("159");
       await dropLaterHelperPolicies(db);
       const installed = await policies(db);
-      await install(db); // repeat
+      const members = await memberships(db);
+      await install(db); // repeat: installed -> nothing changes
       expect(await policies(db)).toEqual(installed);
-      expect(await drawingsState(db)).toMatchObject({ m: M159, comment: COMMENT_159 });
+      expect(await drawingsState(db)).toMatchObject({ m: M159 });
+      expect(await memberships(db)).toEqual(members);
 
       await uninstall(db);
       const rolled = await policies(db);
-      expect(await drawingsState(db)).toEqual({ m: M131, comment: null, permissive: "PERMISSIVE", cmd: "UPDATE", roles: "{authenticated}" });
+      expect(await drawingsState(db)).toEqual({ m: M131, permissive: "PERMISSIVE", cmd: "UPDATE", roles: "{authenticated}" });
       expect(rolled.find((r) => r.key === `storage.objects :: ${POLICY}`)!.text).toContain("job-drawings");
       expect(await preflight(db, MARKER)).toBe("not applied");
-      expect(await preflight(db, ROW_60)).toBe("131 / none");
-      await uninstall(db); // rollback twice = once
+      expect(await preflight(db, ROW_60)).toBe("131");
+      await uninstall(db); // rollback twice = once (absent: the rollback re-asserts 131's text and changes nothing)
       expect(await policies(db)).toEqual(rolled);
       expect(failing(await verifyRows(db, VERIFY_131))).toEqual([]);
 
@@ -579,53 +587,64 @@ describe("release 159: nobody can replace an object in the job-drawings bucket f
       expect(await policies(db)).toEqual(installed);
       expect(failing(await verifyRows(db, VERIFY))).toEqual([]);
       expect(await preflight(db, MARKER)).toBe("applied");
+      expect(await memberships(db)).toEqual(members);
     });
   });
 
-  it("10b. the release and the rollback refuse an unexpected state and change nothing", async () => {
-    const THIRD = "using (bucket_id = 'job-drawings') with check (bucket_id = 'job-drawings')";
+  it("10a. rollback then re-release: the rollback's text is 131's byte for byte (the same md5 and text the ALTER in 131's migration gives), and re-releasing verifies", async () => {
     await rolledBack(async (db) => {
       await beforeState(db);
-      // A third text: both refuse.
-      await alterDrawings(db, THIRD);
-      const third = await policies(db);
-      expect(await refused(db, body(RELEASE))).toMatch(/^159: policy "job drawings org update" is neither 131's nor 159's/);
-      expect(await refused(db, body(ROLLBACK))).toMatch(/^159 rollback: policy "job drawings org update" is neither 159's nor 131's/);
-      expect(await policies(db)).toEqual(third);
-      expect(await preflight(db, ROW_60)).toBe("other / none");
+      const text131 = (await db.query(`select qual, with_check from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = $1`, [POLICY])).rows[0];
+      await install(db);
+      expect((await db.query(`select qual, with_check from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = $1`, [POLICY])).rows[0]).toEqual({ qual: "false", with_check: "false" });
+      await uninstall(db);
+      expect((await db.query(`select qual, with_check from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = $1`, [POLICY])).rows[0]).toEqual(text131);
+      await install(db);
+      expect(failing(await verifyRows(db, VERIFY))).toEqual([]);
     });
+  });
+
+  it("10b. DRIFTED: the release and the rollback refuse every drifted shape with a clear message and change nothing; preflight does not read 'applied'", async () => {
+    for (const shape of DRIFTED) {
+      // Each drifted shape is built from 131's state; the policy text alone never makes it installed.
+      await rolledBack(async (db) => {
+        await beforeState(db);
+        await shape.make(db);
+        const drifted = await policies(db);
+        const members = await memberships(db);
+        expect(await refused(db, body(RELEASE)), `release on ${shape.name}`).toMatch(shape.release);
+        expect(await refused(db, body(ROLLBACK)), `rollback on ${shape.name}`).toMatch(shape.rollback);
+        expect(await policies(db), `${shape.name}: nothing changed`).toEqual(drifted);
+        expect(await memberships(db)).toEqual(members);
+        expect(await preflight(db, MARKER), `marker on ${shape.name}`).toBe("not applied");
+        expect(await preflight(db, ROW_60), `row 62 on ${shape.name}`).toBe(shape.row62);
+        expect(failing(await verifyRows(db, VERIFY)).length, `159 verify on ${shape.name}`).toBeGreaterThan(0);
+      });
+    }
+    // 159's text with a wrong kind, command or roles is not "installed" (the marker, 159's verify) even though the md5 of its text is 159's.
     await rolledBack(async (db) => {
       await beforeState(db);
-      // 131's text carrying 159's comment (half installed): the release refuses; the rollback completes it.
-      await setComment(db, COMMENT_159);
-      const half = await policies(db);
-      expect(await refused(db, body(RELEASE))).toMatch(/^159: policy "job drawings org update" has 131's text but 159's comment \(half installed\)/);
-      expect(await policies(db)).toEqual(half);
-      expect(await preflight(db, ROW_60)).toBe("131 / 159");
-      expect(await refused(db, body(ROLLBACK))).toBeNull();
-      expect(await drawingsState(db)).toMatchObject({ m: M131, comment: null });
+      await install(db);
+      await alterDrawings(db, "to authenticated, anon");
+      expect(await drawingsState(db)).toMatchObject({ m: M159, roles: "{anon,authenticated}" });
+      expect(await preflight(db, MARKER)).toBe("not applied");
+      expect(await preflight(db, ROW_60)).toBe("missing");
+      expect(failing(await verifyRows(db, VERIFY)).length).toBeGreaterThan(0);
     });
+  });
+
+  it("10c. the three states in one place: absent (131's text) releases, installed (159's text) repeats unchanged, and the marker reads applied only for installed", async () => {
     await rolledBack(async (db) => {
       await beforeState(db);
-      // A foreign comment: both refuse.
-      await setComment(db, "kept by hand");
-      expect(await refused(db, body(RELEASE))).toMatch(/^159: policy "job drawings org update" carries a comment that is not 159's/);
-      expect(await refused(db, body(ROLLBACK))).toMatch(/^159 rollback: policy "job drawings org update" carries a comment that is not 159's/);
-      expect(await drawingsState(db)).toMatchObject({ m: M131, comment: "kept by hand" });
-      expect(await preflight(db, ROW_60)).toBe("131 / other");
-    });
-    await rolledBack(async (db) => {
-      await beforeState(db);
-      // 159's text without its comment (altered by hand): running 159 completes it (the comment is written, nothing else changes).
-      await alterDrawings(db, "using (false) with check (false)");
+      expect(await preflight(db, MARKER)).toBe("not applied");
+      expect(await preflight(db, ROW_60)).toBe("131");
       expect(await refused(db, body(RELEASE))).toBeNull();
-      expect(await drawingsState(db)).toMatchObject({ m: M159, comment: COMMENT_159 });
-      // A missing policy: both refuse.
-      await asOwner(db);
-      await db.query(`drop policy "${POLICY}" on storage.objects`);
-      expect(await refused(db, body(RELEASE))).toMatch(/^159: policy "job drawings org update" on storage.objects is missing/);
-      expect(await refused(db, body(ROLLBACK))).toMatch(/^159 rollback: policy "job drawings org update" is missing/);
-      expect(await preflight(db, ROW_60)).toBe("missing / none");
+      expect(await drawingsState(db)).toMatchObject({ m: M159 });
+      expect(await preflight(db, MARKER)).toBe("applied");
+      expect(await preflight(db, ROW_60)).toBe("159");
+      const installed = await policies(db);
+      expect(await refused(db, body(RELEASE))).toBeNull();
+      expect(await policies(db)).toEqual(installed);
     });
   });
 });

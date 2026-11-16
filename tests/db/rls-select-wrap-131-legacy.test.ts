@@ -51,11 +51,11 @@ const legacy = async (db: Client) =>
 const policies = async (db: Client) =>
   (await db.query<{ t: string }>(`select string_agg(concat_ws(' | ', schemaname, tablename, policyname, permissive, roles::text, cmd, qual, with_check), E'\\n'
                                   order by schemaname, tablename, policyname) as t from pg_policies`)).rows[0].t;
-/** The drawings update policy's text md5 and its comment (release 159's trace): 131's md5 and no comment while 159 is absent. */
+/** The drawings update policy's text md5 (release 159 leaves no other trace): 131's md5 while 159 is absent. */
 const MD5_DRAWINGS_131 = "76e489d7de7f079451629dc75177d894";
 const drawingsUpdate = async (db: Client) =>
-  (await db.query<{ m: string; comment: string | null }>(`select md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) as m, obj_description(po.oid, 'pg_policy') as comment
-                        from pg_policies p join pg_policy po on po.polrelid = 'storage.objects'::regclass and po.polname = p.policyname
+  (await db.query<{ m: string }>(`select md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) as m
+                        from pg_policies p
                         where p.schemaname = 'storage' and p.tablename = 'objects' and p.policyname = 'job drawings org update'`)).rows[0];
 const verify = async (db: Client) => (await db.query<{ check_name: string; ok: boolean }>(VERIFY)).rows;
 const precheck = async (db: Client) => (await db.query<{ n: number; live: string | null; state: string | null; ok: boolean }>(PRECHECK)).rows;
@@ -84,8 +84,8 @@ describe("131 and the legacy import's policy (supabase/import/import_legacy_tena
       try {
         // A table an earlier run left (legacy-import.test.ts removes the ones it creates) is replaced for this transaction only.
         await db.query("drop table if exists public.legacy_audit_log");
-        // Release 159 is absent in this baseline state: 131's md5 and no 159 comment, which is what makes 131's verify want 131's md5.
-        expect(await drawingsUpdate(db)).toEqual({ m: MD5_DRAWINGS_131, comment: null });
+        // Release 159 is absent in this baseline state: 131's md5 (131's verify accepts 131's text or 159's, and nothing else).
+        expect(await drawingsUpdate(db)).toEqual({ m: MD5_DRAWINGS_131 });
         // No table: 131's legacy section does nothing and verify's legacy row is TRUE; the precheck says so.
         expect((await verify(db)).every((r) => r.ok)).toBe(true);
         expect((await precheck(db)).find((r) => r.n === 5)).toMatchObject({ state: "no table (no legacy import here)", ok: true });
@@ -160,8 +160,8 @@ describe("131 and the legacy import's policy (supabase/import/import_legacy_tena
         }
         expect(await policies(db)).toBe(released);
         expect(main).not.toBe(released);
-        // 131's release and rollback never touched the 159 trace: 131's md5 again and still no comment.
-        expect(await drawingsUpdate(db)).toEqual({ m: MD5_DRAWINGS_131, comment: null });
+        // 131's release and rollback never touched the drawings update policy: 131's md5 again.
+        expect(await drawingsUpdate(db)).toEqual({ m: MD5_DRAWINGS_131 });
       } finally {
         await db.query("rollback");
       }

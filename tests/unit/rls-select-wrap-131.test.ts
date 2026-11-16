@@ -154,13 +154,13 @@ describe("131 rls select wrap (supabase/release)", () => {
 });
 
 /**
- * Release 159 changes exactly one of the 182 policies on purpose ("job drawings org update": USING false, WITH CHECK false). 131's verify is
- * state aware for that one row and nothing else: it accepts 131's md5 while 159 is not installed and 159's md5 while it is, "installed"
- * meaning 159's own comment on the policy (not the policy text). The checks below pin that the file accepts exactly those two values, each
- * tied to its state, that every other row is unchanged, and that the values agree with 159's own files. The behaviour (and the FALSE cases)
- * is proved on a database in tests/db/drawings-update-roles-159.test.ts.
+ * Release 159 changes exactly one of the 182 policies on purpose ("job drawings org update": USING false, WITH CHECK false). 131's verify
+ * accepts exactly two texts for that one row and nothing else: 131's md5 and 159's md5 (no comment or other trace is read: COMMENT ON POLICY
+ * needs ownership of storage.objects). The checks below pin that the file accepts exactly those two values, that every other row is
+ * unchanged, and that the values agree with 159's own files. The behaviour (and the FALSE cases) is proved on a database in
+ * tests/db/drawings-update-roles-159.test.ts.
  */
-describe("131's verify is state aware for release 159's one policy and for nothing else", () => {
+describe("131's verify accepts exactly two texts for release 159's one policy and nothing else", () => {
   const KEY = "storage.objects :: job drawings org update";
   const md5 = (text: string) => createHash("md5").update(text).digest("hex");
   const code = (sql: string) => sql.replace(/^\s*--.*$/gm, "");
@@ -172,8 +172,7 @@ describe("131's verify is state aware for release 159's one policy and for nothi
   const M131 = () => listed(verify()).find((x) => x.key === KEY)!.md5s[0];
   /** pg_policies prints USING (false) as "false" and WITH CHECK (false) as "false": the md5 the database computes is of "false|false". */
   const M159 = md5("false|false");
-  const STATE_AWARE = /h\.m = CASE WHEN \(w\.schema_name, w\.table_name, w\.policy_name\) = \('storage', 'objects', 'job drawings org update'\) AND \(SELECT installed FROM release_159\)\s+THEN '([0-9a-f]{32})' ELSE w\.md5_131 END/g;
-  const COMMENT = () => /COMMENT ON POLICY "job drawings org update" ON storage\.objects IS '([^']+)';/.exec(proposal159())![1];
+  const TWO_TEXT = /\(h\.m = w\.md5_131\s+OR \(\(w\.schema_name, w\.table_name, w\.policy_name\) = \('storage', 'objects', 'job drawings org update'\) AND h\.m = '([0-9a-f]{32})'\)\)/g;
 
   it("the list row of the drawings update policy is still 131's md5, the same as the 131 lists, the precheck and the catalogue snapshot; no row carries two values", () => {
     const row = listed(verify()).find((x) => x.key === KEY)!;
@@ -184,32 +183,29 @@ describe("131's verify is state aware for release 159's one policy and for nothi
     expect(listed(read("supabase/verify/rls_select_wrap_131_precheck.sql")).find((x) => x.key === KEY)!.md5s[1]).toBe(row.md5s[0]);
   });
 
-  it("exactly two md5s are accepted for that policy: 131's while 159 is not installed, 159's while it is; no third value and no other policy is special-cased", () => {
-    const found = [...verify().matchAll(STATE_AWARE)].map((m) => m[1]);
+  it("exactly two md5s are accepted for that policy: 131's and 159's; no third value, no other policy is special-cased, and no comment or other state is read", () => {
+    const found = [...verify().matchAll(TWO_TEXT)].map((m) => m[1]);
     expect(found).toEqual([M159]);
     expect(M159).toBe("18b6c82111707e214f8aaa30c5b6e717");
-    // In code (comments stripped) 159's md5 appears once and so does 131's for this policy; the state is read once, from the CTE.
+    // In code (comments stripped) 159's md5 appears once and so does 131's for this policy; nothing but the policy text decides.
     const body = code(verify());
     expect(body.split(M159)).toHaveLength(2);
     expect(body.split(M131())).toHaveLength(2);
-    expect(body.match(/release_159/g)).toHaveLength(2);
-    expect(body.match(/job drawings org update/g)).toHaveLength(3);
-    // The decision is the one place where md5_131 is compared; the comparison keeps every other row on 131's text.
-    expect(body.match(/h\.m = /g)).toHaveLength(1);
-    expect(body.match(/md5_131/g)).toHaveLength(2); // the column's name in the list, and the ELSE branch
+    expect(body).not.toMatch(/release_159|pg_description|pg_policy\b|obj_description|installed/);
+    expect(body.match(/job drawings org update/g)).toHaveLength(2); // the list row and the one accepted-159 comparison
+    // The decision is the one place where md5_131 is compared; every other row stays on 131's text only.
+    expect(body.match(/h\.m = /g)).toHaveLength(2); // 131's md5 (every row) and 159's md5 (that one row)
+    expect(body.match(/md5_131/g)).toHaveLength(2); // the column's name in the list, and the comparison
   });
 
-  it("'installed' is 159's own comment on the policy, the very text 159's release writes, its rollback removes, and preflight and 159's verify read", () => {
-    const comment = COMMENT();
-    expect(comment).toMatch(/^release 159 \(supabase\/release\/159_drawings_update_roles\.release\.sql\): /);
-    expect(comment).not.toContain("'");
-    expect(verify()).toContain(`AND d.description = '${comment}')\n)`);
-    expect(release159().split(`'${comment}'`).length - 1).toBeGreaterThanOrEqual(3);
-    expect(rollback159()).toContain(`v_c IS DISTINCT FROM '${comment}'`);
-    expect(rollback159()).toContain('COMMENT ON POLICY "job drawings org update" ON storage.objects IS NULL;');
-    expect(verify159()).toContain(`d.description = '${comment}'`);
-    expect(preflight()).toContain(`AND d.description = '${comment}')), FALSE)),`);
-    expect(preflight()).toContain(`CASE d.description WHEN '${comment}' THEN '159'`);
+  it("there is no comment trace anywhere: 159's release, rollback, verify, proposal, preflight and 131's verify neither write nor read pg_description for the policy", () => {
+    for (const [name, text] of [["release", release159()], ["rollback", rollback159()], ["verify159", verify159()], ["proposal", proposal159()], ["verify131", verify()]] as const) {
+      expect(code(text), name).not.toMatch(/COMMENT ON|pg_description|obj_description|description\b/i);
+    }
+    const marker = preflight().slice(preflight().indexOf("('post-144 marker 159 drawings_update_roles'"), preflight().indexOf("('post-144 marker 151 xero_invite_hardening'"));
+    expect(marker).not.toMatch(/pg_description|pg_policy\b|description/);
+    const row62 = preflight().slice(preflight().indexOf("UNION ALL SELECT 62,"), preflight().indexOf("UNION ALL SELECT 100 + row_number()"));
+    expect(row62).not.toMatch(/pg_description|pg_policy\b|description/);
   });
 
   it("159's md5 is the md5 of the text PostgreSQL prints for USING (false) WITH CHECK (false), and is the same in 159's release, rollback, verify and preflight", () => {
@@ -231,10 +227,18 @@ describe("131's verify is state aware for release 159's one policy and for nothi
     const in131 = alters(m131()).find((a) => a.key === KEY)!;
     expect(in131).toBeDefined();
     expect(back[0]).toEqual(in131);
-    // Nothing else is created, dropped or granted, and the policy is altered, never dropped or recreated (the count of 182 stays and the comment would be lost).
+    // Nothing else is created, dropped or granted, and the policy is altered, never dropped or recreated (the count of 182 stays).
     for (const text of [release159(), rollback159(), proposal159()]) {
-      expect(code(text)).not.toMatch(/\b(DROP POLICY|CREATE POLICY|GRANT|REVOKE|DELETE FROM|INSERT INTO|SET ROLE|SET LOCAL ROLE)\b/);
+      expect(code(text)).not.toMatch(/\b(DROP POLICY|CREATE POLICY|GRANT|REVOKE|DELETE FROM|INSERT INTO|SET ROLE|SET LOCAL ROLE|COMMENT ON)\b/);
       expect(code(text).match(/^ALTER POLICY /gm)).toHaveLength(1);
+    }
+  });
+
+  it("the release and the rollback fingerprint every role membership before and after (the whole pg_auth_members row), and drop their session-only objects before COMMIT", () => {
+    for (const [name, text] of [["release", release159()], ["rollback", rollback159()]] as const) {
+      expect(code(text), name).toContain("FROM pg_catalog.pg_auth_members m");
+      expect(code(text), name).toContain("to_jsonb(m)::TEXT");
+      expect(code(text), name).toMatch(/DROP TABLE pg_temp\.p159_before;\nDROP FUNCTION pg_temp\.p159_fingerprint\(\);\nCOMMIT;\s*$/);
     }
   });
 });
