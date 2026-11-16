@@ -291,17 +291,13 @@ function composeStage(img: HTMLImageElement, stage: SceneStage, W: number, H: nu
     x.font = `500 ${bar * 0.36}px ${mono}`;
     x.textBaseline = "middle";
     x.fillText(`Tolra · ${stage.shot.source}`, bar * 1.05, bar / 2);
-    // Wide app screens would be tiny shown whole at 16:10: show them larger, from the left (where each screen starts), and crop
-    // the rest; the full image is one click away.
     const m = W * 0.035;
     const aw = W - 2 * m;
-    const ah = H - bar - 2 * m;
-    // A tall screen (the Analytics page) fills the width and shows its top, like a page; wide ones are cropped from the left.
-    const tall = img.naturalHeight > img.naturalWidth;
-    const s = tall ? aw / img.naturalWidth : Math.min(ah / img.naturalHeight, (aw / img.naturalWidth) * 1.75);
+    // Each screen fills the display's width and shows its top (title and first figures), as the lifted screen does.
+    const s = aw / img.naturalWidth;
     const iw = img.naturalWidth * s;
     const ih = img.naturalHeight * s;
-    const top = tall ? bar + m : bar + m + (ah - ih) / 2;
+    const top = bar + m;
     x.save();
     x.shadowColor = "rgba(12,22,38,0.2)";
     x.shadowBlur = W * 0.012;
@@ -314,13 +310,6 @@ function composeStage(img: HTMLImageElement, stage: SceneStage, W: number, H: nu
     x.clip();
     x.drawImage(img, m, top, iw, ih);
     x.restore();
-    if (iw > aw) {
-      const fade = x.createLinearGradient(W - m - W * 0.08, 0, W - m, 0);
-      fade.addColorStop(0, "rgba(231,235,241,0)");
-      fade.addColorStop(1, "rgba(231,235,241,1)");
-      x.fillStyle = fade;
-      x.fillRect(W - m - W * 0.08, top, W * 0.08, ih);
-    }
   }
   return c;
 }
