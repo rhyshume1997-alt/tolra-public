@@ -1,0 +1,8 @@
+{
+  "sha256": "d07219d107cf1fab236679a811d1c67c742225fe27af9927e80d79fda2e8021c",
+  "tested_commit": "8c67abd",
+  "passed": 7,
+  "failed": 0,
+  "skipped": 0,
+  "actual_wipe": "unverified here, owned by Code"
+}

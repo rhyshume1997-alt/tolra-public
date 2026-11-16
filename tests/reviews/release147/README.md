@@ -1,0 +1,13 @@
+# Release 147: numbering, retry keys and holds
+
+Run `npx vitest run -c tests/reviews/release147/vitest.config.ts` after fetching public `9d7725e7e1b59e68a314c4148513b9b7d7aa4e92` if absent. Complete numbered schema and releases 145/146/147 run unchanged on a newly created nonce-verified, pinned-image, network-isolated disposable PostgreSQL container, no ports/DB URL. Supporting Auth/Storage schema/JWT functions are synthetic prerequisites, not running services. Records are synthetic; no private file is read. Original SQL/hash/commit/environment/time/exit/identity records are retained.
+
+**Why 16, and was 11 ever expected?** The current public `job_delivery_note_147.sql` at `9d7725e` returns one row per named assertion: one SELECT plus fifteen UNION ALL SELECT clauses, so 16 rows must be true. The first public version at `9e1a82c` had 11 rows; that was valid for that earlier verifier, not the current one. Commit `31f965e` added five assertions for the request hash, ambiguous customer refusal, numbering guard, private hold-table protection, and checking the hold before numbering. Existing rows were also strengthened. Sixteen is not a count of delivery notes, companies or migrations. Accepting only eleven checks against the current verifier would miss checks; the suite executes and requires all sixteen, while counting the earlier source statically.
+
+Tests cover blank/typed pre-counter refusals without consuming numbers; a narrow synthetic stock wipe that preserves the real hold table, both rows/timestamps and other-company stock; atomic refusal of a deliberately wrong hold deletion; the actual day-of setter; `next_doc_number`; same-key replay and changed-key-content refusal; concurrent double submit; wrong-company refusal.
+
+**Wipe boundary:** the stock deletion is a test-only KEEP contract demonstration, not the actual JNR wipe. Actual private wipe-kit execution/preservation remains **unverified here, owned by Code**. This PR supplies no private wipe files and no evidence that the final combined kit preserves all protected objects. Do not substitute this fixture for Code's proof. Final browser/API, actual installed state and operational approval remain unproven.
+
+Acceptance record: requirement REL147; expected safe numbering, idempotency and retained holds; actual ____ NOT EXECUTED for final operational acceptance; evidence ____; tester ____; date ____; approval ____.
+
+Executed `8c67abd`, 5 November 2026 UTC: 7 passed, zero failed/skipped; current verifier returned 16 true rows. Lint/TypeScript passed. Committed original logs, SQL/identity/provenance records are archived with SHA-256. Later commit adds evidence only. Actual wipe-kit preservation and operational acceptance remain unverified, owned by Code.
