@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { BracketT } from "@/components/marketing/bracket-t";
-import { CONTACT_EMAIL, FOUNDER_NAME, PRIVACY_LABEL, PRIVACY_NOTE, PRIVACY_PATH, SHEET_LABELS, TITLE_BLOCK } from "@/lib/marketing";
+import { CONTACT_EMAIL, FOUNDER_NAME, PRIVACY_LABEL, PRIVACY_NOTE, PRIVACY_PATH, SHEET_LABELS, TITLE_BLOCK, WEB_CREDIT } from "@/lib/marketing";
 
 function Cell({ label, children, className = "" }: { label: string; children: ReactNode; className?: string }) {
   return (
@@ -15,7 +15,7 @@ function Cell({ label, children, className = "" }: { label: string; children: Re
 
 /**
  * The footer shared by the public pages ("/" and "/privacy"), drawn as a drawing's title block: title, drawn by, checked, rev, date and
- * sheet, plus the contact email (only when set), the one-line privacy note and the Privacy and Sign in links.
+ * sheet, plus the contact email (only when set), the one-line privacy note and the Privacy, Sign in and web credit links.
  */
 export function SiteFooter() {
   const by = FOUNDER_NAME || "Tolra";
@@ -45,6 +45,7 @@ export function SiteFooter() {
           <nav aria-label="Footer" className="flex flex-wrap items-center gap-x-6">
             <Link href={PRIVACY_PATH} className="mk-link inline-flex min-h-11 items-center font-semibold">{PRIVACY_LABEL}</Link>
             <Link href="/login" className="mk-link inline-flex min-h-11 items-center font-semibold">{SHEET_LABELS.signIn}</Link>
+            <a href={WEB_CREDIT.href} className="mk-link inline-flex min-h-11 items-center font-semibold">{WEB_CREDIT.label}</a>
           </nav>
           <p className="mk-mono text-sm">&copy; Tolra</p>
         </div>
