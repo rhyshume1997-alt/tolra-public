@@ -43,38 +43,39 @@ export type StageShot = {
 };
 
 /**
- * One image per stage, in public/marketing/workflow/. Documents are Tolra's own PDF templates and the printed worksheet; screens are
- * the app's own Machine timeline and two crops of the site's existing dashboard and Job Board screenshots. Every name, number and
- * amount in them is example data (Example Engineering Ltd, Example Plant Co, J-0001); none names a real company or person.
+ * One image per stage, in public/marketing/workflow/. All are Tolra's own output, captured from the app itself with made-up data for
+ * an invented company (Northfield Precision Ltd, its customers, machines and jobs): the quote, sales order and invoice from the app's
+ * PDF templates, the printed job worksheet, and the Dashboard, Machine Schedule and Job Board screens. Every name, number and amount is
+ * example data; none names a real company or person.
  */
 const SHOTS: Record<StageId, StageShot> = {
   enquiry: {
-    src: "/marketing/workflow/enquiry.webp", width: 1262, height: 438, kind: "screen", source: "Dashboard, Today",
-    alt: "Tolra dashboard, Today view, with example data: tiles for quotes with no reply, enquiries not quoted, jobs running late, work waiting to be checked and money late.",
+    src: "/marketing/workflow/enquiry.webp", width: 1600, height: 1065, kind: "screen", source: "Dashboard, Today",
+    alt: "Tolra dashboard, Today view, with example data for Northfield Precision Ltd: one quote with no reply, three enquiries not quoted, two jobs running late, two waiting to be checked and two invoices late.",
   },
   quote: {
-    src: "/marketing/workflow/quote.webp", width: 1100, height: 1338, kind: "document", source: "Quote, as sent",
-    alt: "Quote QUO-0001 from Example Engineering Ltd to Example Plant Co, with example values: 20 mounting brackets to drawing BR-114 rev B and a material certificate pack, with VAT, terms and the customer message.",
+    src: "/marketing/workflow/quote.webp", width: 1400, height: 1980, kind: "document", source: "Quote, as sent",
+    alt: "Quote QUO-0412 from Northfield Precision Ltd to Calder Fluid Power Ltd, with example values: 24 manifold blocks to drawing CFP-2210 rev C, an inspection report and a material certificate pack, with VAT.",
   },
   po: {
-    src: "/marketing/workflow/sales-order.webp", width: 1100, height: 1338, kind: "document", source: "Sales order",
-    alt: "Sales order for the customer's order 4471 against quote QUO-0001, from Example Engineering Ltd to Example Plant Co, with example values.",
+    src: "/marketing/workflow/sales-order.webp", width: 1400, height: 1980, kind: "document", source: "Sales order",
+    alt: "Sales order for Calder Fluid Power Ltd's order CFP-55120 against quote QUO-0412, from Northfield Precision Ltd, with example values: delivery on 20 November 2026, with VAT.",
   },
   worksheet: {
-    src: "/marketing/workflow/worksheet.webp", width: 1100, height: 1350, kind: "document", source: "Printed job worksheet",
-    alt: "Job worksheet J-0001 for Example Plant Co, with example values: customer PO 4471, quote QUO-0001, material cert and heat/cast numbers, drawing BR-114 rev B, 20 off in S355 plate, Laser 1 then the press brake, the part checklist and sign-off.",
+    src: "/marketing/workflow/worksheet.webp", width: 1400, height: 1981, kind: "document", source: "Printed job worksheet",
+    alt: "Job sheet J-1047 for Calder Fluid Power Ltd, with example values: customer PO CFP-55120, drawing CFP-2210, 24 off, material cert RS-24-11873 and heat/cast number 7A3391, with operations and sign-off boxes to fill in.",
   },
   schedule: {
-    src: "/marketing/workflow/schedule.webp", width: 1400, height: 495, kind: "screen", source: "Machine timeline",
-    alt: "Tolra machine timeline over two weeks, with example jobs: J-0001 and J-0005 on Laser 1, J-0001 on the press brake, J-0003 on Mill 1, J-0006 on Lathe 1 and J-0004 in the welding bay.",
+    src: "/marketing/workflow/schedule.webp", width: 1600, height: 1065, kind: "screen", source: "Machine Schedule",
+    alt: "Tolra machine schedule over two weeks from 16 November 2026, with example jobs booked and running on Laser 1, Lathe 1, Mill 1, Mill 2, the press brake and the welding bay.",
   },
   signoff: {
-    src: "/marketing/workflow/inspection.webp", width: 1262, height: 318, kind: "screen", source: "Job Board",
-    alt: "Tolra Job Board with example data: tiles for open jobs, not started, running, waiting for inspection, complete and average job time.",
+    src: "/marketing/workflow/inspection.webp", width: 1600, height: 1100, kind: "screen", source: "Job Board",
+    alt: "Tolra Job Board list with example jobs: J-1047 for Calder Fluid Power Ltd waiting for inspection, three jobs not started, and others running on Lathe 1, Mill 2 and Laser 1.",
   },
   invoice: {
-    src: "/marketing/workflow/invoice.webp", width: 1100, height: 1338, kind: "document", source: "Invoice, as issued",
-    alt: "Invoice INV-0001 from Example Engineering Ltd to Example Plant Co, with example values: quote QUO-0001, customer PO 4471, the same two lines, VAT and the balance due.",
+    src: "/marketing/workflow/invoice.webp", width: 1400, height: 1980, kind: "document", source: "Invoice, as issued",
+    alt: "Invoice INV-0596 from Northfield Precision Ltd to Calder Fluid Power Ltd, with example values: quote QUO-0412, customer PO CFP-55120, the same three lines, VAT and the balance due.",
   },
 };
 
@@ -366,26 +367,25 @@ export const VERSION_COPY = {
 export type SceneStage = Omit<GearStage, "id"> & { id: StageId | "analytics" };
 
 /**
- * Analytics: the eighth gear, driven by the invoice gear, for the owner's dashboard. Its picture is a stand-in drawn in the app's
- * style with example values until the real screenshot replaces it (same file name, update width and height here). Check these
- * lines against the released feature before this goes live.
+ * Analytics: the eighth gear, driven by the invoice gear: the owner's Numbers page (admins only), captured from the app with the
+ * same made-up data as the other stages. The lines below describe what that page shows; keep them in step with it.
  */
 export const ANALYTICS_STAGE: SceneStage = {
   id: "analytics",
   op: "80",
   label: "Analytics",
   stamp: "Reviewed",
-  caption: "The owner's view: what has been invoiced and paid, what is owed and overdue, and how each job's margin came out.",
-  record: [["Period", "Last 6 months"], ["Export", "CSV"]],
+  caption: "The owner's view: what has been invoiced against what has come in, which customers the business relies on, and where machine time goes.",
+  record: [["Months", "3, 6 or 12"], ["Machine time", "Recorded runs"]],
   solves: null,
   details: [
     "Admins only, showing their own company's figures and nothing else.",
-    "Invoiced income and cash received are kept apart, and so are estimated and actual margin.",
+    "Invoiced ex VAT and money received are shown side by side, month by month.",
   ],
   teeth: 16,
   shot: {
-    src: "/marketing/workflow/analytics.webp", width: 880, height: 1180, kind: "screen", source: "Analytics",
-    alt: "Tolra analytics dashboard with example values: invoiced and received by month, outstanding and overdue invoices, and estimated against actual margin by job.",
+    src: "/marketing/workflow/analytics.webp", width: 1600, height: 1100, kind: "screen", source: "Numbers",
+    alt: "Tolra Numbers page with example values for the last six months: invoiced ex VAT and money received, which customers the business relies on, invoiced against received by month, and machine hours.",
   },
 };
 
