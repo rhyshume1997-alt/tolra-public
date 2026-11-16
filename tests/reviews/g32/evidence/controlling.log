@@ -1,0 +1,9 @@
+test_freeze_and_dependency_order (test_patches.Controls.test_freeze_and_dependency_order) ... ok
+test_original_public_inventory_preserved (test_patches.Controls.test_original_public_inventory_preserved) ... ok
+test_stop_at_each_required_checkpoint_and_no_auto_restore (test_patches.Controls.test_stop_at_each_required_checkpoint_and_no_auto_restore) ... ok
+test_withdrawn_patches_have_one_controlling_authority (test_patches.Controls.test_withdrawn_patches_have_one_controlling_authority) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.007s
+
+OK
