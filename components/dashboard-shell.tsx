@@ -13,7 +13,6 @@ import { ThemeColour } from "@/components/theme-colour";
 import { Topbar } from "@/components/topbar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { type ShellBrand, shellColours } from "@/lib/brand-pending";
-import { rememberBrand } from "@/lib/branding";
 import { primeShellBrand } from "@/lib/company";
 import { OFFLINE_IDENTITY_MAX_AGE_HOURS, OfflineIdentityExpiredError } from "@/lib/offline/identity-age";
 import { useDateFormatPreference } from "@/lib/date-format-preference";
@@ -23,23 +22,11 @@ import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { friendlyError } from "@/lib/friendly-error";
 import { UserProvider, useUser } from "@/lib/use-user";
 
-/**
- * After sign-in and after a company switch (both load the app afresh), asks the server to remember this session's company for the
- * next sign-in page (lib/branding.ts rememberBrand). Once per company per tab.
- */
-function useRememberBrand(organizationId: string | null | undefined) {
-  useEffect(() => {
-    if (!organizationId || !supabase) return;
-    void rememberBrand(organizationId);
-  }, [organizationId]);
-}
-
 function ShellInner({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, profile, loading, error, activeRole } = useUser();
   // Signs this device out after the idle limit for the role being worked as (lib/session-policy.ts).
   useIdleSignOut(activeRole, Boolean(user && profile));
-  useRememberBrand(user && profile ? profile.organization_id : null);
   // Admin and office: the server checks the company's inbox every few minutes while this tab is visible (lib/inbox-auto-check.ts).
   useInboxAutoCheck(Boolean(supabase && user && runsInboxCheck(profile)));
   // The person's own date format (Account Settings; migration 109), primed before the page renders. A change re-renders this shell

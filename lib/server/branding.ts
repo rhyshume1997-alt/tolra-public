@@ -100,7 +100,7 @@ export const BRAND_COOKIE = "tolra_brand";
 export const BRAND_COOKIE_MAX_AGE_S = 60 * 60 * 24 * 365;
 
 /**
- * Which company the sign-in page asks for: ?org, else the company subdomain, else this device's brand cookie. Only one is looked
+ * Which company the sign-in page asks for: ?org, else the company subdomain. Remembered cookies are ignored. Only one is looked
  * up. A non-empty ?org always wins, even one that does not resolve (as /api/branding does), so a link shows what it names.
  */
 export function loginSlug(input: { org?: string | null; host?: string | null; cookie?: string | null }, rootDomain = process.env.TENANT_ROOT_DOMAIN) {
@@ -108,8 +108,7 @@ export function loginSlug(input: { org?: string | null; host?: string | null; co
   if (asked) return asked;
   const fromHost = slugFromHost(input.host, rootDomain);
   if (fromHost) return fromHost;
-  const remembered = input.cookie?.trim().toLowerCase();
-  return isOrgSlug(remembered) ? remembered : null;
+  return null;
 }
 
 /** The public sign-in logo at a cacheable URL (app/api/branding/logo): served only while `version` is the current one. */
