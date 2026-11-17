@@ -86,10 +86,10 @@ export function ToolyFloat() {
             <div className="mb-2 flex items-start gap-2">
               <ToolyFace pose="wave" size={48} />
               <div className="min-w-0 space-y-1">
-                <p className="font-medium text-slate-900">Hi, I'm Tooly.</p>
-                <p>I can do more when the AI is switched on.</p>
-                <p>I can draft emails and notes for you, and answer questions about your recent quotes and jobs.</p>
-                <p>Soon I will also walk you through the app, tell you what you have missed, and draft a Monday and Friday email for your admins about what is still outstanding in reports.</p>
+                <p className="font-medium text-slate-900">{"Hi, I'm Tooly."}</p>
+                <p>{"I can do more when the AI is switched on."}</p>
+                <p>{"I can draft emails and notes for you, and answer questions about your recent quotes and jobs."}</p>
+                <p>{"Soon I will also walk you through the app, tell you what you have missed, and draft a Monday and Friday email for your admins about what is still outstanding in reports."}</p>
                 {isAdmin ? (
                   <p className="pt-1">
                     <Link
@@ -101,7 +101,7 @@ export function ToolyFloat() {
                     </Link>
                   </p>
                 ) : (
-                  <p className="pt-1">Ask your admin to switch the AI on.</p>
+                  <p className="pt-1">{"Ask your admin to switch the AI on."}</p>
                 )}
               </div>
             </div>
