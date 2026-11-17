@@ -62,7 +62,8 @@ Common steps for every flag (do not skip):
 - **PRs that must merge first:**
   - [#546](https://github.com/rhyshume1997-alt/tolra-public/pull/546) (staff admin, release 154 database proofs, browser acceptance). Draft.
   - [#526](https://github.com/rhyshume1997-alt/tolra-public/pull/526) (mounts Portal contacts on a saved customer, module 5), so staff can invite someone. Draft.
-  - [#528](https://github.com/rhyshume1997-alt/tolra-public/pull/528) and [#527](https://github.com/rhyshume1997-alt/tolra-public/pull/527) (browser acceptance) if #546 does not already include them. Drafts. Confirm and close any that #546 supersedes.
+  - [#528](https://github.com/rhyshume1997-alt/tolra-public/pull/528) (browser acceptance) is already included in #546; it does not need to merge separately.
+  - [#527](https://github.com/rhyshume1997-alt/tolra-public/pull/527) (browser acceptance of the Customers contacts mount) comes after #526, not before.
   - Release 154 (`supabase/release/154_customer_portal_signin.release.sql`) applied to the database. Migrations need explicit release approval; this document does not authorise it.
   - Already on main: #495, #498, #499, #505, #520.
 - **Check on Preview:**
@@ -77,7 +78,7 @@ Common steps for every flag (do not skip):
 ## 5. Accounting transfers (Xero; module 6)
 
 - **Current state:** OFF per company. The Xero transfer switch is `xero_transfer_hold.enabled`, created by release 149 with every existing company set to `false` ("installed off"). The app treats a missing function, row or read error as OFF (`lib/integrations/xero/launch-hold.ts`). Sage and QuickBooks offer connections and read-only invoice checks only; they do not send.
-- **PRs that must merge first:** Release 149 is already in the repo; confirm it is applied to the target database (the release preflight rows say so). Xero hardening and acceptance PRs still open: [#510](https://github.com/rhyshume1997-alt/tolra-public/pull/510) (browser acceptance for organisation confirmation). The Sage and QuickBooks PRs ([#518](https://github.com/rhyshume1997-alt/tolra-public/pull/518), [#523](https://github.com/rhyshume1997-alt/tolra-public/pull/523), [#524](https://github.com/rhyshume1997-alt/tolra-public/pull/524)) are not needed for Xero transfers. They are drafts; keep them out of this rollout unless Rhys says otherwise. [#517](https://github.com/rhyshume1997-alt/tolra-public/pull/517) is "DO NOT MERGE".
+- **PRs that must merge first:** #510 is not enough on its own to turn this on. Release 149 is already in the repo, but it must be confirmed applied to the target database (the release preflight rows say so). [#510](https://github.com/rhyshume1997-alt/tolra-public/pull/510) only adds browser acceptance for Xero organisation confirmation. Turning transfers on also depends on the Preview checks below, the NOT VERIFIED switch-off rules being checked, and Rhys's approval. The Sage and QuickBooks PRs ([#518](https://github.com/rhyshume1997-alt/tolra-public/pull/518), [#523](https://github.com/rhyshume1997-alt/tolra-public/pull/523), [#524](https://github.com/rhyshume1997-alt/tolra-public/pull/524)) are not needed for Xero transfers. They are drafts; keep them out of this rollout unless Rhys says otherwise. [#517](https://github.com/rhyshume1997-alt/tolra-public/pull/517) is "DO NOT MERGE".
 - **Check on Preview:**
   - Switch OFF: nothing is sent or retried; the message "Xero transfers are off for this company" shows.
   - Turning ON needs the company's second sign-in step on and an authenticator code from the last 15 minutes (release 149).
