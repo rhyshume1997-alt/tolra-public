@@ -22,7 +22,8 @@ for row in "marker 138 chase steps|chase_steps_138|138 chase steps applied" \
            "post-144 marker 156 invoice_ref_case|invoice_ref_case_156|156 invoice_ref_case applied" \
            "post-144 marker 157 jobs_integrity_guard|jobs_integrity_guard_157|157 jobs_integrity_guard applied" \
            "post-144 marker 158 machine_run_integrity|machine_run_integrity_158|158 machine_run_integrity applied" \
-           "post-144 marker 159 drawings_update_roles|drawings_update_roles_159|159 drawings_update_roles applied"; do
+           "post-144 marker 159 drawings_update_roles|drawings_update_roles_159|159 drawings_update_roles applied" \
+           "post-144 marker 160 legacy_reopen_revoke|legacy_reopen_revoke_160|160 legacy_reopen_revoke applied"; do
   IFS='|' read -r marker verify label <<< "$row"
   line="$(printf '%s\n' "$pre" | awk -F'|' -v m="$marker" '$1==m')"
   state="$(printf '%s\n' "$line" | awk -F'|' '{print $2}')"
