@@ -6,12 +6,12 @@
  * Analytics. Selecting a gear turns the train (true involute teeth, opposite directions, inverse ratios), lights that gear and moves
  * the camera to it.
  *
- * From 900px wide, that stage's screen then lifts out of its slot in the plate and stands upright beside the machine, showing a
+ * That stage's screen then lifts out of its slot in the plate and stands upright (beside the machine from 900px wide, over it on
+ * phones and narrow tablets), showing a
  * cropped view of the stage's picture, with Previous / Next arrows, View full size and a close button. It is plain HTML placed with a
  * CSS matrix3d computed from the 3D camera, so it stays sharp and clickable; once upright it stays put and only its picture changes.
  * From the last screen, "Run the whole machine" lowers it, runs the train once while the display steps through every stage, pulls
- * back and offers the booking link. Below 900px the display in the plate shows each stage instead, with the picture under the
- * machine, and reaching the last stage runs the reveal.
+ * back and offers the booking link.
  *
  * Built to stay quick: the scene is assembled in small steps between frames (shaders compiled in the background), only the pictures
  * needed are prepared, nothing follows the pointer, and nothing renders unless it is moving.
@@ -70,10 +70,11 @@ const breathe = () => new Promise<void>((resolve) => {
   if (typeof window.requestIdleCallback === "function") window.requestIdleCallback(() => resolve(), { timeout: 100 });
   else window.setTimeout(resolve, 16);
 });
-/** The screen lifts out and stands upright only where there is room beside the machine (canvas at least this wide, CSS px). */
-const LIFT_MIN_WIDTH = 900;
-/** Where the upright screen stands, as fractions of the canvas: the right part, clear of the machine (see BESIDE_SCREEN). */
-const SHEET = { left: 0.45, top: 0.05, width: 0.53, height: 0.9 };
+/** From this canvas width (CSS px) the upright screen stands beside the machine; narrower, it stands over the middle of it. */
+const BESIDE_MIN_WIDTH = 900;
+/** Where the upright screen stands, as fractions of the canvas: beside the machine (see BESIDE_SCREEN), or over it on phones. */
+const SHEET_BESIDE = { left: 0.45, top: 0.05, width: 0.53, height: 0.9 };
+const SHEET_OVER = { left: 0.04, top: 0.04, width: 0.92, height: 0.92 };
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const DEG = Math.PI / 180;
 /** Radius covered by the shared turned-finish texture, so every gear's rings are the same pitch. */
@@ -725,6 +726,7 @@ async function createEngine(cv: HTMLCanvasElement, sheet: HTMLElement, tier: Tie
   const timers: number[] = [];
   // The lifted screen: 0 = down in its slot, 1 = upright beside the machine.
   let canLift = false;
+  let beside = false;
   let lift = 0;
   let liftTween: { from: number; to: number; t0: number; dur: number; rise: boolean; done?: () => void } | null = null;
   let emptyNow = 0;
@@ -732,7 +734,7 @@ async function createEngine(cv: HTMLCanvasElement, sheet: HTMLElement, tier: Tie
 
   const raised = () => canLift && (lift > 0.001 || (liftTween !== null && liftTween.to > 0));
   const stopFor = (): CameraStop =>
-    mode === "reveal" ? revealStop(aspect) : mode === "stage" ? stageStop(current, aspect, tier, raised()) : overviewStop(aspect);
+    mode === "reveal" ? revealStop(aspect) : mode === "stage" ? stageStop(current, aspect, tier, beside && raised()) : overviewStop(aspect);
 
   const moveCamera = (to: CameraStop, dur: number, now: number) => {
     cam = { from: { position: [...camNow.position], target: [...camNow.target] }, to, t0: now, dur };
@@ -989,7 +991,7 @@ async function createEngine(cv: HTMLCanvasElement, sheet: HTMLElement, tier: Tie
       // Down: the screen lifts out and stands up. Already up: it stays exactly where it is and only its picture changes.
       cb.onScreen({ stage: i, up: true });
       if (down) moveScreen(1, 620, true);
-      moveCamera(stageStop(i, aspect, tier, true), ms(850), now);
+      moveCamera(stageStop(i, aspect, tier, beside), ms(850), now);
     } else {
       moveCamera(stageStop(i, aspect, tier), ms(850), now);
       showStage(i, ms(420));
@@ -1074,23 +1076,18 @@ async function createEngine(cv: HTMLCanvasElement, sheet: HTMLElement, tier: Tie
     aspect = w / h;
     camera.aspect = aspect;
     camera.updateProjectionMatrix();
-    rect.x = Math.round(w * SHEET.left);
-    rect.y = Math.round(h * SHEET.top);
-    rect.w = Math.round(w * SHEET.width);
-    rect.h = Math.round(h * SHEET.height);
+    // Every width lifts the screen: beside the machine where there is room, otherwise standing over the middle of it.
+    beside = w >= BESIDE_MIN_WIDTH;
+    canLift = true;
+    const at = beside ? SHEET_BESIDE : SHEET_OVER;
+    rect.x = Math.round(w * at.left);
+    rect.y = Math.round(h * at.top);
+    rect.w = Math.round(w * at.width);
+    rect.h = Math.round(h * at.height);
     sheet.style.width = `${rect.w}px`;
     sheet.style.height = `${rect.h}px`;
-    const could = canLift;
-    canLift = w >= LIFT_MIN_WIDTH;
-    if (could && !canLift) {
-      // Too narrow now for the screen beside the machine: put it back in its slot at once.
-      liftTween = null;
-      lift = 0;
-      emptyNow = 0;
-      screenMat.uniforms.empty.value = 0;
-      placeSheet(0, false);
-      cb.onScreen({ stage: current, up: false });
-    }
+    sheet.toggleAttribute("data-over", !beside);
+    if (lift === 1 && !liftTween) placeSheet(1, true);
     if (!cam) camNow = stopFor();
     else cam.to = stopFor();
     kick();
@@ -1264,8 +1261,9 @@ export default function GearWorkflow3D({ active, tier, motion, onPick, onOpenFul
               <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </button>
           ) : (
-            <button type="button" className="gw3-sheet-btn gw3-sheet-next" onClick={() => engine.current?.reveal()}>
+            <button type="button" className="gw3-sheet-btn gw3-sheet-next gw3-sheet-run" onClick={() => engine.current?.reveal()} aria-label={SCENE_COPY.runAll}>
               <span className="gw3-sheet-name">{SCENE_COPY.runAll}</span>
+              <span className="gw3-sheet-short" aria-hidden="true">{SCENE_COPY.runAllShort}</span>
               <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </button>
           )}
