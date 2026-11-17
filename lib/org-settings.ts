@@ -1,5 +1,7 @@
 "use client";
 
+/** Module 7: scoped company display settings -> verified/offline/unavailable snapshots; never infer offline from a failed request. */
+
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 
 import { DASHBOARD_TILES } from "@/lib/dashboard-tiles";
@@ -141,11 +143,18 @@ export function resetHiddenColumns(hiddenColumns: Record<string, string[]>, scre
   return Object.fromEntries(Object.entries(hiddenColumns).filter(([key]) => !keys.has(key)));
 }
 
+export type SettingsAvailability =
+  | { kind: "loading" }
+  | { kind: "verified" }
+  | { kind: "offline" }
+  | { kind: "unavailable"; reason: "online" | "offline-cache-missing" | "denied" | "pending"; message: string };
+
 export type OrgSettings = {
   hiddenNav: string[];
   hiddenColumns: Record<string, string[]>;
   loaded: boolean;
-  /** true when settings are only stored in this browser (Supabase unavailable). */
+  availability: SettingsAvailability;
+  /** Browser-only data or changes; availability, not this flag, describes connectivity/verification. */
   localOnly: boolean;
   /**
    * This person's own view on this device (G5, display plan option A), per screen: the hidden keys they chose with the Columns
@@ -180,22 +189,26 @@ let generation = 0;
 async function resolveUserId(): Promise<string | null> {
   if (currentUserId) return currentUserId;
   if (!supabase) return null;
+  const gen = generation;
+  let userId: string | null = null;
   try {
     const { data } = await supabase.auth.getUser();
-    currentUserId = data.user?.id ?? null;
+    userId = data.user?.id ?? null;
   } catch {
-    currentUserId = null;
+    userId = null;
   }
-  if (!currentUserId) {
+  if (!userId) {
     // Offline getUser cannot reach the server; the stored session still names who is signed in on this device.
     try {
       const { data } = await supabase.auth.getSession();
-      currentUserId = data.session?.user.id ?? null;
+      userId = data.session?.user.id ?? null;
     } catch {
-      currentUserId = null;
+      userId = null;
     }
   }
-  return currentUserId;
+  if (gen !== generation) return null;
+  currentUserId = userId;
+  return userId;
 }
 
 /** This user's company at the last online load, kept so an offline reload can still find its local copy. */
@@ -226,13 +239,17 @@ export function orgSettingsStorageKey(userId: string | null, organizationId: str
 }
 
 const NO_SETS: Sets = { hiddenNav: [], hiddenColumns: {} };
-const EMPTY: OrgSettings = { ...NO_SETS, loaded: false, localOnly: false, deviceColumns: {} };
+const EMPTY: OrgSettings = { ...NO_SETS, loaded: false, availability: { kind: "loading" }, localOnly: false, deviceColumns: {} };
 
 let state: OrgSettings = EMPTY;
 /** The last settled value (from the server, or kept locally while offline). */
 let base: Sets = NO_SETS;
+let knownScope: string | null = null;
+let fetchVersion = 0;
 /** Changes shown at once but not yet settled; the visible state is base with these applied. */
 let pending: Change[] = [];
+/** Failed user-requested changes, retained separately from the last server value until a confirmed write resolves them. */
+let localChanges: Change[] = [];
 let loadPromise: Promise<void> | null = null;
 let saveChain: Promise<unknown> = Promise.resolve();
 const listeners = new Set<() => void>();
@@ -289,8 +306,10 @@ function applyChange(sets: Sets, change: Change): Sets {
 }
 
 function publish(extra: Partial<OrgSettings> = {}) {
-  const view = pending.reduce(applyChange, base);
-  setState({ ...state, ...extra, hiddenNav: view.hiddenNav, hiddenColumns: cleanColumns(view.hiddenColumns) });
+  const view = [...localChanges, ...pending].reduce(applyChange, base);
+  const availability = extra.availability ?? state.availability;
+  const loaded = availability.kind === "verified" || availability.kind === "offline";
+  setState({ ...state, ...extra, availability, loaded, hiddenNav: view.hiddenNav, hiddenColumns: cleanColumns(view.hiddenColumns) });
 }
 
 /** Call on sign-out and company switch: clears the cache and this company's local copy, and drops any fetch or save in flight. */
@@ -303,8 +322,10 @@ export function resetOrgSettings() {
   currentOrgId = null;
   loadPromise = null;
   pending = [];
+  localChanges = [];
   base = NO_SETS;
-  setState(EMPTY);
+  knownScope = null;
+  setState({ ...EMPTY });
   try {
     if (key) window.localStorage.removeItem(key);
     if (orgPointer) window.localStorage.removeItem(orgPointer);
@@ -316,14 +337,39 @@ export function resetOrgSettings() {
   }
 }
 
-function readLocal(): Sets {
+function validSets(value: unknown): value is Sets {
+  if (!value || typeof value !== "object") return false;
+  const row = value as Record<string, unknown>;
+  return Array.isArray(row.hiddenNav) && row.hiddenNav.every((item) => typeof item === "string")
+    && Boolean(row.hiddenColumns) && typeof row.hiddenColumns === "object" && !Array.isArray(row.hiddenColumns)
+    && Object.values(row.hiddenColumns as object).every((cols) => Array.isArray(cols) && cols.every((col) => typeof col === "string"));
+}
+function validChange(value: unknown): value is Change {
+  if (!value || typeof value !== "object") return false;
+  const row = value as Record<string, unknown>;
+  const table = typeof row.table === "string" && row.table.length > 0;
+  if (row.kind === "columns-reset") return table;
+  const delta = Array.isArray(row.add) && row.add.every((item) => typeof item === "string")
+    && Array.isArray(row.remove) && row.remove.every((item) => typeof item === "string");
+  return delta && (row.kind === "nav" || (row.kind === "columns" && table));
+}
+type CachedSettings = { base: Sets; changes: Change[] };
+function readLocal(): CachedSettings | null {
   const key = orgSettingsStorageKey(currentUserId, currentOrgId);
-  if (!key) return NO_SETS;
+  if (!key) return null;
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(key) || "{}");
-    return { hiddenNav: cleanNav(parsed.hiddenNav), hiddenColumns: cleanColumns(parsed.hiddenColumns) };
+    const saved = window.localStorage.getItem(key);
+    if (!saved) return null;
+    const parsed = JSON.parse(saved);
+    if (!validSets(parsed)) return null;
+    const record = parsed as Sets & { localBase?: unknown; localChanges?: unknown };
+    if (record.localChanges !== undefined) {
+      if (!validSets(record.localBase) || !Array.isArray(record.localChanges) || !record.localChanges.every(validChange)) return null;
+      return { base: { hiddenNav: cleanNav(record.localBase.hiddenNav), hiddenColumns: cleanColumns(record.localBase.hiddenColumns) }, changes: record.localChanges };
+    }
+    return { base: { hiddenNav: cleanNav(parsed.hiddenNav), hiddenColumns: cleanColumns(parsed.hiddenColumns) }, changes: [] };
   } catch {
-    return NO_SETS;
+    return null;
   }
 }
 
@@ -331,7 +377,8 @@ function writeLocal(sets: Sets) {
   const key = orgSettingsStorageKey(currentUserId, currentOrgId);
   if (!key) return;
   try {
-    window.localStorage.setItem(key, JSON.stringify(sets));
+    const view = localChanges.reduce(applyChange, sets);
+    window.localStorage.setItem(key, JSON.stringify({ ...view, localBase: sets, localChanges }));
   } catch {
     // Storage unavailable (private window etc.): keep in-memory state only.
   }
@@ -434,39 +481,89 @@ async function readRow(organizationId: string): Promise<Sets> {
     .eq("organization_id", organizationId)
     .maybeSingle();
   if (error) throw { code: error.code, message: error.message, hint: error.hint, status };
+  if (data !== null && (!data || !Array.isArray(data.hidden_nav) || !data.hidden_nav.every((item: unknown) => typeof item === "string")
+      || !data.hidden_columns || typeof data.hidden_columns !== "object" || Array.isArray(data.hidden_columns)
+      || !Object.values(data.hidden_columns).every((cols) => Array.isArray(cols) && cols.every((col) => typeof col === "string")))) throw new Error("Settings response unavailable.");
   return { hiddenNav: cleanNav(data?.hidden_nav), hiddenColumns: cleanColumns(data?.hidden_columns) };
 }
 
+const browserOffline = () => typeof navigator !== "undefined" && navigator.onLine === false;
+const scopeKey = () => orgSettingsStorageKey(currentUserId, currentOrgId);
+const hasKnownSettings = () => knownScope !== null && knownScope === scopeKey();
+function unavailable(reason: "online" | "offline-cache-missing" | "denied" | "pending") {
+  publish({ availability: { kind: "unavailable", reason,
+    message: reason === "offline-cache-missing" ? "Connect to load this company's settings, then try again."
+      : reason === "pending" ? "Settings changes are kept on this device. Retry to save them." : "Company settings are unavailable. Try again." },
+    localOnly: reason !== "denied" && hasKnownSettings() });
+}
+
 async function fetchSettings() {
-  const gen = generation;
+  let gen = generation;
+  const version = ++fetchVersion;
+  const current = () => gen === generation && version === fetchVersion;
+  publish({ availability: { kind: "loading" } });
   try {
     if (!supabase) throw new Error("Supabase is not configured.");
     // One auth-server check names both the user and the session's company (it was asked twice in a row before: every auth-server
     // check holds supabase-js's auth lock for a round trip, and every database request waits on that lock).
     const { userId, organizationId } = await getCurrentUserAndOrganization();
-    if (gen !== generation) return;
-    if (!currentUserId) currentUserId = userId;
+    if (!current()) return;
+    const nextScope = orgSettingsStorageKey(userId, organizationId);
+    if (scopeKey() && scopeKey() !== nextScope) {
+      // A confirmed scope change invalidates old work without deleting another company's persisted copy or outbox.
+      generation += 1;
+      gen = generation;
+      pending = [];
+      localChanges = [];
+      base = NO_SETS;
+      knownScope = null;
+      setState({ ...EMPTY });
+    }
+    currentUserId = userId;
     rememberOrg(organizationId);
+    if (!hasKnownSettings()) {
+      const cached = readLocal();
+      if (cached) { base = cached.base; localChanges = cached.changes; knownScope = scopeKey(); }
+    }
     const row = await readRow(organizationId);
-    if (gen !== generation) return;
+    if (!current()) return;
     base = row;
+    knownScope = scopeKey();
     writeLocal(base);
-    publish({ loaded: true, localOnly: false, deviceColumns: readDevice() });
-  } catch {
-    if (gen !== generation) return;
-    // Offline: the stored session still names who is signed in on this device.
-    await resolveUserId();
-    if (gen !== generation) return;
-    // Offline cold reload: the company of the last online load on this device (cleared on sign-out and company switch).
-    if (!currentOrgId) currentOrgId = recallOrg();
-    base = readLocal();
-    publish({ loaded: true, localOnly: true, deviceColumns: readDevice() });
+    if (localChanges.length) unavailable("pending");
+    else publish({ availability: { kind: "verified" }, localOnly: false, deviceColumns: readDevice() });
+  } catch (error) {
+    if (!current()) return;
+    if (isSettingsDenial(error)) { unavailable("denied"); return; }
+    if (browserOffline()) {
+      await resolveUserId();
+      if (!current()) return;
+      if (!currentOrgId) currentOrgId = recallOrg();
+      const cached = hasKnownSettings() ? { base, changes: localChanges } : readLocal();
+      if (cached) {
+        base = cached.base;
+        localChanges = cached.changes;
+        knownScope = scopeKey();
+        publish({ availability: { kind: "offline" }, localOnly: true, deviceColumns: readDevice() });
+      } else unavailable("offline-cache-missing");
+      return;
+    }
+    // The current request may have verified user+company before the row read failed; only that exact cache is eligible.
+    if (!hasKnownSettings()) {
+      const cached = readLocal();
+      if (cached) { base = cached.base; localChanges = cached.changes; knownScope = scopeKey(); }
+    }
+    unavailable("online");
   }
 }
 
 export function loadOrgSettings(force = false) {
   if (typeof window === "undefined") return Promise.resolve();
-  if (force || !loadPromise) loadPromise = fetchSettings();
+  if (force || !loadPromise) {
+    loadPromise = force && localChanges.length && !browserOffline()
+      ? recoverLocalChanges().then((ready) => ready ? fetchSettings() : undefined)
+      : fetchSettings();
+  }
   return loadPromise;
 }
 
@@ -497,7 +594,8 @@ async function persistChange(change: Change, gen: number, pinnedOrg: string | nu
     rememberOrg(organizationId);
     fresh = await readRow(organizationId);
     if (gen !== generation) return DROPPED;
-    const merged = applyChange(fresh, change);
+    const localForColumn = localChanges.filter((item) => (item.kind === "nav") === (change.kind === "nav"));
+    const merged = applyChange(localForColumn.reduce(applyChange, fresh), change);
     const column = change.kind === "nav" ? { hidden_nav: merged.hiddenNav } : { hidden_columns: merged.hiddenColumns };
     const { error, status } = await supabase
       .from("organization_settings")
@@ -505,9 +603,13 @@ async function persistChange(change: Change, gen: number, pinnedOrg: string | nu
     if (error) throw { code: error.code, message: error.message, hint: error.hint, status };
     if (gen !== generation) return DROPPED;
     settle();
+    localChanges = localChanges.filter((item) => !localForColumn.includes(item));
     base = merged;
+    knownScope = scopeKey();
+    fetchVersion += 1; // An older settings read cannot overwrite this confirmed write.
     writeLocal(base);
-    publish({ loaded: true, localOnly: false });
+    if (localChanges.length) unavailable("pending");
+    else publish({ availability: { kind: "verified" }, localOnly: false });
     return { localOnly: false, denied: false };
   } catch (error) {
     if (gen !== generation) return DROPPED;
@@ -515,14 +617,54 @@ async function persistChange(change: Change, gen: number, pinnedOrg: string | nu
     if (isSettingsDenial(error)) {
       // Undo it here; what the server holds now is the truth.
       if (fresh) base = fresh;
-      publish({ loaded: true });
+      localChanges = localChanges.filter((item) => (item.kind === "nav") !== (change.kind === "nav"));
+      if (hasKnownSettings()) writeLocal(base);
+      unavailable("denied");
       return { localOnly: false, denied: true, message: deniedMessage(error) };
     }
-    base = applyChange(base, change);
+    if (fresh) { base = fresh; knownScope = scopeKey(); }
+    if (!hasKnownSettings()) {
+      unavailable(browserOffline() ? "offline-cache-missing" : "online");
+      return { localOnly: false, denied: true, message: "Settings are unavailable. Nothing was saved; try again." };
+    }
+    if (!localChanges.includes(change)) localChanges.push(change);
+    fetchVersion += 1; // Older reads must not erase a change now kept on this device.
     writeLocal(base);
-    publish({ loaded: true, localOnly: true });
+    if (browserOffline()) publish({ availability: { kind: "offline" }, localOnly: true });
+    else unavailable("online");
     return { localOnly: true, denied: false };
   }
+}
+
+/** Explicit Retry only: at most one write per settings column, through the original scope and normal RLS checks. */
+function recoverLocalChanges(): Promise<boolean> {
+  const gen = generation;
+  const recovery = saveChain.then(async () => {
+    if (gen !== generation) return false;
+    publish({ availability: { kind: "loading" } });
+    try {
+      const identity = await getCurrentUserAndOrganization();
+      if (gen !== generation) return false;
+      if (orgSettingsStorageKey(identity.userId, identity.organizationId) !== knownScope) return true;
+    } catch (error) {
+      if (gen !== generation) return false;
+      if (isSettingsDenial(error)) unavailable("denied");
+      else if (browserOffline() && hasKnownSettings()) publish({ availability: { kind: "offline" }, localOnly: true });
+      else unavailable("online");
+      return false;
+    }
+    const columns = localChanges.filter((item) => item.kind !== "nav").at(-1);
+    const nav = localChanges.filter((item) => item.kind === "nav").at(-1);
+    for (const change of [columns, nav]) {
+      if (!change) continue;
+      const result = await persistChange(change, gen, currentOrgId);
+      if (result.dropped && gen === generation) unavailable("online");
+      if (result.denied || result.dropped || result.localOnly) return false;
+    }
+    return true;
+  });
+  saveChain = recovery.catch(() => undefined);
+  return recovery;
 }
 
 /** Shows the change at once, then saves it after any save already running (two quick toggles never interleave). */
@@ -587,9 +729,10 @@ export function getOrgSettingsSnapshot() {
   return state;
 }
 
-export function useOrgSettings() {
+export function useOrgSettings(enabled = true) {
   const settings = useSyncExternalStore(subscribe, () => state, () => EMPTY);
-  useEffect(() => { void loadOrgSettings(); }, []);
+  const scopeGeneration = generation;
+  useEffect(() => { if (enabled) void loadOrgSettings(); }, [enabled, scopeGeneration]);
   return settings;
 }
 
@@ -613,6 +756,11 @@ export function columnVisibility(tableKey: string, hidden: string[] | undefined)
   return (columnKey: string) => !safe.includes(columnKey);
 }
 
+/** Display preferences only: unverified preferences use default columns; page roles and RLS still enforce access. */
+export function settingsColumnVisibility(settings: Pick<OrgSettings, "loaded" | "hiddenColumns" | "deviceColumns">, tableKey: string) {
+  return columnVisibility(tableKey, settings.loaded ? effectiveHidden(settings, tableKey) : undefined);
+}
+
 /**
  * One screen's visibility: this person's own view on this device when they have one for the screen, else the company setting.
  * setColumnVisible / resetColumns change the company setting; setOwnColumnVisible / resetOwnColumns change only the own view.
@@ -620,7 +768,7 @@ export function columnVisibility(tableKey: string, hidden: string[] | undefined)
 export function useColumnVisibility(tableKey: string) {
   const settings = useOrgSettings();
   const hidden = effectiveHidden(settings, tableKey);
-  const isVisible = useMemo(() => columnVisibility(tableKey, hidden), [tableKey, hidden]);
+  const isVisible = useMemo(() => settingsColumnVisibility(settings, tableKey), [tableKey, settings]);
   const isLocked = useCallback((columnKey: string) => isColumnLocked(tableKey, columnKey), [tableKey]);
   const setColumnVisible = useCallback((columnKey: string, visible: boolean) => setColumnHidden(tableKey, columnKey, !visible), [tableKey]);
   const reset = useCallback(() => resetColumns(tableKey), [tableKey]);
