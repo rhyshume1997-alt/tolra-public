@@ -27,12 +27,13 @@ const setMarker = (marker: string, on: boolean) => withDb(async (db) => {
   if (done.rowCount !== 1) throw new Error(`no organization_settings row for ${org}`);
 });
 
-/** Fails every GET to the table with a 500 while `broken.on` is true. */
-async function breakReads(page: Page, table: string) {
+/** Fails every GET to the table while `broken.on` is true: with an HTTP 500, or (`abort`) at the network, as revenue.spec.ts does. */
+async function breakReads(page: Page, table: string, how: "500" | "abort" = "500") {
   const broken = { on: true };
-  await page.route(new RegExp(`/rest/v1/${table}(\\?|$)`), (route) => (broken.on && route.request().method() === "GET"
-    ? route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ message: "forced failure", code: "XX000" }) })
-    : route.continue()));
+  await page.route(new RegExp(`/rest/v1/${table}(\\?|$)`), (route) => {
+    if (!broken.on || route.request().method() !== "GET") return route.continue();
+    return how === "abort" ? route.abort() : route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ message: "forced failure", code: "XX000" }) });
+  });
   return broken;
 }
 
@@ -66,9 +67,10 @@ test("Revenue: a failed read shows Retry, and Retry re-reads", async ({ page }) 
   test.setTimeout(120_000);
   await setMarker(REVENUE_ON_MARKER, true);
   await signIn(page, w.tenants.alpha.users.admin);
-  const broken = await breakReads(page, "invoices");
+  const broken = await breakReads(page, "invoices", "abort");
   await page.goto("/reports/revenue");
   await expect(page.getByTestId("revenue-invoiced-failed")).toBeVisible();
+  await expect(page.getByTestId("revenue-retry")).toBeVisible();
   broken.on = false;
   await page.getByTestId("revenue-retry").click();
   await expect(page.getByTestId("revenue-invoiced-failed")).toHaveCount(0);
