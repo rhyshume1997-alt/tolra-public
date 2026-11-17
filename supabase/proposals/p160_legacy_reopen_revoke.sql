@@ -1,5 +1,5 @@
 -- =====================================================================================================
--- p160 (post-144 release 160, after 156 in supabase/release-plan.json): the older reopen function can no longer be called from the
+-- p160 (post-144 release 160, after 159 in supabase/release-plan.json): the older reopen function can no longer be called from the
 -- browser. Defect J1 (P0): a signed-in user (confirmed for office) could reopen a Complete job by calling public.reopen_job directly,
 -- skipping the reopen request and sign-off workflow of migration 113. PM ruling: "Revoke browser EXECUTE, preserve approved request
 -- and sign off workflow." service_role's grant is left unchanged.

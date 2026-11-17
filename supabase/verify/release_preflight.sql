@@ -736,7 +736,7 @@ checks(n, check_name, value, expected) AS (
     || ' / ' || coalesce((SELECT CASE WHEN has_function_privilege('anon', x.o, 'EXECUTE') OR has_function_privilege('public', x.o, 'EXECUTE') THEN 'other'
                                       WHEN has_function_privilege('authenticated', x.o, 'EXECUTE') THEN '081' ELSE '160' END
               FROM (SELECT to_regprocedure('public.reopen_job(uuid,text)') AS o) x WHERE x.o IS NOT NULL), 'missing'),
-    'true / 081 / 081 before 160; true / 081 / 160 after (false, other or missing: stop, 160 refuses; apply 113 first; 081''s release must never be re-run after 160, it refuses: roll 160 back first)'
+    'true / 081 / 081 before 160; true / 081 / 160 after (false, other or missing: stop, 160 refuses; apply 113 first; once 160 is in place a re-run of 081''s release file stops at its first guard, because 099 replaced delivery_note_try_draft)'
   UNION ALL SELECT 100 + row_number() OVER (), 'marker ' || migration,
     CASE WHEN present AND (migration <> '107 integrations connect' OR to_regprocedure('public.integration_invite_redeem(text,text,text)') IS NOT NULL
                            OR coalesce((SELECT pm.present FROM post_release_markers pm WHERE pm.label = 'post-144 marker 151 xero_invite_hardening'), FALSE))

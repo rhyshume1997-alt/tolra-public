@@ -1,4 +1,4 @@
--- Read only: after release 160 (the older reopen function can no longer be called from the browser; phase 160, after 156 in
+-- Read only: after release 160 (the older reopen function can no longer be called from the browser; phase 160, after 159 in
 -- supabase/release-plan.json), every row must say true. Inputs: none. Outputs: one row per check (check_name, ok). Must not change: this
 -- file only reads. Proves: authenticated, anon and PUBLIC cannot execute public.reopen_job(uuid, text) (by privilege and by ACL entry); its
 -- body is still 081's; its owner can still run it; 113's request and sign-off functions are still callable by signed-in users (and not anon)
@@ -12,7 +12,7 @@
 -- definer with the pinned search_path, share reopen_job's owner and are executable by signed-in users; reopen_job's body and the owner's EXECUTE are unchanged).
 -- The behavioural proof (request and sign-off reopen, workshop self-reopen with the no-admin tick box, an invoiced job through the sign-off workflow,
 -- direct call refused) is in tests/db/legacy-reopen-revoke-160.test.ts.
--- Never re-run 081's release file after 160 (it self-checks authenticated EXECUTE on reopen_job and refuses): roll 160 back first.
+-- A re-run of 081's release file after 160 stops at 081's first guard (099 replaced delivery_note_try_draft) and never reaches its GRANT.
 WITH rj AS (SELECT p.oid, p.proowner, p.proacl, p.prosecdef, p.proconfig, md5(regexp_replace(p.prosrc, '\s', '', 'g')) AS body_md5
             FROM pg_proc p WHERE p.oid = to_regprocedure('public.reopen_job(uuid,text)'))
 SELECT 'reopen_job: authenticated, anon and PUBLIC cannot execute it' AS check_name,

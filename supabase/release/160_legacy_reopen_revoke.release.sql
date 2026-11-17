@@ -1,5 +1,5 @@
 -- Post-144 release step 160 (the older reopen function can no longer be called from the browser; registered in supabase/release-plan.json
--- as phase 160, after 156; CI's post-144 step installs it). One transaction; never part of baseline replay. Not applied anywhere hosted.
+-- as phase 160, after 159; CI's post-144 step installs it). One transaction; never part of baseline replay. Not applied anywhere hosted.
 -- Canonical source: supabase/proposals/p160_legacy_reopen_revoke.sql (its body between BEGIN; and COMMIT; is copied below verbatim between
 -- the fingerprint and the self-check; read its header). Production only with Rhys's separate yes.
 -- Verify: supabase/verify/legacy_reopen_revoke_160.sql (every row true).
@@ -11,8 +11,9 @@
 -- REFUSES, changing nothing, unless: release 113 is in place (without it the old function is the only way to reopen), reopen_job exists with
 -- the pinned body and is definer with its pinned search_path, and its grants are 081's (authenticated only) or already 160's (nobody in the
 -- browser roles). Running this file again once applied changes nothing.
--- RE-RUN CAVEAT: 081's own release file (supabase/release/081_job_flow_release.release.sql) self-checks that authenticated can execute
--- reopen_job, so it would refuse after 160. Never re-run the 081 release after 160; roll 160 back first.
+-- 081 RE-RUN: once 160 is installed, a re-run of 081's own release file (supabase/release/081_job_flow_release.release.sql) stops at its
+-- first guard and changes nothing: that guard needs 059's or 081's delivery_note_try_draft, which 099 (earlier than 113) has replaced.
+-- It never reaches its GRANT on reopen_job, so it cannot give the browser roles EXECUTE back.
 -- EXPECTED CHANGE: supabase/verify/job_flow_081.sql (historical, unchanged) row api_functions_signed_in_only reports false by design after 160 (it still expects
 -- authenticated EXECUTE on reopen_job); that is the only change 160 causes in its result. 160's own verify file is the current check.
 -- The app's legacy fallback (lib/reopen-sign-off.ts) calls reopen_job directly, but only when 113's functions are missing; it would then fail visibly.
