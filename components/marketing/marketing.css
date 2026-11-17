@@ -845,6 +845,8 @@ details[open] > summary .mk-plus {
 }
 @media (min-width: 900px) and (max-width: 1099px) { .gw3-slot { aspect-ratio: 1.5 / 1; } }
 @media (max-width: 899px) { .gw3-slot { aspect-ratio: 1.05 / 1; } }
+/* Phones: a taller machine, so the screen that stands up over it has room to show its picture. */
+@media (max-width: 599px) { .gw3-slot { aspect-ratio: 0.8 / 1; } }
 .gw3 { position: absolute; inset: 0; }
 .gw3-canvas { display: block; width: 100%; height: 100%; touch-action: pan-y; opacity: 0; transition: opacity 350ms ease; }
 .gw3[data-ready] .gw3-canvas { opacity: 1; }
@@ -897,7 +899,8 @@ details[open] > summary .mk-plus {
 /* Below 900px there is no room for the screen to stand beside the machine: the stage image and its View full size link sit under
    the machine (.gw-mview) instead, and the overlay keeps only the note. From 900px the screen lifts out, so .gw-mview is not needed. */
 @media (max-width: 899px) { .gw3-foot, .gw3-head .mk-label:first-child { display: none; } }
-@media (min-width: 900px) { .gw-3d .gw-mview { display: none; } }
+/* The lifted screen shows each stage's picture at every width, so the copy under the machine is not repeated in 3D. */
+.gw-3d .gw-mview { display: none !important; }
 .gw3-foot { transition: opacity 300ms ease; }
 .gw3[data-up] .gw3-foot { opacity: 0; pointer-events: none; }
 .gw3[data-up] .gw3-foot button { pointer-events: none; }
@@ -1032,3 +1035,13 @@ details[open] > summary .mk-plus {
 /* While the screen stands up, its own foot says "example data"; the corner note would sit behind it, so it steps aside. */
 .gw3-head .mk-label:last-child { transition: opacity 300ms ease; }
 .gw3-slot:has(.gw3[data-up]) .gw3-head .mk-label:last-child { opacity: 0; }
+/* Standing over the machine (phones and narrow tablets): arrows only either side, the stage in the middle. */
+.gw3-sheet-short { display: none; }
+.gw3-sheet[data-over] .gw3-sheet-foot { gap: 0.4rem; padding: 0.35rem 0.4rem; }
+.gw3-sheet[data-over] .gw3-sheet-btn { padding: 0 0.7rem; }
+.gw3-sheet[data-over] .gw3-sheet-btn:not(.gw3-sheet-run) .gw3-sheet-name { display: none; }
+.gw3-sheet[data-over] .gw3-sheet-run .gw3-sheet-name { display: none; }
+.gw3-sheet[data-over] .gw3-sheet-run .gw3-sheet-short { display: inline; white-space: nowrap; }
+.gw3-sheet[data-over] .gw3-sheet-op { font-size: 0.625rem; }
+.gw3-sheet[data-over] .gw3-sheet-bar { padding: 0.45rem 0.7rem; }
+.gw3-sheet[data-over] .gw3-sheet-document { padding: 8px 8px 0; }

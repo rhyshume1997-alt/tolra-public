@@ -40,8 +40,8 @@ const load3D = () => import("./gear-workflow-3d");
 const GearWorkflow3D = dynamic(load3D, { ssr: false });
 /** Stills of the machine as it first appears, shown at once (and kept for anyone without script) while the 3D starts. */
 const POSTERS = {
-  wide: { src: "/marketing/workflow/machine-wide.webp", width: 1600, height: 889 },
-  square: { src: "/marketing/workflow/machine-square.webp", width: 900, height: 857 },
+  wide: { src: "/marketing/workflow/machine-wide.webp", width: 1600, height: 890 },
+  square: { src: "/marketing/workflow/machine-square.webp", width: 900, height: 1129 },
 } as const;
 
 function webglAvailable(): boolean {

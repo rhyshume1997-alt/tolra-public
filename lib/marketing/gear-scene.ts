@@ -175,7 +175,7 @@ function buildScene(): MachineScene {
     labels: rawLabels.map((l) => ({ ...l, x: wx(l.x), y: wy(l.y), w: round3(l.w), h: round3(l.h) })),
     bounds: { x0: -round3(halfW), y0: -round3(halfH), x1: round3(halfW), y1: round3(halfH) },
     // The plate runs well past the frame of the overview and stage views; only the final reveal pulls back far enough to see its edge.
-    plate: { w: round3(2 * halfW + 90), h: round3(2 * halfH + 50) },
+    plate: { w: round3(2 * halfW + 90), h: round3(2 * halfH + 150) },
     lift: 0.9,
   };
 }
@@ -343,11 +343,12 @@ export function revealStop(aspect: number): CameraStop {
 /** Everything the 3D version says, beyond the stage copy it shares with the 2D drawing. */
 export const SCENE_COPY = {
   hintPointer: "Click a gear to raise its screen",
-  hintTouch: "Tap a gear to turn the machine",
+  hintTouch: "Tap a gear to raise its screen",
   revealKicker: "Op 10 to Op 80",
   revealTitle: "Enquiry to invoice, on one job",
   restart: "Start again",
   runAll: "Run the whole machine",
+  runAllShort: "Run it all",
   lower: "Lower the screen",
   previous: "Previous",
   next: "Next",
