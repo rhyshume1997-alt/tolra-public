@@ -68,7 +68,8 @@ test.beforeAll(async ({ portalRuntime }) => {
 
 test("Portal OFF refuses every customer page even with a customer-shaped cookie", async ({ page, baseURL }) => {
   await asSeparateDevice(page);
-  await page.context().addCookies([{ name: "__Host-tolra_portal", value: "A".repeat(43), url: baseURL!, secure: true, httpOnly: true, sameSite: "Strict" }]);
+  // domain + path, not url: Playwright derives `secure` from a url's scheme (false on http://localhost), and Chromium refuses a __Host- cookie without Secure.
+  await page.context().addCookies([{ name: "__Host-tolra_portal", value: "A".repeat(43), domain: new URL(baseURL!).hostname, path: "/", secure: true, httpOnly: true, sameSite: "Strict" }]);
   for (const route of ["/portal","/portal/signin","/portal/quotes","/portal/jobs",`/portal/code/${"A".repeat(22)}`]) {
     const response = await page.goto(route);
     expect(response!.status(),route).toBe(404);
