@@ -20,7 +20,8 @@ const policy = (formAction) => [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${isProd ? "" : " 'unsafe-eval'"}`,
   "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' data: blob: ${supabase.https}`,
+  // raw.githubusercontent.com: Tooly pose images (Step 2) until assets are vendored into public/
+  `img-src 'self' data: blob: ${supabase.https} https://raw.githubusercontent.com`,
   "font-src 'self' data:",
   `connect-src 'self' ${supabase.https} ${supabase.wss}`,
   "frame-ancestors 'none'",
