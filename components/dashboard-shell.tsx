@@ -11,7 +11,6 @@ import { Sidebar } from "@/components/sidebar";
 import { SupportBanner } from "@/components/support-banner";
 import { ThemeColour } from "@/components/theme-colour";
 import { Topbar } from "@/components/topbar";
-import { ToolyPanel } from "@/components/tooly/tooly-panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { type ShellBrand, shellColours } from "@/lib/brand-pending";
 import { rememberBrand } from "@/lib/branding";
@@ -120,7 +119,6 @@ function ShellInner({ children }: { children: React.ReactNode }) {
         <Topbar />
         <main className="w-full px-4 py-6 md:px-6 md:py-8 desk:px-8 desk:py-8 print:p-0"><DisplayNamePrompt /><OfflineBanner /><CompanySetupGuide key={profile?.organization_id ?? "none"} />{children}</main>
       </div>
-      <ToolyPanel />
     </div>
   );
 }
