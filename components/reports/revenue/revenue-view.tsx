@@ -6,6 +6,7 @@
  * Two bases, never added together: invoiced (ex VAT, less credit notes) and cash received; the pipeline is a third, separate section.
  * Inputs: the company's settings (the switch), the person's role, the chosen filters. Output: the cards. Reads go through
  * lib/reports/revenue/load-revenue (SELECT only, under the person's own session).
+ * A failed read shows one Retry button that re-reads everything (the reads are idempotent SELECTs).
  * Must not change: no combined total of invoiced, cash and pipeline anywhere; no write; no saved filters.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -55,6 +56,7 @@ export function RevenueView() {
   const [range, setRange] = useState<RevenueRange>(defaultRange);
   const [customer, setCustomer] = useState("");
   const [data, setData] = useState<RevenueData | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const [today, setToday] = useState(() => toDateInput(new Date()));
   const latest = useRef(0);
   const problem = rangeProblem(range);
@@ -68,7 +70,7 @@ export function RevenueView() {
       setToday(toDateInput(new Date()));
       setData(result);
     });
-  }, [on, problem, range, sections]);
+  }, [on, problem, range, sections, attempt]);
 
   const view = useMemo(() => {
     if (!data || problem) return null;
@@ -108,6 +110,12 @@ export function RevenueView() {
   }
 
   const names = view?.names ?? [];
+  const anyFailed = Boolean(data) && !problem && (Object.values(data!) as Array<Read<unknown>>).some((read, i) => {
+    // A hidden family is "failed" on purpose (it is not read): it shows its own notice, not a Retry.
+    const key = Object.keys(data!)[i];
+    const family = key === "quotes" || key === "quoteLines" ? sections.quotes : sections.invoices;
+    return family && "failed" in read;
+  });
   const incomplete = (...reads: Array<Read<unknown> | undefined>) => reads.some((read) => (read ? cut(read) : false));
 
   return (
@@ -139,6 +147,12 @@ export function RevenueView() {
           </label>
         </div>
         {problem ? <p className="text-sm text-ink" role="alert">{problem}</p> : null}
+        {anyFailed ? (
+          <p className="flex flex-wrap items-center gap-3 text-sm text-ink" role="alert">
+            Some of this report couldn&apos;t be read.
+            <button type="button" data-testid="revenue-retry" onClick={() => setAttempt((n) => n + 1)} className="h-8 border border-line bg-surface px-3 text-sm font-semibold text-ink hover:bg-muted">Retry</button>
+          </p>
+        ) : null}
       </header>
 
       {!view ? (
