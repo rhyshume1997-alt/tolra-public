@@ -215,7 +215,7 @@ describe("camera stops", () => {
     });
   });
 
-  for (const [name, aspect, tier] of [["desktop", 1.8, "full"], ["wide desktop", 2.05, "full"], ["tablet", 1.25, "lite"], ["phone", 1.05, "lite"]] as const) {
+  for (const [name, aspect, tier] of [["desktop", 1.8, "full"], ["wide desktop", 2.05, "full"], ["tablet", 1.25, "lite"], ["tablet portrait", 1.05, "lite"], ["phone", 0.8, "lite"]] as const) {
     it(`${name}: the overview and the final reveal show every gear and the display`, () => {
       for (const stop of [overviewStop(aspect), revealStop(aspect)]) {
         const all = [...MACHINE.gears.map((_, i) => ring(i)).flat(), ...screen()];
