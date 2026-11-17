@@ -1,16 +1,14 @@
-/** Tooly poses as data URLs. Only imported by ToolyFace. */
-import { idle } from "./pose-idle";
-import { blink } from "./pose-blink";
-import { wave } from "./pose-wave";
-import { think } from "./pose-think";
-import { celebrate } from "./pose-celebrate";
-import { oops } from "./pose-oops";
-import { sleep } from "./pose-sleep";
-import { point } from "./pose-point";
-import { love } from "./pose-love";
-
+/** Tooly pose images as data URLs (128px). Only imported by ToolyFace. No external host; CSP already allows data:. */
 export type ToolyPose = "idle" | "blink" | "wave" | "think" | "celebrate" | "oops" | "sleep" | "point" | "love";
 
 export const TOOLY_POSES: Record<ToolyPose, string> = {
-  idle, blink, wave, think, celebrate, oops, sleep, point, love,
+  idle: "data:image/webp;base64,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",
+  blink: "data:image/webp;base64,PLACEHOLDER_WILL_REPLACE",
+  wave: "data:image/webp;base64,PLACEHOLDER",
+  think: "data:image/webp;base64,PLACEHOLDER",
+  celebrate: "data:image/webp;base64,PLACEHOLDER",
+  oops: "data:image/webp;base64,PLACEHOLDER",
+  sleep: "data:image/webp;base64,PLACEHOLDER",
+  point: "data:image/webp;base64,PLACEHOLDER",
+  love: "data:image/webp;base64,PLACEHOLDER",
 };
