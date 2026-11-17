@@ -194,14 +194,14 @@ describe("executeRunStartOp (R3.3): never strips the bench choice or the check",
     expect(timed).toMatchObject({ status: "conflict", code: "time_conflict", opened: true });
   });
 
-  it("refusals are held with their code; machine_in_use keeps the job's start and opened nothing; a network error stays queued", async () => {
+  it("refusals are held with their code; machine_in_use holds the Start and opens nothing; a network error stays queued", async () => {
     for (const hint of ["paused_ack_invalid", "bench_with_machines", "client_op_reused"]) {
       expect(await executeRunStartOp(runStart(), stub({ error: { code: "22023", hint, message: "m" } }).client)).toMatchObject({ status: "rejected", code: hint });
     }
-    let kept = 0;
-    const clash = await executeRunStartOp(runStart(), stub({ error: { code: "42501", hint: "machine_in_use", message: "Mill is in use" } }).client, async () => { kept += 1; return { status: "applied" }; });
-    expect(clash).toMatchObject({ status: "conflict", code: "machine_in_use", opened: false });
-    expect(kept).toBe(1);
+    const clashServer = stub({ error: { code: "42501", hint: "machine_in_use", message: "Mill is in use" } });
+    const clash = await executeRunStartOp(runStart(), clashServer.client);
+    expect(clash).toMatchObject({ status: "conflict", code: "start_machine_unavailable", opened: false });
+    expect(clashServer.calls).toHaveLength(1);
     expect(await executeRunStartOp(runStart(), stub({ error: { code: "42501", hint: "job_finished", message: "m" } }).client)).toMatchObject({ status: "rejected", code: "job_finished" });
     expect(await executeRunStartOp(runStart(), stub({ error: { code: "", message: "TypeError: Failed to fetch" } }).client)).toEqual({ status: "network" });
     expect(await executeRunPauseOp(runPause(), stub({ data: { ended: [] } }).client)).toEqual({ status: "applied" });

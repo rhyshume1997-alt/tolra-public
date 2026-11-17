@@ -202,7 +202,7 @@ vi.mock("@supabase/ssr", async (original) => {
           mfa: { getAuthenticatorAssuranceLevel: async () => ({ data: { currentLevel: "aal1" } }) },
         },
         from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: hoisted.profile, error: null }) }) }) }),
-        rpc: async () => ({ data: { user_id: "u-1", organization_id: "org-a", role: "office", secondary_role: null, hidden_sections: [] }, error: null }),
+        rpc: async () => ({ data: { user_id: "u-1", organization_id: "org-a", role: "office", secondary_role: null, hidden_sections: [], platform_admin: false, needs_choice: false, organization_count: 1 }, error: null }),
       };
     },
   };

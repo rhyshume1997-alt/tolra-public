@@ -1,4 +1,8 @@
 /**
+ * BOUNDARY (Integrations module, AI-1). Inputs: none (types only). Outputs: the request, completion and error types, the fixed provider
+ * id list and the AiHelperProvider interface every adapter implements. Must not change without review: the id list is fixed (no id
+ * read from input, env or the database), AiProviderError's fields and their meaning (server.ts settles on them), and the contract below.
+ *
  * The model behind the AI admin helper, behind one small interface (AGENTS-SPEC.md section 6). Two implementations: the Anthropic
  * one (lib/ai-helper/anthropic.ts, the official SDK, the company's own key) and a deterministic mock (lib/ai-helper/mock.ts) that every
  * test and CI run uses: no test ever calls the real API.
@@ -41,7 +45,28 @@ export class AiProviderError extends Error {
   }
 }
 
+/** The real providers an adapter may exist for (a fixed list). "mock" is the test provider only and has no price. */
+export type AiProviderId = "anthropic" | "openai" | "xai";
+
+/**
+ * ADAPTER CONTRACT (every adapter; the shared test helper tests/support/ai-provider-contract.ts checks it):
+ * 1. Exactly one request per complete() call: no retry loop, no SDK retries.
+ * 2. Fixed endpoint only: the adapter's literal base URL plus a fixed path; nothing from input, env or the database reaches the URL;
+ *    redirects are never followed (redirect: "error").
+ * 3. The key is sent only as the credential (auth header / client key). Never in the URL, a log, an error message or a return value.
+ * 4. Request: model = req.model, req.system as the system message, req.data as the single user message, NO tools or functions,
+ *    the JSON schema as structured output where the model is confirmed to support it.
+ * 5. Output bound: req.maxOutputTokens is sent with the provider parameter that bounds ALL billed output, reasoning included.
+ * 6. Timeout = req.timeoutMs, covering the whole call including reading the body.
+ * 7. Response: usage -> { inputTokens: all input incl. cached, outputTokens: all output incl. reasoning }. Only a normal finish is
+ *    parsed. A refusal -> "refused" (with usage); cut short or any other finish -> "invalid" (with usage); answer text that is not
+ *    JSON -> "invalid" (with usage). No usage reported, an unreadable body, or a body over 256 KB -> "unavailable", rejectedBeforeWork
+ *    false: the caller then settles at the full reservation, never at 0.
+ * 8. Status: 401/403 -> unavailable "auth" rejected; 429 -> unavailable "rate" rejected; 400/404/413 -> unavailable rejected;
+ *    5xx, timeout, network, anything else -> unavailable, NOT rejected (it may have been billed).
+ * 9. No pricing in adapters: prices live only in lib/ai-helper/limits.ts.
+ */
 export interface AiHelperProvider {
-  readonly id: "anthropic" | "mock";
+  readonly id: AiProviderId | "mock";
   complete(req: AiCompletionRequest): Promise<AiCompletion>;
 }

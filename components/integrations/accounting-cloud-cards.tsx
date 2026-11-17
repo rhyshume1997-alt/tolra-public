@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type Status = { configured: boolean; status: string; tenantName: string | null };
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept, unmounted, until a real connector exists
 function AccountingCloudCard({ provider }: { provider: AccountingId }) {
   const { profile } = useUser();
   const [invoices, setInvoices] = useState<Array<{ id: string; invoice_ref: string }>>([]);
@@ -61,10 +62,14 @@ function AccountingCloudCard({ provider }: { provider: AccountingId }) {
     </CardContent>
   </Card>;
 }
+/**
+ * Boundary: Sage and QuickBooks are NOT offered until a real connector exists (they were read-only payment checks only).
+ * AccountingCloudCard and the adapters/routes in lib/accounting are kept, unmounted. Do not re-mount without a real connector.
+ * Inputs: none. Output: no visible cards, and no /api/accounting/<provider>/status fetch.
+ */
 export function AccountingCloudCards() {
   const { profile } = useUser();
   return <div className="space-y-6" key={`${profile?.id}:${profile?.organization_id}`}>
-    <AccountingCloudCard provider="sage" />
-    <AccountingCloudCard provider="quickbooks" />
+    {/* Intentionally empty: no Sage or QuickBooks card is mounted. */}
   </div>;
 }

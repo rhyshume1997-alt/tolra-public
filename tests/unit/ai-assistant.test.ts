@@ -230,7 +230,7 @@ describe("off means nothing reaches the AI provider", () => {
     db.reserve = () => ({ data: null, error: { code: "42501", hint: "ai_helper_off" } });
     const res = await ask(post(QUESTION));
     expect(res.status).toBe(404);
-    expect(db.rpcs.map((r) => r.fn)).toEqual(["ai_helper_reserve_assistant"]);
+    expect(db.rpcs.map((r) => r.fn)).toEqual(["ai_helper_status", "ai_helper_reserve_assistant"]);
     expect(service.reads).toEqual([]);
     noProviderCall();
   });
@@ -301,8 +301,8 @@ describe("an answer, from the caller's own company's records", () => {
     const res = await ask(post(QUESTION));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(db.rpcs.map((r) => r.fn)).toEqual(["ai_helper_reserve_assistant", "ai_helper_settle"]);
-    const reserve = db.rpcs[0].args;
+    expect(db.rpcs.map((r) => r.fn)).toEqual(["ai_helper_status", "ai_helper_reserve_assistant", "ai_helper_settle"]);
+    const reserve = db.rpcs[1].args;
     // Its own reserve (134): 133's ai_helper_reserve is never called for the assistant and takes no 'assistant' feature.
     expect(reserve).not.toHaveProperty("p_feature");
     expect(Object.keys(reserve).sort()).toEqual(["p_estimate_pence", "p_input_bytes", "p_input_digest"]);
@@ -330,7 +330,7 @@ describe("an answer, from the caller's own company's records", () => {
       // The service client touched only the key table and settle (103), never a record table, and never reserved.
       expect(service.tables).toEqual(["ai_helper_secrets"]);
       expect(service.rpcs).toEqual(["ai_helper_settle"]);
-      expect(userRpcs).toEqual(["ai_helper_reserve_assistant"]);
+      expect(userRpcs).toEqual(["ai_helper_status", "ai_helper_reserve_assistant"]);
     }
     // And in the source: the read helper takes the caller's client; the route passes auth.supabase, never an admin client.
     const route = readFileSync(path.resolve(__dirname, "../../app/api/ai-helper/assistant/route.ts"), "utf8");
@@ -406,7 +406,7 @@ describe("the cost cap and retries", () => {
 
   it("the reservation covers the full output cap at the assistant's model price, within the database's 1 to 1000 pence", async () => {
     await ask(post(QUESTION));
-    const estimate = Number(db.rpcs[0].args.p_estimate_pence);
+    const estimate = Number(db.rpcs[1].args.p_estimate_pence);
     expect(estimate).toBeGreaterThanOrEqual(2); // 2000 output tokens at $10 per million alone is 2 cents
     expect(estimate).toBeLessThanOrEqual(1000);
   });
@@ -475,7 +475,7 @@ describe("suggest only: nothing is written, sent or done", () => {
     expect(body.refs).toEqual([{ ref: "QUO-0102", kind: "quote", href: "/quotes?quote=q-1" }]);
     expect(body.review).toEqual(expect.arrayContaining([REVIEW_CLAIMED_ACTION, REVIEW_DROPPED_DRAFT, REVIEW_UNKNOWN_REF("QUO-9999"), REVIEW_UNKNOWN_REF("INV-9999")]));
     expect(JSON.stringify(body)).not.toMatch(/send_email|issue_invoice|tool_call|"action"|<script>/);
-    expect(db.rpcs.map((r) => r.fn)).toEqual(["ai_helper_reserve_assistant", "ai_helper_settle"]);
+    expect(db.rpcs.map((r) => r.fn)).toEqual(["ai_helper_status", "ai_helper_reserve_assistant", "ai_helper_settle"]);
     expect(JSON.stringify(settleCall()?.p_output)).not.toMatch(/send_email|issue_invoice|tool_call/);
   });
 
