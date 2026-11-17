@@ -21,6 +21,7 @@ const phases = [
   { number: 156, marker: "post-144 marker 156 invoice_ref_case", file: "supabase/release/156_invoice_ref_case.release.sql", verifyFile: "supabase/verify/invoice_ref_case_156.sql" },
   { number: 157, marker: "post-144 marker 157 jobs_integrity_guard", file: "supabase/release/157_jobs_integrity_guard.release.sql", verifyFile: "supabase/verify/jobs_integrity_guard_157.sql" },
   { number: 158, marker: "post-144 marker 158 machine_run_integrity", file: "supabase/release/158_machine_run_integrity.release.sql", verifyFile: "supabase/verify/machine_run_integrity_158.sql" },
+  { number: 159, marker: "post-144 marker 159 drawings_update_roles", file: "supabase/release/159_drawings_update_roles.release.sql", verifyFile: "supabase/verify/drawings_update_roles_159.sql" },
   { number: 160, marker: "post-144 marker 160 legacy_reopen_revoke", file: "supabase/release/160_legacy_reopen_revoke.release.sql", verifyFile: "supabase/verify/legacy_reopen_revoke_160.sql" },
 ];
 /** Read-only (SELECT only): who owns storage.objects, who we are, our role membership and our privileges on it (release 159 policy question). */
@@ -44,7 +45,7 @@ export async function reportStorageDiagnostics(query: (sql: string) => Promise<{
   }
 }
 export async function preparePost144Fixture(deps: {
-  through?: 145 | 146 | 147 | 148 | 149 | 150 | 151 | 152 | 153 | 154 | 156 | 157 | 158 | 160;
+  through?: 145 | 146 | 147 | 148 | 149 | 150 | 151 | 152 | 153 | 154 | 156 | 157 | 158 | 159 | 160;
   verify: () => Promise<unknown>;
   query: (sql: string) => Promise<{ rows: Array<{ check?: string; value?: string; ok?: boolean; passed?: boolean }> }>;
 }) {
