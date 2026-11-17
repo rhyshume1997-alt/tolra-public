@@ -10,7 +10,8 @@
  * Proves: a direct reopen_job call is refused with 42501 for workshop, office, admin and anon, on a finished-not-inspected job and a Complete
  * job, and changes nothing; 113's preview, tick-box reopen, admin approval and rejection still work and leave their request row and audit
  * record; 081's refusals (not finished, rework, gone out) and who-may-reopen rules are unchanged through the workflow; service_role's and the
- * owner's grants are unchanged; another company cannot preview, record or decide; the catalogue (grants, body md5, no other grant changed);
+ * owner's grants are unchanged; another company cannot preview, record or decide (P0002; an admin's tick box is refused by role and mode
+ * before any job lookup, identically for another company's job and a job that does not exist); the catalogue (grants, body md5, no other grant changed);
  * the historical supabase/verify/job_flow_081.sql (unchanged) changes in one row only, api_functions_signed_in_only (true before 160, false after, by design); release, repeat install, refusals, rollback and
  * re-release. 10 to 17: a short or missing reason and a viewer are refused by the workflow with nothing written; a viewer's direct call is
  * refused at the door; three races on two real connections (the second seen waiting on the job's row lock): the pass before a tick-box
@@ -452,10 +453,17 @@ describe("release 160: the older reopen function is closed to the browser; the r
       for (const key of ["fin", "done"]) expect(await reopen(who, J[key], "admin_present"), `${name} admin_present ${key}`).toMatchObject(notFound);
     }
     // The tick box: B's office reaches the job lookup and is told it does not exist. B's admin is refused before any lookup, by 113's own
-    // rule that an admin approves at once instead of ticking the box (22023 admin_approves_now): 113 checks the mode before the company.
+    // rule that an admin approves at once instead of ticking the box (22023 admin_approves_now): the refusal is decided by role and mode
+    // before any job is looked up, so it is the same for a real job of another company and for a job that does not exist.
+    const adminTickBox = { ok: false, code: "22023", hint: "admin_approves_now", message: "You are an admin: approve the reopen now." };
+    const missing = await reopen(B.admin, randomUUID(), "tick_box_notify");
+    expect(missing, "B admin tick box, no such job").toMatchObject(adminTickBox);
+    const fields = (a: Answer) => { const r = a as { code?: string; hint?: string; message?: string }; return { code: r.code, hint: r.hint, message: r.message }; };
     for (const key of ["fin", "done"]) {
       expect(await reopen(B.office, J[key], "tick_box_notify"), `B office tick box ${key}`).toMatchObject(notFound);
-      expect(await reopen(B.admin, J[key], "tick_box_notify"), `B admin tick box ${key}`).toMatchObject({ ok: false, code: "22023", hint: "admin_approves_now" });
+      const real = await reopen(B.admin, J[key], "tick_box_notify");
+      expect(real, `B admin tick box ${key}`).toMatchObject(adminTickBox);
+      expect(fields(real), `B admin tick box ${key} = no such job`).toEqual(fields(missing));
     }
     expect(await snap(J.fin)).toEqual(before.fin);
     expect(await snap(J.done)).toEqual(before.done);
