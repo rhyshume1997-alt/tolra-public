@@ -1,7 +1,7 @@
 /**
- * Release 160 (supabase/release/160_legacy_reopen_revoke.release.sql, phase 160 after 156): the older reopen function public.reopen_job
+ * Release 160 (supabase/release/160_legacy_reopen_revoke.release.sql, phase 160 after 159): the older reopen function public.reopen_job
  * can no longer be called from the browser (defect J1, P0: a signed-in user could reopen a Complete job by calling it directly, skipping
- * migration 113's reopen request and sign-off). The DB proof, below PostgREST, one `it` per required case (1 to 9).
+ * migration 113's reopen request and sign-off). The DB proof, below PostgREST, one `it` per required case (1 to 9, then 10 to 17).
  *
  * Inputs: the disposable stack (TEST_DATABASE_URL, isolation-checked); the post-144 fixture installs 145..160. Plain SQL with synthetic rows
  * and forged session claims (no Auth API), as 113's own suite does: each call is one transaction, role authenticated (or anon) with the
@@ -12,7 +12,10 @@
  * record; 081's refusals (not finished, rework, gone out) and who-may-reopen rules are unchanged through the workflow; service_role's and the
  * owner's grants are unchanged; another company cannot preview, record or decide; the catalogue (grants, body md5, no other grant changed);
  * the historical supabase/verify/job_flow_081.sql (unchanged) changes in one row only, api_functions_signed_in_only (true before 160, false after, by design); release, repeat install, refusals, rollback and
- * re-release.
+ * re-release. 10 to 17: a short or missing reason and a viewer are refused by the workflow with nothing written; a viewer's direct call is
+ * refused at the door; three races on two real connections (the second seen waiting on the job's row lock): the pass before a tick-box
+ * reopen, a tick-box reopen before the pass, a tick-box reopen before the invoice issue; and a re-run of 081's release file after 160
+ * stops at 081's first guard, leaving reopen_job closed to authenticated.
  * Not proved here: PostgREST's own error mapping, hosted grants (service_role there comes from Supabase's default privileges).
  * "service_role unchanged": 160 does not touch its EXECUTE grant (asserted equal across release, rollback and re-release). It cannot reopen a
  * job anyway (auth.uid() is null there, so reopen_job refuses with 'not authorised' 42501), so the proof asserts the grant and that call's
@@ -178,8 +181,70 @@ async function preflight(db: PoolClient) {
   return (await db.query(read(PREFLIGHT))).rows as { check: string; value: string; expected: string }[];
 }
 const notTrue = (rows: { check_name: string; ok: boolean }[]) => rows.filter((r) => r.ok !== true).map((r) => r.check_name);
+const RELEASE_081 = "supabase/release/081_job_flow_release.release.sql";
 
-let A: { org: string; admin: Person; admin2: Person; office: Person; w1: Person; w2: Person };
+// ---- Races: two connections, the second seen waiting on the job's row lock before the first commits (as tests/db/job-flow.test.ts) ---------
+/** 081/083's inspect_job, a pass with the evidence it needs (copied from tests/db/job-flow.test.ts's INSPECT_SQL / inspectArgs). */
+const INSPECT_SQL = `select public.inspect_job(p_job => $1, p_result => $2, p_criteria => $3, p_measured => $4, p_expected_version => $5,
+  p_override_reason => $6, p_disposition => $7, p_failure => $8::jsonb, p_client_op_id => $9::uuid, p_concession_reason => $10) as r`;
+async function passArgs(job: string) {
+  const [{ v }] = await q<{ v: number }>("select worksheet_version as v from public.jobs where id = $1", [job]);
+  return [job, "pass", "Drawing ACL-7 rev C: bore 25.00 +0.02/-0", "Bore 25.01 mm, 25.01 mm (bore gauge 0001)", v, null, null, null, null, null];
+}
+const REOPEN_RECORD_SQL = "select public.reopen_record('job', $1, $2, $3) as r";
+/** The person's claims on an open transaction, exactly as `as` sets them. */
+async function becomeIn(db: PoolClient, p: Person) {
+  await db.query("set local role authenticated");
+  await db.query("select set_config('request.jwt.claims', $1, true), set_config('request.jwt.claim.sub', $2, true)",
+    [JSON.stringify({ sub: p.id, role: "authenticated", aud: "authenticated", aal: "aal2", email: p.email, session_id: p.session }), p.id]);
+}
+type Outcome = { ok: true; rows: Row[] } | { ok: false; code?: string; hint?: string; message: string };
+const settle = (pr: Promise<{ rows: Row[] }>): Promise<Outcome> =>
+  pr.then((r) => ({ ok: true as const, rows: r.rows }), (e: { code?: string; hint?: string; message: string }) => ({ ok: false as const, code: e.code, hint: e.hint, message: e.message }));
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+async function waitsOnLock(watch: PoolClient, pid: number) {
+  for (let i = 0; i < 500; i += 1) {
+    const r = await watch.query<{ t: string | null }>("select wait_event_type as t from pg_stat_activity where pid = $1", [pid]);
+    if (r.rows[0]?.t === "Lock") return true;
+    await pause(10);
+  }
+  return false;
+}
+/** Runs `first` as `a` in an open transaction, then `second` as `b` on another connection, which must wait for the first's lock; commits the first, then the second. */
+async function race(a: Person, first: [string, unknown[]], b: Person, second: [string, unknown[]]) {
+  const watch = await pool.connect();
+  const one = await pool.connect();
+  const two = await pool.connect();
+  try {
+    await one.query("begin");
+    await becomeIn(one, a);
+    const firstOut = await settle(one.query(first[0], first[1]));
+    await two.query("begin");
+    await becomeIn(two, b);
+    const pid = (await two.query<{ p: number }>("select pg_backend_pid() as p")).rows[0].p;
+    const pending = settle(two.query(second[0], second[1]));
+    const waited = await waitsOnLock(watch, pid);
+    await one.query(firstOut.ok ? "commit" : "rollback");
+    const secondOut = await pending;
+    await two.query(secondOut.ok ? "commit" : "rollback");
+    return { firstOut, secondOut, waited };
+  } finally {
+    await one.query("rollback").catch(() => undefined);
+    await two.query("rollback").catch(() => undefined);
+    watch.release(); one.release(); two.release();
+  }
+}
+const inspectionsOf = (job: string) => q<Row>("select id, result from public.job_inspections where job_id = $1", [job]);
+/** 099: Finish drafts nothing before a job is released, so the job's draft invoice is made by hand (copied from tests/db/job-flow.test.ts's handDraft). */
+async function handDraft(by: Person, job: string) {
+  const [{ r }] = await as(by, async (db) => (await db.query<{ r: string }>("select public.create_with_lines('invoices', $1::jsonb, 'invoice_line_items', 'invoice_id', $2::jsonb) as r", [
+    JSON.stringify({ customer: "Customer 160", job_id: job, status: "draft", subtotal: 120, vat: 24, total: 144, carriage: 0, vat_enabled: true, invoice_date: "2026-10-01", due_date: "2026-10-31" }),
+    JSON.stringify([{ description: "Work 160", quantity: 1, unit_price: 120, vat_pct: 20, vat_exempt: false }]),
+  ])).rows);
+  return r;
+}
+
+let A: { org: string; admin: Person; admin2: Person; office: Person; w1: Person; w2: Person; viewer: Person };
 let B: { org: string; admin: Person; office: Person };
 const J: Record<string, string> = {};
 
@@ -190,7 +255,9 @@ beforeAll(async () => {
   const orgA = await makeOrg("alpha");
   const orgB = await makeOrg("beta");
   A = { org: orgA, admin: await makePerson(orgA, "a-admin", "admin"), admin2: await makePerson(orgA, "a-admin2", "admin"), office: await makePerson(orgA, "a-office", "office"),
-        w1: await makePerson(orgA, "a-w1", "workshop"), w2: await makePerson(orgA, "a-w2", "workshop") };
+        w1: await makePerson(orgA, "a-w1", "workshop"), w2: await makePerson(orgA, "a-w2", "workshop"), viewer: await makePerson(orgA, "a-viewer", "viewer") };
+  // The office may record inspections (083: only an authorised inspector does), for the races with the pass.
+  await q("update public.organization_members set can_inspect = true where organization_id = $1 and user_id = $2", [orgA, A.office.id]);
   B = { org: orgB, admin: await makePerson(orgB, "b-admin", "admin"), office: await makePerson(orgB, "b-office", "office") };
   // Jobs of company A. Finished by w1 unless named otherwise.
   J.fin = await makeJob(A.org, "fin", "finished", A.w1);        // finished, not inspected (direct-call proof; never reopened)
@@ -205,6 +272,7 @@ beforeAll(async () => {
   J.rework = await makeJob(A.org, "rework", "rework", A.w1);
   J.open = await makeJob(A.org, "open", "unfinished", null);
   J.beta = await makeJob(B.org, "beta", "finished", B.admin);
+  for (const k of ["reason", "viewer", "raceE", "raceF", "raceG"]) J[k] = await makeJob(A.org, k, "finished", A.w1);
   for (const k of ["invoiced", "outInv"]) {
     await q("insert into public.invoices (organization_id, customer, job_id, invoice_ref, status) values ($1, 'Customer 160', $2, $3, 'issued')", [A.org, J[k], `INV-160${k}-${runId}`]);
   }
@@ -220,7 +288,7 @@ afterAll(async () => {
     try {
       await db.query("begin");
       await db.query("set local session_replication_role = replica");
-      for (const t of ["public.reopen_requests", "public.job_flow_events", "public.delivery_notes", "public.invoices", "public.jobs", "security_audit.audit_log",
+      for (const t of ["public.reopen_requests", "public.job_flow_events", "public.job_inspections", "public.invoice_queue_events", "public.invoice_line_items", "public.delivery_notes", "public.invoices", "public.jobs", "security_audit.audit_log",
         "public.organization_members", "public.user_profiles"]) await db.query(`delete from ${t} where organization_id = any($1)`, [orgs]);
       await db.query("delete from security_audit.session_company where user_id = any($1)", [ids]);
       await db.query("delete from public.organizations where id = any($1)", [orgs]);
@@ -375,23 +443,32 @@ describe("release 160: the older reopen function is closed to the browser; the r
     expect(await snap(J.fin)).toEqual(before);
   });
 
-  it("6. tenant isolation: a user of company B cannot preview, record or decide a reopen for company A's job or request", async () => {
-    const before = await snap(J.fin);
-    for (const who of [B.admin, B.office]) {
-      expect(await preview(who, J.fin)).toMatchObject({ ok: false });
-      for (const mode of ["tick_box_notify", "admin_present"]) expect(await reopen(who, J.fin, mode), mode).toMatchObject({ ok: false });
-      expect(await preview(who, J.done)).toMatchObject({ ok: false });
-      expect(await reopen(who, J.done, "admin_present")).toMatchObject({ ok: false });
+  it("6. tenant isolation: a user of company B cannot preview, record or decide a reopen for company A's job or request (P0002, not found)", async () => {
+    const before = { fin: await snap(J.fin), done: await snap(J.done) };
+    const notFound = { ok: false, code: "P0002", message: "Job not found" };
+    for (const [name, who] of [["B admin", B.admin], ["B office", B.office]] as const) {
+      expect(await preview(who, J.fin), `${name} preview fin`).toMatchObject(notFound);
+      expect(await preview(who, J.done), `${name} preview done`).toMatchObject(notFound);
+      for (const key of ["fin", "done"]) expect(await reopen(who, J[key], "admin_present"), `${name} admin_present ${key}`).toMatchObject(notFound);
     }
-    expect(await snap(J.fin)).toEqual(before);
+    // The tick box: B's office reaches the job lookup and is told it does not exist. B's admin is refused before any lookup, by 113's own
+    // rule that an admin approves at once instead of ticking the box (22023 admin_approves_now): 113 checks the mode before the company.
+    for (const key of ["fin", "done"]) {
+      expect(await reopen(B.office, J[key], "tick_box_notify"), `B office tick box ${key}`).toMatchObject(notFound);
+      expect(await reopen(B.admin, J[key], "tick_box_notify"), `B admin tick box ${key}`).toMatchObject({ ok: false, code: "22023", hint: "admin_approves_now" });
+    }
+    expect(await snap(J.fin)).toEqual(before.fin);
+    expect(await snap(J.done)).toEqual(before.done);
     // A request waiting in company A: B's admin cannot approve or reject it.
     const asked = await reopen(A.office, J.fin, "admin_present", REASON_2);
     expect(asked).toMatchObject({ ok: true, value: { status: "pending", reopened: false } });
-    for (const decision of ["approve", "reject"]) expect(await decide(B.admin, requestId(asked), decision), decision).toMatchObject({ ok: false });
+    for (const decision of ["approve", "reject"]) {
+      expect(await decide(B.admin, requestId(asked), decision), decision).toMatchObject({ ok: false, code: "P0002", message: "Reopen request not found" });
+    }
     expect((await requestsOf(J.fin))[0]).toMatchObject({ status: "pending", approved_by: null, rejected_by: null });
-    expect(await snap(J.fin)).toMatchObject({ finished_at: before.finished_at, inspected_at: before.inspected_at, stage: before.stage });
+    expect(await snap(J.fin)).toMatchObject({ finished_at: before.fin.finished_at, inspected_at: before.fin.inspected_at, stage: before.fin.stage });
     // Company B's own job is not reachable from A either, and B cannot read A's requests.
-    expect(await reopen(A.admin, J.beta, "admin_present")).toMatchObject({ ok: false });
+    expect(await reopen(A.admin, J.beta, "admin_present")).toMatchObject(notFound);
     expect(await as(B.admin, async (db) => (await db.query("select 1 from public.reopen_requests where organization_id = $1", [A.org])).rows)).toEqual([]);
   });
 
@@ -495,5 +572,97 @@ describe("release 160: the older reopen function is closed to the browser; the r
     expect(e.message).toMatch(/160 rollback: reopen_job grants are neither 160's nor 081's/);
     // A refused release leaves the live database as it was.
     expect(await rolledBack((db) => state(db))).toMatchObject({ auth: false, anon: false, pub: false, md5: BODY_MD5 });
+  });
+
+  it("10. a reason under 10 characters through reopen_record is refused (22023 reason_required) in both modes, the workshop's own Finish unchanged, no request row", async () => {
+    const before = await snap(J.reason);
+    for (const mode of ["admin_present", "tick_box_notify"]) {
+      expect(await reopen(A.w1, J.reason, mode, "oops"), mode).toMatchObject({ ok: false, code: "22023", hint: "reason_required" });
+      expect(await snap(J.reason), mode).toEqual(before);
+    }
+    expect(before.finished_at).not.toBeNull();
+    expect(await requestsOf(J.reason)).toEqual([]);
+  });
+
+  it("11. no reason (NULL) through reopen_record is refused (22023 reason_required) in both modes, the workshop's own Finish unchanged, no request row", async () => {
+    const before = await snap(J.reason);
+    for (const mode of ["admin_present", "tick_box_notify"]) {
+      expect(await call(A.w1, "public.reopen_record('job', $1, $2, $3)", [J.reason, null, mode]), mode).toMatchObject({ ok: false, code: "22023", hint: "reason_required" });
+      expect(await snap(J.reason), mode).toEqual(before);
+    }
+    expect(before.finished_at).not.toBeNull();
+    expect(await requestsOf(J.reason)).toEqual([]);
+  });
+
+  it("12. a viewer is refused by the workflow (42501 'not authorised'): reopen_record in both modes and reopen_preview; the job unchanged, no request row", async () => {
+    const before = await snap(J.viewer);
+    for (const mode of ["admin_present", "tick_box_notify"]) {
+      expect(await reopen(A.viewer, J.viewer, mode), mode).toMatchObject({ ok: false, code: "42501", message: "not authorised" });
+    }
+    expect(await preview(A.viewer, J.viewer)).toMatchObject({ ok: false, code: "42501", message: "not authorised" });
+    expect(await snap(J.viewer)).toEqual(before);
+    expect(before.finished_at).not.toBeNull();
+    expect(await requestsOf(J.viewer)).toEqual([]);
+  });
+
+  it("13. a viewer calling reopen_job directly is refused at the door (42501 permission denied for function reopen_job); the job unchanged", async () => {
+    const before = await snap(J.viewer);
+    const r = await direct(A.viewer, J.viewer);
+    expect(r).toMatchObject({ ok: false, code: "42501" });
+    expect((r as { message: string }).message).toMatch(/permission denied for function reopen_job/);
+    expect(await snap(J.viewer)).toEqual(before);
+    expect(await requestsOf(J.viewer)).toEqual([]);
+  });
+
+  it("14. race, the pass first: the workshop's tick-box reopen through reopen_record waits for the office's pass, then is refused (42501 reopen_not_allowed); the job stays Complete", async () => {
+    const r = await race(A.office, [INSPECT_SQL, await passArgs(J.raceE)], A.w1, [REOPEN_RECORD_SQL, [J.raceE, REASON, "tick_box_notify"]]);
+    expect(r.waited).toBe(true);
+    expect(r.firstOut.ok).toBe(true);
+    expect(r.secondOut).toMatchObject({ ok: false, code: "42501", hint: "reopen_not_allowed" });
+    const after = await snap(J.raceE);
+    expect(after.finished_at).not.toBeNull();
+    expect(after.inspected_at).not.toBeNull();
+    expect(after.stage).toBe("complete");
+    expect(await inspectionsOf(J.raceE)).toHaveLength(1);
+    expect(await requestsOf(J.raceE)).toEqual([]);
+  });
+
+  it("15. race, the reopen first: the workshop's tick-box reopen through reopen_record succeeds; the office's pass waits, then is refused (22023); the job in progress, no inspection", async () => {
+    const r = await race(A.w1, [REOPEN_RECORD_SQL, [J.raceF, REASON, "tick_box_notify"]], A.office, [INSPECT_SQL, await passArgs(J.raceF)]);
+    expect(r.waited).toBe(true);
+    expect(r.firstOut).toMatchObject({ ok: true, rows: [{ r: { status: "pending", approval_mode: "tick_box_notify", reopened: true } }] });
+    expect(r.secondOut).toMatchObject({ ok: false, code: "22023" });
+    const after = await snap(J.raceF);
+    expect(after.finished_at).toBeNull();
+    expect(after.inspected_at).toBeNull();
+    expect(await inspectionsOf(J.raceF)).toHaveLength(0);
+    expect(await requestsOf(J.raceF)).toHaveLength(1);
+  });
+
+  it("16. race, reopen against issue: the office's tick-box reopen through reopen_record succeeds; the invoice issue waits, then is refused (22023 job_not_complete); the invoice stays a draft without a number", async () => {
+    const passArgsG = await passArgs(J.raceG);
+    await as(A.office, (db) => db.query(INSPECT_SQL, passArgsG));
+    expect((await snap(J.raceG)).inspected_at).not.toBeNull();
+    const draft = await handDraft(A.office, J.raceG);
+    const r = await race(A.office, [REOPEN_RECORD_SQL, [J.raceG, REASON_2, "tick_box_notify"]], A.office, ["select public.issue_invoice($1)", [draft]]);
+    expect(r.waited).toBe(true);
+    expect(r.firstOut).toMatchObject({ ok: true, rows: [{ r: { status: "pending", reopened: true } }] });
+    expect(r.secondOut).toMatchObject({ ok: false, code: "22023", hint: "job_not_complete" });
+    expect(await q("select status, invoice_ref from public.invoices where id = $1", [draft])).toEqual([{ status: "draft", invoice_ref: null }]);
+    const after = await snap(J.raceG);
+    expect(after.finished_at).toBeNull();
+    expect(after.inspected_at).toBeNull();
+  });
+
+  it("17. re-running release 081's own file with 160 installed stops at 081's first guard (099 replaced delivery_note_try_draft); reopen_job stays closed to authenticated", async () => {
+    const out = await rolledBack(async (db) => {
+      await db.query("savepoint s");
+      const e = await failure(() => db.query(body(RELEASE_081)));
+      await db.query("rollback to savepoint s");
+      return { e, auth: await priv(db, "authenticated"), anon: await priv(db, "anon"), pub: await priv(db, "public") };
+    });
+    expect(out.e.message).toMatch(/^081: public\.delivery_note_try_draft is not 059's \(md5 without whitespace [0-9a-f]{32}\); stop and compare it first$/);
+    expect(out).toMatchObject({ auth: false, anon: false, pub: false });
+    expect(await q<{ p: boolean }>("select has_function_privilege('authenticated', 'public.reopen_job(uuid,text)', 'EXECUTE') as p")).toEqual([{ p: false }]);
   });
 });
