@@ -1,5 +1,8 @@
 "use client";
 
+/** BOUNDARY (module 5): saved customer and existing active role -> an admin-only Portal contacts mount.
+ * Portal owns contact operations. Preserve customer CRUD, listing, navigation and all existing data reads. */
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { customersEmptyHint } from "@/lib/empty-hints";
 import { toast } from "sonner";
@@ -12,6 +15,8 @@ import { ArchiveButton, PhaseFilter } from "@/components/phase-filter";
 import { ListToolbar } from "@/components/list-toolbar";
 import { ViewSwitcher } from "@/components/view-switcher";
 import { useViewMode } from "@/lib/view-mode";
+import { PortalContactsCard } from "@/components/portal/staff/portal-contacts-card";
+import { useUser } from "@/lib/use-user";
 import { RoleGate } from "@/components/role-gate";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -40,6 +45,7 @@ const NOT_SAVED_LABEL = "Not saved as a customer yet";
 const DOCUMENT_NAMES_TRUNCATED = "Only part of the names found on RFQs, quotes, sales orders and invoices could be listed: some may be missing here.";
 
 export default function CustomersPage() {
+  const { activeRole } = useUser();
   const { isVisible } = useColumnVisibility("customers");
   // Cards / List / Table, remembered per person (lib/view-mode; styles in app/globals.css [data-view]).
   const [view, setView] = useViewMode("customers", "table");
@@ -225,6 +231,7 @@ export default function CustomersPage() {
                 <Button type="submit" disabled={saving} className="bg-brand text-brand-ink hover:bg-brand-hover">{saving ? "Saving..." : "Save Customer"}</Button>
               </form>
             ) : null}
+            {editing?.id && activeRole === "admin" ? <PortalContactsCard key={editing.id} customerId={editing.id} /> : null}
             {editing?.id ? <DeliveryNotesFor query={{ customerId: editing.id, customerName: editing.name }} /> : null}
             {editing?.id ? <ChasePauseControl target={{ kind: "customer", id: editing.id, name: editing.name }} onChange={() => void chasePauses.reload()} /> : null}
           </DialogContent>
