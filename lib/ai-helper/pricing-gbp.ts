@@ -25,14 +25,12 @@ export type ModelPrice = {
 };
 
 /**
- * THE price table (one source for the server's reservation and settlement). OpenAI has one row (gpt-4.1-mini); xAI has none: its models are refused
- * until a price is supplied with its source and date. Anthropic: the values recorded for AI-1 on 2026-11-11 (PM ruling, 12 Nov).
+ * THE price table (one source for the server's reservation and settlement). OpenAI and xAI have no rows: their models are refused until
+ * a price is supplied with its source and date. Anthropic: the values recorded for AI-1 on 2026-11-11 (PM ruling, 12 Nov).
  */
 export const MODEL_PRICES_GBP: Readonly<Record<string, ModelPrice>> = {
   "claude-opus-5-5": { provider: "anthropic", inputMicroUsdPerMTok: BigInt(4_000_000), outputMicroUsdPerMTok: BigInt(20_000_000), source: "https://platform.claude.com/docs/en/about-claude/pricing", asOf: "2026-11-11" },
   "claude-sonnet-5-5": { provider: "anthropic", inputMicroUsdPerMTok: BigInt(2_000_000), outputMicroUsdPerMTok: BigInt(10_000_000), source: "https://platform.claude.com/docs/en/about-claude/pricing", asOf: "2026-11-11" },
-  // OpenAI list price read from the official pricing page (standard tier, text) on 2026-11-18. xAI: no row (tiered by prompt size; refused).
-  "gpt-4.1-mini": { provider: "openai", inputMicroUsdPerMTok: BigInt(400_000), outputMicroUsdPerMTok: BigInt(1_600_000), source: "https://developers.openai.com/api/docs/pricing (standard tier, text)", asOf: "2026-11-18" },
 };
 
 /** A price older than this is stale and refused (PM ruling 12 Nov: 90 days). */
