@@ -1,5 +1,7 @@
 "use client";
 
+// Offline Synchronisation presentation boundary: scoped held entries -> explicit user choices; recovery logic stays in lib/offline.
+
 import { useEffect, useState } from "react";
 import { CloudOff, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
@@ -8,8 +10,8 @@ import { Button } from "@/components/ui/button";
 import { friendlyError } from "@/lib/friendly-error";
 import { exportFileName } from "@/lib/job-photos";
 import { type JobWorksheet, saveWorksheet } from "@/lib/job-worksheet";
-import { readAttachment, type OutboxEntry, type PhotoOp } from "@/lib/offline/outbox";
-import { discardOfflinePending, dismissOfflineIssue, retryOfflineIssue, useOfflineStatus } from "@/lib/offline/scope";
+import { readAttachment, isRecoverableStart, type HeldEntry, type StartRecoveryChoice, type OutboxEntry, type PhotoOp } from "@/lib/offline/outbox";
+import { discardOfflinePending, dismissOfflineIssue, recoverOfflineStart, retryOfflineIssue, useOfflineStatus } from "@/lib/offline/scope";
 import { discardedMessage, lastSyncedLabel, takeDiscardedNotice } from "@/lib/offline/store";
 import { clockLabel, syncNow, useOfflineSync } from "@/lib/offline/sync";
 
@@ -27,6 +29,25 @@ export function OfflineBanner() {
   const [busy, setBusy] = useState(false);
   const issues = status.conflicts.length + status.rejected.length;
   const waitingPhotos = status.pendingPhotos;
+  const recoveryStarts = [...status.conflicts, ...status.rejected].filter(isRecoverableStart);
+  async function recoverStart(item: HeldEntry, kind: "retry" | "bench" | "discard") {
+    const choice: StartRecoveryChoice = kind === "discard"
+      ? { kind, confirmed: window.confirm(`Discard the held Start for ${item.op.jobNo} and its waiting Pauses? This cannot be undone.`) }
+      : { kind };
+    setBusy(true);
+    try {
+      const result = await recoverOfflineStart(item, choice);
+      if (result.status === "applied") { toast.success("Start confirmed by the server."); if (result.reason) toast.message(result.reason); }
+      else if (result.status === "discarded") toast.success("Held Start and its waiting Pauses discarded.");
+      else if (result.reason) toast.message(result.reason);
+    } catch (err) { toast.error(friendlyError(err, "Recovery could not be confirmed. The Start is kept.")); }
+    finally { setBusy(false); }
+  }
+  const recoveryButtons = (item: HeldEntry) => <div className="mt-1 flex flex-wrap gap-2">
+    <Button size="sm" variant="outline" disabled={busy} onClick={() => void recoverStart(item, "retry")}>Retry on the same machine</Button>
+    <Button size="sm" variant="outline" disabled={busy} onClick={() => void recoverStart(item, "bench")}>Start on the bench</Button>
+    <Button size="sm" variant="ghost" disabled={busy} onClick={() => void recoverStart(item, "discard")}>Discard</Button>
+  </div>;
   // Unsynced changes a forced wipe removed (the server ended the session), on the next page load: said once, never
   // silent. A wipe on this page (sign-out) is said on the sign-in page instead.
   useEffect(() => {
@@ -108,6 +129,11 @@ export function OfflineBanner() {
         {issues ? <button type="button" className="underline" onClick={() => setOpen((v) => !v)}>{issues} offline change{issues === 1 ? "" : "s"} need{issues === 1 ? "s" : ""} attention</button> : null}
         {status.pending ? <Button size="sm" variant="outline" className="ml-auto" disabled={busy} onClick={() => void retry()}><RefreshCw className="size-4" /> Sync now</Button> : null}
       </div>
+      {recoveryStarts.map((item) => <div key={item.id} data-testid="offline-start-blocked" className="mt-2 rounded-none border border-amber-300 bg-white p-2">
+        <p data-offline-conflict={item.op.kind}><strong>{item.op.jobNo || "Job"}</strong>: {item.reason}</p>
+        <p className="mt-1 text-sm">Later changes for {item.op.jobNo || "this job"} are blocked until this Start is resolved.</p>
+        {recoveryButtons(item)}
+      </div>)}
       {photosOpen && waitingPhotos.length ? (
         <ul className="mt-2 space-y-2" aria-label="Photos waiting to upload">
           {waitingPhotos.map((item) => {
@@ -126,7 +152,7 @@ export function OfflineBanner() {
       ) : null}
       {open && issues ? (
         <ul className="mt-2 space-y-2">
-          {status.conflicts.map((item) => (
+          {status.conflicts.filter((item) => !isRecoverableStart(item)).map((item) => (
             <li key={item.id} className="rounded-none border border-amber-300 bg-white p-2">
               <p data-offline-conflict={item.op.kind}><strong>{item.op.jobNo || "Job"}</strong>{item.op.kind === "signoff" ? " (signature)" : ""}: {item.reason}</p>
               <div className="mt-1 flex flex-wrap gap-2">
@@ -135,7 +161,7 @@ export function OfflineBanner() {
               </div>
             </li>
           ))}
-          {status.rejected.map((item) => (
+          {status.rejected.filter((item) => !isRecoverableStart(item)).map((item) => (
             <li key={item.id} className="rounded-none border border-red-300 bg-white p-2">
               <p><strong>{item.op.jobNo || "Job"}</strong> ({label(item.op)}): not saved. {item.reason}</p>
               {item.op.kind === "photo" ? (

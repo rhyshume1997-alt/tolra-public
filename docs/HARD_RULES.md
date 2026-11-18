@@ -14,3 +14,5 @@ Copy these into every Claude Code / ChatGPT prompt.
 10. Changes must be isolated so a day-of fix in one area cannot break others.
 
 Violations waste time and create messier code. Stop immediately if you cannot comply.
+
+Protected behaviours and the tests that must stay green are listed in `docs/PROTECTED_BEHAVIOURS.md`.

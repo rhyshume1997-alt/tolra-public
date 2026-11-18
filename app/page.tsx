@@ -3,19 +3,21 @@ import type { Metadata } from "next";
 import { BracketT } from "@/components/marketing/bracket-t";
 import { Cta } from "@/components/marketing/cta";
 import { FeatureFigure, ScreenFigure } from "@/components/marketing/feature-figure";
+import { GearWorkflow } from "@/components/marketing/gear-workflow";
 import { JobCardCompact } from "@/components/marketing/job-card-compact";
 import { JobFlow } from "@/components/marketing/job-flow";
 import { MarketingSheet } from "@/components/marketing/sheet";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { SiteHeader } from "@/components/marketing/site-header";
-import InkOrbitFeatures from "@/components/ui/ink-orbit-features";
 import {
   CLOSE_CALL_LINE, CLOSE_TITLE, FAQ, FAQ_TITLE, FEATURES, FEATURES_TITLE, FOUNDER_LINK_LABEL, FOUNDER_NAME, FOUNDER_NOTE, FOUNDER_TITLE, FOUNDER_URL,
-  HANDLES_HINT, HANDLES_TITLE, HERO_SUBHEAD, HERO_TITLE, MARKETING_ICONS, PAIN_CARDS, PAIN_TITLE, PROOF_LINE, SCREENSHOTS, SEE_HOW_LABEL, SHEET_LABELS, SITE_DESCRIPTION,
+  HANDLES_TITLE, HERO_SUBHEAD, HERO_TITLE, MARKETING_ICONS, PAIN_CARDS, PAIN_TITLE, PROOF_LINE, SCREENSHOTS, SEE_HOW_LABEL, SHEET_LABELS, SITE_DESCRIPTION,
   SITE_TITLE, SITE_URL, START_STEPS, START_TITLE, TRUST_ITEMS, WHO_TEXT, WHO_TITLE, jsonLd,
 } from "@/lib/marketing";
+import { GEAR_COPY } from "@/lib/marketing/gear-workflow";
 
 // The public home page. Signed-in people never see it: the middleware sends them to /dashboard (middleware.ts).
+// "How Tolra handles it" shows the gear workflow (components/marketing/gear-workflow.tsx); its copy lives in lib/marketing/gear-workflow.ts.
 const OG_IMAGE = { url: `${SITE_URL}/marketing/tolra-og.png`, width: 1200, height: 630, alt: "Tolra: job management for small CNC and fabrication shops" };
 
 export const metadata: Metadata = {
@@ -96,10 +98,10 @@ export default function Home() {
 
             <div className="mt-[clamp(48px,6vw,80px)] grid gap-3 border-t border-[#0b2a5b] pt-6 lg:grid-cols-12 lg:gap-10">
               <h3 id="handles-title" className="mk-display text-[clamp(1.75rem,2.8vw,2.375rem)] uppercase lg:col-span-7">{HANDLES_TITLE}</h3>
-              <p className={`self-end lg:col-span-4 lg:col-start-9 ${MUTED}`}>{HANDLES_HINT}</p>
+              <p className={`self-end lg:col-span-4 lg:col-start-9 ${MUTED}`}>{GEAR_COPY.hint}</p>
             </div>
             <div className="mt-8 lg:mt-12">
-              <InkOrbitFeatures />
+              <GearWorkflow />
             </div>
           </div>
         </section>

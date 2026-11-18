@@ -31,7 +31,7 @@ vi.mock("@supabase/ssr", () => ({
     rpc: async (name: string) => {
       rpcCalls.push(name);
       if (name === "my_session") {
-        return { data: { user_id: "user-1", organization_id: "org-1", role: who.role, secondary_role: who.secondary ?? null, platform_admin: who.platform === true, organization_count: 1 }, error: null };
+        return { data: { user_id: "user-1", organization_id: "org-1", role: who.role, secondary_role: who.secondary ?? null, platform_admin: who.platform === true, needs_choice: false, hidden_sections: [], organization_count: 1 }, error: null };
       }
       if (name === "my_mfa_enrolment_required") return enrolment;
       return { data: null, error: null };
@@ -84,9 +84,13 @@ describe("middleware: a newly made admin sets up an authenticator app first (REQ
     expect(rpcCalls).toContain("my_mfa_enrolment_required");
   });
 
-  it("any error reading the flag counts as not required (no lockout before 065 is applied)", async () => {
-    enrolment = { data: null, error: { code: "42883", message: "function does not exist" } };
-    expect(await visit("/dashboard")).toBeNull();
+  it("a gateway failure reading enrolment returns 503 without redirecting or changing cookies", async () => {
+    enrolment = { data: null, error: { status: 502, message: "Bad Gateway" } };
+    const response = await middleware(new NextRequest("https://app.test/dashboard"));
+    expect(response.status).toBe(503);
+    expect(response.headers.get("retry-after")).toBe("5");
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("set-cookie")).toBeNull();
   });
 
   it("an admin with a verified factor (or already at aal2) is never asked again, and the database isn't asked", async () => {

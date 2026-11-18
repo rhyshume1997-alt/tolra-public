@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { ToolyFace } from "@/components/tooly/tooly-face";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { AssistantAnswer, AssistantTopic } from "@/lib/ai-helper/assistant";
@@ -16,6 +17,7 @@ const DRAFT_LABELS: Record<string, string> = { email: "E-mail", note: "Note", qu
  * G3, the assistant (suggestions only; online only: nothing here is queued offline). The person picks what to ask about and types a
  * question; the answer, the records it used (each a link to its own page) and any draft are shown for them to read. A draft has a Copy
  * button and nothing else: there is no Send, Save or Apply here, and the panel calls no route but the assistant's.
+ * Tooly is the face of this helper (wave while idle, think while asking).
  */
 export function AiAssistantPanel({ onUsed }: { onUsed?: () => void }) {
   const [topic, setTopic] = useState<AssistantTopic>("quotes");
@@ -47,9 +49,19 @@ export function AiAssistantPanel({ onUsed }: { onUsed?: () => void }) {
   }
 
   const draft = result?.draft;
+  const pose = busy ? "think" : result?.error ? "oops" : result?.answer ? "celebrate" : "wave";
+
   return (
     <Card data-testid="ai-assistant-panel">
-      <CardHeader><CardTitle>Assistant</CardTitle></CardHeader>
+      <CardHeader>
+        <div className="flex items-center gap-3">
+          <ToolyFace pose={pose} size={72} />
+          <div>
+            <CardTitle>Tooly</CardTitle>
+            <p className="text-sm font-normal text-slate-500">Your workshop helper. Suggestions only.</p>
+          </div>
+        </div>
+      </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-slate-500">Ask about your recent quotes or jobs, or ask for a draft. Suggestions only: it never sends, saves or changes anything. Online only.</p>
         <div className="space-y-2">
