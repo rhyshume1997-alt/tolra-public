@@ -7,6 +7,10 @@
  * recorded USD to GBP rate (lib/ai-helper/fx.ts, at most 24 hours old), BigInt arithmetic only, always rounded UP, at most MAX_REQUEST_PENCE_GBP
  * per request. A missing, stale or unusable price or rate fails closed. The live Anthropic path keeps using estimatePence / actualPence in
  * limits.ts unchanged; wiring this path in is a later, separately reviewed change (it needs a server-side guard and a verified rate).
+ *
+ * ALLOWANCE VS PENCE CAP. The usage allowance (a request count per company per month) is the new path. The pence cap in this file remains
+ * as the fallback until the allowance is proven on Preview. Do not remove or change any price, row, function or test here on that account.
+ * OpenAI and xAI stay refused (no rows). AI stays off and no provider keys are set.
  */
 import { type UsdGbpRate, USD_GBP_RATES, rateFor } from "@/lib/ai-helper/fx";
 import type { AiProviderId } from "@/lib/ai-helper/provider";
