@@ -156,6 +156,33 @@
       "rollback": "supabase/release/157_jobs_integrity_guard.rollback.sql",
       "verify": "supabase/verify/jobs_integrity_guard_157.sql",
       "marker": "post-144 marker 157 jobs_integrity_guard"
+    },
+    {
+      "number": 158,
+      "after": "157",
+      "source": "supabase/proposals/p158_machine_run_integrity.sql",
+      "release": "supabase/release/158_machine_run_integrity.release.sql",
+      "rollback": "supabase/release/158_machine_run_integrity.rollback.sql",
+      "verify": "supabase/verify/machine_run_integrity_158.sql",
+      "marker": "post-144 marker 158 machine_run_integrity"
+    },
+    {
+      "number": 159,
+      "after": "158",
+      "source": "supabase/proposals/p159_drawings_update_roles.sql",
+      "release": "supabase/release/159_drawings_update_roles.release.sql",
+      "rollback": "supabase/release/159_drawings_update_roles.rollback.sql",
+      "verify": "supabase/verify/drawings_update_roles_159.sql",
+      "marker": "post-144 marker 159 drawings_update_roles"
+    },
+    {
+      "number": 160,
+      "after": "159",
+      "source": "supabase/proposals/p160_legacy_reopen_revoke.sql",
+      "release": "supabase/release/160_legacy_reopen_revoke.release.sql",
+      "rollback": "supabase/release/160_legacy_reopen_revoke.rollback.sql",
+      "verify": "supabase/verify/legacy_reopen_revoke_160.sql",
+      "marker": "post-144 marker 160 legacy_reopen_revoke"
     }
   ],
   "other_proposals": [

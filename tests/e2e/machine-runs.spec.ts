@@ -203,17 +203,25 @@ test("offline: a Start with a machine queues on the device and syncs through sta
   await page.unrouteAll({ behavior: "ignoreErrors" });
   await page.evaluate(() => window.dispatchEvent(new Event("online")));
   await expect(page.getByText("1 offline change needs attention")).toBeVisible();
-  // E applied: a run on the mill by Dave. C: no run, the conflict says why. The job is NOT started: the "machine in use" fallback writes started_at directly, and release 157
-  // refuses a direct first start (only Play, the bench Start and Finish set it), so C stays unstarted. The on-screen wording below ("was started while you were offline") is
-  // corrected by the separate Offline Synchronisation change.
+  await expect(page.getByTestId("offline-start-blocked")).toContainText(`Later changes for ${jobC} are blocked until this Start is resolved.`);
+  await expect(page.getByRole("button", { name: "Retry on the same machine", exact: true })).toBeVisible();
+  // Offline Synchronisation: E applied; C stays unstarted and held for an explicit recovery choice. No plain jobs update.
   const { data: eRuns } = await admin.from("machine_runs").select("machine_id, operator_id, ended_at").eq("job_id", ids[jobE]);
   expect(eRuns).toEqual([{ machine_id: mill, operator_id: w.tenants.alpha.users.workshop.id, ended_at: null }]);
   expect((await admin.from("machine_runs").select("id").eq("job_id", ids[jobC])).data).toEqual([]);
   expect((await admin.from("jobs").select("started_at").eq("id", ids[jobC]).single()).data!.started_at).toBeNull();
   expect((await admin.from("machine_runs").select("job_id").eq("machine_id", lathe).is("ended_at", null)).data).toEqual([{ job_id: ids[jobD] }]);
   await page.getByText("1 offline change needs attention").click();
-  await expect(page.getByText(`${jobC} was started while you were offline, but when it synced the machine was already in use: ${latheName} is in use by`)).toBeVisible();
+  await expect(page.getByText(`${jobC} was NOT started. The requested machine is taken: ${latheName} is in use by`, { exact: false })).toBeVisible();
   await expect(page.getByText(new RegExp(`is in use by .* on ${jobD} since`))).toBeVisible();
+  await expect(page.getByRole("button", { name: "Retry on the same machine", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Discard", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Start on the bench", exact: true }).click();
+  await expect(page.getByText("Start confirmed by the server.", { exact: true })).toBeVisible();
+  await expect(page.getByText("1 offline change needs attention")).toHaveCount(0);
+  expect((await admin.from("machine_runs").select("machine_id").eq("job_id", ids[jobC])).data).toEqual([{ machine_id: null }]);
+  expect((await admin.from("jobs").select("started_at").eq("id", ids[jobC]).single()).data!.started_at).toBeTruthy();
+  expect((await admin.from("machine_runs").select("job_id").eq("machine_id", lathe).is("ended_at", null)).data).toEqual([{ job_id: ids[jobD] }]);
   // Tidy: free the machines for the other specs.
   expect((await office.rpc("pause_machine_run", { p_job: ids[jobD], p_machines: null, p_client_op_id: null, p_ended_at: null })).error).toBeNull();
   expect((await office.rpc("pause_machine_run", { p_job: ids[jobE], p_machines: null, p_client_op_id: null, p_ended_at: null })).error).toBeNull();
