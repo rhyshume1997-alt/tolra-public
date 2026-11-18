@@ -14,13 +14,13 @@ only when its PR merges and the named file is on `main`.
 | P0 the Portal exception (separate customer authentication; signed-in staff never get a Portal session and a customer session never becomes a staff session) | LIVE | `tests/unit/middleware-route-roles.test.ts` (describe "middleware: separate customer Portal authentication") |
 | Portal off by default (needs the server flag and the company switch; refuses before any cookie or database use) | LIVE | `tests/unit/portal-routes.test.ts`, `tests/unit/portal-pages.test.ts`, `tests/unit/portal-server.test.ts`, `tests/db/customer-portal-signin-154.test.ts` |
 | Release 157 C1 to C5 (`jobs_zzz_integrity_guard`) | LIVE | `tests/db/jobs-integrity-157.test.ts` |
-| Release 158 server time when another operator is on the job | PENDING, PR [#533](https://github.com/rhyshume1997-alt/tolra-public/pull/533) | `tests/db/machine-run-integrity-158.test.ts` (added by that PR) |
-| Release 159 no overwrite of job drawings | PENDING, PR [#534](https://github.com/rhyshume1997-alt/tolra-public/pull/534) | `tests/db/drawings-update-roles-159.test.ts` (added by that PR) |
-| Release 160 no browser access to the legacy reopen function | PENDING, PR [#535](https://github.com/rhyshume1997-alt/tolra-public/pull/535) | `tests/db/legacy-reopen-revoke-160.test.ts` (added by that PR) |
+| Release 158 server time when another operator is on the job | LIVE | `tests/db/machine-run-integrity-158.test.ts` |
+| Release 159 no overwrite of job drawings | LIVE | `tests/db/drawings-update-roles-159.test.ts` |
+| Release 160 no browser access to the legacy reopen function | LIVE | `tests/db/legacy-reopen-revoke-160.test.ts` |
 | Release 161 customer sign-off only on a released job | PENDING, PR [#536](https://github.com/rhyshume1997-alt/tolra-public/pull/536) | `tests/db/customer-signoff-completed-161.test.ts` (added by that PR) |
 | Release 131 frozen fingerprints (`supabase/applied-migrations.json`; applied migrations are never edited, renamed or removed) | LIVE | `tests/unit/check-migrations.test.ts`, `tests/unit/rls-select-wrap-131.test.ts`, `tests/db/rls-select-wrap-131-legacy.test.ts` |
 
 Notes:
 
 - DB tests (`tests/db/*`) run on the disposable test stack in CI (`npm run test:db`), not in the quick unit run.
-- PR #534 also edits the 131 tests for release 159; that change needs the same review and must not weaken them.
+- Release 159 (PR #534) edited the 131 tests; they stay protected and must not be weakened.
