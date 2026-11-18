@@ -46,16 +46,18 @@ export function emptyUsage(now: Date): AllowanceUsage {
   return { period: allowancePeriod(now), used: 0 };
 }
 
-/** Monthly reset: usage from an earlier (or any different) month counts as zero in the current month; same month is unchanged. Call only with a valid record (the other functions check first). */
-export function resetIfNewMonth(usage: AllowanceUsage, now: Date): AllowanceUsage {
+/** Monthly reset: usage from an earlier (or any different) month counts as zero in the current month; same month is unchanged. A malformed record fails closed: returns null (never repaired). */
+export function resetIfNewMonth(usage: AllowanceUsage, now: Date): AllowanceUsage | null {
+  if (!isValidUsage(usage)) return null;
   return usage.period === allowancePeriod(now) ? usage : emptyUsage(now);
 }
 
 /** Requests left this month, never below zero. Unknown tier means none. */
 export function remainingRequests(tier: string, usage: AllowanceUsage, now: Date): number {
   const limit = tierAllowance(tier);
-  if (limit === null || !isValidUsage(usage)) return 0;
-  return Math.max(0, limit - resetIfNewMonth(usage, now).used);
+  const current = resetIfNewMonth(usage, now);
+  if (limit === null || current === null) return 0;
+  return Math.max(0, limit - current.used);
 }
 
 /** True when `count` (a positive whole number, default 1) more requests fit in this month's allowance. */
@@ -68,5 +70,6 @@ export function canReserve(tier: string, usage: AllowanceUsage, now: Date, count
 export function reserve(tier: string, usage: AllowanceUsage, now: Date, count = 1): AllowanceUsage | null {
   if (!canReserve(tier, usage, now, count)) return null;
   const current = resetIfNewMonth(usage, now);
+  if (current === null) return null;
   return { period: current.period, used: current.used + count };
 }

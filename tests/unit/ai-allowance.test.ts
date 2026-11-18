@@ -84,6 +84,7 @@ describe("AI monthly request allowance", () => {
         it(`${label} used (${period}): invalid, remaining 0, cannot reserve, reserve null`, () => {
           const u = { period, used };
           expect(isValidUsage(u)).toBe(false);
+          expect(resetIfNewMonth(u, NOV)).toBeNull();
           expect(remainingRequests("large", u, NOV)).toBe(0);
           expect(canReserve("large", u, NOV)).toBe(false);
           expect(reserve("large", u, NOV)).toBeNull();
@@ -100,10 +101,20 @@ describe("AI monthly request allowance", () => {
         null,
       ]) {
         expect(isValidUsage(u as never)).toBe(false);
+        expect(resetIfNewMonth(u as never, NOV)).toBeNull();
         expect(remainingRequests("small", u as never, NOV)).toBe(0);
         expect(canReserve("small", u as never, NOV)).toBe(false);
         expect(reserve("small", u as never, NOV)).toBeNull();
       }
+    });
+
+    it("resetIfNewMonth rejects malformed records directly and still resets valid ones", () => {
+      expect(resetIfNewMonth({ period: "2026-10", used: -1 }, NOV)).toBeNull();
+      expect(resetIfNewMonth({ period: "2026-11", used: Number.NaN }, NOV)).toBeNull();
+      expect(resetIfNewMonth({ period: "2026-11", used: 2.5 }, NOV)).toBeNull();
+      expect(resetIfNewMonth({ period: "2026-11", used: Infinity }, NOV)).toBeNull();
+      expect(resetIfNewMonth({ period: "2026-10", used: 100 }, NOV)).toEqual({ period: "2026-11", used: 0 });
+      expect(resetIfNewMonth({ period: "2026-11", used: 7 }, NOV)).toEqual({ period: "2026-11", used: 7 });
     });
 
     it("valid records stay valid: zero and whole numbers", () => {
