@@ -5,6 +5,9 @@
  * OUTPUTS: the tier's monthly request count, requests remaining, whether n more requests can be reserved, and the usage record
  * rolled to the current month. Counts are REQUESTS per company per month, not tokens. The month is the UTC calendar month ("YYYY-MM").
  *
+ * MALFORMED USAGE fails closed: a usage record whose `used` is negative, fractional, NaN or Infinity (or whose `period` is not a
+ * string) is rejected: remaining is 0, can-reserve is false, reserve returns null. It is never repaired or treated as zero.
+ *
  * MUST NOT CHANGE: tier sizes (small 100, medium 400, large 1500) without a product decision. No I/O, no database, no server
  * wiring, no keys, no flags here: this module only does arithmetic. AI itself stays off; nothing calls this yet.
  */
@@ -31,12 +34,19 @@ export function allowancePeriod(now: Date): string {
   return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
+/** True only for a record with a string period and a non-negative whole-number `used` (so not NaN, Infinity, fractional or negative). */
+export function isValidUsage(usage: AllowanceUsage): boolean {
+  return (
+    typeof usage === "object" && usage !== null && typeof usage.period === "string" && Number.isSafeInteger(usage.used) && usage.used >= 0
+  );
+}
+
 /** A usage record for the month of `now`, with nothing used. */
 export function emptyUsage(now: Date): AllowanceUsage {
   return { period: allowancePeriod(now), used: 0 };
 }
 
-/** Monthly reset: usage from an earlier (or any different) month counts as zero in the current month; same month is unchanged. */
+/** Monthly reset: usage from an earlier (or any different) month counts as zero in the current month; same month is unchanged. Call only with a valid record (the other functions check first). */
 export function resetIfNewMonth(usage: AllowanceUsage, now: Date): AllowanceUsage {
   return usage.period === allowancePeriod(now) ? usage : emptyUsage(now);
 }
@@ -44,14 +54,13 @@ export function resetIfNewMonth(usage: AllowanceUsage, now: Date): AllowanceUsag
 /** Requests left this month, never below zero. Unknown tier means none. */
 export function remainingRequests(tier: string, usage: AllowanceUsage, now: Date): number {
   const limit = tierAllowance(tier);
-  if (limit === null) return 0;
-  const used = resetIfNewMonth(usage, now).used;
-  return Math.max(0, limit - Math.max(0, used));
+  if (limit === null || !isValidUsage(usage)) return 0;
+  return Math.max(0, limit - resetIfNewMonth(usage, now).used);
 }
 
 /** True when `count` (a positive whole number, default 1) more requests fit in this month's allowance. */
 export function canReserve(tier: string, usage: AllowanceUsage, now: Date, count = 1): boolean {
-  if (!Number.isInteger(count) || count < 1) return false;
+  if (!Number.isInteger(count) || count < 1 || !isValidUsage(usage)) return false;
   return remainingRequests(tier, usage, now) >= count;
 }
 

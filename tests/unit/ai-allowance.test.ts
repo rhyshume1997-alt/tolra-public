@@ -4,6 +4,7 @@ import {
   allowancePeriod,
   canReserve,
   emptyUsage,
+  isValidUsage,
   remainingRequests,
   reserve,
   resetIfNewMonth,
@@ -40,7 +41,6 @@ describe("AI monthly request allowance", () => {
     expect(remainingRequests("small", { period: "2026-11", used: 40 }, NOV)).toBe(60);
     expect(remainingRequests("small", { period: "2026-11", used: 100 }, NOV)).toBe(0);
     expect(remainingRequests("small", { period: "2026-11", used: 250 }, NOV)).toBe(0);
-    expect(remainingRequests("large", { period: "2026-11", used: -5 }, NOV)).toBe(1500);
   });
 
   it("can-reserve respects the boundary and bad counts", () => {
@@ -68,5 +68,48 @@ describe("AI monthly request allowance", () => {
     expect(reserve("small", u, NOV, 3)).toBeNull();
     expect(reserve("small", { period: "2026-10", used: 100 }, NOV)).toEqual({ period: "2026-11", used: 1 });
     expect(reserve("nope", emptyUsage(NOV), NOV)).toBeNull();
+  });
+
+  describe("malformed usage is rejected (fails closed)", () => {
+    const bad: Array<[string, number]> = [
+      ["negative", -1],
+      ["large negative", -5],
+      ["fractional", 1.5],
+      ["NaN", Number.NaN],
+      ["Infinity", Infinity],
+      ["-Infinity", -Infinity],
+    ];
+    for (const [label, used] of bad) {
+      for (const period of ["2026-11", "2026-10"]) {
+        it(`${label} used (${period}): invalid, remaining 0, cannot reserve, reserve null`, () => {
+          const u = { period, used };
+          expect(isValidUsage(u)).toBe(false);
+          expect(remainingRequests("large", u, NOV)).toBe(0);
+          expect(canReserve("large", u, NOV)).toBe(false);
+          expect(reserve("large", u, NOV)).toBeNull();
+        });
+      }
+    }
+
+    it("non-number / bad period / null record are invalid", () => {
+      for (const u of [
+        { period: "2026-11", used: "5" },
+        { period: "2026-11", used: undefined },
+        { period: 202611, used: 0 },
+        { used: 0 },
+        null,
+      ]) {
+        expect(isValidUsage(u as never)).toBe(false);
+        expect(remainingRequests("small", u as never, NOV)).toBe(0);
+        expect(canReserve("small", u as never, NOV)).toBe(false);
+        expect(reserve("small", u as never, NOV)).toBeNull();
+      }
+    });
+
+    it("valid records stay valid: zero and whole numbers", () => {
+      expect(isValidUsage({ period: "2026-11", used: 0 })).toBe(true);
+      expect(isValidUsage({ period: "2026-11", used: 100 })).toBe(true);
+      expect(isValidUsage(emptyUsage(NOV))).toBe(true);
+    });
   });
 });
