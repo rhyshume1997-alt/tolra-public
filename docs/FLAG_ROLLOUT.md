@@ -1,7 +1,7 @@
 <!--
 BOUNDARY: documentation only. Inputs: the switches as they exist on main and the open PRs listed below (as read from GitHub). Outputs: a
 checklist for turning each switch on. It changes no code, no flag and no company setting. Do not treat it as approval to turn anything on.
-Keep it in step with docs/MODULES.md. PR numbers are those open when this was written; re-check them before relying on this.
+Keep it in step with docs/MODULES.md. PR states were read from GitHub on 2026-11-18; re-check them before relying on this.
 -->
 
 # Flag rollout checklist
@@ -22,7 +22,7 @@ Common steps for every flag (do not skip):
 ## 1. Reports (operations reports, module 7)
 
 - **Current state:** OFF. Per-company marker `reports:on` in `organization_settings.hidden_nav`; absent means off (`lib/reports/reports-switch.ts`). Admin and office only.
-- **PRs that must merge first:** [#544](https://github.com/rhyshume1997-alt/tolra-public/pull/544) (Retry on Reports and Revenue, Revenue link, browser acceptance spec). Open and not draft. Already on main: #483 (reports), #490 (access gate), #501 (menu link), #503 (settings switch).
+- **PRs that must merge first:** none outstanding. [#544](https://github.com/rhyshume1997-alt/tolra-public/pull/544) (Retry on Reports and Revenue, Revenue link, browser acceptance spec) is merged (2026-11-17). Also on main: #483 (reports), #490 (access gate), #501 (menu link), #503 (settings switch).
 - **Check on Preview:**
   - Switch OFF: `/reports` shows "Reports are switched off for your company." and no report data loads; the menu link is hidden.
   - Switch ON: admin and office see the page; workshop and viewer are redirected to `/dashboard`.
@@ -34,7 +34,7 @@ Common steps for every flag (do not skip):
 ## 2. Revenue (reports, module 7)
 
 - **Current state:** OFF. Per-company marker `reports-revenue:on` in `hidden_nav` (`lib/reports/revenue/revenue-switch.ts`). Admin and office only. Separate from the Reports switch.
-- **PRs that must merge first:** [#544](https://github.com/rhyshume1997-alt/tolra-public/pull/544) (adds the Revenue link and the acceptance spec). Reports (section 1) should be proven first because Revenue is reached from the same area.
+- **PRs that must merge first:** none outstanding. [#544](https://github.com/rhyshume1997-alt/tolra-public/pull/544) (adds the Revenue link and the acceptance spec) is merged. Reports (section 1) should be proven first because Revenue is reached from the same area.
 - **Check on Preview:**
   - Switch OFF: "Revenue reports are switched off for your company."
   - Invoiced basis and cash basis are shown separately and never added together; quote pipeline is never counted as revenue.
@@ -46,7 +46,7 @@ Common steps for every flag (do not skip):
 ## 3. ISO templates (module 9)
 
 - **Current state:** OFF. Per-company marker `iso-templates:on` in `hidden_nav` (`lib/iso/iso-switch.ts`). Admin only.
-- **PRs that must merge first:** [#545](https://github.com/rhyshume1997-alt/tolra-public/pull/545) (on/off switch and "Records present" wording, consolidating #511 and #514, which are drafts and should be closed unmerged once #545 lands). [#512](https://github.com/rhyshume1997-alt/tolra-public/pull/512) (mounts the switch in Settings) is stacked on #511; confirm whether #545 already includes it. If not, #512 must also merge or the switch has no screen.
+- **PRs that must merge first:** none outstanding. [#545](https://github.com/rhyshume1997-alt/tolra-public/pull/545) (on/off switch and "Records present" wording, consolidating #511 and #514) is merged (2026-11-17). #511, #514 and #512 are still open drafts that #545 supersedes; they are not needed and should be closed unmerged by Rhys. On main the switch card is rendered from `components/iso/iso-pack-view.tsx`, so #512 (Settings mount) is not required for the switch to have a screen; confirm this on Preview.
 - **Check on Preview:**
   - Switch OFF: the ISO page shows the off notice.
   - Switch ON: admin only; office, workshop and viewer cannot open it.
@@ -60,10 +60,10 @@ Common steps for every flag (do not skip):
 
 - **Current state:** OFF at two levels. The server flag `CUSTOMER_PORTAL_ENABLED` must be exactly `"true"` (unset is off; `lib/portal/flag.ts`). The company switch (release 154 functions, off by default) must also be on. Both are enforced on the server.
 - **PRs that must merge first:**
-  - [#546](https://github.com/rhyshume1997-alt/tolra-public/pull/546) (staff admin, release 154 database proofs, browser acceptance). Draft.
-  - [#526](https://github.com/rhyshume1997-alt/tolra-public/pull/526) (mounts Portal contacts on a saved customer, module 5), so staff can invite someone. Draft.
-  - [#528](https://github.com/rhyshume1997-alt/tolra-public/pull/528) (browser acceptance) is already included in #546; it does not need to merge separately.
-  - [#527](https://github.com/rhyshume1997-alt/tolra-public/pull/527) (browser acceptance of the Customers contacts mount) comes after #526, not before.
+  - [#546](https://github.com/rhyshume1997-alt/tolra-public/pull/546) (staff admin, release 154 database proofs, browser acceptance) is merged (2026-11-18), as is #500 (staff administration, unmounted). Nothing further needed from these.
+  - [#526](https://github.com/rhyshume1997-alt/tolra-public/pull/526) (mounts Portal contacts on a saved customer, module 5), so staff can invite someone. Still an open draft, and its base is `feat/portal-staff` (already merged via #500), so it needs retargeting to `main` before it can land. Portal contacts are not mounted on Customers on main yet.
+  - [#528](https://github.com/rhyshume1997-alt/tolra-public/pull/528) (browser acceptance) is an open draft already included in #546; it does not need to merge separately.
+  - [#527](https://github.com/rhyshume1997-alt/tolra-public/pull/527) (browser acceptance of the Customers contacts mount, open draft) comes after #526, not before.
   - Release 154 (`supabase/release/154_customer_portal_signin.release.sql`) applied to the database. Migrations need explicit release approval; this document does not authorise it.
   - Already on main: #495, #498, #499, #505, #520.
 - **Check on Preview:**
@@ -78,7 +78,7 @@ Common steps for every flag (do not skip):
 ## 5. Accounting transfers (Xero; module 6)
 
 - **Current state:** OFF per company. The Xero transfer switch is `xero_transfer_hold.enabled`, created by release 149 with every existing company set to `false` ("installed off"). The app treats a missing function, row or read error as OFF (`lib/integrations/xero/launch-hold.ts`). Sage and QuickBooks offer connections and read-only invoice checks only; they do not send.
-- **PRs that must merge first:** #510 is not enough on its own to turn this on. Release 149 is already in the repo, but it must be confirmed applied to the target database (the release preflight rows say so). [#510](https://github.com/rhyshume1997-alt/tolra-public/pull/510) only adds browser acceptance for Xero organisation confirmation. Turning transfers on also depends on the Preview checks below, the NOT VERIFIED switch-off rules being checked, and Rhys's approval. The Sage and QuickBooks PRs ([#518](https://github.com/rhyshume1997-alt/tolra-public/pull/518), [#523](https://github.com/rhyshume1997-alt/tolra-public/pull/523), [#524](https://github.com/rhyshume1997-alt/tolra-public/pull/524)) are not needed for Xero transfers. They are drafts; keep them out of this rollout unless Rhys says otherwise. [#517](https://github.com/rhyshume1997-alt/tolra-public/pull/517) is "DO NOT MERGE".
+- **PRs that must merge first:** no PR is a hard prerequisite. #510 is not enough on its own to turn this on. Release 149 is already in the repo, but it must be confirmed applied to the target database (the release preflight rows say so). [#510](https://github.com/rhyshume1997-alt/tolra-public/pull/510) (open draft) only adds browser acceptance for Xero organisation confirmation. Turning transfers on also depends on the Preview checks below, the NOT VERIFIED switch-off rules being checked, and Rhys's approval. The Sage and QuickBooks PRs ([#518](https://github.com/rhyshume1997-alt/tolra-public/pull/518), [#523](https://github.com/rhyshume1997-alt/tolra-public/pull/523), [#524](https://github.com/rhyshume1997-alt/tolra-public/pull/524)) are not needed for Xero transfers. They are all open drafts (#523 is stacked on #518); keep them out of this rollout unless Rhys says otherwise. [#517](https://github.com/rhyshume1997-alt/tolra-public/pull/517) is "DO NOT MERGE" (open draft).
 - **Check on Preview:**
   - Switch OFF: nothing is sent or retried; the message "Xero transfers are off for this company" shows.
   - Turning ON needs the company's second sign-in step on and an authenticator code from the last 15 minutes (release 149).
@@ -92,5 +92,5 @@ Common steps for every flag (do not skip):
 
 ## Not covered
 
-- AI helper, AI assistant, AI finance check, e-mail and Microsoft 365 switches are also off by default but were not in the request.
-- This list was built from the repo and open PR titles. PR contents were not reviewed, so "must merge first" is the best reading of the titles and stacking notes. Rhys should confirm it before anyone relies on it.
+- AI helper, AI assistant, AI finance check, e-mail and Microsoft 365 switches are also off by default but were not in the request. [#551](https://github.com/rhyshume1997-alt/tolra-public/pull/551) (Tooly Step 2: Tooly as the AI helper face) is open (not draft, not merged) as of 2026-11-18; it has no checklist here.
+- This list was built from the repo and PR titles and states read from GitHub. PR contents were not reviewed, so "must merge first" is the best reading of the titles and stacking notes. Rhys should confirm it before anyone relies on it.
