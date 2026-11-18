@@ -123,8 +123,10 @@ describe("one table, no invented prices", () => {
     for (const p of Object.values(MODEL_PRICES)) { expect(p.source.length).toBeGreaterThan(0); expect(p.asOf).toMatch(/^\d{4}-\d{2}-\d{2}$/); }
   });
 
-  it("no OpenAI or xAI price exists, so any of their models is refused", () => {
-    expect(Object.values(MODEL_PRICES).filter((p) => p.provider !== "anthropic")).toEqual([]);
+  it("only one OpenAI price exists (gpt-4.1-mini, https://developers.openai.com/api/docs/pricing, read 2026-11-18) and no xAI price, so any other model is refused", () => {
+    expect(Object.entries(MODEL_PRICES).filter(([, p]) => p.provider !== "anthropic")).toEqual([
+      ["gpt-4.1-mini", { provider: "openai", inputMicroUsdPerMTok: BigInt(400_000), outputMicroUsdPerMTok: BigInt(1_600_000), source: "https://developers.openai.com/api/docs/pricing (standard tier, text)", asOf: "2026-11-18" }],
+    ]);
     for (const provider of ["openai", "xai"] as const) for (const model of ["gpt-anything", "grok-anything", OPUS]) {
       expect(priceFor(provider, model, NOW).ok).toBe(false);
       expect(() => estimatePence(model, 1, 1, provider, NOW, RATES)).toThrow();
