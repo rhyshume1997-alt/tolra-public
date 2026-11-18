@@ -25,6 +25,7 @@ const pageTitles: Record<string, string> = {
   "/rfq": "RFQ Control Centre",
   "/quotes": "Quote Generator",
   "/jobs": "Job Board",
+  "/jobs/ncr": "NCR register",
   "/schedule": "Machine Schedule",
   "/time": "Weekly hours",
   "/time/week": "Weekly hours",
