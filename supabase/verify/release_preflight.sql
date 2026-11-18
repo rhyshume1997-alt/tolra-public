@@ -1,4 +1,4 @@
--- Post-144 phase markers are separate from baseline markers: 145 then 146 then 147 then 148 then 149 then 150 then 151 then 152 then 153 then 154 (153 and 154: before customer portal activation only) then 156 (155 reserved, not in this candidate; 156 before the JNR SliQ import). Numbered cutover markers: 138, 140, 141, 143, 144.
+-- Post-144 phase markers are separate from baseline markers: 145 then 146 then 147 then 148 then 149 then 150 then 151 then 152 then 153 then 154 (153 and 154: before customer portal activation only) then 156 (155 reserved, not in this candidate; 156 before the JNR SliQ import) then 157 (jobs integrity guard, with start_machine_run's first-start marker) then 158 (machine run integrity: the server's time when another operator has an open run or job time) then 159 (after 158 in the plan; nobody can replace an object in the job-drawings bucket from the browser) then 160 (after 159 in the plan; reopen_job closed to the browser; needs 113). Numbered cutover markers: 138, 140, 141, 143, 144.
 -- Legacy AI body checks inspect preserved own-key functions after 146; the 146 marker pins every live wrapper.
 -- READ ONLY. Release preflight (docs/RELEASE-CHECKLIST.md, step 2). One query, one result table of check / value /
 -- expected, so it works in the Supabase SQL editor (which shows only the last statement's result). Nothing is
@@ -239,6 +239,10 @@ proposal_files(file, disposition) AS (
     ('supabase/proposals/p153_document_customer_link.sql', 'post-144 release 153; apply only after 152; required before customer portal activation, not for JNR core go-live (jobs and quotes linked to the customer by ID in a side table; backfill unverified; portal switch off; no issued-document guard changed)'),
     ('supabase/proposals/p154_customer_portal_signin.sql', 'post-144 release 154; apply only after 153; required before customer portal activation, not for JNR core go-live (customer portal sign-in: e-mailed link and code, sessions, read-only verified quotes and jobs; portal OFF refuses every customer call)'),
     ('supabase/proposals/p156_invoice_ref_case.sql', 'post-144 release 156; after 154 in the plan (its guard needs 152 and 078); apply before the JNR SliQ import (one invoice number per company whatever its capital letters; refuses while case-variant invoice numbers exist: row 59)'),
+    ('supabase/proposals/p157_jobs_integrity_guard.sql', 'post-144 release 157; after 156 in the plan (its guard needs the job locks of 022, 034, 035, 037, 044/061, 081, 083 and 113 only); a recorded job start is kept and the first start is set only by Play, the bench Start or Finish (start_machine_run re-created, 049''s body plus two statements), a job cannot be created with a start or finish time, a finish is set only by Finish, a workshop-only user cannot change a job''s customer or number or withdraw a passed inspection (row 60)'),
+    ('supabase/proposals/p158_machine_run_integrity.sql', 'post-144 release 158; after 157 in the plan (its guard needs 044, 051 and 061); replaces pause_machine_run and finish_job so another operator''s open run or job time makes the effective time the server''s (row 61)'),
+    ('supabase/proposals/p159_drawings_update_roles.sql', 'post-144 release 159; after 158 in the plan (its guard needs release 131''s text of one storage policy, not 156, 157 or 158); refuses every browser role the update of an object in job-drawings (audit finding ST1); apply with the JNR go-live releases; row 62'),
+    ('supabase/proposals/p160_legacy_reopen_revoke.sql', 'post-144 release 160; after 159 in the plan (its guard needs 113 and 081''s reopen_job body, not 156, 157, 158 or 159); revokes browser EXECUTE on public.reopen_job(uuid,text) so a Complete job can only be reopened through 113''s request and sign-off (defect J1); service_role and every other grant unchanged; row 63'),
     ('supabase/proposals/builder2_chase_settings_atomic.sql', 'separate chase settings release decision; requires 138; browser fixture is not production packaging'),
     ('supabase/proposals/builder2_costing_settings_atomic.sql', 'superseded: the hardened function ships inside numbered release 143 (after 141, before 144); this original proposal is never applied'),
     ('supabase/proposals/builder2_atomic_settings.rollback.sql', 'rollback only; never forward release input')
@@ -348,6 +352,21 @@ post_release_markers(label, present) AS (
       AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.import_sliq_prepare(uuid,text,jsonb,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'a06f5525bb6770dde21c4f9453b96207')
       AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.next_doc_number(text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '75dffec8a6b52c01267aa22a64802da0')
       AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.import_sliq_reconcile_rows(uuid)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '3288cdc2d98acba018c8e417bddd77bb')), FALSE)),
+    ('post-144 marker 157 jobs_integrity_guard', coalesce((EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.jobs_integrity_guard()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '72b0718e820a59a960f01654b82c6d1d')
+      AND EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = to_regclass('public.jobs') AND t.tgname = 'jobs_zzz_integrity_guard' AND NOT t.tgisinternal
+                    AND t.tgfoid = to_regprocedure('public.jobs_integrity_guard()') AND t.tgtype = 23 AND t.tgattr::TEXT = '' AND t.tgnargs = 0 AND t.tgenabled = 'O' AND t.tgqual IS NULL)
+      AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.start_machine_run(uuid,uuid[],uuid,timestamptz,boolean,text,jsonb,boolean)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'e5a66b0a8b183e1f6a51927bca89953e')), FALSE)),
+    ('post-144 marker 158 machine_run_integrity', coalesce((EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.pause_machine_run(uuid,uuid[],uuid,timestamptz)') AND p.prosecdef AND p.proconfig IS NOT NULL
+             AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'b00c08c8ee4934428f278fa6beadde1b')
+      AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.finish_job(uuid,uuid,timestamptz)') AND p.prosecdef AND p.proconfig IS NOT NULL
+             AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '154bb3fff8179ce2f26c1810f054e18f')), FALSE)),
+    ('post-144 marker 159 drawings_update_roles', coalesce(((SELECT count(*) = 2 FROM pg_policies p
+             WHERE p.schemaname = 'storage' AND p.tablename = 'objects' AND p.permissive = 'PERMISSIVE' AND p.roles::TEXT = '{authenticated}'
+               AND ((p.policyname, p.cmd, md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, ''))) IN
+                    (('job drawings org update', 'UPDATE', '18b6c82111707e214f8aaa30c5b6e717'), ('job drawings org delete', 'DELETE', 'a1f94f5b6390b515dc6714c2ca6f51b9'))))), FALSE)),
+    ('post-144 marker 160 legacy_reopen_revoke', coalesce((EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.reopen_job(uuid,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '2fca7e7164a55f9f9e0744f8a0c6b50e'
+             AND NOT has_function_privilege('authenticated', p.oid, 'EXECUTE') AND NOT has_function_privilege('anon', p.oid, 'EXECUTE') AND NOT has_function_privilege('public', p.oid, 'EXECUTE'))
+      AND to_regprocedure('public.reopen_record(text,uuid,text,text)') IS NOT NULL), FALSE)),
     ('post-144 marker 151 xero_invite_hardening', coalesce(((SELECT count(*) = 10 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'integration_connect_invites'
              AND column_name IN ('ref', 'recipient_email', 'code_hash', 'code_expires_at', 'code_sent_at', 'code_sent_count', 'code_attempts', 'locked_at', 'expired_logged_at', 'revoke_reason'))
       AND EXISTS (SELECT 1 FROM pg_constraint c WHERE c.conrelid = to_regclass('public.integration_connect_invites') AND c.conname IN ('integration_connect_invites_ref_key', 'integration_connect_invites_bound', 'integration_connect_invites_recipient') HAVING count(*) = 3)
@@ -680,6 +699,44 @@ checks(n, check_name, value, expected) AS (
     || ' / ' || coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN '315952a95ce42c75078e94026069121b' THEN '152' WHEN '3288cdc2d98acba018c8e417bddd77bb' THEN '156' ELSE 'other' END
               FROM pg_proc p WHERE p.oid = to_regprocedure('public.import_sliq_reconcile_rows(uuid)')), 'missing'),
     '0 / 152 / 078 / 152 before 156; 0 / 156 / 156 / 156 after (any other count, other or missing: stop, 156 refuses; a count above 0 is decided by Rhys or PM with the read-only finder in the 156 release header)'
+  UNION ALL SELECT 60, '157 needs: job locks missing (triggers and flag-naming workflows) / public.jobs_integrity_guard() / trigger jobs_zzz_integrity_guard / public.start_machine_run',
+    (SELECT count(*) FROM (SELECT 1 FROM unnest(ARRAY['jobs_worksheet_version', 'jobs_worksheet_version_release', 'jobs_zz_drawing_revision', 'zzz_actor_stamp', 'ad_finish_kept', 'ac_finish_guard', 'jobs_rework_stage_guard']) AS tg
+                WHERE NOT EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = to_regclass('public.jobs') AND t.tgname = tg.tg AND NOT t.tgisinternal)
+              UNION ALL SELECT 1 FROM (VALUES ('finish_job', 'tolra.finish_job'), ('reopen_job', 'quoteflow.job_reopen'), ('_reopen_job_signed_off', 'quoteflow.job_reopen'),
+                  ('record_job_inspection', 'quoteflow.job_inspection'), ('fail_job_inspection', 'quoteflow.job_inspection'),
+                  ('open_replacement_rework', 'quoteflow.job_rework'), ('finish_job_rework', 'quoteflow.job_rework')) AS f
+                WHERE NOT EXISTS (SELECT 1 FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.proname = f.column1 AND position(f.column2 IN p.prosrc) > 0)
+              UNION ALL SELECT 1 WHERE to_regprocedure('public.has_org_role(text[])') IS NULL) m)::TEXT
+    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN '72b0718e820a59a960f01654b82c6d1d' THEN '157' ELSE 'other' END
+              FROM pg_proc p WHERE p.oid = to_regprocedure('public.jobs_integrity_guard()')), 'absent')
+    || ' / ' || coalesce((SELECT CASE WHEN t.tgfoid = to_regprocedure('public.jobs_integrity_guard()') AND t.tgtype = 23 AND t.tgattr::TEXT = '' AND t.tgnargs = 0 AND t.tgenabled = 'O' AND t.tgqual IS NULL THEN '157' ELSE 'other' END
+              FROM pg_trigger t WHERE t.tgrelid = to_regclass('public.jobs') AND t.tgname = 'jobs_zzz_integrity_guard' AND NOT t.tgisinternal), 'absent')
+    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN '2147348075e8d7d38639bd11c9da0c30' THEN '049' WHEN 'e5a66b0a8b183e1f6a51927bca89953e' THEN '157' ELSE 'other' END
+              FROM pg_proc p WHERE p.oid = to_regprocedure('public.start_machine_run(uuid,uuid[],uuid,timestamptz,boolean,text,jsonb,boolean)')), 'absent'),
+    '0 / absent / absent / 049 before 157; 0 / 157 / 157 / 157 after (a count above 0, or other: stop, 157 refuses and changes nothing; absent / absent / 049 is the state before 157 and after its rollback; start_machine_run must be 049 or 157)'
+  UNION ALL SELECT 61, '158 needs: pause_machine_run / finish_job',
+    coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN '2a172ae0576c14095bc1281294789894' THEN '044' WHEN 'b00c08c8ee4934428f278fa6beadde1b' THEN '158' ELSE 'other' END
+              FROM pg_proc p WHERE p.oid = to_regprocedure('public.pause_machine_run(uuid,uuid[],uuid,timestamptz)')), 'missing')
+    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN '57e2b9a298fa8647a775f8e0a56bbe58' THEN '061' WHEN '154bb3fff8179ce2f26c1810f054e18f' THEN '158' ELSE 'other' END
+              FROM pg_proc p WHERE p.oid = to_regprocedure('public.finish_job(uuid,uuid,timestamptz)')), 'missing'),
+    '044 / 061 before 158; 158 / 158 after (other or missing: stop, 158 refuses)'
+  UNION ALL SELECT 62, '159 needs: policy "job drawings org update" (UPDATE) / policy "job drawings org delete" (DELETE) on storage.objects, their texts (131 / 159 / other / missing each)',
+    coalesce((SELECT CASE md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) WHEN '76e489d7de7f079451629dc75177d894' THEN '131' WHEN '18b6c82111707e214f8aaa30c5b6e717' THEN '159' ELSE 'other' END
+              FROM pg_policies p WHERE p.schemaname = 'storage' AND p.tablename = 'objects' AND p.policyname = 'job drawings org update'
+                AND p.permissive = 'PERMISSIVE' AND p.cmd = 'UPDATE' AND p.roles::TEXT = '{authenticated}'), 'missing')
+    || ' / ' || coalesce((SELECT CASE md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) WHEN '2b7ec566b4506d9dc5918f7b02dd8374' THEN '131' WHEN 'a1f94f5b6390b515dc6714c2ca6f51b9' THEN '159' ELSE 'other' END
+              FROM pg_policies p WHERE p.schemaname = 'storage' AND p.tablename = 'objects' AND p.policyname = 'job drawings org delete'
+                AND p.permissive = 'PERMISSIVE' AND p.cmd = 'DELETE' AND p.roles::TEXT = '{authenticated}'), 'missing'),
+    '131 / 131 before 159; 159 / 159 after (131 / 131 = absent, 159 / 159 = installed; any other reading is drifted: another text, missing (which also reads for a policy that is not the PERMISSIVE UPDATE or DELETE policy for exactly authenticated), or a MIX such as 159 / 131 or 131 / 159 (half installed): stop, 159 refuses and changes nothing; release 131 must be in place first; installed is judged by these two texts only, there is no comment. Production: this row, read only, must say 131 / 131 before any production migration)'
+  UNION ALL SELECT 63, '160 needs: 113 reopen functions present / public.reopen_job body / reopen_job browser grants',
+    (to_regclass('public.reopen_requests') IS NOT NULL AND to_regprocedure('public.reopen_preview(text,uuid)') IS NOT NULL
+     AND to_regprocedure('public.reopen_record(text,uuid,text,text)') IS NOT NULL AND to_regprocedure('public.decide_reopen_request(uuid,text,text)') IS NOT NULL)::TEXT
+    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '2fca7e7164a55f9f9e0744f8a0c6b50e' THEN '081' ELSE 'other' END
+              FROM fn WHERE nspname = 'public' AND proname = 'reopen_job'), 'missing')
+    || ' / ' || coalesce((SELECT CASE WHEN has_function_privilege('anon', x.o, 'EXECUTE') OR has_function_privilege('public', x.o, 'EXECUTE') THEN 'other'
+                                      WHEN has_function_privilege('authenticated', x.o, 'EXECUTE') THEN '081' ELSE '160' END
+              FROM (SELECT to_regprocedure('public.reopen_job(uuid,text)') AS o) x WHERE x.o IS NOT NULL), 'missing'),
+    'true / 081 / 081 before 160; true / 081 / 160 after (false, other or missing: stop, 160 refuses; apply 113 first; once 160 is in place a re-run of 081''s release file stops at its first guard, because 099 replaced delivery_note_try_draft)'
   UNION ALL SELECT 100 + row_number() OVER (), 'marker ' || migration,
     CASE WHEN present AND (migration <> '107 integrations connect' OR to_regprocedure('public.integration_invite_redeem(text,text,text)') IS NOT NULL
                            OR coalesce((SELECT pm.present FROM post_release_markers pm WHERE pm.label = 'post-144 marker 151 xero_invite_hardening'), FALSE))
@@ -690,7 +747,11 @@ checks(n, check_name, value, expected) AS (
     CASE WHEN present THEN 'applied' WHEN label IN ('post-144 marker 153 document_customer_link', 'post-144 marker 154 customer_portal_signin') THEN 'not applied (before portal activation only)' ELSE 'not applied' END,
     CASE WHEN label = 'post-144 marker 153 document_customer_link' THEN 'One-time post-144 phase 153, after 152: required before customer portal activation, not for JNR core go-live (PM, 11 Nov 2026).'
     WHEN label = 'post-144 marker 154 customer_portal_signin' THEN 'One-time post-144 phase 154, after 153: customer portal sign-in; required before customer portal activation, not for JNR core go-live (PM, 12 Nov 2026).'
+    WHEN label = 'post-144 marker 157 jobs_integrity_guard' THEN 'One-time post-144 phase 157, after 156 in the plan (155 reserved; its guard needs the job locks of 022 to 113 only): a recorded job start is kept and the first start is set only by Play, the bench Start or Finish (start_machine_run re-created), a job cannot be created with a start or finish time, a finish is set only by Finish, a workshop-only user cannot change a job''s customer or number or withdraw a passed inspection; row 60 first.'
     WHEN label = 'post-144 marker 156 invoice_ref_case' THEN 'One-time post-144 phase 156, after 154 in the plan (155 reserved; its guard needs 152 and 078 only): one invoice number per company whatever its capital letters; applied before the JNR SliQ import (row 59 first).'
+    WHEN label = 'post-144 marker 158 machine_run_integrity' THEN 'One-time post-144 phase 158, after 157 (its guard needs 044, 051 and 061 only): a Pause or Finish that affects another operator''s open run or job time is recorded at the server''s time (row 61 first).'
+    WHEN label = 'post-144 marker 159 drawings_update_roles' THEN 'One-time post-144 phase 159, after 158 in the plan: the browser roles can no longer update, replace or delete an object in the job-drawings bucket; installed is judged by the exact text of the two policies only, and a drifted state (any other text, missing, or one policy at each text) does not read as applied: row 62 tells absent (131 / 131) from installed (159 / 159) from drifted (anything else) (row 62 first).'
+    WHEN label = 'post-144 marker 160 legacy_reopen_revoke' THEN 'One-time post-144 phase 160, after 159 in the plan: the older reopen function (public.reopen_job) can no longer be called from the browser; reopening goes through 113''s request and sign-off (row 63 first; needs 113).'
     ELSE 'One-time post-144 phase: 145 N5 before 146 N2 before 147 C17 before 148 job costing before 149 Xero launch hold before 150 AI cap and key-off before 151 Xero invite hardening before 152 SliQ import route; all applied before go-live. Baseline replay intentionally runs first.' END FROM post_release_markers
   UNION ALL SELECT 400 + row_number() OVER (ORDER BY file), 'proposal file ' || file, disposition,
     'Explicitly accounted for; no proposal runs merely because preflight is read.' FROM proposal_files

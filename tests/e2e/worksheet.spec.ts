@@ -1,6 +1,7 @@
 /**
  * Worksheet safety on the shop floor (audit B5: D5, D7, A12, D6). Unsaved edits are guarded; a save that would
  * overwrite someone else's is refused and the local edits stay; an unfinished job past its date shows overdue.
+ * Module 2 Complete worksheet presentation: workshop reads without edit/save; admin and office retain their existing controls.
  */
 import { expect, test, type Page } from "@playwright/test";
 
@@ -21,6 +22,40 @@ async function openWorksheet(page: Page, jobNo: string) {
   const dialog = page.getByRole("dialog", { name: `Worksheet - ${jobNo}` });
   await expect(dialog.getByRole("button", { name: "Save Worksheet" })).toBeEnabled();
   return dialog;
+}
+
+for (const role of ["workshop", "admin", "office"] as const) {
+  test(`Complete worksheet: ${role} receives the appropriate read/edit controls`, async ({ page }) => {
+    const jobNo = `J-WRO-${role}-${w.runId}`;
+    const id = await newJob(jobNo, { started_at: "2026-10-01T08:00:00Z", finished_at: "2026-10-02T08:00:00Z", finished_by: w.tenants.beta.users.workshop.id });
+    const { data: row, error: readError } = await adminClient().from("jobs").select("worksheet_version").eq("id", id).single();
+    expect(readError).toBeNull();
+    const inspector = await signedInClient(w.tenants.beta.users.admin);
+    const inspected = await inspector.rpc("inspect_job", { p_job: id, p_result: "pass", p_criteria: "Worksheet read-only regression: drawing dimensions", p_measured: "All dimensions within tolerance", p_expected_version: row!.worksheet_version });
+    expect(inspected.error).toBeNull();
+    const completed = await adminClient().from("jobs").select("inspected_at").eq("id", id).single();
+    expect(completed.error).toBeNull();
+    expect(completed.data?.inspected_at).toBeTruthy();
+
+    await signIn(page, w.tenants.beta.users[role]);
+    await page.goto("/jobs");
+    await page.getByRole("button", { name: /^Complete \(/ }).click();
+    await page.getByRole("row").filter({ hasText: jobNo }).getByRole("button", { name: "Worksheet" }).click();
+    const sheet = page.getByRole("dialog", { name: `Worksheet - ${jobNo}` });
+    await expect(sheet.getByText("Loading worksheet...")).toHaveCount(0);
+    const save = sheet.getByRole("button", { name: "Save Worksheet" });
+    if (role === "workshop") {
+      await expect(sheet.getByTestId("worksheet-complete-readonly")).toContainText("This job is Complete");
+      await expect(save).toHaveCount(0);
+      await expect(sheet.getByLabel("Drawing #")).toHaveAttribute("readonly", "");
+      await expect(sheet.getByRole("button", { name: "Upload", exact: true })).toHaveCount(0);
+      await expect(sheet.getByRole("checkbox", { name: "Sizes Checked" })).toBeDisabled();
+    } else {
+      await expect(save).toBeEnabled();
+      await expect(sheet.getByTestId("worksheet-complete-readonly")).toHaveCount(0);
+      await expect(sheet.getByLabel("Drawing #")).not.toHaveAttribute("readonly", "");
+    }
+  });
 }
 
 test("unsaved edits are guarded on close; saving clears the guard", async ({ page }) => {

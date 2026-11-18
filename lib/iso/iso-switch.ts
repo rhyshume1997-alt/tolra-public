@@ -1,7 +1,8 @@
 /**
  * The ISO templates switch (admin only). The page (branded draft templates and a self-check list) is OFF by default. No database
  * change: the choice lives in the company's existing organization_settings.hidden_nav list, as a positive marker, the same way as
- * lib/sales-orders-switch.ts. Not wired to any screen yet: nothing here writes settings.
+ * lib/sales-orders-switch.ts. The admin-only switch card on the ISO templates page (components/iso/iso-switch-card.tsx) saves the
+ * list built by nextIsoHiddenNav through saveOrgSettings; nothing in this file writes settings itself.
  *
  * Inputs: the company's hidden_nav list and the signed-in role. Outputs: whether the page is on, who may see it, and the hidden_nav
  * change that switches it on or off.
@@ -29,4 +30,10 @@ export function canSeeIso(role: UserRole | string | null | undefined): boolean {
 /** The hidden_nav change that switches the templates on or off. */
 export function isoSwitchChange(on: boolean): { add: string[]; remove: string[] } {
   return on ? { add: [ISO_TEMPLATES_ON_MARKER], remove: [] } : { add: [], remove: [ISO_TEMPLATES_ON_MARKER] };
+}
+
+/** The full hidden_nav list after switching on or off: every other entry is kept in order, only the marker is added or removed. Never mutates `current`; repeating it changes nothing. */
+export function nextIsoHiddenNav(current: readonly string[], on: boolean): string[] {
+  const kept = current.filter((entry) => entry !== ISO_TEMPLATES_ON_MARKER);
+  return on ? [...kept, ISO_TEMPLATES_ON_MARKER] : kept;
 }

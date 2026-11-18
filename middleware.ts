@@ -1,10 +1,18 @@
+/**
+ * BOUNDARY (module 1): request pathname and staff session -> pass-through or staff redirect.
+ * Only /portal and /portal/ descendants delegate to the Portal pages' flag/session guards.
+ * Protected pages require verified Auth, profile and company-session reads; outages return 503 without cookie changes.
+ * Must preserve every staff authentication, role, MFA and company check for other paths.
+ */
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { isAuthApiError } from "@supabase/supabase-js";
 
 import { AI_HELPER_ROLES } from "@/lib/ai-helper/flag";
 import { MFA_ENROL_PARAM, adminMfaRequired, holdsAdmin, shouldCheckEnrolment } from "@/lib/mfa-policy";
 import { accessEndedCookie } from "@/lib/offline/access";
 import { companyStepRoute, parseSessionInfo } from "@/lib/session-info";
+import { withGatewayRetry } from "@/lib/server/resilient-fetch";
 import { sectionForPath } from "@/lib/sections";
 import { EXPIRED_NOTICE_COOKIE, EXPIRED_NOTICE_MAX_AGE_S, LAST_ACTIVE_COOKIE, OFFICE_IDLE_TIMEOUT_MS, expiredSignInRedirect, idleExceeded } from "@/lib/session-policy";
 
@@ -14,12 +22,16 @@ const ASSET_PATTERN = /\.(?:png|jpe?g|gif|svg|webp|avif|ico|css|js|map|txt|woff2
 const SITEMAP_PATH = "/sitemap.xml";
 const SECURE_COOKIES = process.env.NODE_ENV === "production";
 
+const isPortalCustomerPage = (pathname: string): boolean => pathname === "/portal" || pathname.startsWith("/portal/");
+
 const ALL_ROLES = ["admin", "office", "workshop", "viewer"];
 // First matching prefix wins. Client-side RoleGate is cosmetic; this is the real gate.
 const ROUTE_ROLES: Array<[string, string[]]> = [
   ["/admin", ["admin"]],
   // Numbers (the history of invoiced, received and machine time): the owner's page, admin only.
   ["/numbers", ["admin"]],
+  // Reports (company dashboard and Reports, go-live feature 3): admin and office only. The prefix covers /reports/revenue too.
+  ["/reports", ["admin", "office"]],
   ["/invoices", ["admin", "office"]],
   ["/sales-orders", ["admin", "office"]],
   ["/settings", ["admin"]],
@@ -39,8 +51,53 @@ const ROUTE_ROLES: Array<[string, string[]]> = [
   ["/ai-helper", [...AI_HELPER_ROLES]],
 ];
 
-/** Pages that work from the device's offline copy when Supabase can't be reached (Job Board, worksheets, schedule, pack, job sheet). */
-const OFFLINE_ROUTES = ["/jobs", "/schedule", "/time"];
+/** Only verified denial ends authentication; unavailable reads never imply a role or sign-out. Retry belongs to the safe transport. */
+type Lookup<T> = { kind: "verified"; data: T } | { kind: "denied" } | { kind: "unavailable" };
+type ReadResult<T> = { data: T; error: unknown; status?: number };
+type ReadScope = "authentication" | "authorisation";
+const INVALID_SESSION_CODES = new Set(["refresh_token_not_found", "refresh_token_already_used", "session_not_found", "session_expired"]);
+function lookupFailure(error: unknown, status: number | undefined, scope: ReadScope): "denied" | "unavailable" {
+  const detail = error && typeof error === "object" ? error as { status?: number; code?: string; name?: string } : {};
+  const http = status ?? detail.status;
+  if (http === 0 || (http !== undefined && http >= 500)) return "unavailable";
+  // GoTrue uses 400 for these confirmed invalid sessions. Do not generalise arbitrary 400s or database errors into sign-out.
+  if (scope === "authentication" && http !== undefined && http >= 400 && http < 500
+      && isAuthApiError(error) && INVALID_SESSION_CODES.has(error.code ?? "")) return "denied";
+  if (http === 401 || http === 403 || detail.code === "42501" || detail.name === "AuthSessionMissingError") return "denied";
+  // Includes network exceptions, malformed responses and missing database capabilities. None can prove authorisation.
+  return "unavailable";
+}
+async function verifiedRead<T>(read: () => PromiseLike<ReadResult<T>>, scope: ReadScope = "authorisation"): Promise<Lookup<T>> {
+  try {
+    const result = await read();
+    if (result.error || (result.status !== undefined && (result.status === 0 || result.status >= 400))) {
+      return { kind: lookupFailure(result.error, result.status, scope) };
+    }
+    return { kind: "verified", data: result.data };
+  } catch (error) {
+    return { kind: lookupFailure(error, undefined, scope) };
+  }
+}
+/** Validate security-bearing RPC fields before the shared display parser can apply defaults. */
+function hasVerifiedSessionShape(raw: unknown): boolean {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return false;
+  const row = raw as Record<string, unknown>;
+  const nullableText = (value: unknown) => value === null || (typeof value === "string" && value.length > 0);
+  return typeof row.user_id === "string" && row.user_id.length > 0
+    && nullableText(row.organization_id) && nullableText(row.role) && nullableText(row.secondary_role)
+    && typeof row.platform_admin === "boolean" && typeof row.needs_choice === "boolean"
+    && typeof row.organization_count === "number" && Number.isSafeInteger(row.organization_count) && row.organization_count >= 0
+    && Array.isArray(row.hidden_sections) && row.hidden_sections.every((section) => typeof section === "string");
+}
+function hasVerifiedAssurance(raw: unknown): raw is { currentLevel: "aal1" | "aal2"; nextLevel: "aal1" | "aal2" } {
+  if (!raw || typeof raw !== "object") return false;
+  const row = raw as Record<string, unknown>;
+  return (row.currentLevel === "aal1" || row.currentLevel === "aal2") && (row.nextLevel === "aal1" || row.nextLevel === "aal2");
+}
+const forbidden = () => NextResponse.json({ error: "Forbidden" }, { status: 403, headers: { "Cache-Control": "no-store" } });
+const unavailable = () => NextResponse.json({ error: "Service temporarily unavailable. Please try again." }, {
+  status: 503, headers: { "Retry-After": "5", "Cache-Control": "no-store" },
+});
 
 export async function middleware(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -63,15 +120,24 @@ export async function middleware(request: NextRequest) {
   // own clients are read-only and would use up the refresh token without saving the new one).
   if (isAsset || isPwaFile) return NextResponse.next({ request });
 
+  // Customer pages check the platform flag before cookies, then resolve the separate Release 154 session.
+  // Never consult, refresh or clear the staff session for this exact namespace. API routes keep their own guards.
+  if (isPortalCustomerPage(path)) return NextResponse.next({ request });
+
   let response = NextResponse.next({ request });
+  const originalCookies = request.cookies.getAll().map(({ name, value }) => ({ name, value }));
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    global: { fetch: withGatewayRetry() },
     cookies: {
       getAll() {
         return request.cookies.getAll();
       },
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+        const previous = response.cookies.getAll();
         response = NextResponse.next({ request });
+        // SDK refresh/removal can emit more than one batch (including chunked cookies); preserve every prior operation.
+        previous.forEach((cookie) => response.cookies.set(cookie));
         cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, { ...options, secure: SECURE_COOKIES }));
       },
     },
@@ -84,15 +150,15 @@ export async function middleware(request: NextRequest) {
     return redirect;
   };
 
-  const { data, error: authError } = await supabase.auth.getUser();
-  // Supabase unreachable (not "signed out"): the workshop pages still open for someone holding a session cookie, so
-  // they can work from this device's offline copy (lib/offline). These pages are client shells with no data in
-  // them; every record still comes from Supabase (or the device's own copy), so nothing is exposed by letting the
-  // shell through. Everything else waits for Supabase as before.
-  const authUnreachable = !data.user && !!authError && (authError.name === "AuthRetryableFetchError" || authError.status === 0 || (authError.status ?? 0) >= 500);
+  const auth = await verifiedRead<Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]>(() => supabase.auth.getUser(), "authentication");
+  if (auth.kind === "unavailable") {
+    // Ambiguous errors cannot commit SDK cookie removal, including on public routes with their own guards.
+    request.cookies.getAll().forEach(({ name }) => request.cookies.delete(name));
+    originalCookies.forEach(({ name, value }) => request.cookies.set(name, value));
+    response = NextResponse.next({ request });
+  }
+  const data = auth.kind === "verified" ? auth.data : { user: null };
   const hasSessionCookie = request.cookies.getAll().some((cookie) => /^sb-.+-auth-token(\.\d+)?$/.test(cookie.name));
-  const offlineCapable = OFFLINE_ROUTES.some((prefix) => path === prefix || path.startsWith(prefix + "/"));
-  if (authUnreachable && hasSessionCookie && offlineCapable) return response;
   const isLogin = path === "/login";
   const isRoleSelect = path === "/select-role";
   // Invite / password-reset landing page: it creates the session itself from the link, so it must open signed out
@@ -107,6 +173,7 @@ export async function middleware(request: NextRequest) {
   if (path === "/") return data.user ? redirectTo("/dashboard") : response;
   // The public privacy page: open to everyone, signed in or not (it is a plain page, so there is nothing to protect or redirect).
   if (path === "/privacy") return response;
+  if (auth.kind === "unavailable") return isLogin ? response : unavailable();
   if (!data.user && isLogin && request.nextUrl.searchParams.get("expired") !== "1" && expiredSignInRedirect({
     hasAuthCookie: hasSessionCookie,
     lastActive: request.cookies.get(LAST_ACTIVE_COOKIE)?.value,
@@ -121,6 +188,77 @@ export async function middleware(request: NextRequest) {
   }
   if (!data.user) return isLogin ? response : redirectTo("/login");
 
+  const rule = ROUTE_ROLES.find(([prefix]) => path === prefix || path.startsWith(prefix + "/"));
+  type ProfileRow = { role: string | null; secondary_role: string | null; active: boolean | null; organization_id: string | null; must_change_password?: boolean | null };
+  const profileRead = await verifiedRead(() => supabase
+    .from("user_profiles")
+    .select("role, secondary_role, active, organization_id, must_change_password")
+    .eq("id", data.user.id)
+    .maybeSingle<ProfileRow>());
+  if (profileRead.kind === "unavailable") return unavailable();
+  if (profileRead.kind === "denied") return forbidden();
+  const profile = profileRead.data;
+  if (profile && (typeof profile.active !== "boolean" || typeof profile.must_change_password !== "boolean")) return unavailable();
+
+  if (!profile?.active) {
+    // Deactivated (or profile-less) accounts lose their session immediately.
+    await supabase.auth.signOut();
+    const out = isLogin && request.nextUrl.searchParams.get("disabled") === "1" ? response : redirectTo("/login?disabled=1");
+    // The sign-out clears the auth cookies, so an open tab (this request may be a prefetch it never sees) would find "no session"
+    // and take it for a timeout. This mark says access ENDED: open tabs lock and the offline copy can't be reopened (B23, keep and
+    // lock: nothing is deleted). It can only suspend; it never grants anything.
+    const ended = accessEndedCookie(data.user.id);
+    out.cookies.set(ended.name, ended.value, { ...ended.options, secure: SECURE_COOKIES });
+    return out;
+  }
+
+  // The company this sign-in session works in comes from the database (migration 036), not from the profile's copy: a person
+  // with several companies chooses one for each sign-in, and the platform owner must pick one first. The database refuses
+  // business data without a chosen company whatever this redirect does.
+  const sessionRead = await verifiedRead(() => supabase.rpc("my_session"));
+  if (sessionRead.kind === "unavailable") return unavailable();
+  if (sessionRead.kind === "denied") return forbidden();
+  if (sessionRead.data === null) return isLogin ? response : redirectTo("/login");
+  if (!hasVerifiedSessionShape(sessionRead.data)) return unavailable();
+  const session = parseSessionInfo(sessionRead.data);
+  if (!session || session.user_id !== data.user.id) return unavailable();
+  // Migration 036 is required: the profile is never a substitute for this session's company or permissions.
+  const working = session.organization_id ? { role: session.role, secondary_role: session.secondary_role, organization_id: session.organization_id } : null;
+
+  // Verify required reads before idle side effects; defer verified MFA routing so idle expiry retains precedence.
+  let verifiedMfaTarget: string | null = null;
+  // An admin needs the second step (authenticator app) before any page: set it up the first time, then a code at each
+  // sign-in (lib/mfa-policy.ts). The API routes and the database check the same, so this is not the only gate. The
+  // platform owner always needs it, whatever REQUIRE_ADMIN_MFA says.
+  if ((adminMfaRequired() && holdsAdmin(working)) || session?.platform_admin === true) {
+    const assuranceRead = await verifiedRead(() => supabase.auth.mfa.getAuthenticatorAssuranceLevel());
+    if (assuranceRead.kind === "unavailable") return unavailable();
+    if (assuranceRead.kind === "denied") return forbidden();
+    const assurance = assuranceRead.data;
+    if (!hasVerifiedAssurance(assurance)) return unavailable();
+    if (assurance.currentLevel !== "aal2" && path !== "/mfa") verifiedMfaTarget = "/mfa";
+  }
+  // Someone another admin has just made an admin (migration 065) sets up an authenticator app before anything else, even while
+  // REQUIRE_ADMIN_MFA is off. Only to ENROL: once they have a verified factor this stops, and no code is asked for unless the switch
+  // is on. The database answers FALSE for the last admin who can still sign in normally; an unreadable answer never bypasses it.
+  if (path !== "/mfa" && session?.platform_admin !== true) {
+    const globalRequired = adminMfaRequired();
+    const admin = holdsAdmin(working);
+    if (shouldCheckEnrolment({ globalRequired, holdsAdmin: admin })) {
+      const assuranceRead = await verifiedRead(() => supabase.auth.mfa.getAuthenticatorAssuranceLevel());
+      if (assuranceRead.kind === "unavailable") return unavailable();
+      if (assuranceRead.kind === "denied") return forbidden();
+      const assurance = assuranceRead.data;
+      if (!hasVerifiedAssurance(assurance)) return unavailable();
+      if (shouldCheckEnrolment({ globalRequired, holdsAdmin: admin, currentLevel: assurance?.currentLevel, nextLevel: assurance?.nextLevel })) {
+        const enrolmentRead = await verifiedRead(() => supabase.rpc("my_mfa_enrolment_required"));
+        if (enrolmentRead.kind === "unavailable") return unavailable();
+        if (enrolmentRead.kind === "denied") return forbidden();
+        if (typeof enrolmentRead.data !== "boolean") return unavailable();
+        if (enrolmentRead.data === true) verifiedMfaTarget = `/mfa?${MFA_ENROL_PARAM}=1`;
+      }
+    }
+  }
   // A sign-in left unused for longer than the office limit ends here too (a browser reopened the next morning). The cookie is
   // refreshed on every page request, including in-app navigation; the browser also watches for idleness while a page is open
   // (lib/use-idle-sign-out.ts). Offline changes on the device are not touched by this. See lib/session-policy.ts.
@@ -134,70 +272,10 @@ export async function middleware(request: NextRequest) {
   }
   response.cookies.set(LAST_ACTIVE_COOKIE, String(Date.now()), { httpOnly: true, sameSite: "lax", secure: SECURE_COOKIES, path: "/", maxAge: 60 * 60 * 24 * 30 });
 
-  const rule = ROUTE_ROLES.find(([prefix]) => path === prefix || path.startsWith(prefix + "/"));
-  type ProfileRow = { role: string | null; secondary_role: string | null; active: boolean | null; organization_id: string | null; must_change_password?: boolean | null };
-  let { data: profile, error: profileError } = await supabase
-    .from("user_profiles")
-    .select("role, secondary_role, active, organization_id, must_change_password")
-    .eq("id", data.user.id)
-    .maybeSingle<ProfileRow>();
-  if (profileError?.code === "42703") {
-    // Migration 012 not run yet (no must_change_password column): carry on without it.
-    ({ data: profile, error: profileError } = await supabase
-      .from("user_profiles")
-      .select("role, secondary_role, active, organization_id")
-      .eq("id", data.user.id)
-      .maybeSingle<ProfileRow>());
-  }
+  // A verified expired sign-in ends before password-change or MFA routing. A valid sign-in still changes its password first.
+  if (profile.must_change_password) return redirectTo("/auth/set-password?required=1");
+  if (verifiedMfaTarget) return redirectTo(verifiedMfaTarget);
 
-  if (!profileError && !profile?.active) {
-    // Deactivated (or profile-less) accounts lose their session immediately.
-    await supabase.auth.signOut();
-    const out = isLogin && request.nextUrl.searchParams.get("disabled") === "1" ? response : redirectTo("/login?disabled=1");
-    // The sign-out clears the auth cookies, so an open tab (this request may be a prefetch it never sees) would find "no session"
-    // and take it for a timeout. This mark says access ENDED: open tabs lock and the offline copy can't be reopened (B23, keep and
-    // lock: nothing is deleted). It can only suspend; it never grants anything.
-    const ended = accessEndedCookie(data.user.id);
-    out.cookies.set(ended.name, ended.value, { ...ended.options, secure: SECURE_COOKIES });
-    return out;
-  }
-
-  // An admin set this person's password: they choose their own before anything else.
-  if (profile?.must_change_password) return redirectTo("/auth/set-password?required=1");
-
-  // The company this sign-in session works in comes from the database (migration 036), not from the profile's copy: a person
-  // with several companies chooses one for each sign-in, and the platform owner must pick one first. The database refuses
-  // business data without a chosen company whatever this redirect does.
-  let session = null as ReturnType<typeof parseSessionInfo>;
-  if (profile && !profileError) {
-    const { data: sessionData, error: sessionError } = await supabase.rpc("my_session");
-    // If the answer can't be read the page checks fall back to the profile's copy; the database still decides what data is returned.
-    session = sessionError ? null : parseSessionInfo(sessionData);
-  }
-  const working = session?.organization_id ? { role: session.role, secondary_role: session.secondary_role, organization_id: session.organization_id } : session ? null : profile;
-
-  // An admin needs the second step (authenticator app) before any page: set it up the first time, then a code at each
-  // sign-in (lib/mfa-policy.ts). The API routes and the database check the same, so this is not the only gate. The
-  // platform owner always needs it, whatever REQUIRE_ADMIN_MFA says.
-  if ((adminMfaRequired() && holdsAdmin(working)) || session?.platform_admin === true) {
-    const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (assurance?.currentLevel !== "aal2") return path === "/mfa" ? response : redirectTo("/mfa");
-  }
-  // Someone another admin has just made an admin (migration 065) sets up an authenticator app before anything else, even while
-  // REQUIRE_ADMIN_MFA is off. Only to ENROL: once they have a verified factor this stops, and no code is asked for unless the switch
-  // is on. The database answers FALSE for the last admin who can still sign in normally; any error counts as "not required" (the
-  // global gate above is unchanged).
-  if (path !== "/mfa" && session?.platform_admin !== true) {
-    const globalRequired = adminMfaRequired();
-    const admin = holdsAdmin(working);
-    if (shouldCheckEnrolment({ globalRequired, holdsAdmin: admin })) {
-      const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      if (shouldCheckEnrolment({ globalRequired, holdsAdmin: admin, currentLevel: assurance?.currentLevel, nextLevel: assurance?.nextLevel })) {
-        const { data: enrolmentRequired, error: enrolmentError } = await supabase.rpc("my_mfa_enrolment_required");
-        if (!enrolmentError && enrolmentRequired === true) return redirectTo(`/mfa?${MFA_ENROL_PARAM}=1`);
-      }
-    }
-  }
   // /mfa is also open to anyone signed in when the second step is not required (setting it up early is allowed).
   if (path === "/mfa") return response;
 
@@ -206,8 +284,12 @@ export async function middleware(request: NextRequest) {
   // Company step: the platform owner's list, or the choice between a person's own companies.
   const step = companyStepRoute(session, path);
   if (step) return redirectTo(step);
-  if (path === "/platform" || path.startsWith("/platform/") || path === "/choose-company" || path.startsWith("/choose-company/")) return response;
+  if (path === "/platform" || path.startsWith("/platform/")) return session.platform_admin ? response : forbidden();
+  if (path === "/choose-company" || path.startsWith("/choose-company/")) return session.organization_count > 0 ? response : forbidden();
 
+  if (!working || ![working.role, working.secondary_role].some((role) => role && ALL_ROLES.includes(role))) {
+    return forbidden();
+  }
   if (isRoleSelect) return response;
 
   // Per-person page access (Admin > Users > Page access). The database also refuses the data for most sections.
@@ -216,7 +298,7 @@ export async function middleware(request: NextRequest) {
 
   if (rule) {
     const roles = [working?.role, working?.secondary_role].filter(Boolean) as string[];
-    if (profileError || !roles.some((role) => rule[1].includes(role))) return redirectTo("/dashboard");
+    if (!roles.some((role) => rule[1].includes(role))) return redirectTo("/dashboard");
   }
 
   return response;

@@ -1,4 +1,5 @@
 /**
+ * Offline Synchronisation boundary: scope-owned entries -> atomic queue/hold/recovery transitions; never authorises server access.
  * Outbox: worksheet saves, Start/Finish and job photos made while offline, replayed in order when the connection is back.
  *
  * Each entry is stored under the user + company scope (lib/offline/store.ts) with the server version it was based
@@ -154,7 +155,83 @@ export const attachmentKeys = (op: OutboxOp): string[] => (op.kind === "photo" ?
 /** Where a photo's bytes live in the device store: under the scope, so they go with it. */
 export const photoBlobKey = (scope: Scope, photoId: string) => `${scopeKey(scope)}|blob:${photoId}`;
 /** `code` (photos): why it was held, when Retry must do more than send it again (see retryHeld). */
-export type HeldEntry = OutboxEntry & { reason: string; server?: unknown; heldAt: string; code?: string };
+export type HeldEntry = OutboxEntry & { reason: string; server?: unknown; heldAt: string; code?: string; afterHeldStart?: string;
+  recoveryAttempt?: { choice: "retry" | "bench"; op: StartOp | RunStartOp; uncertain: boolean } };
+export const START_MACHINE_HELD = "start_machine_unavailable";
+export const START_LEGACY_HELD = "start_legacy_needs_choice";
+/** A success response that did not confirm the requested Start; uncertainty is data, never inferred from display text. */
+export const START_UNCONFIRMED = "start_unconfirmed" as const;
+export type StartUncertaintyCode = typeof START_UNCONFIRMED | "runs_missing";
+const START_UNCERTAINTY_CODES: readonly StartUncertaintyCode[] = [START_UNCONFIRMED, "runs_missing"];
+export const isUncertainStartCode = (code: string | undefined): code is StartUncertaintyCode => START_UNCERTAINTY_CODES.some((item) => item === code);
+export const isUncertainStartOutcome = (outcome: ReplayOutcome): boolean => outcome.status === "network" ||
+  (outcome.status === "conflict" && isUncertainStartCode(outcome.code));
+export const isRecoverableStart = (entry: Pick<HeldEntry, "op" | "code">) =>
+  (entry.op.kind === "start" || entry.op.kind === "run_start") && (entry.code === START_MACHINE_HELD || entry.code === START_LEGACY_HELD || isUncertainStartCode(entry.code));
+export type StartRecoveryChoice = { kind: "retry" | "bench" } | { kind: "discard"; confirmed: boolean };
+export type StartRecoveryResult = { status: "applied" | "discarded" | "held" | "missing" | "busy" | "confirmation_required"; reason?: string };
+
+/** Called only after scope verification; the shared replay lock prevents double-clicks, tabs and background sync interleaving. */
+export async function recoverStartEntry(scope: Scope, requested: HeldEntry, choice: StartRecoveryChoice, execute: Executor, current = () => true): Promise<StartRecoveryResult> {
+  if (!choice || !["retry", "bench", "discard"].includes(choice.kind)) return { status: "held", reason: "Choose one of the explicit recovery actions." };
+  if (choice.kind === "discard" && !choice.confirmed) return { status: "confirmation_required" };
+  const locked = await withReplayLock(scope, async (): Promise<StartRecoveryResult> => {
+    const store = offlineBackend();
+    if (!store || isSupportSession() || !current()) return { status: "held", reason: "Sign in to this company before recovering this Start." };
+    const conflicts = key(scope, "conflicts"), rejected = key(scope, "rejected"), out = key(scope, "outbox");
+    const all = [...await conflictEntries(scope), ...await rejectedEntries(scope)];
+    const held = all.find((item) => item.id === requested.id && JSON.stringify(item.op) === JSON.stringify(requested.op) && isRecoverableStart(item));
+    if (!held || (held.op.kind !== "start" && held.op.kind !== "run_start")) return { status: "missing" };
+    if (held.recoveryAttempt?.uncertain && held.recoveryAttempt.choice !== choice.kind) return { status: "held", reason: "The previous recovery has no confirmed answer. Retry that same choice first; its waiting Pauses must be kept until the result is verified." };
+    const original = held.op;
+    if (choice.kind === "bench" && all.some((item) => item.afterHeldStart === held.id && (item.op.kind === "pause" || item.op.kind === "run_pause") && Boolean(item.op.machines?.length))) return { status: "held", reason: "A waiting Pause targets the original machines. Bench recovery cannot preserve that Pause unchanged; retry the same machine or discard this Start and its Pauses." };
+    let attempt = held.recoveryAttempt;
+    if (choice.kind !== "discard" && (!attempt || attempt.choice !== choice.kind)) {
+      if (choice.kind === "retry") {
+        if (original.kind === "start" && (!original.clientOpId || !Array.isArray(original.machines))) return { status: "held", reason: "This older Start has no verifiable original machine/key. Choose Start on the bench explicitly, or discard it." };
+        attempt = { choice: "retry", op: original, uncertain: true };
+      } else {
+        attempt = { choice: "bench", uncertain: true, op: { kind: "run_start", v: 2, jobRef: jobOfOp(original), jobNo: original.jobNo, at: original.at, clientOpId: newPhotoId(), machines: [], bench: true, pausedAck: [], ...(original.stage ? { stage: original.stage } : {}) } };
+      }
+    }
+    let outcome: ReplayOutcome = { status: "applied" };
+    if (choice.kind !== "discard") {
+      const savedAttempt = { ...attempt!, uncertain: true };
+      const saved = await store.transact<boolean>([conflicts, rejected], (values) => {
+        let found = false;
+        const set: Record<string, unknown> = {};
+        for (const list of [conflicts, rejected]) set[list] = listOf<HeldEntry>(values, list).map((item) => {
+          if (item.id !== held.id) return item;
+          found = true; return { ...item, recoveryAttempt: savedAttempt };
+        });
+        return { set, result: found };
+      });
+      if (!saved || !current()) return { status: "missing" };
+      try { outcome = await execute(savedAttempt.op); } catch { outcome = { status: "network" }; }
+      if (!current()) return { status: "held", reason: "The company or session changed. The Start is kept for verification." };
+      if (outcome.status !== "applied" && !(outcome.status === "conflict" && outcome.opened === true)) {
+        const reason = outcome.status === "network" ? "No confirmed response. The Start is kept; retry this same choice." : outcome.reason;
+        const uncertain = isUncertainStartOutcome(outcome);
+        await store.transact([conflicts, rejected], (values) => ({ set: Object.fromEntries([conflicts, rejected].map((list) => [list, listOf<HeldEntry>(values, list).map((item) => item.id === held.id ? { ...item, reason, recoveryAttempt: { ...savedAttempt, uncertain } } : item)])) }));
+        return { status: "held", reason };
+      }
+    }
+    // Keep the original identity and operation alongside the new bench key after successful removal, scoped and wipeable.
+    const audit = `${scopeKey(scope)}|start-recovery-audit`;
+    return store.transact<StartRecoveryResult>([conflicts, rejected, out, audit], (values) => {
+      if (![...listOf<HeldEntry>(values, conflicts), ...listOf<HeldEntry>(values, rejected)].some((item) => item.id === held.id)) return { set: {}, result: { status: "missing" } };
+      const pauses = [...listOf<HeldEntry>(values, conflicts), ...listOf<HeldEntry>(values, rejected)].filter((item) => item.afterHeldStart === held.id);
+      const remove = new Set([held.id, ...pauses.map((item) => item.id)]);
+      const set: Record<string, unknown> = Object.fromEntries([conflicts, rejected].map((list) => [list, listOf<HeldEntry>(values, list).filter((item) => !remove.has(item.id))]));
+      // A server-confirmed Start with an adjusted time still needs attention, while its Pauses can now follow it.
+      if (choice.kind !== "discard" && outcome.status === "conflict") set[conflicts] = [...set[conflicts] as HeldEntry[], { ...held, code: "time_conflict", reason: outcome.reason, server: outcome.server, recoveryAttempt: { ...attempt!, uncertain: false } }];
+      if (choice.kind !== "discard") set[out] = [...listOf<OutboxEntry>(values, out), ...pauses.map((item) => ({ id: item.id, queuedAt: item.queuedAt, op: item.op }))].sort(byCapture);
+      set[audit] = [...listOf<unknown>(values, audit), { entryId: held.id, originalQueuedAt: held.queuedAt, original: held.op, choice: choice.kind, recovered: attempt?.op ?? null, outcome: choice.kind === "discard" ? null : outcome, at: new Date().toISOString() }];
+      return { set, result: { status: choice.kind === "discard" ? "discarded" : "applied", ...(outcome.status === "conflict" ? { reason: outcome.reason } : {}) } };
+    });
+  });
+  return locked ?? { status: "busy", reason: "Another sync or recovery is running. Try again when it finishes." };
+}
 /**
  * `opened` (run_start only): whether the Start still opened what it asked for (a time conflict did; a machine taken meanwhile, or an answer
  * missing a requested run, did not). A Pause queued after a Start that opened nothing is never sent (R3.4).
@@ -201,7 +278,8 @@ export async function enqueue(scope: Scope, op: OutboxOp, now = new Date(), atta
   counter += 1;
   const entry: OutboxEntry = { id: `${now.getTime()}-${counter}-${Math.random().toString(36).slice(2, 8)}`, queuedAt: now.toISOString(), op };
   const out = key(scope, "outbox");
-  await store.transact([out, ...keys], (values) => {
+  const heldKeys = [key(scope, "conflicts"), key(scope, "rejected")];
+  await store.transact([out, ...heldKeys, ...keys], (values) => {
     // A newer save of the same worksheet replaces a queued one (same base version, latest content wins locally),
     // but never the one being sent right now: that one stays and this queues behind it.
     const queue = listOf<OutboxEntry>(values, out).filter((item) => item.inFlight || !(op.kind === "worksheet" && item.op.kind === "worksheet" && item.op.jobId === op.jobId));
@@ -215,6 +293,19 @@ export async function enqueue(scope: Scope, op: OutboxOp, now = new Date(), atta
     if (op.kind === "clock_refusal" && queue.some((item) => item.op.kind === "clock_refusal" && item.op.clientOpId === op.clientOpId)) return { set: {} };
     // The same clock action or labour Start/Stop (one client key) queued twice stays one entry.
     if (isTimeOp(op) && queue.some((item) => isTimeOp(item.op) && item.op.clientOpId === op.clientOpId)) return { set: {} };
+    // A late Pause is still owned by its held Start, including across tabs. Never leave it orphaned in the queue.
+    if (op.kind === "pause" || op.kind === "run_pause") {
+      const held = heldKeys.flatMap((k) => listOf<HeldEntry>(values, k));
+      if (held.some((item) => (item.op.kind === "pause" || item.op.kind === "run_pause") && item.op.clientOpId === op.clientOpId)) return { set: {} };
+      const starts = [...queue.filter((item) => item.op.kind === "start" || item.op.kind === "run_start"), ...held.filter(isRecoverableStart)].filter((item) => jobOfOp(item.op) === jobOfOp(op)).sort(byCapture);
+      const parent = starts.at(-1);
+      if (parent && held.some((item) => item.id === parent.id) && (parent.op.kind === "start" || parent.op.kind === "run_start")) {
+        if (op.kind === "run_pause") entry.op = { ...op, afterStart: parent.op.clientOpId ?? null };
+        const waiting: HeldEntry = { ...entry, heldAt: new Date().toISOString(), code: START_REFUSED, afterHeldStart: parent.id,
+          reason: parent.op.kind === "run_start" ? startRefusedReason(parent.op, machineNamer) : `Not sent: the Start before it (${parent.op.jobNo}) was not accepted.` };
+        return { set: { [key(scope, "rejected")]: [...listOf<HeldEntry>(values, key(scope, "rejected")), waiting] } };
+      }
+    }
     // A Pause belongs to the job's latest Start still waiting here (R3.4 capture rule), read in this same atomic step.
     if (op.kind === "run_pause") {
       const starts = queue.filter((item) => item.op.kind === "run_start" && item.op.jobRef === op.jobRef);
@@ -353,6 +444,8 @@ async function drain(scope: Scope, execute: Executor, now: () => Date) {
   const rejectedKey = key(scope, "rejected");
   // Jobs whose entry was blocked in this pass: their later entries wait for the next pass (a Pause never overtakes its Start).
   const skipped = new Set<string>();
+  // A held Start can only be recovered explicitly. Later work for that job cannot overtake it in another pass.
+  for (const item of [...await conflictEntries(scope), ...await rejectedEntries(scope)]) if (isRecoverableStart(item)) skipped.add(jobOfOp(item.op));
   for (;;) {
     // Claim the oldest entry of a job not skipped in this pass: mark it in flight in the same step that reads it.
     const next = await store.transact<OutboxEntry | undefined>([out], (values) => {
@@ -393,7 +486,8 @@ async function drain(scope: Scope, execute: Executor, now: () => Date) {
     const owned = settled.status === "applied" ? attachmentKeys(next.op) : [];
     // R3.4: a Start that opened nothing takes the Pauses captured after it out of the queue (held as start_refused, never sent).
     const sent = next.op;
-    const startOpenedNothing = sent.kind === "run_start" && (settled.status === "rejected" || (settled.status === "conflict" && settled.opened === false));
+    const recoveryStart = (sent.kind === "start" || sent.kind === "run_start") && settled.status !== "applied" && isRecoverableStart({ op: sent, code: settled.code });
+    const startOpenedNothing = recoveryStart || (sent.kind === "run_start" && (settled.status === "rejected" || (settled.status === "conflict" && settled.opened === false)));
     const keys = [out, ...(held ? [held] : []), ...(startOpenedNothing && held !== rejectedKey ? [rejectedKey] : []), ...owned];
     // Remove it and file it (conflicts / rejected) in one step: it is never in both lists, or in neither.
     const moved = await store.transact<number>(keys, (values) => {
@@ -412,17 +506,23 @@ async function drain(scope: Scope, execute: Executor, now: () => Date) {
       } else if (held) {
         const entry: OutboxEntry = { id: next.id, queuedAt: next.queuedAt, op: next.op };
         const code = settled.status === "rejected" || settled.status === "conflict" ? settled.code : undefined;
-        set[held] = [...listOf<HeldEntry>(values, held), { ...entry, reason: settled.reason, server: settled.status === "conflict" ? settled.server : undefined, heldAt: now().toISOString(), ...(code ? { code } : {}) }];
+        set[held] = [...listOf<HeldEntry>(values, held), { ...entry, reason: settled.reason, server: settled.status === "conflict" ? settled.server : undefined, heldAt: now().toISOString(), ...(code ? { code } : {}),
+          ...(isUncertainStartCode(code) && (sent.kind === "start" || sent.kind === "run_start") ? { recoveryAttempt: { choice: "retry" as const, op: sent, uncertain: true } } : {}) }];
       }
       let dropped = 0;
-      if (startOpenedNothing && sent.kind === "run_start") {
-        const pauses = queue.filter((item) => item.op.kind === "run_pause" && item.op.afterStart === sent.clientOpId);
+      if (startOpenedNothing && (sent.kind === "run_start" || sent.kind === "start")) {
+        let nextStart = false;
+        const pauses = recoveryStart ? queue.filter((item) => {
+          if (jobOfOp(item.op) !== jobOfOp(sent)) return false;
+          if (item.op.kind === "start" || item.op.kind === "run_start") { nextStart = true; return false; }
+          return !nextStart && (item.op.kind === "pause" || (item.op.kind === "run_pause" && (sent.kind === "start" || item.op.afterStart === sent.clientOpId)));
+        }) : queue.filter((item) => item.op.kind === "run_pause" && item.op.afterStart === sent.clientOpId);
         if (pauses.length) {
           dropped = pauses.length;
           queue = queue.filter((item) => !pauses.includes(item));
           const heldAt = now().toISOString();
           const base = (set[rejectedKey] as HeldEntry[] | undefined) ?? listOf<HeldEntry>(values, rejectedKey);
-          set[rejectedKey] = [...base, ...pauses.map((item): HeldEntry => ({ id: item.id, queuedAt: item.queuedAt, op: item.op, reason: startRefusedReason(sent, machineNamer), heldAt, code: START_REFUSED }))];
+          set[rejectedKey] = [...base, ...pauses.map((item): HeldEntry => ({ id: item.id, queuedAt: item.queuedAt, op: item.op, reason: sent.kind === "run_start" ? startRefusedReason(sent, machineNamer) : `Not sent: the Start before it (${sent.jobNo}) was not accepted.`, heldAt, code: START_REFUSED, ...(recoveryStart ? { afterHeldStart: next.id } : {}) }))];
         }
       }
       set[out] = queue;
@@ -432,6 +532,7 @@ async function drain(scope: Scope, execute: Executor, now: () => Date) {
     else if (settled.status === "rejected") result.rejected += 1;
     else result.applied += 1;
     result.rejected += moved;
+    if (recoveryStart) skipped.add(jobOfOp(sent));
   }
   result.remaining = (await pendingEntries(scope)).length;
   return result;

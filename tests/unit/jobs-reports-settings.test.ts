@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 
 import { nextHiddenNav } from "@/components/jobs/jobs-reports-settings-card";
+import { REPORTS_ON_MARKER, reportsEnabled, reportsSwitchChange } from "@/lib/reports/reports-switch";
 import { NCR_REGISTER_ON_MARKER, ncrRegisterEnabled, ncrRegisterSwitchChange } from "@/lib/jobs/ncr-register-switch";
 import { JOB_TIME_VARIANCE_ON_MARKER, plannedVsActualEnabled, plannedVsActualSwitchChange } from "@/lib/jobs/planned-vs-actual-switch";
 
@@ -39,5 +40,13 @@ describe("Job reports switches leave other hidden_nav entries unchanged", () => 
     expect(nextHiddenNav(input, ncrRegisterSwitchChange(true))).toEqual(input);
     expect(input).toEqual([...others, NCR_REGISTER_ON_MARKER]);
     expect(nextHiddenNav([], plannedVsActualSwitchChange(false))).toEqual([]);
+  });
+
+  it("Reports switch is off by default, on then off, and keeps the plain \"reports\" hidden key and other markers", () => {
+    expect(reportsEnabled(others)).toBe(false);
+    const on = nextHiddenNav(others, reportsSwitchChange(true));
+    expect(on).toEqual([...others, REPORTS_ON_MARKER]);
+    expect(reportsEnabled(on)).toBe(true);
+    expect(nextHiddenNav(on, reportsSwitchChange(false))).toEqual(others);
   });
 });

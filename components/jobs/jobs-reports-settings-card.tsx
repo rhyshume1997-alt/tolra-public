@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Settings card "Job reports": two admin-only switches, both OFF by default, for planned vs actual machine time on job worksheets
- * and the NCR register. No database change: each switch adds or removes its marker in the company's organization_settings.hidden_nav
+ * Settings card "Job reports": three admin-only switches, all OFF by default, for planned vs actual machine time on job worksheets,
+ * the NCR register and the operations Reports page (lib/reports/reports-switch.ts). No database change: each switch adds or removes its marker in the company's organization_settings.hidden_nav
  * (lib/jobs/planned-vs-actual-switch.ts, lib/jobs/ncr-register-switch.ts), saved through saveOrgSettings in lib/org-settings.ts.
  *
  * Inputs: the cached company settings (useOrgSettings) and the signed-in role. Outputs: a hidden_nav save; a refused save shows an
@@ -17,6 +17,7 @@ import { FileBarChart } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ncrRegisterEnabled, ncrRegisterSwitchChange } from "@/lib/jobs/ncr-register-switch";
 import { plannedVsActualEnabled, plannedVsActualSwitchChange } from "@/lib/jobs/planned-vs-actual-switch";
+import { reportsEnabled, reportsSwitchChange } from "@/lib/reports/reports-switch";
 import { getOrgSettingsSnapshot, saveOrgSettings, useOrgSettings } from "@/lib/org-settings";
 import { useUser } from "@/lib/use-user";
 
@@ -61,13 +62,14 @@ export function JobsReportsSettingsCard() {
   const rows = [
     { label: "Planned vs actual machine time on job worksheets", on: plannedVsActualEnabled(settings.hiddenNav), changeFor: plannedVsActualSwitchChange },
     { label: "NCR register", on: ncrRegisterEnabled(settings.hiddenNav), changeFor: ncrRegisterSwitchChange },
+    { label: "Reports page", on: reportsEnabled(settings.hiddenNav), changeFor: reportsSwitchChange },
   ];
 
   return (
     <Card>
       <CardHeader><CardTitle className="flex items-center gap-2"><FileBarChart className="size-5 text-brand-accent" /> Job reports</CardTitle></CardHeader>
       <CardContent className="space-y-3 text-sm">
-        <p className="text-slate-600 dark:text-slate-300">Both are off until you switch them on. They only read records Tolra already keeps, and are shown to admin and office.</p>
+        <p className="text-slate-600 dark:text-slate-300">All are off until you switch them on. They only read records Tolra already keeps, and are shown to admin and office.</p>
         {rows.map((row) => (
           <div key={row.label} className="flex items-center justify-between gap-3 rounded-lg border p-3">
             <span className="font-medium text-slate-800">{row.label}</span>

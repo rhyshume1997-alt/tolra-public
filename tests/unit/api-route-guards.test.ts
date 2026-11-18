@@ -61,6 +61,10 @@ const PUBLIC_ROUTES: Record<string, string> = {
   "integrations/xero/return:GET": "Reached only by ./callback passing on a return with a SIGNED app_test state (HMAC with the server key, 10 minutes, single use via the rate limiter); the same signed-in platform owner must still hold the second step. The code is exchanged and dropped: nothing is stored. Anything unsigned gets a fixed redirect.",
   "integrations/invite/callback:GET": "Xero's return for a connect link: only a state a link started in the last 10 minutes (integration_oauth_consume_invite: single use, invite states only) completes that link's company, as its admin; a fixed page, nothing else.",
   "pwa-icon:GET": "The product's app icon drawn at the requested size (route.tsx); a fixed image, no company data, no database.",
+  // Customer portal (module 10): visitors are not staff and have no Tolra login; each route checks the flag, same origin and a per-IP limit (fails closed) first.
+  "portal/signin/request:POST": "Portal sign-in request: flag, same-origin, per-IP limit; always the same 303 to the 'sent' page whether or not the e-mail is a contact; the e-mail is sent after the response and never returned.",
+  "portal/signin/verify:POST": "Portal code check: flag, same-origin, per-IP limit; hashed ref and code to the database; success sets the httpOnly portal cookie, every refusal is one identical 303 carrying only a correlation id.",
+  "portal/signout:POST": "Portal sign-out: flag, same-origin, per-IP limit; ends only the session named by the caller's own portal cookie (token hash) and clears that cookie; same 303 whatever happened.",
 };
 
 type Finding = { route: string; method: string; ok: boolean; reason: string };
