@@ -13,10 +13,14 @@
  *
  * Settlement contract (see server.ts): any failure where the provider may have worked but we have no trustworthy usage (no body, oversize
  * body, unparseable envelope, missing/partial usage, network/abort after send) is "unavailable" with rejectedBeforeWork false (settled at the
- * full reservation). "invalid"/"refused" are thrown ONLY with real usage attached. 400/401/403/404/413/429 are rejectedBeforeWork true.
+ * full reservation). "invalid"/"refused" are thrown ONLY with real usage attached. 400/401/403/404/413 are rejectedBeforeWork true.
+ * 429 is NOT: xAI's docs say only that exceeding a limit returns 429 and do not say whether such a request is ever billed or partly
+ * processed, so it is "unavailable" with detail "rate" and rejectedBeforeWork false (settled at the full reservation) until confirmed.
  * Implements the AI-1 adapter contract (lib/ai-helper/provider.ts, ADAPTER CONTRACT; checked by tests/support/ai-provider-contract.ts).
  * No cost is computed here: cost comes only from the AI-1 fail-closed GBP pricing path, never from this file.
- * Usage: outputTokens = completion_tokens, as reported (assumed to include reasoning tokens; confirm from xAI's docs with the model list).
+ * Usage: outputTokens = completion_tokens, as reported. UNVERIFIED whether xAI's completion_tokens includes reasoning tokens (its docs
+ * show reasoning tokens as a separate figure); confirm with the model list before any model is allow-listed, as under-counting would
+ * under-bill.
  */
 import "server-only";
 
@@ -25,8 +29,8 @@ import { type AiCompletion, type AiCompletionRequest, AiProviderError, type AiUs
 const URL_CHAT = "https://api.x.ai/v1/chat/completions";
 /** Response body byte cap, enforced while reading (before JSON.parse). Over it: "unavailable", not rejected (possibly billed, usage unknown: settled in full). */
 const MAX_BODY_BYTES = 256 * 1024;
-/** The provider certainly refused before any work (nothing billed): bad request, key, permission, not found, too large, rate. */
-const REJECTED_BEFORE_WORK = new Set([400, 401, 403, 404, 413, 429]);
+/** The provider certainly refused before any work (nothing billed): bad request, key, permission, not found, too large. Not 429 (see the header). */
+const REJECTED_BEFORE_WORK = new Set([400, 401, 403, 404, 413]);
 
 export type XaiModelSpec = { outputLimitParam: "max_completion_tokens" | "max_tokens"; structured: "json_schema" | "json_object" };
 /** Allow-list of models. EMPTY until Rhys/PM confirm entries from xAI's official docs. */

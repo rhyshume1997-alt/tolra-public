@@ -1,7 +1,7 @@
 /**
  * BOUNDARY (Integrations module, AI-3): the shared adapter contract (tests/support/ai-provider-contract.ts) run against the dormant
  * xAI adapter, xaiProvider(fake fetch, test-only allow-list). No network, dummy key only. Inputs: scenarios encoded as xAI Chat
- * Completions bodies. Must not change without review: no exemptions; the shipped allow-list stays empty (that is not touched here).
+ * Completions bodies. Must not change without review: one exemption (status_429, reason given in the harness: not confirmed unbilled); the shipped allow-list stays empty (that is not touched here).
  */
 import { describe, expect, it, vi } from "vitest";
 
@@ -33,6 +33,7 @@ runAiProviderContract(fetchHarness({
   credentialFromHeader: (v) => v.replace(/^Bearer /, ""),
   make: (f) => xaiProvider(f, ALLOW),
   encode,
+  exemptions: { status_429: "xAI's docs do not say a 429 request is never billed, so it is not classed rejectedBeforeWork; asserted by the explicit 429 test below" },
   readRequest: (raw) => {
     const b = raw as { model: string; max_completion_tokens: number; messages: { role: string; content: string }[]; response_format: { json_schema: { schema: unknown } }; tools?: unknown };
     return {
@@ -55,5 +56,15 @@ describe("xai adapter shipped defaults", () => {
     expect(e).toBeInstanceOf(AiProviderError);
     expect(e).toMatchObject({ kind: "unavailable", rejectedBeforeWork: true });
     expect(f).not.toHaveBeenCalled();
+  });
+});
+
+describe("xai 429", () => {
+  it("is unavailable with detail rate and NOT rejectedBeforeWork (not confirmed unbilled; settles at the full reservation)", async () => {
+    const f = vi.fn(async () => new Response("slow down", { status: 429 }));
+    const e = await xaiProvider(f as never, { [MODEL]: { outputLimitParam: "max_completion_tokens", structured: "json_schema" } }).complete(contractRequest(MODEL)).catch((x: unknown) => x);
+    expect(e).toBeInstanceOf(AiProviderError);
+    expect(e).toMatchObject({ kind: "unavailable", detail: "rate", rejectedBeforeWork: false });
+    expect(f).toHaveBeenCalledTimes(1);
   });
 });
