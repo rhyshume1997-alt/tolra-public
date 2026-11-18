@@ -57,12 +57,12 @@ beforeEach(() => {
   setOfflineBackend(memoryBackend(new Map()));
 });
 
-it("a keyless (pre-044) Start sent again after its answer was lost is applied once, not held as a conflict", async () => {
+it("a keyless (pre-044) Start is held repeatedly without a direct write or false success", async () => {
   const op: OutboxOp = { kind: "start", jobId: "job-1", jobNo: "J-1", at };
-  expect(await executeOutboxOp(op)).toEqual({ status: "applied" });
-  expect(await executeOutboxOp(op)).toEqual({ status: "applied" });
-  expect(db.writes).toHaveLength(1);
-  expect(db.jobs.get("job-1")!.started_at).toBe(at);
+  expect(await executeOutboxOp(op)).toMatchObject({ status: "conflict", code: "start_legacy_needs_choice" });
+  expect(await executeOutboxOp(op)).toMatchObject({ status: "conflict", code: "start_legacy_needs_choice" });
+  expect(db.writes).toHaveLength(0);
+  expect(db.jobs.get("job-1")!.started_at).toBeNull();
 });
 
 it("a keyless Start still yields to someone else's earlier Start (their time kept, held as a conflict)", async () => {
@@ -80,18 +80,22 @@ it("a keyless (pre-044) Finish sent again is applied once (finish_job only fills
   expect(db.writes).toEqual(["finish job-1"]);
 });
 
-it("queued tablet data from an older build replays exactly once through the outbox, op unchanged, after a pass that lost its answer", async () => {
+it("an older Start stays held and preserves later work until an explicit recovery succeeds", async () => {
   await enqueue(scope, { kind: "start", jobId: "job-1", jobNo: "J-1", at });
   await enqueue(scope, { kind: "finish", jobId: "job-1", jobNo: "J-1", at: "2026-10-09T09:00:00.000Z" });
-  // First pass: the Start reaches the server but its answer is lost (the entry stays queued, as after a closed tab).
-  await replayOutbox(scope, async (op) => { await executeOutboxOp(op); return { status: "network" }; });
-  expect((await pendingEntries(scope)).map((e) => e.op)).toEqual([
-    { kind: "start", jobId: "job-1", jobNo: "J-1", at },
-    { kind: "finish", jobId: "job-1", jobNo: "J-1", at: "2026-10-09T09:00:00.000Z" },
-  ]);
+  await replayOutbox(scope, async () => ({ status: "network" }));
+  expect((await pendingEntries(scope)).map((e) => e.op.kind)).toEqual(["start", "finish"]);
   const result = await replayOutbox(scope, executeOutboxOp);
-  expect(result).toMatchObject({ applied: 2, conflicts: 0, rejected: 0, remaining: 0 });
+  expect(result).toMatchObject({ applied: 0, conflicts: 1, remaining: 1 });
+  const [held] = await conflictEntries(scope);
+  expect(held).toMatchObject({ code: "start_legacy_needs_choice", op: { kind: "start", at } });
+  const { recoverStartEntry } = await import("@/lib/offline/outbox");
+  expect(await recoverStartEntry(scope, held, { kind: "bench" }, async (op) => {
+    expect(op).toMatchObject({ kind: "run_start", machines: [], bench: true });
+    return { status: "applied" };
+  })).toEqual({ status: "applied" });
+  expect(await replayOutbox(scope, executeOutboxOp)).toMatchObject({ applied: 1, remaining: 0 });
   expect(await conflictEntries(scope)).toEqual([]);
-  expect(db.writes.filter((w) => w.startsWith("update"))).toHaveLength(1);
+  expect(db.writes.filter((w) => w.startsWith("update"))).toHaveLength(0);
   expect(db.writes.filter((w) => w.startsWith("finish"))).toHaveLength(1);
 });

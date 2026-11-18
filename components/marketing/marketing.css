@@ -552,3 +552,496 @@ details[open] > summary .mk-plus {
   border-color: var(--mk-ink);
   color: var(--mk-ink);
 }
+
+/*
+ * "The Tolra Machine" (components/marketing/gear-workflow.tsx), in "How Tolra handles it". Everything is scoped under .gw.
+ * The machine housing is the one dark, lit object on the paper sheet: a window into the mechanism. Steel shading lives in the SVG;
+ * this block styles the housing, the touch targets, the stage selector and the information panel. Motion: the gears turn only on a
+ * selection (script), the panel eases in, and both stop under prefers-reduced-motion.
+ */
+.gw {
+  --gw-steel: #a9b2bd;
+  --gw-plate: #0e1a2e;
+  --gw-plate-2: #142440;
+  --gw-signal: #4f8dff;
+  display: grid;
+  gap: 1rem;
+}
+.gw-machine {
+  position: relative;
+  padding: clamp(14px, 2.4vw, 28px) clamp(10px, 2vw, 28px) clamp(16px, 2.4vw, 28px);
+  border: 1px solid var(--mk-ink);
+  border-radius: 6px;
+  background-color: var(--gw-plate);
+  background-image:
+    linear-gradient(180deg, var(--gw-plate-2), var(--gw-plate) 60%),
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 0.018) 0 1px, transparent 1px 3px);
+  background-blend-mode: normal, overlay;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), inset 0 0 0 6px rgb(0 0 0 / 0.18);
+  overflow: hidden;
+  isolation: isolate;
+}
+.gw-machine::before {
+  /* A fine engineering grid etched into the back plate. */
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M0 .5H40M.5 0V40' fill='none' stroke='%23adcdff' stroke-opacity='.07'/%3E%3C/svg%3E");
+  background-size: 10mm 10mm;
+}
+.gw-screw {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #e7ebf0, #8a939e 55%, #4a525c);
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.5);
+}
+.gw-screw::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  top: 6px;
+  height: 2px;
+  background: #3c444e;
+  transform: rotate(-35deg);
+}
+.gw-screw-tl { top: 10px; left: 10px; }
+.gw-screw-tr { top: 10px; right: 10px; }
+.gw-screw-bl { bottom: 10px; left: 10px; }
+.gw-screw-br { bottom: 10px; right: 10px; }
+.gw-plate-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0 30px 0.25rem;
+}
+@media (max-width: 639px) {
+  .gw-plate-head .gw-plate-label:first-child { display: none; }
+  .gw-plate-head { justify-content: flex-end; }
+}
+.gw-plate-label { color: #9fb0cc; }
+
+.gw-assembly { position: relative; width: 100%; }
+.gw-svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.gw-compact { display: none; }
+@media (max-width: 899px) {
+  .gw-wide { display: none; }
+  .gw-compact { display: block; margin-top: 0.25rem; }
+}
+
+/* Gear states: the ring and hub cap carry the selection; steel stays steel. */
+.gw-ring { fill: none; stroke: transparent; stroke-width: 2; }
+.gw-hot .gw-ring { stroke: rgb(255 255 255 / 0.35); stroke-dasharray: 3 5; }
+.gw-on .gw-ring { stroke: var(--gw-signal); stroke-dasharray: none; stroke-width: 2.5; }
+.gw-cap { fill: #0f1a2c; stroke: #c5ccd5; stroke-opacity: 0.6; stroke-width: 0.8; }
+.gw-on .gw-cap { fill: #1e3fa0; stroke: #dbe6ff; stroke-opacity: 0.9; }
+.gw-num { fill: #dfe6f0; font-family: var(--mk-font-mono), "IBM Plex Mono", ui-monospace, monospace; font-weight: 500; letter-spacing: 0.02em; }
+.gw-lab-op { fill: #8a9bb8; font-family: var(--mk-font-mono), "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; letter-spacing: 0.12em; }
+.gw-lab-name { fill: #c6d1e3; font-family: var(--mk-font-display), "Barlow Condensed", "Arial Narrow", sans-serif; font-weight: 600; font-size: 17px; letter-spacing: 0.06em; }
+.gw-lab-on .gw-lab-op { fill: #a9c4ff; }
+.gw-lab-on .gw-lab-name { fill: #ffffff; }
+
+/* Touch targets over each gear: invisible, but they take the pointer and show the focus ring. */
+.gw-hits { position: absolute; inset: 0; }
+.gw-hit {
+  position: absolute;
+  aspect-ratio: 1;
+  min-width: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.gw-hit:focus-visible { outline: 3px solid var(--gw-signal); outline-offset: 4px; }
+
+/* Stage selector (phones): every stage by name, one tap away. */
+.gw-chips { display: none; }
+@media (max-width: 899px) {
+  .gw-chips {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: var(--mk-box);
+    margin: 0 calc(var(--mk-box) * -1);
+    padding: 2px var(--mk-box) 6px;
+    scrollbar-width: none;
+  }
+  .gw-chips::-webkit-scrollbar { display: none; }
+}
+.gw-chip {
+  flex: none;
+  scroll-snap-align: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0 0.9rem;
+  border: 1px solid var(--mk-ink);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--mk-ink);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  cursor: pointer;
+}
+.gw-chip-n { font-size: 0.8125rem; color: var(--mk-ink-2); }
+.gw-chip[aria-checked="true"] { background: var(--mk-ink); color: #fff; }
+.gw-chip[aria-checked="true"] .gw-chip-n { color: #c7d6f2; }
+.gw-chip:focus-visible { outline: 2px solid var(--mk-signal); outline-offset: 3px; }
+
+/* The information panel: what happens at the selected stage. */
+.gw-panel {
+  display: grid;
+  gap: 1.25rem 2.5rem;
+  border: 1px solid var(--mk-ink);
+  background: #fff;
+  padding: clamp(1rem, 2.4vw, 1.75rem);
+}
+@media (min-width: 900px) {
+  .gw-panel { grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); }
+  .gw-nav { grid-column: 1 / -1; }
+}
+.gw-title { margin-top: 0.4rem; font-size: clamp(1.75rem, 3vw, 2.25rem); text-transform: uppercase; }
+.gw-caption { margin-top: 0.6rem; font-size: 1.0625rem; max-width: 56ch; }
+.gw-fixes { margin-top: 1rem; display: inline-flex; gap: 0.6rem; align-items: baseline; border: 1px dashed var(--mk-ink); padding: 0.35rem 0.7rem; }
+.gw-details { display: grid; gap: 0.5rem; padding: 0; margin: 0; list-style: none; }
+.gw-details li { position: relative; padding-left: 1.25rem; color: var(--mk-ink-2); font-size: 0.96875rem; }
+.gw-details li::before { content: ""; position: absolute; left: 0; top: 0.62em; width: 8px; height: 8px; border: 1.5px solid var(--mk-ink); transform: rotate(45deg); }
+.gw-record-label { margin-top: 1rem; }
+.gw-record { margin: 0.4rem 0 0; border-top: 1px solid var(--mk-rule-soft); font-size: 0.875rem; }
+.gw-record div { display: flex; justify-content: space-between; gap: 1rem; padding: 0.35rem 0; border-bottom: 1px solid var(--mk-rule-soft); }
+.gw-record dt { color: var(--mk-ink-2); }
+.gw-record dd { margin: 0; text-align: right; font-weight: 500; }
+.gw-nav { display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-top: 1px solid var(--mk-rule-soft); padding-top: 1rem; }
+.gw-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0 1rem;
+  border: 1px solid var(--mk-ink);
+  background: #fff;
+  color: var(--mk-ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+.gw-step:hover:not(:disabled) { background: var(--mk-signal-wash); }
+.gw-step:disabled { opacity: 0.4; cursor: default; }
+.gw-step:focus-visible { outline: 2px solid var(--mk-signal); outline-offset: 3px; }
+.gw-arrow { flex: none; }
+.gw-progress { display: flex; gap: 4px; }
+.gw-tick { width: 18px; height: 3px; background: var(--mk-rule-soft); }
+.gw-tick-on { background: var(--mk-ink); }
+@media (max-width: 479px) {
+  .gw-progress { display: none; }
+  .gw-step { padding: 0 0.75rem; }
+}
+/* All seven stages share one cell; the selected one shows. The cell is as tall as the tallest stage, so nothing jumps. */
+.gw-stack { display: grid; }
+.gw-slide { grid-area: 1 / 1; visibility: hidden; }
+.gw-slide-on { visibility: visible; }
+/* On phones and tablets the panel sits under the gears in one column, so reserving the tallest stage leaves big gaps: let it fit the selected stage. */
+@media (max-width: 899px) { .gw-slide:not(.gw-slide-on) { display: none; } }
+@media (prefers-reduced-motion: no-preference) {
+  .gw-slide-on { animation: gw-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .gw-ring { transition: stroke 150ms ease; }
+}
+@keyframes gw-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* The Tolra Machine, part 2: the stage mark on each hub, and the viewer that opens beside the selected gear. */
+.gw-mark { fill: none; stroke: #dfe6f0; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.gw-on .gw-mark { stroke: #ffffff; }
+
+/* Wide screens: the machine bay holds the gears and, beside them, the viewer for the selected gear. A pointer on the viewer's edge
+   sits level with that gear (--gw-notch, set by the component). Below 1100px the viewer moves under the machine (.gw-mview). */
+.gw-side { display: none; }
+@media (min-width: 1100px) {
+  .gw-bay { display: grid; grid-template-columns: minmax(0, 65fr) minmax(0, 35fr); gap: 22px; align-items: center; container-type: inline-size; }
+  .gw-side { position: relative; align-self: stretch; display: grid; align-items: center; padding-left: 4px; }
+  .gw-side::before { content: ""; position: absolute; left: -9px; top: var(--gw-notch, 50%); width: 14px; height: 14px; margin-top: -7px; transform: rotate(45deg); background: var(--gw-signal); }
+  .gw-wide .gw-lab-op { font-size: 13px; }
+  .gw-wide .gw-lab-name { font-size: 19px; }
+}
+.gw-view { pointer-events: auto; }
+.gw-view {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.7rem 0.75rem 0.6rem;
+  border: 1px solid rgb(255 255 255 / 0.16);
+  border-radius: 10px;
+  background: rgb(9 18 33 / 0.94);
+  box-shadow: 0 24px 50px -18px rgb(0 0 0 / 0.75);
+  color: #dfe6f0;
+}
+.gw-view-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.gw-view-op { color: #c6d1e3; }
+.gw-view-open:focus-visible, .gw-mview-open:focus-visible { outline: 3px solid var(--gw-signal); outline-offset: 3px; }
+.gw-view-open, .gw-mview-open { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; text-align: left; }
+.gw-view-foot { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.gw-view-foot .mk-label { min-width: 0; }
+.gw-view-link { flex: none; white-space: nowrap; }
+.gw-view .gw-view-foot .mk-label { color: #9fb0cc; }
+.gw-view .gw-view-link { color: #dfe6f0; background: none; border: 0; padding: 0; font: inherit; font-size: 0.875rem; font-weight: 600; cursor: pointer; min-height: 32px; }
+
+/* A document reads as a sheet of paper; a screen as an app window. */
+.gw-paper { background: #fff; border: 1px solid #d6dbe2; box-shadow: 0 1px 0 #fff inset, 0 14px 28px -14px rgb(0 0 0 / 0.55); }
+.gw-paper .gw-shot { position: relative; aspect-ratio: 4 / 3.2; overflow: hidden; }
+.gw-paper .gw-shot img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; }
+.gw-paper .gw-shot::after { content: ""; position: absolute; inset: auto 0 0; height: 18%; background: linear-gradient(rgb(255 255 255 / 0), #fff); }
+.gw-window { overflow: hidden; border: 1px solid #2b3850; border-radius: 8px; background: #f5f6f8; box-shadow: 0 14px 28px -14px rgb(0 0 0 / 0.55); }
+.gw-window-bar { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.7rem; background: #17233a; color: #b9c6dc; font-size: 0.6875rem; letter-spacing: 0.04em; }
+.gw-window-dot { width: 7px; height: 7px; border-radius: 50%; background: #3ccf7a; }
+.gw-window .gw-shot img { display: block; width: 100%; height: auto; }
+
+/* Beside the gears every stage gets the same frame, paper or window, so the machine never changes height between stages. */
+.gw-side .gw-view-open { aspect-ratio: 4 / 3.2; }
+.gw-side .gw-paper, .gw-side .gw-window { height: 100%; }
+.gw-side .gw-paper .gw-shot { aspect-ratio: auto; height: 100%; }
+.gw-side .gw-window { display: grid; grid-template-rows: auto minmax(0, 1fr); }
+.gw-side .gw-window .gw-shot { display: grid; place-items: center; min-height: 0; }
+.gw-side .gw-window .gw-shot img { width: 100%; height: 100%; object-fit: contain; }
+
+/* Below 1100px: the image above the details, in a fixed frame so the page below never moves. */
+.gw-mview { display: none; }
+@media (max-width: 1099px) {
+  .gw-mview { display: grid; gap: 0.5rem; }
+  .gw-mview .gw-shot { aspect-ratio: 4 / 3; }
+  .gw-mview .gw-window .gw-shot { display: grid; place-items: center; background: #f5f6f8; }
+  .gw-mview .gw-window .gw-shot img { width: 100%; height: 100%; object-fit: contain; }
+  .gw-mview .gw-view-link { color: var(--mk-ink); background: none; border: 0; padding: 0; font: inherit; font-weight: 600; min-height: 44px; cursor: pointer; }
+}
+
+/* Full size, on request. */
+.gw-dialog { width: min(96vw, 1180px); max-height: 92vh; padding: 0; border: 1px solid var(--mk-ink); background: #fff; box-shadow: 0 24px 60px -20px rgb(11 22 38 / 0.45); }
+.gw-dialog::backdrop { background: rgb(5 25 58 / 0.72); }
+.gw-dialog-bar { position: sticky; top: 0; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.5rem 0.75rem; background: #fff; border-bottom: 1px solid var(--mk-rule-soft); }
+.gw-dialog-body { overflow: auto; max-height: calc(92vh - 60px); background: #eef1f5; padding: 1rem; }
+.gw-dialog-body img { display: block; width: 100%; max-width: 1100px; height: auto; margin: 0 auto; background: #fff; box-shadow: 0 10px 30px -14px rgb(11 22 38 / 0.4); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .gw-side .gw-view { animation: gw-open-r 420ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .gw-side::before { transition: top 450ms cubic-bezier(0.16, 1, 0.3, 1); }
+}
+@keyframes gw-open-r { from { clip-path: inset(0 100% 0 0); opacity: 0.6; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
+
+/* Version B: the 3D machine (?gears=3d, components/marketing/gear-workflow-3d.tsx). The slot has a fixed shape, so nothing below
+   it moves while the 3D loads; the labels over the canvas are plain HTML so they stay sharp and readable. */
+.gw3-slot {
+  position: relative;
+  aspect-ratio: 1.8 / 1;
+  border: 1px solid var(--mk-ink);
+  border-radius: 6px;
+  overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 35%, #1a2a44 0%, #0d1828 55%, #070e19 100%);
+  isolation: isolate;
+}
+@media (min-width: 900px) and (max-width: 1099px) { .gw3-slot { aspect-ratio: 1.5 / 1; } }
+@media (max-width: 899px) { .gw3-slot { aspect-ratio: 1.05 / 1; } }
+/* Phones: a taller machine, so the screen that stands up over it has room to show its picture. */
+@media (max-width: 599px) { .gw3-slot { aspect-ratio: 0.8 / 1; } }
+.gw3 { position: absolute; inset: 0; }
+.gw3-canvas { display: block; width: 100%; height: 100%; touch-action: pan-y; opacity: 0; transition: opacity 350ms ease; }
+.gw3[data-ready] .gw3-canvas { opacity: 1; }
+/* The still of the machine: shown at once (server rendered), faded out once the live scene has drawn its first frame. */
+.gw3-poster { position: absolute; inset: 0; transition: opacity 350ms ease; }
+.gw3-poster img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.gw3-poster-square { display: none; }
+@media (max-width: 899px) {
+  .gw3-poster-wide { display: none; }
+  .gw3-poster-square { display: block; }
+}
+.gw3-slot:has(.gw3[data-ready]) .gw3-poster { opacity: 0; pointer-events: none; }
+.gw3-head {
+  position: absolute;
+  z-index: 3;
+  inset: 0 0 auto;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: clamp(10px, 1.6vw, 18px) clamp(12px, 2vw, 22px);
+  pointer-events: none;
+}
+.gw3-head .mk-label, .gw3-foot .mk-label { color: #aebbd0; text-shadow: 0 1px 2px rgb(0 0 0 / 0.6); }
+.gw3-foot {
+  position: absolute;
+  inset: auto 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0 clamp(12px, 2vw, 22px);
+  background: linear-gradient(rgb(5 12 22 / 0), rgb(5 12 22 / 0.72));
+  pointer-events: none;
+}
+.gw3-foot button { pointer-events: auto; }
+.gw3-shot { display: inline-flex; align-items: center; gap: 1rem; margin-left: auto; }
+.gw3-link, .gw3-restart {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #e6edf7;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+.gw3-link:focus-visible, .gw3-restart:focus-visible { outline: 3px solid var(--gw-signal); outline-offset: 3px; }
+/* Below 900px there is no room for the screen to stand beside the machine: the stage image and its View full size link sit under
+   the machine (.gw-mview) instead, and the overlay keeps only the note. From 900px the screen lifts out, so .gw-mview is not needed. */
+@media (max-width: 899px) { .gw3-foot, .gw3-head .mk-label:first-child { display: none; } }
+/* The lifted screen shows each stage's picture at every width, so the copy under the machine is not repeated in 3D. */
+.gw-3d .gw-mview { display: none !important; }
+.gw3-foot { transition: opacity 300ms ease; }
+.gw3[data-up] .gw3-foot { opacity: 0; pointer-events: none; }
+.gw3[data-up] .gw3-foot button { pointer-events: none; }
+.gw3-reveal {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(52px, 6vw, 72px);
+  transform: translateX(-50%);
+  width: min(92%, 760px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  border-radius: 10px;
+  background: rgb(8 16 30 / 0.88);
+  backdrop-filter: blur(6px);
+  color: #e6edf7;
+  box-shadow: 0 24px 50px -18px rgb(0 0 0 / 0.75);
+}
+.gw3-reveal .mk-label { color: #9fb0cc; }
+.gw3-reveal-title { margin-top: 0.25rem; font-size: clamp(1.25rem, 2.2vw, 1.75rem); text-transform: uppercase; color: #fff; }
+.gw3-reveal-actions { display: flex; flex: none; align-items: center; gap: 1.25rem; }
+@media (max-width: 899px) {
+  .gw3-reveal { flex-direction: column; align-items: stretch; gap: 0.75rem; bottom: 10px; width: calc(100% - 20px); padding: 0.75rem; }
+  .gw3-reveal-actions { justify-content: space-between; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .gw3-reveal { animation: gw3-rise 500ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+}
+@keyframes gw3-rise { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+/* In 3D the stage chips are the keyboard and screen reader control at every width. */
+.gw-3d .gw-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+@media (max-width: 899px) { .gw-3d .gw-chips { flex-wrap: nowrap; } }
+
+/* The compare switch (?compare): fixed in a corner, small, out of the way. */
+.gw3-compare {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 60;
+  display: grid;
+  gap: 0.4rem;
+  max-width: min(340px, calc(100vw - 32px));
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--mk-ink);
+  background: #fff;
+  box-shadow: 0 12px 30px -12px rgb(11 22 38 / 0.45);
+}
+.gw3-compare-row { display: flex; gap: 0.4rem; }
+.gw3-compare a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 0.8rem; border: 1px solid var(--mk-ink); color: var(--mk-ink); font-weight: 600; text-decoration: none; }
+.gw3-compare a[aria-current="page"] { background: var(--mk-ink); color: #fff; }
+.gw3-compare-note { font-size: 0.8125rem; color: var(--mk-ink-2); }
+
+/* The screen that lifts out of the plate (version B, from 900px). The engine sets its size and a matrix3d every frame: pinned onto
+   the display in the plate, then lifted, turned to face the viewer and stood upright beside the machine. Upright, it is a real page:
+   the picture scrolls, the buttons work. Hidden and inert while it is down in its slot. */
+.gw3-sheet {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  visibility: hidden;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  transform-origin: 0 0;
+  border: 1px solid rgb(255 255 255 / 0.2);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #0c1424;
+  box-shadow: 0 0 0 5px #0a0f18, 0 0 0 6px rgb(255 255 255 / 0.12), 0 40px 80px -30px rgb(0 0 0 / 0.85);
+  backface-visibility: hidden;
+  will-change: transform;
+}
+.gw3-sheet-bar { display: flex; align-items: center; gap: 0.6rem; min-width: 0; padding: 0.55rem 0.85rem; background: #17233a; color: #c3cee0; font-size: 0.75rem; }
+.gw3-sheet-bar .mk-mono { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gw3-sheet-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #3ccf7a; }
+.gw3-sheet-close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: -0.55rem -0.6rem -0.55rem auto;
+  border: 0;
+  background: none;
+  color: #c3cee0;
+  cursor: pointer;
+}
+.gw3-sheet-close:hover { color: #fff; background: rgb(255 255 255 / 0.08); }
+/* The picture, cropped to the screen (the whole of it is one click away): a document shows its top, an app screen its top left. */
+.gw3-sheet-body { position: relative; display: block; min-height: 0; padding: 0; border: 0; overflow: hidden; background: #eef1f5; cursor: zoom-in; }
+.gw3-sheet-img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: left top; }
+.gw3-sheet-document { padding: 14px 14px 0; }
+.gw3-sheet-document .gw3-sheet-img { object-position: center top; background: #fff; box-shadow: 0 8px 24px -12px rgb(11 22 38 / 0.4); }
+.gw3-sheet-body:focus-visible { outline: 3px solid var(--gw-signal); outline-offset: -3px; }
+@media (prefers-reduced-motion: no-preference) {
+  .gw3-sheet-img { animation: gw3-swap 180ms ease-out both; }
+}
+@keyframes gw3-swap { from { opacity: 0; } to { opacity: 1; } }
+.gw3-sheet-foot { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 0.6rem; padding: 0.45rem 0.6rem; background: #0c1424; }
+.gw3-sheet-op { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #9fb0cc; text-align: center; }
+.gw3-sheet-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 44px;
+  min-height: 44px;
+  max-width: 100%;
+  padding: 0 0.85rem;
+  border: 1px solid rgb(255 255 255 / 0.28);
+  border-radius: 6px;
+  background: transparent;
+  color: #e6edf7;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.gw3-sheet-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gw3-sheet-prev { justify-self: start; }
+.gw3-sheet-next { justify-self: end; border-color: #e6edf7; background: #e6edf7; color: #0b2a5b; }
+.gw3-sheet-btn:hover { background: rgb(255 255 255 / 0.08); }
+.gw3-sheet-next:hover { background: #fff; }
+.gw3-sheet-btn:focus-visible, .gw3-sheet-close:focus-visible { outline: 3px solid var(--gw-signal); outline-offset: 2px; }
+/* Under the machine on phones (version B): pictures cropped to the frame too, from the top left. */
+.gw-3d .gw-mview .gw-window .gw-shot img { object-fit: cover; object-position: left top; }
+/* A tall screen (the Analytics page) shows its top in the fixed frame under the machine, not shrunk to fit. */
+.gw-mview .gw-window .gw-shot-tall img { object-fit: cover; object-position: top; }
+/* While the screen stands up, its own foot says "example data"; the corner note would sit behind it, so it steps aside. */
+.gw3-head .mk-label:last-child { transition: opacity 300ms ease; }
+.gw3-slot:has(.gw3[data-up]) .gw3-head .mk-label:last-child { opacity: 0; }
+/* Standing over the machine (phones and narrow tablets): arrows only either side, the stage in the middle. */
+.gw3-sheet-short { display: none; }
+.gw3-sheet[data-over] .gw3-sheet-foot { gap: 0.4rem; padding: 0.35rem 0.4rem; }
+.gw3-sheet[data-over] .gw3-sheet-btn { padding: 0 0.7rem; }
+.gw3-sheet[data-over] .gw3-sheet-btn:not(.gw3-sheet-run) .gw3-sheet-name { display: none; }
+.gw3-sheet[data-over] .gw3-sheet-run .gw3-sheet-name { display: none; }
+.gw3-sheet[data-over] .gw3-sheet-run .gw3-sheet-short { display: inline; white-space: nowrap; }
+.gw3-sheet[data-over] .gw3-sheet-op { font-size: 0.625rem; }
+.gw3-sheet[data-over] .gw3-sheet-bar { padding: 0.45rem 0.7rem; }
+.gw3-sheet[data-over] .gw3-sheet-document { padding: 8px 8px 0; }

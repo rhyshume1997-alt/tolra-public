@@ -10,6 +10,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { IsoSwitchCard } from "@/components/iso/iso-switch-card";
 import { RoleGate } from "@/components/role-gate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +22,7 @@ import { DEMO_MODE } from "@/lib/demo";
 import { exportSpreadsheet } from "@/lib/export-records";
 import { ISO_DOCUMENTS } from "@/lib/iso/document-list";
 import { fillDocument, TO_COMPLETE, type FillContext } from "@/lib/iso/fill";
-import { buildGapChecklist, EMPTY_EVIDENCE, GAP_CSV_COLUMNS } from "@/lib/iso/gap-checklist";
+import { buildGapChecklist, EMPTY_EVIDENCE, GAP_CSV_COLUMNS, gapStatusLabel } from "@/lib/iso/gap-checklist";
 import { ISO_OFF_NOTICE, isoTemplatesEnabled } from "@/lib/iso/iso-switch";
 import { loadIsoEvidence, type IsoEvidence } from "@/lib/iso/load-iso-evidence";
 import { overdueNcrs, REVIEW_DAYS_DEFAULT, reviewDays } from "@/lib/iso/ncr-review-reminder";
@@ -69,7 +70,7 @@ function IsoPackBody() {
   const overdue = useMemo(() => (data?.ncrRows ? overdueNcrs(data.ncrRows, new Date(), days) : []), [data, days]);
 
   if (!loaded) return <Skeleton className="h-80" />;
-  if (!on) return <p className="text-sm text-slate-500">{ISO_OFF_NOTICE}</p>;
+  if (!on) return <div className="space-y-4"><p className="text-sm text-slate-500">{ISO_OFF_NOTICE}</p><IsoSwitchCard /></div>;
   if (!available) return <p className="text-sm text-slate-500">The ISO templates are not available in this mode.</p>;
 
   const companyName = company?.documentName || company?.name || TO_COMPLETE;
@@ -121,6 +122,7 @@ function IsoPackBody() {
         <h1 className="page-title">ISO templates</h1>
         <p className="mt-2 text-sm text-slate-500">Branded draft templates and a self-check list for {companyName}. Template and self-check aid. Needs company review. Not certification evidence.</p>
       </div>
+      <IsoSwitchCard />
       {state !== "ready" ? <Skeleton className="h-80" /> : (
         <>
           {data?.unread.length ? <p className="text-xs text-slate-500">Some records could not be read ({data.unread.join(", ")}). Those clauses show as not evidenced.</p> : null}
@@ -155,7 +157,7 @@ function IsoPackBody() {
             <Table>
               <TableHeader><TableRow><TableHead>Clause</TableHead><TableHead>Requirement</TableHead><TableHead>Status</TableHead><TableHead>Basis</TableHead></TableRow></TableHeader>
               <TableBody>
-                {gapRows.map((r) => <TableRow key={r.clause}><TableCell>{r.clause}</TableCell><TableCell>{r.requirement}</TableCell><TableCell className="font-medium">{r.status}</TableCell><TableCell className="text-sm text-slate-600">{r.basis}</TableCell></TableRow>)}
+                {gapRows.map((r) => <TableRow key={r.clause}><TableCell>{r.clause}</TableCell><TableCell>{r.requirement}</TableCell><TableCell className="font-medium">{gapStatusLabel(r.status)}</TableCell><TableCell className="text-sm text-slate-600">{r.basis}</TableCell></TableRow>)}
               </TableBody>
             </Table>
           </section>
