@@ -244,6 +244,7 @@ proposal_files(file, disposition) AS (
     ('supabase/proposals/p159_drawings_update_roles.sql', 'post-144 release 159; after 158 in the plan (its guard needs release 131''s text of one storage policy, not 156, 157 or 158); refuses every browser role the update of an object in job-drawings (audit finding ST1); apply with the JNR go-live releases; row 62'),
     ('supabase/proposals/p160_legacy_reopen_revoke.sql', 'post-144 release 160; after 159 in the plan (its guard needs 113 and 081''s reopen_job body, not 156, 157, 158 or 159); revokes browser EXECUTE on public.reopen_job(uuid,text) so a Complete job can only be reopened through 113''s request and sign-off (defect J1); service_role and every other grant unchanged; row 63'),
     ('supabase/proposals/builder2_chase_settings_atomic.sql', 'separate chase settings release decision; requires 138; browser fixture is not production packaging'),
+    ('supabase/proposals/p_ai_allowance.sql', 'unnumbered; requires 150; release 161 belongs to PR #536; needs Rhys''s order decision and a number before any apply'),
     ('supabase/proposals/builder2_costing_settings_atomic.sql', 'superseded: the hardened function ships inside numbered release 143 (after 141, before 144); this original proposal is never applied'),
     ('supabase/proposals/builder2_atomic_settings.rollback.sql', 'rollback only; never forward release input')
 ),
