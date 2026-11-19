@@ -2,6 +2,7 @@
  * How a sign-in failure is described to the person. Error DISPLAY only: nothing here decides who may sign in, and the
  * server's answers for a wrong username, a wrong password and an unknown account stay identical (401, same text).
  */
+import { CAPTCHA_REQUIRED_MESSAGE } from "@/lib/auth/turnstile";
 import { PRODUCT } from "@/lib/product";
 
 export const UNREACHABLE_MESSAGE = `Can't reach ${PRODUCT.name} right now. Check your connection and try again.`;
@@ -11,12 +12,14 @@ export const TOO_MANY_MESSAGE = "Too many attempts.";
 export type SignInFailure =
   | { kind: "unreachable" }
   | { kind: "too_many"; message: string }
+  | { kind: "captcha"; message: string }
   | { kind: "invalid" };
 
 /** The /api/auth/signin answer (or the fetch failing outright, status null) as the screen should treat it. */
-export function classifySignInResponse(status: number | null, serverMessage?: string): SignInFailure {
+export function classifySignInResponse(status: number | null, serverMessage?: string, captcha?: boolean): SignInFailure {
   if (status === null || status === 0 || status >= 500) return { kind: "unreachable" };
   if (status === 429) return { kind: "too_many", message: serverMessage || TOO_MANY_MESSAGE };
+  if (captcha) return { kind: "captcha", message: CAPTCHA_REQUIRED_MESSAGE };
   return { kind: "invalid" };
 }
 

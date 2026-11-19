@@ -12,17 +12,23 @@ function supabaseOrigins() {
 
 const supabase = supabaseOrigins();
 
+// Cloudflare Turnstile (sign-in security check, audit F1): its script, its frame and its verification call. Allowed ONLY when the
+// site key is set, so with the check off the policy is exactly what it was.
+const turnstileOn = Boolean((process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "").trim());
+const turnstile = turnstileOn ? "https://challenges.cloudflare.com" : "";
+
 // Next injects inline bootstrap scripts and styles and this app doesn't use nonces, so 'unsafe-inline' is required.
 // 'wasm-unsafe-eval' lets @react-pdf/renderer compile its layout engine (WebAssembly) without allowing JS eval.
 // 'unsafe-eval' is only added for the dev server (React Refresh).
 /** The policy for app pages. Static invitation responses use the restrictive policy below. */
 const policy = (formAction) => [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${isProd ? "" : " 'unsafe-eval'"}`,
+  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${turnstile ? ` ${turnstile}` : ""}${isProd ? "" : " 'unsafe-eval'"}`,
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob: ${supabase.https}`,
   "font-src 'self' data:",
-  `connect-src 'self' ${supabase.https} ${supabase.wss}`,
+  `connect-src 'self' ${supabase.https} ${supabase.wss}${turnstile ? ` ${turnstile}` : ""}`,
+  ...(turnstile ? [`frame-src ${turnstile}`] : []),
   "frame-ancestors 'none'",
   "base-uri 'self'",
   `form-action ${formAction}`,

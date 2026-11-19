@@ -7,6 +7,7 @@ import { forbiddenOrigin, readJson, sameOrigin } from "@/lib/server/auth";
 import { LimiterUnavailableError, LoginLookupError, clientIp, hashKey, limiterUnavailableResponse, recentHits, resolveLoginEmail, withinLimit } from "@/lib/server/login";
 import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
 import { isUnreachableError } from "@/lib/auth-errors";
+import { CAPTCHA_REQUIRED_MESSAGE, cleanCaptchaToken, isCaptchaError } from "@/lib/auth/turnstile";
 import { withGatewayRetry } from "@/lib/server/resilient-fetch";
 import { LAST_ACTIVE_COOKIE } from "@/lib/session-policy";
 
@@ -48,6 +49,8 @@ export async function POST(request: Request) {
   const parsed = signInSchema.safeParse({ identifier: raw.identifier ?? raw.email, password: raw.password });
   if (!parsed.success) return NextResponse.json({ error: INVALID }, { status: 400 });
   const { identifier, password } = parsed.data;
+  // Optional: only present when the Turnstile box is on. Supabase (Auth > Attack Protection) is what enforces it.
+  const captchaToken = cleanCaptchaToken(raw.captchaToken);
 
   const admin = createSupabaseAdminClient();
   const ip = clientIp(request);
@@ -94,11 +97,13 @@ export async function POST(request: Request) {
     },
   });
 
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password, ...(captchaToken ? { options: { captchaToken } } : {}) });
   if (error) {
     // The auth service itself failed or could not be reached: that says nothing about the credentials, so it is not
     // counted as a failed guess and not answered as "invalid". Wrong password and unknown account still get the same 401.
     if (isUnreachableError(error)) return limiterUnavailableResponse();
+    // A missing, expired or reused security-check token says nothing about the password: not a failed guess, not "invalid".
+    if (isCaptchaError(error)) return NextResponse.json({ error: CAPTCHA_REQUIRED_MESSAGE, captcha: true }, { status: 400 });
     // Recording the failure is all that is left to do; the answer is the same either way.
     await Promise.all([
       withinLimit(admin, "signin_fail_pair", pairKey, LIMIT_WINDOW, ACCOUNT_IP_FAILURES),

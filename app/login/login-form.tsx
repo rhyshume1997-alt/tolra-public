@@ -8,6 +8,8 @@ import { discardedMessage, takeDiscardedNotice } from "@/lib/offline/store";
 import { EXPIRED_NOTICE_COOKIE, LOCK_NOTICE_KEY, accessEndedKeptMessage, forgetLastActive, idleMessage } from "@/lib/session-policy";
 import { adoptServerAccessEnded } from "@/lib/offline/access";
 import { INVALID_CREDENTIALS_MESSAGE, UNREACHABLE_MESSAGE, classifySignInResponse, isUnreachableError } from "@/lib/auth-errors";
+import { TURNSTILE_FIELD } from "@/lib/auth/turnstile";
+import { readTurnstileToken, resetTurnstile } from "@/components/auth/turnstile-widget";
 import { supabase } from "@/lib/supabase";
 import { LAST_ORG_KEY, fetchLoginBranding, isOrgSlug, type LoginBranding } from "@/lib/branding";
 
@@ -101,6 +103,7 @@ export function LoginForm({ initialBranding }: { initialBranding: LoginBranding 
     const form = new FormData(event.currentTarget);
     const identifier = String(form.get("identifier") || "").trim();
     const password = String(form.get("password") || "");
+    const captchaToken = String(form.get(TURNSTILE_FIELD) || "");
 
     try {
       if (!supabase) throw new Error("Sign-in isn't available right now. Please contact support.");
@@ -108,14 +111,16 @@ export function LoginForm({ initialBranding }: { initialBranding: LoginBranding 
       // never sees whether a username or e-mail exists.
       let response: Response;
       try {
-        response = await fetch("/api/auth/signin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ identifier, password }) });
+        response = await fetch("/api/auth/signin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ identifier, password, captchaToken }) });
       } catch {
         throw new Error("unreachable");
+      } finally {
+        resetTurnstile();
       }
-      const result = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      const result = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string; captcha?: boolean };
       if (!response.ok || !result.ok) {
-        const failure = classifySignInResponse(response.status, result.error);
-        throw new Error(failure.kind === "too_many" ? failure.message : failure.kind === "unreachable" ? "unreachable" : "invalid");
+        const failure = classifySignInResponse(response.status, result.error, result.captcha);
+        throw new Error(failure.kind === "too_many" || failure.kind === "captcha" ? failure.message : failure.kind === "unreachable" ? "unreachable" : "invalid");
       }
       const { data, error: userError } = await supabase.auth.getUser();
       // The server said the sign-in worked, so no user (or any error) here is a session/service failure, never "wrong password".
@@ -170,7 +175,7 @@ export function LoginForm({ initialBranding }: { initialBranding: LoginBranding 
         setError(UNREACHABLE_MESSAGE);
         setCanRetry(true);
       } else {
-        setError(message.startsWith("We couldn't") || message.startsWith("Sign-in isn't") || message.startsWith("Too many") ? message : INVALID_CREDENTIALS_MESSAGE);
+        setError(message.startsWith("We couldn't") || message.startsWith("Sign-in isn't") || message.startsWith("Too many") || message.startsWith("Please complete") ? message : INVALID_CREDENTIALS_MESSAGE);
       }
     } finally {
       setLoading(false);
@@ -188,7 +193,8 @@ export function LoginForm({ initialBranding }: { initialBranding: LoginBranding 
 
     setResetLoading(true);
     try {
-      const response = await fetch("/api/auth/reset", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ identifier: trimmed }) });
+      const response = await fetch("/api/auth/reset", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ identifier: trimmed, captchaToken: readTurnstileToken() }) });
+      resetTurnstile();
       const result = (await response.json().catch(() => ({}))) as { ok?: boolean; message?: string; error?: string };
       if (!response.ok || !result.ok) throw new Error(result.error || "Couldn't send the password reset email. Try again.");
       setMessageType("success");
