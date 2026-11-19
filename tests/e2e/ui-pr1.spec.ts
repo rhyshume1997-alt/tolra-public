@@ -477,7 +477,7 @@ test("tablet: deleting a draft invoice, a draft credit note and a certificate ea
 async function offeredLinks(page: Page) {
   await page.goto("/dashboard");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-  await page.waitForLoadState("networkidle");
+  await expect(page.locator("a[href^='/']:visible").first()).toBeVisible();
   const hrefs = await page.$$eval("a[href^='/']", (anchors) => anchors.filter((a) => (a as HTMLElement).offsetParent !== null).map((a) => a.getAttribute("href")!));
   return [...new Set(hrefs.map((href) => href.split("#")[0]).filter((href) => !href.startsWith("/api/")))];
 }
