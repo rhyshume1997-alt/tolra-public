@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 
-import { FLOW_HINT, FLOW_JOB, FLOW_STEPS, FLOW_TITLE, ILLUSTRATION_LABEL, SHEET_LABELS } from "@/lib/marketing";
+import { ToolyMark } from "@/components/marketing/tooly-mark";
+import { FLOW_HINT, FLOW_JOB, FLOW_STEPS, FLOW_TITLE, ILLUSTRATION_LABEL, SHEET_LABELS, TOOLY_FLOW_NOTES } from "@/lib/marketing";
 
 const COUNT = FLOW_STEPS.length;
 const FIRST_STAMP_MS = 350;
@@ -147,6 +148,12 @@ export function JobFlow() {
             </div>
           ))}
         </dl>
+        {TOOLY_FLOW_NOTES[step.id] ? (
+          <div className="flex items-center gap-3 border border-dashed border-[#0b2a5b]/50 p-2.5 pr-3">
+            <ToolyMark pose="point" poses={["point"]} size={72} />
+            <p className="text-sm leading-snug">{TOOLY_FLOW_NOTES[step.id]}</p>
+          </div>
+        ) : null}
       </div>
       <p className="border-t border-[#0b2a5b]/30 px-[var(--mk-box)] py-3 text-sm text-[#3c5277]">{FLOW_HINT}</p>
     </div>

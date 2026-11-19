@@ -3,7 +3,8 @@
  * 1px rules, no shadows, no gradients. Signal blue (#1e8fff) marks focus and active states only. Everything that styles whole
  * elements is scoped under .mk-sheet, so the app's own pages are untouched.
  *
- * Motion: one moment only, the stamp landing on the job traveller (.mk-stamp below). Every other state change is instant.
+ * Motion: the stamp landing on the job traveller (.mk-stamp), Tooly (.mk-tooly) and a gentle scroll reveal (.mk-reveal), all at the end of this file
+ * and all off for prefers-reduced-motion. Every other state change is instant.
  */
 .mk-sheet,
 .mk-paper {
@@ -1045,3 +1046,92 @@ details[open] > summary .mk-plus {
 .gw3-sheet[data-over] .gw3-sheet-op { font-size: 0.625rem; }
 .gw3-sheet[data-over] .gw3-sheet-bar { padding: 0.45rem 0.7rem; }
 .gw3-sheet[data-over] .gw3-sheet-document { padding: 8px 8px 0; }
+
+/*
+ * Tooly (components/marketing/tooly-mark.tsx): the mascot, built from the pose stills. Every pose of an instance sits in the same box,
+ * so a swap is an opacity change and never moves anything. Motion is transform only: a slow bob while idle and on screen, and a short
+ * pop when the pose changes. Never takes the pointer; static for anyone who asks for reduced motion (also with the script off).
+ */
+.mk-tooly {
+  position: relative;
+  flex: none;
+  pointer-events: none;
+  user-select: none;
+}
+.mk-tooly-body {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.mk-tooly-pose {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mk-tooly[data-live="true"] .mk-tooly-body {
+    will-change: transform;
+  }
+  .mk-tooly[data-live="true"][data-pose="idle"] .mk-tooly-body,
+  .mk-tooly[data-live="true"][data-pose="blink"] .mk-tooly-body {
+    animation: mk-tooly-bob 4.5s ease-in-out infinite;
+  }
+  .mk-tooly[data-live="true"][data-pose="sleep"] .mk-tooly-body {
+    animation: mk-tooly-breathe 5s ease-in-out infinite;
+    transform-origin: 50% 100%;
+  }
+  .mk-tooly[data-live="true"][data-beat="a"]:not([data-pose="idle"]):not([data-pose="blink"]):not([data-pose="sleep"]) .mk-tooly-body {
+    animation: mk-tooly-pop-a 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .mk-tooly[data-live="true"][data-beat="b"]:not([data-pose="idle"]):not([data-pose="blink"]):not([data-pose="sleep"]) .mk-tooly-body {
+    animation: mk-tooly-pop-b 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+@keyframes mk-tooly-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3%); }
+}
+@keyframes mk-tooly-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+@keyframes mk-tooly-pop-a {
+  0% { transform: translateY(4%) scale(0.94); }
+  100% { transform: none; }
+}
+@keyframes mk-tooly-pop-b {
+  0% { transform: translateY(4%) scale(0.94); }
+  100% { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mk-tooly *,
+  .mk-reveal {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/*
+ * Scroll reveal: a block eases up and in as it enters the window. CSS only (no script, so nothing is hidden if a script fails), only where
+ * the browser supports scroll-driven animation, and not at all for reduced motion. Transform and opacity only, so nothing shifts.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .mk-reveal {
+      animation: mk-reveal-in linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 35%;
+    }
+  }
+}
+@keyframes mk-reveal-in {
+  from { opacity: 0.001; transform: translateY(18px); }
+  to { opacity: 1; transform: none; }
+}
+@media print {
+  .mk-reveal {
+    animation: none !important;
+  }
+}

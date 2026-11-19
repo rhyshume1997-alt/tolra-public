@@ -2,21 +2,27 @@ import type { Metadata } from "next";
 
 import { BracketT } from "@/components/marketing/bracket-t";
 import { Cta } from "@/components/marketing/cta";
-import { FeatureFigure, ScreenFigure } from "@/components/marketing/feature-figure";
+import { FeatureBlocks } from "@/components/marketing/feature-blocks";
 import { GearWorkflow } from "@/components/marketing/gear-workflow";
 import { JobCardCompact } from "@/components/marketing/job-card-compact";
 import { JobFlow } from "@/components/marketing/job-flow";
+import { MeetTooly } from "@/components/marketing/meet-tooly";
+import { OnePlace } from "@/components/marketing/one-place";
 import { MarketingSheet } from "@/components/marketing/sheet";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { SiteHeader } from "@/components/marketing/site-header";
+import { ToolyMark } from "@/components/marketing/tooly-mark";
 import {
   CLOSE_CALL_LINE, CLOSE_TITLE, FAQ, FAQ_TITLE, FEATURES, FEATURES_TITLE, FOUNDER_LINK_LABEL, FOUNDER_NAME, FOUNDER_NOTE, FOUNDER_TITLE, FOUNDER_URL,
-  HANDLES_TITLE, HERO_SUBHEAD, HERO_TITLE, MARKETING_ICONS, PAIN_CARDS, PAIN_TITLE, PROOF_LINE, SCREENSHOTS, SEE_HOW_LABEL, SHEET_LABELS, SITE_DESCRIPTION,
+  HANDLES_TITLE, HERO_SUBHEAD, HERO_TITLE, MARKETING_ICONS, PAIN_CARDS, PAIN_TITLE, PROOF_LINE, SEE_HOW_LABEL, SHEET_LABELS, SITE_DESCRIPTION,
   SITE_TITLE, SITE_URL, START_STEPS, START_TITLE, TRUST_ITEMS, WHO_TEXT, WHO_TITLE, jsonLd,
 } from "@/lib/marketing";
 import { GEAR_COPY } from "@/lib/marketing/gear-workflow";
 
-// The public home page. Signed-in people never see it: the middleware sends them to /dashboard (middleware.ts).
+// Inputs: the copy and links in lib/marketing.ts. Output: the public home page ("/"): hero with the job traveller, "Everything in one place",
+// problems and the gear workflow, what it does, Meet Tooly, founder, who it is for, getting started, questions and the close.
+// Must not change: every claim in lib/marketing.ts, the one h1, the booking link on every call to action, the Screenshot / Illustration labels,
+// the JSON-LD, and middleware.ts (signed-in people never see this page: it sends them to /dashboard).
 // "How Tolra handles it" shows the gear workflow (components/marketing/gear-workflow.tsx); its copy lives in lib/marketing/gear-workflow.ts.
 const OG_IMAGE = { url: `${SITE_URL}/marketing/tolra-og.png`, width: 1200, height: 630, alt: "Tolra: job management for small CNC and fabrication shops" };
 
@@ -35,13 +41,13 @@ export const metadata: Metadata = {
 const SHEET = "mx-auto w-full max-w-[1240px] px-4 sm:px-6 lg:px-10";
 /**
  * A section: a full-width band, white and pale blue in turn (marketing.css .mk-band / .mk-band-alt), with one vertical padding,
- * clamp(56px, 8vw, 112px). Order: hero (white), problems and answers (blue), what it does (white), founder (blue),
- * who and getting started (white), questions (blue), close (white).
+ * clamp(56px, 8vw, 112px). Order: hero (white), everything in one place (blue), problems and answers (white), what it does (blue),
+ * Meet Tooly (white), founder (blue), who and getting started (white), questions (blue), close (white).
  */
 const BAND = "mk-band";
 const BAND_ALT = "mk-band mk-band-alt";
-const H1 = "mk-display text-[clamp(2.5rem,4.8vw,4rem)] uppercase";
-const H2 = "mk-display text-[clamp(2rem,3.6vw,3rem)] uppercase";
+const H1 = "mk-display text-[clamp(2.75rem,6.2vw,5rem)] uppercase";
+const H2 = "mk-display text-[clamp(2.25rem,4.4vw,3.5rem)] uppercase";
 const MUTED = "text-[#3c5277]";
 
 export default function Home() {
@@ -66,23 +72,30 @@ export default function Home() {
                 <Cta />
                 <a href="#flow-title" className="mk-link inline-flex min-h-11 items-center text-base font-semibold lg:hidden">{SEE_HOW_LABEL}</a>
               </div>
-              <div className="mt-12 max-w-[34rem] border-t border-[#0b2a5b] pt-3">
-                <p className="mk-label">{SHEET_LABELS.notes}</p>
-                <ol className="mk-notes mt-2 space-y-1.5 text-[0.9375rem]">
-                  {[PROOF_LINE, ...TRUST_ITEMS].map((note, index) => (
-                    <li key={note} className={index === 0 ? "font-semibold" : ""}>{note}</li>
-                  ))}
-                </ol>
-              </div>
+              {/* Tooly waves once when he first comes into view, then idles. Large screens only: the first screen on a phone stays text, the traveller and the button. */}
+              <ToolyMark size={200} className="mt-10 hidden lg:block" />
             </div>
             <div className="lg:col-span-5">
               <JobFlow />
             </div>
           </div>
+          {/* The only proof the page makes, with the three checked trust items, as one rule across the sheet. */}
+          <div className={`${SHEET} mt-12 lg:mt-16`}>
+            <div className="flex flex-col gap-x-10 gap-y-3 border-t border-[#0b2a5b] pt-4 lg:flex-row lg:items-baseline lg:justify-between">
+              <p className="font-semibold">{PROOF_LINE}</p>
+              <ul className="mk-label flex flex-wrap gap-x-6 gap-y-1">
+                {TRUST_ITEMS.map((item) => <li key={item}>{item}</li>)}
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section aria-labelledby="one-place-title" className={BAND_ALT}>
+          <div className={SHEET}><OnePlace /></div>
         </section>
 
         {/* The problems, then the drawings that answer them, in one section: each drawing pairs "Today: ..." with "In Tolra: ...". */}
-        <section aria-labelledby="pain-title" className={BAND_ALT}>
+        <section aria-labelledby="pain-title" className={BAND}>
           <div className={SHEET}>
             <div className="grid gap-8 lg:grid-cols-12 lg:gap-10">
               <h2 id="pain-title" className={`${H2} self-start lg:sticky lg:top-8 lg:col-span-4`}>{PAIN_TITLE}</h2>
@@ -106,36 +119,16 @@ export default function Home() {
           </div>
         </section>
 
-        <section aria-labelledby="features-title" className={BAND}>
+        <section aria-labelledby="features-title" className={BAND_ALT}>
           <div className={SHEET}>
             <h2 id="features-title" className={H2}>{FEATURES_TITLE}</h2>
-            {/* Two real screens from the app (redacted to example names), framed like the drawings; each opens full size on a tap. */}
-            <div className="mt-10 grid gap-8 lg:mt-14 lg:grid-cols-2 lg:gap-10">
-              {SCREENSHOTS.map((shot) => <ScreenFigure key={shot.src} shot={shot} />)}
-            </div>
-            <ol className="mt-16 space-y-16 lg:mt-24 lg:space-y-24">
-              {FEATURES.map((feature, index) => {
-                const flip = index % 2 === 1;
-                return (
-                  <li key={feature.title} className="grid items-center gap-6 lg:grid-cols-12 lg:gap-0">
-                    <div className={`lg:col-span-5 lg:row-start-1 ${flip ? "lg:col-start-8" : "lg:col-start-1"}`}>
-                      <div className={`flex items-center ${flip ? "lg:flex-row-reverse" : ""}`}>
-                        <span className="mk-balloon" aria-hidden>{index + 1}</span>
-                        <span className="mk-leader hidden lg:block" data-to={flip ? "start" : "end"} aria-hidden />
-                      </div>
-                      <div className={flip ? "lg:pl-12" : "lg:pr-12"}>
-                        <h3 className="mk-display mt-5 text-[2rem]">{feature.title}</h3>
-                        <p className={`mt-2 max-w-[42ch] ${MUTED}`}>{feature.detail}</p>
-                      </div>
-                    </div>
-                    <div className={`lg:col-span-7 lg:row-start-1 ${flip ? "lg:col-start-1" : "lg:col-start-6"}`}>
-                      <FeatureFigure figure={feature.figure} shot={feature.shot} />
-                    </div>
-                  </li>
-                );
-              })}
-            </ol>
+            {/* The Job Board as a wide lead, then the features in varied compositions (components/marketing/feature-blocks.tsx). */}
+            <FeatureBlocks />
           </div>
+        </section>
+
+        <section aria-labelledby="tooly-title" className={BAND}>
+          <div className={SHEET}><MeetTooly /></div>
         </section>
 
         <section aria-labelledby="builder-title" className={BAND_ALT}>
@@ -207,7 +200,10 @@ export default function Home() {
             <div className="grid gap-8 border border-[#0b2a5b] bg-white p-6 sm:p-8 lg:grid-cols-12 lg:gap-10 lg:p-12">
               <div className="lg:col-span-7">
                 <h2 id="close-title" className="mk-display text-[clamp(2rem,3.8vw,3.25rem)] uppercase">{CLOSE_TITLE}</h2>
-                <BracketT size={56} bracket="#0b2a5b" ink="#0b2a5b" className="mt-8" />
+                <div className="mt-8 flex items-end gap-6">
+                  <BracketT size={56} bracket="#0b2a5b" ink="#0b2a5b" />
+                  <ToolyMark size={112} />
+                </div>
               </div>
               <div className="self-end lg:col-span-5">
                 <p className={`text-lg leading-relaxed ${MUTED}`}>{CLOSE_CALL_LINE}</p>
