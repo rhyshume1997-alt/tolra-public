@@ -12,6 +12,16 @@ const USER = "11111111-1111-4111-8111-111111111111";
 const calls: { fn: string; email: string; options: Record<string, unknown> }[] = [];
 let known = true;
 let captchaFails = false;
+/** Strict mode behaves like Turnstile + Supabase: a token is good for ONE call and "expired" is refused. */
+let strict = false;
+const usedTokens = new Set<string>();
+function tokenRefused(options?: Record<string, unknown>) {
+  if (!strict) return false;
+  const token = options?.captchaToken as string | undefined;
+  if (!token || token === "expired" || usedTokens.has(token)) return true;
+  usedTokens.add(token);
+  return false;
+}
 const updates: string[] = [];
 
 const captchaError = { name: "AuthApiError", status: 400, code: "captcha_failed", message: "captcha verification process failed" };
@@ -45,13 +55,13 @@ vi.mock("@supabase/supabase-js", async (original) => {
       auth: {
         signInWithPassword: async ({ email, password, options }: { email: string; password: string; options?: Record<string, unknown> }) => {
           calls.push({ fn: "signInWithPassword", email, options: options ?? {} });
-          if (captchaFails) return { data: { session: null, user: null }, error: captchaError };
+          if (captchaFails || tokenRefused(options)) return { data: { session: null, user: null }, error: captchaError };
           return password === "Current-Password-123" ? { data: { session: { access_token: "t" }, user: { id: USER } }, error: null } : { data: { session: null, user: null }, error: { name: "AuthApiError", status: 400, code: "invalid_credentials", message: "Invalid login credentials" } };
         },
         signOut: async () => ({ error: null }),
         resetPasswordForEmail: async (email: string, options: Record<string, unknown>) => {
           calls.push({ fn: "reset", email, options });
-          return captchaFails ? { error: captchaError } : { error: null };
+          return captchaFails || tokenRefused(options) ? { error: captchaError } : { error: null };
         },
       },
     }),
@@ -72,7 +82,7 @@ beforeEach(() => {
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "anon";
   process.env.NEXT_PUBLIC_SITE_URL = "http://localhost";
   process.env.BREACHED_PASSWORD_CHECK = "off";
-  calls.length = 0; updates.length = 0; known = true; captchaFails = false;
+  calls.length = 0; updates.length = 0; known = true; captchaFails = false; strict = false; usedTokens.clear();
   vi.spyOn(console, "error").mockImplementation(() => undefined);
 });
 afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); });
@@ -134,5 +144,56 @@ describe("Change password with Turnstile", () => {
   it("a wrong password with a good token is still 'wrong'", async () => {
     const res = await asChange({ password: NEW, current_password: "Nope-Nope-123", captchaToken: "tok" });
     expect((await res.json()).error).toBe("Your current password is wrong.");
+  });
+});
+
+describe("token lifecycle (a Turnstile token is single use and short lived)", () => {
+  const NEW = "Brand-New-Password-456";
+  const GOOD = { password: NEW, current_password: "Current-Password-123" };
+  beforeEach(() => { strict = true; });
+
+  it("change password: a fresh token works once, the same token again is refused and changes nothing", async () => {
+    expect((await asChange({ ...GOOD, captchaToken: "t1" })).status).toBe(200);
+    expect(updates).toEqual([NEW]);
+    updates.length = 0;
+    const replay = await asChange({ ...GOOD, captchaToken: "t1" });
+    expect(replay.status).toBe(400);
+    expect(await replay.json()).toMatchObject({ captcha: true });
+    expect(updates).toEqual([]);
+  });
+  it("change password: an expired token is refused with the captcha message, not 'wrong password'", async () => {
+    const res = await asChange({ ...GOOD, captchaToken: "expired" });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe(CAPTCHA_REQUIRED_MESSAGE);
+    expect(updates).toEqual([]);
+  });
+  it("change password: a missing token is refused the same way when the check is enforced", async () => {
+    expect((await asChange({ ...GOOD })).status).toBe(400);
+  });
+  it("change password needs a fresh token per Supabase call: each request makes exactly one password check, so one token", async () => {
+    await asChange({ ...GOOD, captchaToken: "a" });
+    await asChange({ ...GOOD, captchaToken: "b" });
+    expect(calls.filter((c) => c.fn === "signInWithPassword").map((c) => c.options.captchaToken)).toEqual(["a", "b"]);
+  });
+  it("a wrong password still uses up its token: the next try needs a new one", async () => {
+    const wrong = await asChange({ password: NEW, current_password: "Nope-Nope-123", captchaToken: "w1" });
+    expect((await wrong.json()).error).toBe("Your current password is wrong.");
+    expect((await asChange({ ...GOOD, captchaToken: "w1" })).status).toBe(400);
+    expect((await asChange({ ...GOOD, captchaToken: "w2" })).status).toBe(200);
+  });
+  it("forgot password: single use and expiry", async () => {
+    vi.stubEnv("NEXT_PUBLIC_TURNSTILE_SITE_KEY", "0x4AAA");
+    expect((await asReset({ identifier: "person", captchaToken: "r1" })).status).toBe(200);
+    expect((await asReset({ identifier: "person", captchaToken: "r1" })).status).toBe(400);
+    expect((await asReset({ identifier: "person", captchaToken: "expired" })).status).toBe(400);
+  });
+  it("the screens read the token per send and reset the box after it (sidebar, reset form, sign-in form)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const sidebar = readFileSync("components/sidebar.tsx", "utf8");
+    expect(sidebar).toMatch(/async \(\) => \{\s*const payload = JSON\.stringify\(\{[^}]*captchaToken: readTurnstileToken\(\)/);
+    expect(sidebar).toContain("resetTurnstile();");
+    const login = readFileSync("app/login/login-form.tsx", "utf8");
+    expect(login).toMatch(/\/api\/auth\/reset[^;]*readTurnstileToken\(\)[\s\S]{0,120}resetTurnstile\(\)/);
+    expect(login).toContain("finally {\n        resetTurnstile();");
   });
 });
