@@ -195,8 +195,8 @@
       "disposition": "superseded: the hardened function ships inside numbered release 143 (after 141, before 144); this original proposal is never applied"
     },
     {
-      "source": "supabase/proposals/p_ai_allowance.sql",
-      "disposition": "unnumbered: tier allowance (small 100, medium 400, large 1500 requests per UTC month) over 150's reserve functions; release 161 belongs to PR #536; needs Rhys's order decision and a number; not applied; AI stays off"
+      "source": "supabase/proposals/p162_ai_allowance.sql",
+      "disposition": "number 162 allocated (Rhys); not yet a numbered phase (no rollback, verify or preflight marker file): tier allowance (small 100, medium 400, large 1500 requests per UTC month) over 150's reserve functions; release 161 belongs to PR #536; not applied; AI stays off"
     },
     {
       "source": "supabase/proposals/builder2_atomic_settings.rollback.sql",
