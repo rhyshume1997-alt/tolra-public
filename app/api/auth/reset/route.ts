@@ -3,13 +3,14 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 import { setPasswordUrl } from "@/lib/auth-links";
+import { CAPTCHA_REQUIRED_MESSAGE, cleanCaptchaToken, isCaptchaError, turnstileSiteKey } from "@/lib/auth/turnstile";
 import { forbiddenOrigin, readJson, sameOrigin } from "@/lib/server/auth";
-import { LimiterUnavailableError, LoginLookupError, clientIp, limiterUnavailableResponse, resolveLoginEmail, withinLimit } from "@/lib/server/login";
+import { LimiterUnavailableError, LoginLookupError, clientIp, hashKey, limiterUnavailableResponse, resolveLoginEmail, withinLimit } from "@/lib/server/login";
 import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
 
 // "Forgot password" with a username OR an e-mail. Always answers the same, whether or not the account exists.
 // The reset e-mail's link opens /auth/set-password (works from any device: the tokens come back in the link).
-const schema = z.object({ identifier: z.string().trim().min(1).max(254) });
+const schema = z.object({ identifier: z.string().trim().min(1).max(254), captchaToken: z.string().max(4096).optional() });
 const LIMIT_WINDOW = 15 * 60;
 const DONE = { ok: true, message: "If that account exists, we've sent a password reset email to its address." };
 
@@ -31,6 +32,7 @@ export async function POST(request: Request) {
   const parsed = schema.safeParse(json.data);
   if (!parsed.success) return NextResponse.json({ error: "Enter your username or email address." }, { status: 400 });
   const { identifier } = parsed.data;
+  const captchaToken = cleanCaptchaToken(parsed.data.captchaToken);
 
   const admin = createSupabaseAdminClient();
   let allowed: boolean;
@@ -49,10 +51,15 @@ export async function POST(request: Request) {
     if (err instanceof LoginLookupError) return null;
     throw err;
   });
-  if (email) {
+  // With the security check on (site key set), an unknown account still makes the call, to an address that cannot exist, as sign-in
+  // does: Supabase checks the token first, so a missing or bad token gets the same answer whether or not the account exists. With it
+  // off, nothing changes: no call for an unknown account.
+  const target = email ?? (turnstileSiteKey() ? `unknown-${hashKey(identifier).slice(0, 24)}@invalid.invalid` : null);
+  if (target) {
     const auth = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false, flowType: "implicit" } });
-    const { error } = await auth.auth.resetPasswordForEmail(email, { redirectTo });
-    if (error) console.error("[auth/reset] reset email failed", error.status);
+    const { error } = await auth.auth.resetPasswordForEmail(target, { redirectTo, ...(captchaToken ? { captchaToken } : {}) });
+    if (error && isCaptchaError(error)) return NextResponse.json({ error: CAPTCHA_REQUIRED_MESSAGE, captcha: true }, { status: 400 });
+    if (error && email) console.error("[auth/reset] reset email failed", error.status);
   }
   return NextResponse.json(DONE);
 }

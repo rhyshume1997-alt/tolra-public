@@ -32,6 +32,7 @@ import type { UserRole } from "@/types";
 import { PRODUCT } from "@/lib/product";
 import { useOfflineStatus } from "@/lib/offline/scope";
 import { connectionState, roleLabel } from "@/lib/shell-status";
+import { TurnstileWidget, readTurnstileToken, resetTurnstile } from "@/components/auth/turnstile-widget";
 import { ConnectionDot } from "@/components/shell-status";
 import { DisplayNameForm } from "@/components/display-name";
 import { DateFormatSettings } from "@/components/date-format-settings";
@@ -170,11 +171,14 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
     // Through the server, which checks the current password (without replacing this session) and applies the same rules as
     // everywhere else (length, and a known-breach check).
-    const payload = JSON.stringify({ password, current_password: currentPassword });
+    // The token is read per send: the server asks for the authenticator code BEFORE it checks the password, so a send refused for the
+    // code has not used the token; one that reached the password check has, and the box is reset after the whole change.
     const outcome = await changePasswordWithCode(async () => {
+      const payload = JSON.stringify({ password, current_password: currentPassword, captchaToken: readTurnstileToken() });
       const response = await fetch("/api/auth/change-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: payload });
       return { ok: response.ok, status: response.status, body: (await response.json().catch(() => null)) as { error?: string; code?: string } | null };
     }, requestCode);
+    resetTurnstile();
     if (outcome.result === "changed") {
       passwordForm.current?.reset();
       toast.success("Password updated.");
@@ -275,6 +279,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                     <Input name="currentPassword" type="password" placeholder="Current password" className="h-11" autoComplete="current-password" />
                     <Input name="password" type="password" placeholder="New password" className="h-11" autoComplete="new-password" />
                     <Input name="confirmPassword" type="password" placeholder="Confirm new password" className="h-11" autoComplete="new-password" />
+                    <TurnstileWidget />
                     <Button type="submit" className="min-h-11 w-full bg-brand text-brand-ink hover:bg-brand-hover">Update Password</Button>
                   </div>
                 </form>

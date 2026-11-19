@@ -9,6 +9,7 @@ import { adminMfaRequired, holdsAdmin, recentSecondStep } from "@/lib/mfa-policy
 import { forbiddenOrigin, jsonError, mfaRecentRequired, mfaRequired, readJson, sameOrigin } from "@/lib/server/auth";
 import { passwordProblem, PASSWORD_MAX } from "@/lib/password";
 import { changedAfterTemporary, markers, persist, recentLinkSignIn, setMustChange } from "@/lib/server/password-setup";
+import { CAPTCHA_REQUIRED_MESSAGE, cleanCaptchaToken, isCaptchaError } from "@/lib/auth/turnstile";
 import { isBreachedPassword } from "@/lib/server/breached-password";
 import { issuePasswordChangeTicket, revokePasswordChangeTicket } from "@/lib/server/password-ticket";
 import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
@@ -28,7 +29,7 @@ import { withGatewayRetry } from "@/lib/server/resilient-fetch";
 // temporary one (the middleware sends them here before /mfa).
 
 const schema = z.union([
-  z.object({ password: z.string().max(PASSWORD_MAX), current_password: z.string().max(256).optional() }),
+  z.object({ password: z.string().max(PASSWORD_MAX), current_password: z.string().max(256).optional(), captchaToken: z.string().max(4096).optional() }),
   z.object({ finish: z.literal(true) }),
 ]);
 
@@ -42,10 +43,11 @@ function partial() {
  * Checks a password with a sign-in that is never stored (a separate client, as /api/auth/signin checks one); the extra session it
  * makes is ended at once. Null when the auth service could not be asked (that says nothing about the password).
  */
-async function passwordMatches(url: string, anonKey: string, email: string | undefined, password: string): Promise<boolean | null> {
+async function passwordMatches(url: string, anonKey: string, email: string | undefined, password: string, captchaToken?: string): Promise<boolean | null | "captcha"> {
   if (!email || !password) return false;
   const check = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
-  const { data, error } = await check.auth.signInWithPassword({ email, password });
+  const { data, error } = await check.auth.signInWithPassword({ email, password, ...(captchaToken ? { options: { captchaToken } } : {}) });
+  if (isCaptchaError(error)) return "captcha";
   if (error || !data.session) return isUnreachableError(error) ? null : false;
   await check.auth.signOut({ scope: "local" }).catch(() => undefined);
   return true;
@@ -89,6 +91,7 @@ export async function POST(request: Request) {
   }
 
   const { password, current_password } = parsed.data;
+  const captchaToken = cleanCaptchaToken((parsed.data as { captchaToken?: string }).captchaToken);
   const problem = passwordProblem(password);
   if (problem) return jsonError(problem, 400);
 
@@ -107,7 +110,9 @@ export async function POST(request: Request) {
   }
   if (!mustChange && !recentLinkSignIn(assurance?.currentAuthenticationMethods)) {
     if (!current_password) return jsonError("Enter your current password.", 400);
-    const matches = await passwordMatches(supabaseUrl, supabaseAnonKey, user.email, current_password);
+    const matches = await passwordMatches(supabaseUrl, supabaseAnonKey, user.email, current_password, captchaToken);
+    // The security check failed (token missing, stale or reused): says nothing about the password, so not "wrong password".
+    if (matches === "captcha") return NextResponse.json({ error: CAPTCHA_REQUIRED_MESSAGE, captcha: true }, { status: 400 });
     if (matches === null) return jsonError("Couldn't check your current password. Try again shortly.", 503);
     if (!matches) return jsonError("Your current password is wrong.", 400);
   }

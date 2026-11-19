@@ -9,7 +9,7 @@ import { EXPIRED_NOTICE_COOKIE, LOCK_NOTICE_KEY, accessEndedKeptMessage, forgetL
 import { adoptServerAccessEnded } from "@/lib/offline/access";
 import { INVALID_CREDENTIALS_MESSAGE, UNREACHABLE_MESSAGE, classifySignInResponse, isUnreachableError } from "@/lib/auth-errors";
 import { TURNSTILE_FIELD } from "@/lib/auth/turnstile";
-import { resetTurnstile } from "@/components/auth/turnstile-widget";
+import { readTurnstileToken, resetTurnstile } from "@/components/auth/turnstile-widget";
 import { supabase } from "@/lib/supabase";
 import { LAST_ORG_KEY, fetchLoginBranding, isOrgSlug, type LoginBranding } from "@/lib/branding";
 
@@ -193,7 +193,8 @@ export function LoginForm({ initialBranding }: { initialBranding: LoginBranding 
 
     setResetLoading(true);
     try {
-      const response = await fetch("/api/auth/reset", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ identifier: trimmed }) });
+      const response = await fetch("/api/auth/reset", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ identifier: trimmed, captchaToken: readTurnstileToken() }) });
+      resetTurnstile();
       const result = (await response.json().catch(() => ({}))) as { ok?: boolean; message?: string; error?: string };
       if (!response.ok || !result.ok) throw new Error(result.error || "Couldn't send the password reset email. Try again.");
       setMessageType("success");

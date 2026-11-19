@@ -7,7 +7,7 @@
  */
 import { useEffect, useRef } from "react";
 
-import { turnstileSiteKey } from "@/lib/auth/turnstile";
+import { TURNSTILE_FIELD, turnstileSiteKey } from "@/lib/auth/turnstile";
 
 type TurnstileApi = { render: (el: HTMLElement, options: Record<string, unknown>) => string; reset: (id?: string) => void; remove: (id?: string) => void };
 declare global { interface Window { turnstile?: TurnstileApi } }
@@ -31,6 +31,12 @@ function loadScript(): Promise<void> {
 /** Tokens are single use: call after every attempt that reached the server so the next one gets a fresh token. */
 export function resetTurnstile() {
   try { window.turnstile?.reset(); } catch { /* widget not shown */ }
+}
+
+/** The token Turnstile put in the form on screen (empty when the check is off or not solved yet). */
+export function readTurnstileToken(): string {
+  const field = document.querySelector<HTMLInputElement>(`input[name="${TURNSTILE_FIELD}"]`);
+  return field?.value ?? "";
 }
 
 export function TurnstileWidget() {
