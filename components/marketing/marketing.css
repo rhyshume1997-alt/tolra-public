@@ -1135,3 +1135,13 @@ details[open] > summary .mk-plus {
     animation: none !important;
   }
 }
+
+/* Tooly on the sign-in page (components/marketing/login-tooly.tsx): only where the left panel has room for him beside its text. */
+.mk-login-tooly {
+  display: none;
+}
+@media (min-width: 1360px) and (min-height: 760px) {
+  .mk-login-tooly {
+    display: block;
+  }
+}
