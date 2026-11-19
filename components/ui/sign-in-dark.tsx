@@ -1,5 +1,6 @@
 "use client";
 
+import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import "@fontsource/anton/400.css";
 
 import Image from "next/image";
@@ -118,6 +119,7 @@ export function DarkSignIn({ branding, onSubmit, onResetPassword, error, canRetr
                   {canRetry && messageType === "error" ? <button type="button" disabled={loading} onClick={() => formRef.current?.requestSubmit()} className="mt-2 block font-semibold underline disabled:opacity-60">Retry</button> : null}
                 </div>
               ) : null}
+              <TurnstileWidget />
               <button type="submit" disabled={loading}
                 className="group flex h-14 w-full items-center justify-between rounded-none border border-white/25 py-[7px] pl-[30px] pr-[7px] font-mono text-[0.78rem] font-medium uppercase tracking-[0.16em] text-white transition hover:border-white/45 hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--accent)]/40 disabled:opacity-60">
                 {loading ? "Signing in..." : "Sign in"}

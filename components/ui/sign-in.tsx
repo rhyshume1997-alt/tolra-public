@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CalendarClock, ClipboardList, Eye, EyeOff, FileText, Lock } from "lucide-react";
 import { useRef, useState } from "react";
 
+import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import { marketingFontVariables } from "@/components/marketing/fonts";
 import "@/components/marketing/marketing.css";
 import { Input } from "@/components/ui/input";
@@ -158,6 +159,7 @@ function LightSignIn({ onSubmit, onResetPassword, error, canRetry, messageType =
                     {canRetry && messageType === "error" ? <button type="button" disabled={loading} onClick={() => formRef.current?.requestSubmit()} className="mt-1 flex min-h-11 items-center font-semibold underline disabled:opacity-60">Retry</button> : null}
                   </div>
                 ) : null}
+                <TurnstileWidget />
                 {/* The public site's call-to-action button: navy, white text, #12397a on hover, a 3px offset ring on focus, no transition.
                     A company's own sign-in keeps its brand colour on the same shape. */}
                 <button type="submit" disabled={loading}
