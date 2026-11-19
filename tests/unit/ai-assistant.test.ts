@@ -325,8 +325,9 @@ describe("an answer, from the caller's own company's records", () => {
       db.reads = []; service.tables = []; service.rpcs = []; userRpcs.length = 0;
       expect((await ask(post({ topic, question: "What is waiting?" }))).status).toBe(200);
       // The user client read the company's switch and the records, for the caller's company.
-      expect(db.reads.map((r) => r.table)).toEqual(["ai_helper_settings", topic]);
-      expect(db.reads.every((r) => r.filters.some(([c, v]) => c === "organization_id" && v === ORG))).toBe(true);
+      expect(db.reads.map((r) => r.table)).toEqual(["ai_helper_settings", topic, "organizations"]);
+      // The last read is the company's allowance tier (Session 13), by the company's own id.
+      expect(db.reads.filter((r) => r.table !== "organizations").every((r) => r.filters.some(([c, v]) => c === "organization_id" && v === ORG))).toBe(true);
       // The service client touched only the key table and settle (103), never a record table, and never reserved.
       expect(service.tables).toEqual(["ai_helper_secrets"]);
       expect(service.rpcs).toEqual(["ai_helper_settle"]);

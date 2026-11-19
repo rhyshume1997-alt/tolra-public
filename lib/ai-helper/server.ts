@@ -1,3 +1,7 @@
+// BOUNDARY (Session 13): runAiHelper reserves a request count via ai_helper_reserve_allowance when the company has an allowance tier
+// (organizations.ai_allowance_tier), and keeps the pence-only reserve when it has none. Inputs/outputs of runAiHelper are unchanged except
+// that a monthly-allowance refusal returns { kind: "cap" } with no requestId. MUST NOT CHANGE: AI stays off by default; estimatePence and
+// actualPence stay in limits.ts; no keys, flags or SQL are touched here.
 import "server-only";
 
 import { createHash } from "node:crypto";
@@ -5,6 +9,7 @@ import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { anthropicProvider } from "@/lib/ai-helper/anthropic";
+import { tierAllowance } from "@/lib/ai-helper/allowance";
 import { AI_HELPER_EFFORT, AI_HELPER_MODELS, AI_REQUEST_TIMEOUT_MS, type AiHelperFeature, MAX_OUTPUT_TOKENS, actualPence, estimatePence } from "@/lib/ai-helper/limits";
 import { mockProvider } from "@/lib/ai-helper/mock";
 import { xaiProvider } from "@/lib/ai-helper/providers/xai";
@@ -29,7 +34,7 @@ export function aiHelperProvider(env: Record<string, string | undefined> = proce
 export type RunOutcome<T> =
   | { kind: "ok"; requestId: string; value: T }
   | { kind: "off" }
-  | { kind: "cap"; requestId: string }
+  | { kind: "cap"; requestId?: string }
   | { kind: "no_key"; requestId: string }
   | { kind: "failed"; failure: AiFailure; detail?: "auth" | "rate" | "key" | "tolra_key" | "tolra_auth" }
   | { kind: "unavailable" };
@@ -63,6 +68,18 @@ type RunInput<T> = {
   provider?: AiHelperProvider | null;
 };
 
+/** The company's allowance tier, or null for no tier. Any read problem means null, so the existing pence reserve decides (it still enforces the pence cap). */
+async function companyAllowanceTier(supabase: SupabaseClient, organizationId: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase.from("organizations").select("ai_allowance_tier").eq("id", organizationId).maybeSingle();
+    if (error) return null;
+    const tier = (data as { ai_allowance_tier?: unknown } | null)?.ai_allowance_tier;
+    return typeof tier === "string" && tierAllowance(tier) !== null ? tier : null;
+  } catch {
+    return null;
+  }
+}
+
 const digest = (text: string) => createHash("sha256").update(text, "utf8").digest("hex");
 
 /**
@@ -95,17 +112,25 @@ export async function runAiHelper<T>(input: RunInput<T>): Promise<RunOutcome<T>>
     if ((mode as { tolra_enabled?: boolean } | null)?.tolra_enabled === true) return { kind: "unavailable" };
   }
   const reserveArgs = { p_estimate_pence: estimate, p_input_digest: digest(input.data), p_input_bytes: Buffer.byteLength(input.data, "utf8") };
+  // Allowance (Session 13): a company with a tier reserves one REQUEST through ai_helper_reserve_allowance, which checks the monthly request
+  // count and then runs the same pence reserve unchanged. A company with no tier (or a tier that can't be read, for example before the
+  // column exists) keeps today's pence-only reserve below. See lib/ai-helper/allowance.ts for the tier sizes; they are not repeated here.
+  const tier = await companyAllowanceTier(input.supabase, input.organizationId);
   // The assistant (G3) reserves through its own function (migration 134: 133's reserve rules for the one feature), so 133's
   // ai_helper_reserve stays exactly as it is.
-  const { data: reserved, error } = input.feature === "assistant"
-    ? await input.supabase.rpc("ai_helper_reserve_assistant", reserveArgs)
-    : await input.supabase.rpc("ai_helper_reserve", { p_feature: input.feature, ...reserveArgs });
+  const { data: reserved, error } = tier !== null
+    ? await input.supabase.rpc("ai_helper_reserve_allowance", { p_feature: input.feature, ...reserveArgs })
+    : input.feature === "assistant"
+      ? await input.supabase.rpc("ai_helper_reserve_assistant", reserveArgs)
+      : await input.supabase.rpc("ai_helper_reserve", { p_feature: input.feature, ...reserveArgs });
   if (error) {
     if (error.hint === "ai_helper_off") return { kind: "off" };
     console.error("[ai-helper] reserve refused", error.code ?? "error");
     return { kind: "unavailable" };
   }
   const answer = reserved as { ok?: boolean; reason?: string; request_id?: string; key_source?: "own" | "tolra" } | null;
+  // The allowance reserver refuses without writing a request row, so there is no request id: show the same monthly-limit message.
+  if (tier !== null && answer?.ok === false && answer.reason === "allowance") return { kind: "cap" };
   if (!answer?.request_id) return { kind: "unavailable" };
   const requestId = answer.request_id;
   if (!answer.ok) return answer.reason === "cap" ? { kind: "cap", requestId } : { kind: "no_key", requestId };
