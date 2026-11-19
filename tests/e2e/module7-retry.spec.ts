@@ -58,7 +58,15 @@ test("Reports: a failed read shows Retry, and Retry brings the card back; the Re
 
   await setMarker(REVENUE_ON_MARKER, true);
   await page.reload();
-  await page.getByTestId("reports-revenue-link").click();
+  // A parallel spec can overwrite the shared hidden_nav setting: if the link is missing, set the marker again and reload once.
+  const revenueLink = page.getByTestId("reports-revenue-link");
+  const shown = await revenueLink.waitFor({ state: "visible", timeout: 10_000 }).then(() => true, () => false);
+  if (!shown) {
+    await setMarker(REVENUE_ON_MARKER, true);
+    await page.reload();
+  }
+  await expect(revenueLink).toBeVisible();
+  await revenueLink.click();
   await expect(page).toHaveURL(/\/reports\/revenue$/);
   await expect(page.getByTestId("revenue-page")).toBeVisible();
 });

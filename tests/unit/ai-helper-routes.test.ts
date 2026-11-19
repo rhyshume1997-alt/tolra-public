@@ -41,6 +41,8 @@ const db = vi.hoisted(() => ({
   status: { roundup_enabled: true, rfq_enabled: true } as Record<string, unknown>,
   reserve: null as null | ((args: Record<string, unknown>) => { data: unknown; error: unknown }),
   customers: ["Acme Engineering Ltd"],
+  /** organizations.ai_allowance_tier as the caller's RLS shows it (null = no tier). */
+  tier: null as null | string,
   /** ai_helper_requests rows the caller's RLS lets it read (this company's only). */
   requests: [] as Record<string, unknown>[],
   profile: { vatRegistered: true, defaultVatRate: 20 } as Record<string, unknown>,
@@ -66,6 +68,7 @@ vi.mock("@/lib/server/costing-engine", () => ({
 function builder(table: string) {
   let rows: Record<string, unknown>[] = table === "customers" ? db.customers.map((name) => ({ name, organization_id: "o" }))
     : table === "ai_helper_requests" ? db.requests.filter((r) => r.organization_id === ORG)
+    : table === "organizations" ? (db.tier ? [{ id: ORG, ai_allowance_tier: db.tier }] : [])
     : table === "organization_settings" ? [{ organization_id: ORG, company_profile: db.profile }] : [];
   const q = {
     select: (cols: string) => { db.reads.push(`${table}:${cols}`); return q; },
@@ -85,7 +88,7 @@ const supabase = {
     if (fn === "ai_helper_status") return { data: db.status, error: null };
     if (fn === "ai_helper_set_finance_check") return { data: null, error: db.financeError };
     if (fn === "ai_helper_save_settings" && db.saveError) return { data: null, error: db.saveError };
-    if (fn === "ai_helper_reserve") return db.reserve!(args);
+    if (fn === "ai_helper_reserve" || fn === "ai_helper_reserve_allowance") return db.reserve!(args);
     if (fn === "next_doc_number") return { data: "QUO-0100", error: null };
     if (fn === "create_with_lines") return { data: NEW_QUOTE, error: null };
     return { data: fn === "ai_helper_set_key" || fn === "ai_helper_save_settings" ? { key_set: true, key_last4: "WXYZ" } : null, error: null };
@@ -189,6 +192,7 @@ beforeEach(() => {
   engine.orgs = [];
   engine.parts = { [ORG]: [{ id: 7, part_number: "BR-100", unit: 12.5 }], [OTHER_ORG]: [{ id: 9, part_number: "BETA-1", unit: 0.01 }, { id: 10, part_number: "BR-100", unit: 0.01 }] };
   // 103: reserve answers { ok, request_id } only; the key is read by the server with the service role.
+  db.tier = null;
   db.reserve = () => ({ data: { ok: true, request_id: REQ }, error: null });
   service.configured = true; service.created = 0; service.reads = []; service.rpcs = []; service.settle = null;
   service.keyEnc = encryptSecret("sk-ant-test-not-a-real-key-000000", { organizationId: ORG, provider: "anthropic", purpose: "api_key" });
@@ -319,6 +323,16 @@ describe("RFQ email to draft quote", () => {
     expect((await res.json()).error).toMatch(/AI limit for the month has been reached/);
     expect(model.calls).toBe(0);
     expect(settleCall()).toBeUndefined();
+  });
+
+  it("allowance reached (tier set, no request id): the same clear message, status 429, and NO model call", async () => {
+    db.tier = "small";
+    db.reserve = () => ({ data: { ok: false, reason: "allowance", period: "2026-11", limit: 100, used: 100 }, error: null });
+    const res = await rfq(post({ text: GOOD_RFQ }));
+    expect(res.status).toBe(429);
+    expect((await res.json()).code).toBe("cap");
+    expect(db.rpcs.some((r) => r.fn === "ai_helper_reserve_allowance")).toBe(true);
+    expect(model.calls).toBe(0);
   });
 
   it("no key: a clear message and no model call", async () => {
@@ -603,6 +617,16 @@ describe("round-up", () => {
     expect(body.notice).toMatch(/AI limit/);
     expect(model.calls).toBe(0);
   });
+  it("allowance reached (tier set, no request id): the figures are still shown, with the message, and no model call", async () => {
+    attention.sections = [section(2)];
+    db.tier = "small";
+    db.reserve = () => ({ data: { ok: false, reason: "allowance", period: "2026-11", limit: 100, used: 100 }, error: null });
+    const body = await (await roundup(post({ period: "daily" }))).json();
+    expect(body.facts.sections[0].count).toBe(2);
+    expect(body.summary).toBeNull();
+    expect(body.code).toBe("cap");
+    expect(model.calls).toBe(0);
+  });
 });
 
 describe("settings and key", () => {
@@ -701,7 +725,7 @@ describe("never-do list (source)", () => {
       if (f !== path.join("lib", "ai-helper", "mock.ts")) expect(source(f), f).not.toMatch(/issue_invoice|issue_credit_note|replace_draft|void_invoice|record_payment|send_quote|mark_paid/);
     }
     const rpcs = files.flatMap((f) => [...source(f).matchAll(/\.rpc\("([a-z_]+)"/g)].map((m) => `${f}:${m[1]}`));
-    const allowed = new Set(["ai_helper_status", "ai_helper_save_settings", "ai_helper_set_finance_check", "ai_helper_set_assistant", "ai_helper_set_key", "ai_helper_reserve", "ai_helper_reserve_assistant", "ai_helper_settle", "ai_helper_decide"]);
+    const allowed = new Set(["ai_helper_status", "ai_helper_save_settings", "ai_helper_set_finance_check", "ai_helper_set_assistant", "ai_helper_set_key", "ai_helper_reserve", "ai_helper_reserve_assistant", "ai_helper_reserve_allowance", "ai_helper_settle", "ai_helper_decide"]);
     for (const call of rpcs) {
       const [file, fn] = call.split(":");
       const companyMode = fn === "ai_helper_set_tolra_mode" && file === path.join("app", "api", "ai-helper", "tolra-mode", "route.ts");
