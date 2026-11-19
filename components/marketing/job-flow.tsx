@@ -14,6 +14,8 @@ const STAMP_EVERY_MS = 420;
  * view the stages are stamped one after another; selecting a stage (click, tap or arrow keys) stamps it and every stage before it, and
  * shows what happens at it below. Someone who asks for reduced motion sees every stamp at once and nothing moves (the CSS shows all
  * stamps too, so this holds before the script runs).
+ * Boundary: reads the traveller copy in lib/marketing.ts and, for the enquiry and invoice stages, TOOLY_FLOW_NOTES (a small Tooly note, shown only
+ * where the optional AI helper applies). Must not change: the ARIA tabs pattern and the seven stages (tests/unit/marketing-home.test.ts).
  *
  * The rows are ARIA tabs (roving tabindex; arrows, Home and End) controlling one tab panel.
  */
