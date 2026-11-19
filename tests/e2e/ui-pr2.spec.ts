@@ -156,7 +156,7 @@ const DESKTOP = VIEWPORTS[2];
 
 async function visit(page: Page, route: string) {
   await page.goto(route);
-  await page.waitForLoadState("networkidle");
+  await expect(page.locator("main").first()).toBeVisible();
 }
 
 /** The job's card (phone, Cards view) or row (list view), whichever the screen shows. */
