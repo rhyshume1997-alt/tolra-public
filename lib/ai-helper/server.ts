@@ -7,6 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { anthropicProvider } from "@/lib/ai-helper/anthropic";
 import { AI_HELPER_EFFORT, AI_HELPER_MODELS, AI_REQUEST_TIMEOUT_MS, type AiHelperFeature, MAX_OUTPUT_TOKENS, actualPence, estimatePence } from "@/lib/ai-helper/limits";
 import { mockProvider } from "@/lib/ai-helper/mock";
+import { xaiProvider } from "@/lib/ai-helper/providers/xai";
 import { SHARED_TOLRA_AI_ACTIVE } from "@/lib/ai-helper/shared-ai-deactivation";
 import { type AiFailure, type AiHelperProvider, AiProviderError, type AiUsage } from "@/lib/ai-helper/provider";
 import { decryptSecret } from "@/lib/integrations/crypto";
@@ -16,9 +17,12 @@ import { TOLRA_AI_KEY_CONTEXT } from "@/lib/ai-helper/tolra-key-context";
 /**
  * The model provider this server uses: the company's own Anthropic account, or (AI_HELPER_PROVIDER=mock, tests and local runs only) the
  * deterministic mock. The mock is refused on any Vercel deployment (VERCEL_ENV set), so a stray setting can't fake answers in use.
+ * xAI (AI_HELPER_PROVIDER=xai) is opt-in only: unset or any other value keeps Anthropic. Its model allow-list is EMPTY, so every model is
+ * refused before any network call until Rhys/PM add confirmed entries (providers/xai.ts). No key, price or allow-list entry is set here.
  */
 export function aiHelperProvider(env: Record<string, string | undefined> = process.env): AiHelperProvider | null {
   if (env.AI_HELPER_PROVIDER === "mock") return env.VERCEL_ENV ? null : mockProvider();
+  if (env.AI_HELPER_PROVIDER === "xai") return xaiProvider();
   return anthropicProvider();
 }
 
