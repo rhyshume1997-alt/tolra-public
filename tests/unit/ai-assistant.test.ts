@@ -43,6 +43,8 @@ const db = vi.hoisted(() => ({
   settingsError: null as null | { code: string },
   rows: { quotes: [] as Record<string, unknown>[], jobs: [] as Record<string, unknown>[] },
   readError: null as null | { code: string },
+  /** organizations.ai_allowance_tier as the caller's RLS shows it (null = no tier). */
+  tier: null as null | string,
   reserve: null as null | ((args: Record<string, unknown>) => { data: unknown; error: unknown }),
   rpcError: {} as Record<string, { code: string } | undefined>,
 }));
@@ -53,6 +55,7 @@ function builder(table: string) {
   const result = () => {
     if (table === "ai_helper_settings") return { data: db.settingsError ? null : db.settings, error: db.settingsError };
     if (table === "quotes" || table === "jobs") return { data: db.readError ? null : db.rows[table], error: db.readError };
+    if (table === "organizations") return { data: db.tier ? { ai_allowance_tier: db.tier } : null, error: null };
     return { data: null, error: null };
   };
   const q = {
@@ -71,7 +74,7 @@ const supabase = {
   rpc: async (fn: string, args: Record<string, unknown>) => {
     db.rpcs.push({ fn, args });
     userRpcs.push(fn);
-    if (fn === "ai_helper_reserve_assistant") return db.reserve!(args);
+    if (fn === "ai_helper_reserve_assistant" || fn === "ai_helper_reserve_allowance") return db.reserve!(args);
     if (db.rpcError[fn]) return { data: null, error: db.rpcError[fn] };
     if (fn === "ai_helper_status") return { data: { roundup_enabled: false, rfq_enabled: false, monthly_cap_pence: 500, can_manage: true }, error: null };
     return { data: fn === "ai_helper_save_settings" ? { roundup_enabled: false, rfq_enabled: false } : null, error: null };
@@ -152,7 +155,7 @@ beforeEach(() => {
   process.env.AI_HELPER_PROVIDER = "mock";
   delete process.env.VERCEL_ENV;
   process.env.INTEGRATIONS_ENCRYPTION_KEY = randomBytes(32).toString("base64");
-  db.rpcs = []; db.reads = []; userRpcs.length = 0; db.settings = { assistant_enabled: true }; db.settingsError = null; db.readError = null; db.rpcError = {};
+  db.rpcs = []; db.reads = []; userRpcs.length = 0; db.settings = { assistant_enabled: true }; db.settingsError = null; db.readError = null; db.rpcError = {}; db.tier = null;
   db.rows = { quotes: QUOTES.map((r) => ({ ...r })), jobs: [] };
   db.reserve = () => ({ data: { ok: true, request_id: REQ }, error: null });
   service.created = 0; service.reads = []; service.tables = []; service.rpcs = [];
@@ -402,6 +405,17 @@ describe("the cost cap and retries", () => {
     expect((await ask(post(QUESTION))).status).toBe(409);
     expect(settleCall()).toBeUndefined();
     expect(service.reads).toEqual([]);
+    noProviderCall();
+  });
+
+  it("allowance reached (tier set, no request id): 429 with code cap, NO model call, nothing settled", async () => {
+    db.tier = "small";
+    db.reserve = () => ({ data: { ok: false, reason: "allowance", period: "2026-11", limit: 100, used: 100 }, error: null });
+    const res = await ask(post(QUESTION));
+    expect(res.status).toBe(429);
+    expect((await res.json()).code).toBe("cap");
+    expect(userRpcs).toContain("ai_helper_reserve_allowance");
+    expect(settleCall()).toBeUndefined();
     noProviderCall();
   });
 
