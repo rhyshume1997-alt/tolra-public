@@ -66,7 +66,11 @@ test("Reports: a failed read shows Retry, and Retry brings the card back; the Re
     await page.reload();
   }
   await expect(revenueLink).toBeVisible();
-  await revenueLink.click();
+  // The link can render from the cached company settings and be swapped while those reload, so one click can be lost: click again until the URL changes.
+  await expect(async () => {
+    if (/\/reports\/revenue$/.test(page.url())) return;
+    await Promise.all([page.waitForURL(/\/reports\/revenue$/, { timeout: 5_000 }), revenueLink.click()]);
+  }).toPass({ timeout: 20_000 });
   await expect(page).toHaveURL(/\/reports\/revenue$/);
   await expect(page.getByTestId("revenue-page")).toBeVisible();
 });
