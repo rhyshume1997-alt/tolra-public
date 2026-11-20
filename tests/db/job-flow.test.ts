@@ -70,8 +70,9 @@ async function line(orderId: string) {
   await q(who("office"), "select public.ensure_sales_order_lines($1)", [orderId]);
   return one<{ id: string }>("select id from public.sales_order_lines where sales_order_id = $1 order by position limit 1", [orderId]);
 }
-/** 099: Finish drafts only what has been despatched (nothing, before a job is released), so a job's draft is made by hand: £120 + VAT. */
+/** A job's draft made by hand: £120 + VAT. Finish with nothing despatched now drafts the order itself (099), so that draft is taken away first (one draft per job). */
 async function handDraft(jobId: string) {
+  await withDb((db) => db.query("delete from public.invoices where job_id = $1 and status = 'draft'", [jobId]));
   const id = (await q<{ r: string }>(who("office"), "select public.create_with_lines('invoices', $1::jsonb, 'invoice_line_items', 'invoice_id', $2::jsonb) as r", [
     JSON.stringify({ customer: "Flow Co", job_id: jobId, status: "draft", subtotal: 120, vat: 24, total: 144, carriage: 0, vat_enabled: true, invoice_date: "2026-10-01", due_date: "2026-10-31" }),
     JSON.stringify([{ description: "Flow work", quantity: 1, unit_price: 120, vat_pct: 20, vat_exempt: false }]),
@@ -335,21 +336,23 @@ describe("release (8.6): delivery notes and invoices only for a Complete job, or
     expect((await one<{ status: string }>("select status from public.delivery_notes where id = $1", [dn.id])).status).toBe("despatched");
   });
 
-  it("one draft invoice per job, issued only once Complete; Finish drafts only what was despatched (099); notes sent out go on the job's draft", async () => {
+  it("one draft invoice per job, issued only once Complete; Finish with nothing despatched still drafts the order (099); notes sent out go on the job's draft", async () => {
     const j = await orderJob(250);
     await finish(who("workshop"), j.jobId);
-    // 099: nothing has been despatched (a job is released only once Complete), so Finish makes no draft.
-    expect(await invoices(j.jobId)).toHaveLength(0);
+    // 099 (Rhys, 20 Nov): nothing has been despatched, and Finish still makes the one draft (the order's full quantities, editable, never issued).
+    expect(await invoices(j.jobId)).toHaveLength(1);
+    expect((await invoices(j.jobId))[0]).toMatchObject({ status: "draft", invoice_ref: null });
     const hand = await handDraft(j.jobId);
     expect(await refusal(who("office"), "select public.issue_invoice($1)", [hand.id])).toMatchObject({ code: "22023", hint: "job_not_complete" });
     // A second draft for the job is refused from any path.
     expect(await refusal(who("office"), "select public.create_with_lines('invoices', $1::jsonb, 'invoice_line_items', 'invoice_id', '[]'::jsonb)",
       [JSON.stringify({ customer: "Flow Co", job_id: j.jobId, status: "draft", subtotal: 0, vat: 0, total: 0 })])).toMatchObject({ code: "22023", hint: "job_has_draft" });
     await withDb((db) => db.query("delete from public.invoices where id = $1", [hand.id]));
-    // Reopened and finished again: still none.
+    // Reopened and finished again: one draft again (not two).
     await reopen(who("workshop"), j.jobId);
     await finish(who("workshop"), j.jobId);
-    expect(await invoices(j.jobId)).toHaveLength(0);
+    expect(await invoices(j.jobId)).toHaveLength(1);
+    await withDb((db) => db.query("delete from public.invoices where job_id = $1 and status = 'draft'", [j.jobId]));
     await inspect(who("office"), j.jobId);
     const dn = await deliveryNote(who("workshop"), j);
     await q(who("office"), "update public.delivery_notes set status = 'despatched' where id = $1", [dn.id]);
