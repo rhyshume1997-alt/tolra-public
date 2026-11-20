@@ -1137,7 +1137,7 @@
  {
   "kind": "function",
   "object": "public.job_finish_draft_invoice(p_job uuid, p_org uuid)",
-  "detail": "definer search_path=pg_catalog, public 4a2618d65635800a436faef36946473c"
+  "detail": "definer search_path=pg_catalog, public be8889958f465fdec8bf17bddfa7c19f"
  },
  {
   "kind": "function",
