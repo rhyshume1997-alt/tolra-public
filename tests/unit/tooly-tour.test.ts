@@ -102,10 +102,26 @@ describe("planAdminTour", () => {
   });
 });
 
-describe("the mount is not part of this change", () => {
-  it("the shell and the float do not reference the tour yet", () => {
-    for (const file of ["components/dashboard-shell.tsx", "components/tooly/tooly-float.tsx", "components/sidebar.tsx"]) {
-      expect(readFileSync(path.join(ROOT, file), "utf8"), file).not.toMatch(/AdminTour|admin-tour|tooly-admin-tour/);
+describe("the mount (shell only)", () => {
+  const src = (file: string) => readFileSync(path.join(ROOT, file), "utf8");
+  it("the layout hands the shell the server flag as a boolean, from the one switch file", () => {
+    const layout = src("app/(dashboard)/layout.tsx");
+    expect(layout).toMatch(/toolyTourEnvEnabled\(\)/);
+    expect(layout).toMatch(/toolyTour=\{toolyTourEnvEnabled\(\)\}/);
+  });
+  it("the shell mounts the tour with that boolean, off unless passed on", () => {
+    const shell = src("components/dashboard-shell.tsx");
+    expect(shell).toMatch(/<AdminTour envOn=\{toolyTour\} \/>/);
+    expect(shell).toMatch(/toolyTour = false/);
+  });
+  it("the float, the sidebar and the middleware do not reference the tour", () => {
+    for (const file of ["components/tooly/tooly-float.tsx", "components/sidebar.tsx", "middleware.ts"]) {
+      expect(src(file), file).not.toMatch(/AdminTour|admin-tour|tooly-admin-tour/);
     }
+  });
+  it("the tour card sits above dialogs and sheets (z-50) and above the float (z-40)", () => {
+    expect(src("components/tooly/tour/admin-tour.tsx")).toMatch(/z-\[60\]/);
+    expect(src("components/ui/dialog.tsx")).toMatch(/z-50/);
+    expect(src("components/tooly/tooly-float.tsx")).toMatch(/z-40/);
   });
 });
