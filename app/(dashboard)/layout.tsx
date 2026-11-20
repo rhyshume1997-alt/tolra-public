@@ -2,6 +2,7 @@ import { AiFeaturesProvider } from "@/components/ai-features";
 import { DashboardShell } from "@/components/dashboard-shell";
 import { aiFinanceCheckEnabled } from "@/lib/ai/finance-check/flag";
 import { aiHelperEnabled } from "@/lib/ai-helper/flag";
+import { toolyTourEnvEnabled } from "@/components/tooly/tour/tour-switch";
 import { type ShellBrand, shellBrandFrom } from "@/lib/brand-pending";
 import { createSupabaseServerClient } from "@/lib/server/auth";
 
@@ -36,10 +37,12 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }>) {
   return (
+    // toolyTour: the first-login admin tour's server flag as a plain boolean (TOOLY_ADMIN_TOUR_ENABLED, off unless exactly "true"); the company
+    // marker and the admin role are also needed before anything shows (components/tooly/tour).
     // AI features this server has on: plain booleans only (the env var stays on the server). All off by default. Outside the shell, so
     // the sidebar (inside it) can show the AI item too.
     <AiFeaturesProvider value={{ financeCheck: aiFinanceCheckEnabled(), aiHelper: aiHelperEnabled() }}>
-      <DashboardShell company={await readCompany()}>{children}</DashboardShell>
+      <DashboardShell company={await readCompany()} toolyTour={toolyTourEnvEnabled()}>{children}</DashboardShell>
     </AiFeaturesProvider>
   );
 }
