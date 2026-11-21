@@ -15,12 +15,16 @@ import {
 } from "@/lib/email/schedules/form";
 import type { EmailScheduleFrequency, EmailScheduleKind } from "@/lib/email/schedules/due";
 import { supabase } from "@/lib/supabase";
+import { CompanyChangedError } from "@/lib/page-company";
 import { getCurrentOrganizationId } from "@/lib/supabase-business";
 import { useUser } from "@/lib/use-user";
 
 const KINDS: EmailScheduleKind[] = ["invoice_reminder", "timesheet"];
 const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0];
 const COLUMNS = "kind, enabled, frequency, weekday, time_of_day, run_at, timezone, recipients";
+/** Waits before asking again after a transient load failure (see EmailSchedulesCard): two more tries, about two seconds in all. */
+const LOAD_RETRY_DELAYS_MS = [400, 1500] as const;
+const wait = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 
 function Switch({ checked, onChange, label, disabled }: { checked: boolean; onChange: (checked: boolean) => void; label: string; disabled?: boolean }) {
   return (
@@ -136,20 +140,33 @@ export function EmailSchedulesCard() {
   useEffect(() => {
     if (!supabase) return void setState({ phase: "unavailable" });
     let cancelled = false;
+    const loadFailed = { phase: "error", message: "Couldn't load the e-mail schedules. Reload the page to try again." } as const;
+    // The Settings page asks the database a dozen things at once. A single refused request (a 5xx from the gateway, a dropped connection)
+    // must not leave this card on an error that only a reload clears: ask again, a short time later, up to LOAD_RETRY_DELAYS_MS.length
+    // more times. Only transient failures are asked again: a missing table (108 not applied), a refusal by the database and a company
+    // switched in another tab are answers, not hiccups, and are shown at once.
     void (async () => {
-      try {
-        const organizationId = await getCurrentOrganizationId();
-        const { data, error } = await supabase!.from("email_schedules").select(COLUMNS).eq("organization_id", organizationId);
-        if (cancelled) return;
-        if (error) {
-          const message = scheduleErrorMessage(error);
-          return void setState(message === SCHEDULE_NOT_AVAILABLE ? { phase: "unavailable" } : { phase: "error", message: "Couldn't load the e-mail schedules. Reload the page to try again." });
+      for (let attempt = 0; ; attempt += 1) {
+        const retryAfter = LOAD_RETRY_DELAYS_MS[attempt];
+        try {
+          const organizationId = await getCurrentOrganizationId();
+          const { data, error, status } = await supabase!.from("email_schedules").select(COLUMNS).eq("organization_id", organizationId);
+          if (cancelled) return;
+          if (error) {
+            const message = scheduleErrorMessage(error);
+            if (message === SCHEDULE_NOT_AVAILABLE) return void setState({ phase: "unavailable" });
+            if (status >= 500 && retryAfter !== undefined) { await wait(retryAfter); if (cancelled) return; continue; }
+            return void setState(loadFailed);
+          }
+          const rows = (data ?? []) as Array<Parameters<typeof formFromRow>[1] & { kind: EmailScheduleKind }>;
+          const forms = Object.fromEntries(KINDS.map((kind) => [kind, rows.find((r) => r.kind === kind) ? formFromRow(kind, rows.find((r) => r.kind === kind)!) : defaultForm(kind)])) as Record<EmailScheduleKind, ScheduleForm>;
+          return void setState({ phase: "ready", organizationId, forms, zone: rows[0]?.timezone || "Europe/London" });
+        } catch (failure) {
+          if (cancelled) return;
+          if (failure instanceof CompanyChangedError || retryAfter === undefined) return void setState(loadFailed);
+          await wait(retryAfter);
+          if (cancelled) return;
         }
-        const rows = (data ?? []) as Array<Parameters<typeof formFromRow>[1] & { kind: EmailScheduleKind }>;
-        const forms = Object.fromEntries(KINDS.map((kind) => [kind, rows.find((r) => r.kind === kind) ? formFromRow(kind, rows.find((r) => r.kind === kind)!) : defaultForm(kind)])) as Record<EmailScheduleKind, ScheduleForm>;
-        setState({ phase: "ready", organizationId, forms, zone: rows[0]?.timezone || "Europe/London" });
-      } catch {
-        if (!cancelled) setState({ phase: "error", message: "Couldn't load the e-mail schedules. Reload the page to try again." });
       }
     })();
     return () => { cancelled = true; };
