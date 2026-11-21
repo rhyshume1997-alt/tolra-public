@@ -46,7 +46,22 @@ let B: { org: string; admin: Person };
 
 async function q<T = Row>(sql: string, params: unknown[] = []): Promise<T[]> {
   const db = await pool.connect();
-  try { return (await db.query(sql, params)).rows as T[]; } finally { db.release(); }
+  try { return (await db.query(sql, params)).rows as T[]; }
+  catch (error) {
+    // A release or rollback file opens its own transaction; when its guard refuses, the connection must not go back to the pool aborted.
+    await db.query("rollback").catch(() => undefined);
+    throw error;
+  } finally { db.release(); }
+}
+/** Turn "require the second step" on or off for a company without the onboarding guard (which refuses while an admin has no authenticator): this proof is about the function, not that guard. */
+async function setRequireMfa(org: string, on: boolean) {
+  const db = await pool.connect();
+  try {
+    await db.query("begin");
+    await db.query("set local session_replication_role = replica");
+    await db.query("update public.organizations set require_admin_mfa = $2 where id = $1", [org, on]);
+    await db.query("commit");
+  } catch (error) { await db.query("rollback").catch(() => undefined); throw error; } finally { db.release(); }
 }
 async function makeOrg(label: string) {
   const id = randomUUID();
@@ -242,7 +257,7 @@ describe("release 163: the chase steps screen saves all its steps in one call", 
     const one = [{ days: 5, tone: "friendly" }];
     expect(await save(A.supportRo, A.org, now, one)).toMatchObject({ ok: false, code: "42501" });
     expect(await save(A.supportEl, A.org, now, one)).toMatchObject({ ok: false, code: "42501" });
-    await q("update public.organizations set require_admin_mfa = true where id = $1", [A.org]);
+    await setRequireMfa(A.org, true);
     try {
       const aal1 = await save(A.admin, A.org, now, one, "aal1");
       expect(aal1).toMatchObject({ ok: false, code: "42501" });
@@ -250,7 +265,7 @@ describe("release 163: the chase steps screen saves all its steps in one call", 
       expect(await current(A.org)).toEqual(now);
       expect((await save(A.admin, A.org, now, now.map(({ days, tone }) => ({ days, tone })), "aal2")).ok).toBe(true);
     } finally {
-      await q("update public.organizations set require_admin_mfa = false where id = $1", [A.org]);
+      await setRequireMfa(A.org, false);
     }
     expect(await current(A.org)).toEqual(now);
   });
