@@ -87,4 +87,21 @@ describe("Email schedules card: loading", () => {
     expect(loadError()).toBe(true);
     expect(calls.org).toHaveBeenCalledTimes(1);
   });
+  it("a company switched while a retry is waiting ends in the error: the schedules are never read for another company", async () => {
+    calls.org.mockRejectedValueOnce(new Error("blip")).mockRejectedValue(new CompanyChangedError());
+    await mountAndSettle();
+    expect(ready()).toBe(false);
+    expect(loadError()).toBe(true);
+    expect(calls.org).toHaveBeenCalledTimes(2);
+    expect(calls.read).not.toHaveBeenCalled();
+  });
+  it("leaving the page while a retry is waiting stops it: nothing is asked again", async () => {
+    calls.org.mockRejectedValue(new Error("down"));
+    await act(async () => { root.render(createElement(EmailSchedulesCard)); });
+    expect(calls.org).toHaveBeenCalledTimes(1);
+    act(() => root.unmount());
+    await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+    expect(calls.org).toHaveBeenCalledTimes(1);
+    root = createRoot(host);
+  });
 });
