@@ -2,15 +2,15 @@
  * Release 163 (supabase/release/163_chase_steps_atomic.release.sql): the chase steps screen saves all its steps in one database call,
  * public.save_chase_steps_atomic(p_org, p_expected, p_steps). The DB proof, below PostgREST, one `it` per case.
  *
- * Inputs: the disposable stack (TEST_DATABASE_URL, isolation-checked), baseline migrations only (163 needs 138 and the access helpers, none
- * of the post-144 releases). The file applies 163 itself, proves it, and in afterAll puts the database back as it found it by running
- * 163's own rollback file (so the frozen baseline checks that run in the same database never see the function). Synthetic companies
- * (slug t-<run>-...) and people, forged claims as PostgREST sets them (no Auth API); each call is one transaction.
- * Proves: apply, verify (8 rows true), apply again changes nothing; admin and office save steps and get ids back; a second save keeps
- * the id of an unchanged offset, changes a tone, drops an offset, adds one; a stale snapshot is refused 40001 and changes nothing; five
- * bad lists are refused 22023 and change nothing; another company, workshop, viewer and anon are refused 42501; two simultaneous saves
- * of the same snapshot have exactly one winner; rollback removes the function and nothing else (fingerprint of every other function
- * unchanged, saved steps stay) and the release can be applied again.
+ * Inputs: the disposable stack (TEST_DATABASE_URL, isolation-checked); the post-144 fixture installs 145..163 (163 needs 138 and the access
+ * helpers only, nothing from 162). Synthetic companies (slug t-<run>-...) and people, forged claims as PostgREST sets them (no Auth API);
+ * each call is one transaction. The release stays installed when this file ends (the CI schema marker after the DB suite expects it).
+ * Proves: installed and verified (8 rows true), applying again changes nothing; admin and office save steps and get ids back; a second
+ * save keeps the id of an unchanged offset, changes a tone, drops an offset, adds one; a stale snapshot is refused 40001 and changes
+ * nothing; five bad lists are refused 22023 and change nothing; another company, workshop, viewer, a support session (read-only and
+ * elevated), a first-step-only (aal1) admin session of a company that requires the second step, and anon are refused 42501 and change
+ * nothing; an aal2 admin of the same company saves; two simultaneous saves of the same snapshot have exactly one winner; rollback removes
+ * the function and nothing else (fingerprint of every other function unchanged, saved steps stay) and the release can be applied again.
  * Not proved here: PostgREST's own error mapping, hosted grants (service_role there comes from Supabase's default privileges).
  * Must not change: this file proves; it never edits a release, verify or rollback file to make itself pass.
  */
@@ -21,7 +21,8 @@ import { Pool, type PoolClient } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { isolatedBackend, SYNTHETIC_SLUG_PREFIX } from "../support/isolation";
-import { verifyBackendIdentity } from "../support/fixtures";
+import { verifyBackendIdentity, withDb } from "../support/fixtures";
+import { preparePost144Fixture } from "../support/post-144-release-fixture";
 
 const runId = randomBytes(4).toString("hex");
 let seq = 0;
@@ -40,7 +41,7 @@ type Step = { id?: string; days: number; tone: string };
 type Outcome = { ok: true; steps: Step[] } | { ok: false; code?: string; message: string };
 const orgs: string[] = [];
 const people: Person[] = [];
-let A: { org: string; admin: Person; office: Person; workshop: Person; viewer: Person };
+let A: { org: string; admin: Person; office: Person; workshop: Person; viewer: Person; supportRo: Person; supportEl: Person };
 let B: { org: string; admin: Person };
 
 async function q<T = Row>(sql: string, params: unknown[] = []): Promise<T[]> {
@@ -65,8 +66,23 @@ async function makePerson(org: string, name: string, role: string): Promise<Pers
   people.push(p);
   return p;
 }
+/** A Tolra support login chosen into the company: read-only (not elevated) or elevated. Never an ordinary member. */
+async function makeSupport(org: string, name: string, elevated: boolean): Promise<Person> {
+  seq += 1;
+  const p = { id: randomUUID(), email: `${name}-${seq}.${runId}@example.test`, session: randomUUID() };
+  const grant = randomUUID();
+  await q("insert into auth.users (id, email) values ($1, $2)", [p.id, p.email]);
+  await q(`insert into public.user_profiles (id, email, full_name, role, organization_id, active, must_change_password) values ($1, $2, 'Tolra Support', 'admin', $3, true, false)`, [p.id, p.email, org]);
+  await q("insert into security_audit.platform_admins (user_id) values ($1)", [p.id]);
+  await q(`insert into public.organization_members (user_id, organization_id, role, active, support, expires_at, support_grant) values ($1, $2, 'admin', true, true, now() + interval '2 hours', $3)`, [p.id, org, grant]);
+  await q("insert into auth.sessions (id, user_id) values ($1, $2)", [p.session, p.id]);
+  await q("insert into security_audit.session_company (session_id, user_id, organization_id, grant_id) values ($1, $2, $3, $4)", [p.session, p.id, org, grant]);
+  if (elevated) await q("update security_audit.session_company set elevated_until = now() + interval '30 minutes' where session_id = $1", [p.session]);
+  people.push(p);
+  return p;
+}
 /** One API request: its own transaction, as role authenticated (the person's claims) or anon, as PostgREST runs it. */
-async function as<T>(p: Person | "anon", fn: (db: PoolClient) => Promise<T>): Promise<T> {
+async function as<T>(p: Person | "anon", fn: (db: PoolClient) => Promise<T>, aal: "aal1" | "aal2" = "aal2"): Promise<T> {
   const db = await pool.connect();
   try {
     await db.query("begin");
@@ -76,7 +92,7 @@ async function as<T>(p: Person | "anon", fn: (db: PoolClient) => Promise<T>): Pr
     } else {
       await db.query("set local role authenticated");
       await db.query("select set_config('request.jwt.claims', $1, true), set_config('request.jwt.claim.sub', $2, true)",
-        [JSON.stringify({ sub: p.id, role: "authenticated", aud: "authenticated", aal: "aal2", email: p.email, session_id: p.session }), p.id]);
+        [JSON.stringify({ sub: p.id, role: "authenticated", aud: "authenticated", aal, email: p.email, session_id: p.session }), p.id]);
     }
     const result = await fn(db);
     await db.query("commit");
@@ -89,9 +105,9 @@ async function as<T>(p: Person | "anon", fn: (db: PoolClient) => Promise<T>): Pr
   }
 }
 const SAVE = "select public.save_chase_steps_atomic($1, $2::jsonb, $3::jsonb) as r";
-async function save(p: Person | "anon", org: string, expected: unknown, steps: unknown): Promise<Outcome> {
+async function save(p: Person | "anon", org: string, expected: unknown, steps: unknown, aal: "aal1" | "aal2" = "aal2"): Promise<Outcome> {
   try {
-    const rows = await as(p, async (db) => (await db.query(SAVE, [org, JSON.stringify(expected), JSON.stringify(steps)])).rows);
+    const rows = await as(p, async (db) => (await db.query(SAVE, [org, JSON.stringify(expected), JSON.stringify(steps)])).rows, aal);
     return { ok: true, steps: rows[0].r as Step[] };
   } catch (e) {
     const err = e as { code?: string; message: string };
@@ -115,20 +131,20 @@ const verifyRows = async () => (await q<{ check_name: string; ok: boolean }>(rea
 
 beforeAll(async () => {
   await verifyBackendIdentity();
+  await withDb((db) => preparePost144Fixture({ verify: verifyBackendIdentity, query: (sql) => db.query(sql) }));
   pool = new Pool({ connectionString: isolatedBackend().databaseUrl, max: 6 });
-  // Leave nothing from an earlier crashed run: the function is only ever here while this file runs.
-  if (await hasFunction()) await q(read(ROLLBACK));
   const orgA = await makeOrg("alpha");
   const orgB = await makeOrg("beta");
   A = { org: orgA, admin: await makePerson(orgA, "a-admin", "admin"), office: await makePerson(orgA, "a-office", "office"),
-        workshop: await makePerson(orgA, "a-workshop", "workshop"), viewer: await makePerson(orgA, "a-viewer", "viewer") };
+        workshop: await makePerson(orgA, "a-workshop", "workshop"), viewer: await makePerson(orgA, "a-viewer", "viewer"),
+        supportRo: await makeSupport(orgA, "a-support-ro", false), supportEl: await makeSupport(orgA, "a-support-el", true) };
   B = { org: orgB, admin: await makePerson(orgB, "b-admin", "admin") };
 });
 
 afterAll(async () => {
   if (!pool) return;
   try {
-    if (await hasFunction()) await q(read(ROLLBACK));
+    if (!(await hasFunction())) await q(read(RELEASE)); // this file leaves 163 installed, as the fixture and the CI schema marker expect
     const ids = people.map((p) => p.id);
     const db = await pool.connect();
     try {
@@ -136,6 +152,7 @@ afterAll(async () => {
       await db.query("set local session_replication_role = replica");
       for (const t of ["public.chase_pauses", "public.chase_steps", "public.organization_members", "public.user_profiles"]) await db.query(`delete from ${t} where organization_id = any($1)`, [orgs]);
       await db.query("delete from security_audit.session_company where user_id = any($1)", [ids]);
+      await db.query("delete from security_audit.platform_admins where user_id = any($1)", [ids]);
       await db.query("delete from public.organizations where id = any($1)", [orgs]);
       await db.query("commit");
       await db.query("delete from auth.users where id = any($1)", [ids]);
@@ -146,12 +163,11 @@ afterAll(async () => {
 });
 
 describe("release 163: the chase steps screen saves all its steps in one call", () => {
-  it("1. the release adds the one function and nothing else, verifies (8 rows true) and applying it again changes nothing", async () => {
-    expect(await hasFunction()).toBe(false);
-    const before = await otherFunctionsFingerprint();
-    await q(read(RELEASE));
+  it("1. the release is installed and verified (8 rows true), the preflight marker says applied, and applying it again changes nothing", async () => {
     expect(await hasFunction()).toBe(true);
-    expect(await otherFunctionsFingerprint()).toBe(before);
+    const before = await otherFunctionsFingerprint();
+    const marker = (await q<{ check: string; value: string }>(read("supabase/verify/release_preflight.sql"))).find((r) => r.check === "post-144 marker 163 chase_steps_atomic");
+    expect(marker?.value).toBe("applied");
     const rows = await verifyRows();
     expect(rows).toHaveLength(8);
     expect(rows.filter((r) => r.ok !== true).map((r) => r.check_name)).toEqual([]);
@@ -219,6 +235,24 @@ describe("release 163: the chase steps screen saves all its steps in one call", 
     expect(await save("anon", A.org, now, one)).toMatchObject({ ok: false, code: "42501" });
     expect(await current(A.org)).toEqual(now);
     expect(await current(B.org)).toEqual(mine);
+  });
+
+  it("6b. a support session (read-only and elevated) and an admin on a first-step-only (aal1) token of a company that requires the second step are refused with 42501 and change nothing; the same admin at aal2 saves", async () => {
+    const now = await current(A.org);
+    const one = [{ days: 5, tone: "friendly" }];
+    expect(await save(A.supportRo, A.org, now, one)).toMatchObject({ ok: false, code: "42501" });
+    expect(await save(A.supportEl, A.org, now, one)).toMatchObject({ ok: false, code: "42501" });
+    await q("update public.organizations set require_admin_mfa = true where id = $1", [A.org]);
+    try {
+      const aal1 = await save(A.admin, A.org, now, one, "aal1");
+      expect(aal1).toMatchObject({ ok: false, code: "42501" });
+      expect(aal1.ok ? "" : aal1.message).toMatch(/authenticator|second step/i);
+      expect(await current(A.org)).toEqual(now);
+      expect((await save(A.admin, A.org, now, now.map(({ days, tone }) => ({ days, tone })), "aal2")).ok).toBe(true);
+    } finally {
+      await q("update public.organizations set require_admin_mfa = false where id = $1", [A.org]);
+    }
+    expect(await current(A.org)).toEqual(now);
   });
 
   it("7. two simultaneous saves of the same snapshot have exactly one winner (the other gets 40001)", async () => {

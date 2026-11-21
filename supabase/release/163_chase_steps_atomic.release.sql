@@ -1,7 +1,8 @@
 -- Post-144 release step 163 (the chase steps screen saves all its steps in one database call; registered in supabase/release-plan.json as
 -- phase 163, after 154 and 156 to 160 and independent of 161 and 162; CI's post-144 step installs it). One transaction; never part of
--- baseline replay. Not applied anywhere hosted. Canonical source: supabase/proposals/builder2_chase_settings_atomic.sql (the function below
--- is its body, character for character; that file stays as the reviewed proposal and its own test).
+-- baseline replay. Not applied anywhere hosted. Canonical source: supabase/proposals/p163_chase_steps_atomic.sql (its body between BEGIN; and
+-- COMMIT; is copied below verbatim; scripts/check-release-plan.mjs fails if they drift). The function text is the reviewed proposal
+-- supabase/proposals/builder2_chase_settings_atomic.sql, unchanged; that file stays and its own test reads it.
 -- WHAT IT DOES: adds ONE new function, public.save_chase_steps_atomic(p_org uuid, p_expected jsonb, p_steps jsonb), that the app already
 -- calls (lib/chase/ui-store.ts, from the invoice reminder card in Settings) and that production does not have, so saving changed chase steps
 -- fails there today with "Could not save chase steps". It needs release 138 (the chase_steps table and its guard) and nothing else.

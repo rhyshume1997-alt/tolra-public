@@ -12,6 +12,10 @@ describe("chase screen connections", () => {
     expect(await saveChaseSteps(db as never, "a", before, [{ days: 7, tone: "firm" }])).toEqual(saved);
     expect(db.rpc).toHaveBeenCalledWith("save_chase_steps_atomic", { p_org: "a", p_expected: before, p_steps: [{ days: 7, tone: "firm" }] });
   });
+  it.each(["42883", "PGRST202", "42501", "none"])("a failing save (%s) throws a clear message and returns nothing as saved", async (code) => {
+    const db = { rpc: vi.fn().mockResolvedValue({ data: null, error: { code: code === "none" ? undefined : code, message: "x" } }) };
+    await expect(saveChaseSteps(db as never, "a", [{ id: "s", days: 7, tone: "friendly" }], [{ days: 7, tone: "firm" }])).rejects.toThrow(/Could not save chase steps/);
+  });
   it("makes no writes for unchanged steps", async () => {
     const db = new FakeDb();
     await saveChaseSteps(db as never, "a", [{ id: "step", days: 7, tone: "friendly" }], [{ days: 7, tone: "friendly" }]);
