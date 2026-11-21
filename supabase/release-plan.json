@@ -188,7 +188,7 @@
   "other_proposals": [
     {
       "source": "supabase/proposals/builder2_chase_settings_atomic.sql",
-      "disposition": "separate chase settings release decision; requires 138; browser fixture is not production packaging"
+      "disposition": "released as numbered release 163 (supabase/release/163_chase_steps_atomic.release.sql with its undo and check files beside it; the function text is the same, unchanged); like 162 it is not yet a numbered phase (no preflight marker or CI install step); needs 138; not applied on production; this file stays as the reviewed source and its own test reads it"
     },
     {
       "source": "supabase/proposals/builder2_costing_settings_atomic.sql",
