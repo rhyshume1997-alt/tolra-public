@@ -286,6 +286,7 @@ test("switch on, admin: the expected figures, three separate sections, no combin
   try {
     await signIn(pageB, b.admin);
     await pageB.goto("/reports/revenue");
+    await expect(pageB.getByTestId('revenue-page')).toBeVisible();
     await expect(pageB.getByTestId("revenue-invoiced-total")).toHaveText("£7,000.00");
     await expect(pageB.getByTestId("revenue-cash-total")).toHaveText("£7,000.00");
     for (const other of ["Rev Acme", "Rev Beta", "PN-REV-1", "£900.00", "£500.00"]) await expect(pageB.getByTestId("revenue-page"), other).not.toContainText(other);

@@ -80,7 +80,7 @@ BEGIN
   IF jb.customer_po IS DISTINCT FROM '4471' THEN RAISE EXCEPTION 'FAIL 3 job %', row_to_json(jb); END IF;
   r := pg_temp.as_user(A, format($q$UPDATE public.jobs SET started_at = now() - interval '1 hour', finished_at = now() WHERE id = %L RETURNING id$q$, jb.id));
   IF r NOT LIKE 'ok:%' THEN RAISE EXCEPTION 'FAIL 3 finish: %', r; END IF;
-  -- Finished with nothing despatched: no draft yet (099). The despatch (owner-made note of the order's lines, sent out), then the
+  -- Finished with nothing despatched: the finish already drafts the order (099, Rhys 20 Nov); the call below then finds that one draft. The despatch (owner-made note of the order's lines, sent out), then the
   -- Job Finish drafting function itself (099's job_finish_draft_invoice, the caller's company).
   PERFORM set_config('request.jwt.claims', json_build_object('sub', A, 'role', 'authenticated', 'aal', 'aal2')::TEXT, true);
   PERFORM public.ensure_sales_order_lines(so.id);

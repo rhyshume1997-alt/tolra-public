@@ -1,6 +1,6 @@
 /**
- * The job flow in the browser (migration 081): the workshop finishes a job made from a sales order (since 099 Finish drafts only what has
- * been despatched, so nothing here; the job's draft is then made by hand, no number),
+ * The job flow in the browser (migration 081): the workshop finishes a job made from a sales order (since 099, with nothing despatched,
+ * Finish still drafts the order's full quantity: one draft, no number; the test then swaps it for a hand-made one so the rest is unchanged),
  * reopens its own Finish with a reason (113: confirmed, with the "No admin available" tick box), finishes it again, and is told it can't inspect its own work; the office inspects it with the
  * acceptance criteria and the measured result, and it is Complete; the draft then reads "Ready to issue". Then (113) the office issues it
  * and reopens the job through the sign-off: the confirmation names the issued invoice, which stays exactly as it was. Fixed far dates only.
@@ -32,15 +32,18 @@ test("finish, reopen with a reason, finish again; the finisher can't inspect; th
   expect((await service.from("sales_orders").update({ converted_to_job_id: job!.id }).eq("id", order!.id)).error).toBeNull();
   const stored = async () => (await service.from("jobs").select("finished_at, inspected_at, stage").eq("id", job!.id).single()).data!;
 
-  // 1. The workshop finishes it (the "Are you sure?" stays): Waiting for inspection. Nothing has been despatched, so no draft (099).
+  // 1. The workshop finishes it (the "Are you sure?" stays): Waiting for inspection. Nothing has been despatched, and 099 (Rhys, 20 Nov)
+  // still drafts the order: exactly one draft, not issued, no number.
   await signIn(page, w.tenants.alpha.users.workshop);
   await page.goto("/jobs");
   const row = () => page.getByRole("row").filter({ hasText: no });
   await confirmFinish(page, row().getByRole("button", { name: "Finish", exact: true }));
   await expect(page.getByText("Job finished: Waiting for inspection")).toBeVisible();
   await expect.poll(async () => (await stored()).finished_at).not.toBeNull();
-  expect((await service.from("invoices").select("status, invoice_ref").eq("job_id", job!.id)).data).toEqual([]);
-  // The job's draft, made by hand (no number): it reads "Draft, awaiting inspection" until the job is Complete.
+  expect((await service.from("invoices").select("status, invoice_ref").eq("job_id", job!.id)).data).toEqual([{ status: "draft", invoice_ref: null }]);
+  // Swap it for the job's draft made by hand (no number), so every later step is as before (one draft per job): it reads
+  // "Draft, awaiting inspection" until the job is Complete.
+  expect((await service.from("invoices").delete().eq("job_id", job!.id).eq("status", "draft")).error).toBeNull();
   const { data: draft, error: draftError } = await service.from("invoices").insert({
     organization_id: org, customer, job_id: job!.id, status: "draft", subtotal: 120, vat: 0, total: 120, carriage: 0, vat_enabled: false, amount_paid: 0,
     invoice_date: "2099-01-05", due_date: "2099-02-04", description: "Flow brackets", quantity: 1, unit_price: 120,
