@@ -125,7 +125,11 @@ export function choosePlacement(i: PlacementInput): Placement {
   if (i.hasCaption) {
     for (const d of offsets) {
       const y = clamp(i.idealY + d);
-      for (const where of ["left", "above"] as const) if (free([...group(y), bubble(y, where)])) return { y, bubble: where };
+      for (const where of ["left", "above"] as const) {
+        const b = bubble(y, where);
+        const inside = b.left >= 4 && b.top >= 4 && b.bottom <= i.vh - 4; // the caption is never cut off by the window
+        if (inside && free([...group(y), b])) return { y, bubble: where };
+      }
     }
   }
   for (const d of offsets) {

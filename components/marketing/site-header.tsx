@@ -9,7 +9,7 @@ import { SHEET_LABELS } from "@/lib/marketing";
  * Boundary: `menu` is an optional slot before the Sign in link (the home page puts Tooly's "Job stages" button there); with none, the header
  * is exactly as before. Must not change: the logo link, the Sign in link and the navigation label.
  */
-export function SiteHeader({ menu }: { menu?: ReactNode } = {}) {
+export function SiteHeader({ menu }: { menu?: ReactNode }) {
   return (
     <header className={`border-b border-[#0b2a5b]${menu ? " relative z-40" : ""}`}>
       <div className="mx-auto flex h-16 w-full max-w-[1240px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-10">

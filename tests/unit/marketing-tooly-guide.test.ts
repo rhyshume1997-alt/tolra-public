@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest";
 
 import { ToolyGuide, ToolyGuideView } from "@/components/marketing/tooly-guide";
 import { GuideContext, type GuideCtx } from "@/components/marketing/tooly-guide-state";
+import { SiteHeader } from "@/components/marketing/site-header";
 import { ToolyMenu } from "@/components/marketing/tooly-menu";
 import * as marketing from "@/lib/marketing";
 import { FLOW_STEPS } from "@/lib/marketing";
@@ -175,6 +176,14 @@ describe("placement", () => {
     expect(choosePlacement({ ...input, avoid: [] })).toEqual({ y: 300, bubble: "left" });
   });
 
+  it("never puts the caption where the window would cut it off", () => {
+    const top = choosePlacement({ ...input, idealY: 20, x: 20, avoid: [{ left: 0, top: 0, right: 400, bottom: 200 }] });
+    if (top.bubble === "above") expect(top.y - 10 - input.bubbleH).toBeGreaterThanOrEqual(4);
+    const none = choosePlacement({ ...input, idealY: 8, x: 1330, avoid: [{ left: 0, top: 0, right: 1100, bottom: 900 }] });
+    if (none.bubble === "above") expect(none.y - 10 - input.bubbleH).toBeGreaterThanOrEqual(4);
+    expect(["left", "above", "collapsed"]).toContain(none.bubble);
+  });
+
   it("follows the scroll from the top of the page to the bottom and stays in range", () => {
     expect(idealY(0, 80, 700)).toBe(80);
     expect(idealY(1, 80, 700)).toBe(700);
@@ -186,5 +195,26 @@ describe("placement", () => {
   it("speaks for the last stop crossing the reading line and keeps the previous one in a gap", () => {
     expect(activeStopId(new Set(["pain", "handles"]), "hero")).toBe("handles");
     expect(activeStopId(new Set(), "pain")).toBe("pain");
+  });
+});
+
+describe("shared header", () => {
+  it("is unchanged for the other public pages (no menu slot: no extra button, not positioned), and takes the menu only on the home page", () => {
+    const plain = renderToStaticMarkup(createElement(SiteHeader));
+    expect(plain).not.toContain("tm-");
+    expect(plain).not.toContain("relative");
+    expect(plain).toContain(marketing.SHEET_LABELS.signIn);
+    expect(plain.match(/<a\b/g)).toHaveLength(2); // the logo and Sign in, as before
+    const withMenu = withCtx(ctx(), createElement(SiteHeader, { menu: createElement(ToolyMenu) }));
+    expect(withMenu).toContain("tm-launch");
+    expect(withMenu).toContain("relative z-40");
+  });
+
+  it("the home page hero no longer carries the large static Tooly (the animated guide is the one that drops in), and keeps its proof line", async () => {
+    const page = await import("@/app/page");
+    const html = renderToStaticMarkup(createElement(page.default));
+    const hero = html.slice(html.indexOf('aria-labelledby="hero-title"'), html.indexOf('aria-labelledby="one-place-title"'));
+    expect(hero).not.toContain("width:200px;height:200px"); // the old 200 px hero mark (the traveller's small 72 px note mark is unchanged)
+    expect(hero).toContain(marketing.PROOF_LINE);
   });
 });

@@ -70,8 +70,8 @@ export default function Home() {
           traveller comes after the notes, so a short picture of it (JobCardCompact) sits right under the subhead.
         */}
         <section aria-labelledby="hero-title" className={`${BAND} mk-hero`}>
-          <div className={`${SHEET} grid gap-12 lg:grid-cols-12 lg:gap-10`}>
-            <div className="lg:col-span-7 lg:pr-6">
+          <div className={`${SHEET} grid gap-12 lg:grid-cols-12 lg:grid-rows-[auto_1fr] lg:gap-x-10 lg:gap-y-10`}>
+            <div className="lg:col-span-7 lg:col-start-1 lg:row-start-1 lg:pr-6">
               <h1 id="hero-title" className={H1}>{HERO_TITLE}</h1>
               <p className={`mt-6 max-w-[34rem] text-lg leading-relaxed ${MUTED}`}>{HERO_SUBHEAD}</p>
               <JobCardCompact className="mt-6" />
@@ -79,16 +79,14 @@ export default function Home() {
                 <Cta />
                 <a href="#flow-title" className="mk-link inline-flex min-h-11 items-center text-base font-semibold lg:hidden">{SEE_HOW_LABEL}</a>
               </div>
-              {/* Tooly waves once when he first comes into view, then idles. Large screens only: the first screen on a phone stays text, the traveller and the button. */}
-              <ToolyMark size={200} className="mt-10 hidden lg:block" />
+              {/* No static Tooly here: the one Tooly on the page is the animated guide (components/marketing/tooly-guide.tsx), who drops in at the top right. */}
             </div>
-            <div className="lg:col-span-5">
+            <div className="lg:col-span-5 lg:col-start-8 lg:row-span-2 lg:row-start-1">
               <JobFlow />
             </div>
-          </div>
-          {/* The only proof the page makes, with the three checked trust items, as one rule across the sheet. */}
-          <div className={`${SHEET} mt-12 lg:mt-16`}>
-            <div className="flex flex-col gap-x-10 gap-y-3 border-t border-[#0b2a5b] pt-4 lg:flex-row lg:items-baseline lg:justify-between">
+            {/* The only proof the page makes, with the three checked trust items, as one rule. On a phone it follows the traveller; on a large screen it
+                sits directly under the call to action, so the first screen is text, button and proof beside the traveller, with no empty block where the static Tooly was. */}
+            <div className="flex flex-col gap-y-3 border-t border-[#0b2a5b] pt-4 lg:col-span-7 lg:col-start-1 lg:row-start-2 lg:self-start">
               <p className="font-semibold">{PROOF_LINE}</p>
               <ul className="mk-label flex flex-wrap gap-x-6 gap-y-1">
                 {TRUST_ITEMS.map((item) => <li key={item}>{item}</li>)}
