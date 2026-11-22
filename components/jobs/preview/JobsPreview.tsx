@@ -12,10 +12,9 @@
  * that the real board does not have (no tabs, search box or sort). Row controls stay at least 48px tall (e2e rule).
  */
 
-import { useCallback, useEffect, useMemo, useReducer, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
 import { Dialog, DropdownMenu, Popover } from "radix-ui";
-import { toast } from "sonner";
 
 import s from "./JobsPreview.module.css";
 
@@ -334,11 +333,16 @@ export function reduce(st: State, a: Act): State {
 /* 4. Presentation                                                      */
 /* ================================================================== */
 
-const PREVIEW_NOTE = "Preview data: nothing was saved.";
+/* Preview acknowledgements: one neutral "Preview only" toast style (never a real-success look), shown by <Toasts/> below the top bar. */
+type ToastItem = { id: number; text: string; kind: "preview" | "error" };
+let toastSeq = 0;
+const toastSubs = new Set<(t: ToastItem | null) => void>();
+const stop = (m: string) => (/[.!?]$/.test(m) ? m : `${m}.`);
+const push = (text: string, kind: ToastItem["kind"]) => toastSubs.forEach((f) => f({ id: ++toastSeq, text, kind }));
 const say = {
-  ok: (m: string) => toast.success(`${m} ${PREVIEW_NOTE}`),
-  info: (m: string) => toast.info(`${m} ${PREVIEW_NOTE}`),
-  fail: (m: string) => toast.error(m),
+  ok: (m: string) => push(stop(m), "preview"),
+  info: (m: string) => push(stop(m), "preview"),
+  fail: (m: string) => push(stop(m), "error"),
 };
 
 const VIEW_KEY = "jobs-preview:view";
@@ -363,28 +367,38 @@ function Badge({ word, color, kind }: { word: string; color: "grey" | "blue" | "
 
 /* ---------------- small parts ---------------- */
 
-function Segmented<T extends string>({ label, value, options, onChange, size }: { label: string; value: T; options: Array<{ v: T; label: string; hidden?: boolean; testId?: string }>; onChange: (v: T) => void; size?: "sm" }) {
+function Segmented<T extends string>({ label, value, options, onChange, size }: { label: string; value: T; options: Array<{ v: T; label: string; hidden?: boolean; disabled?: string; testId?: string }>; onChange: (v: T) => void; size?: "sm" }) {
   return (
     <div role="group" aria-label={label} className={cx(s.seg, size === "sm" && s.segSm)}>
       {options.filter((o) => !o.hidden).map((o) => (
-        <button key={o.v} type="button" aria-pressed={value === o.v} data-testid={o.testId} className={s.segBtn} onClick={() => onChange(o.v)}>{o.label}</button>
+        <button key={o.v} type="button" aria-pressed={value === o.v} aria-disabled={o.disabled ? true : undefined} title={o.disabled} data-testid={o.testId} className={s.segBtn} onClick={() => { if (!o.disabled) onChange(o.v); }}>{o.label}</button>
       ))}
     </div>
   );
 }
 
-function Chip({ pressed, onClick, children, testId, tag }: { pressed: boolean; onClick: () => void; children: ReactNode; testId?: string; tag?: boolean }) {
-  return <button type="button" aria-pressed={pressed} data-testid={testId} className={cx(s.chip, tag && s.chipTag)} onClick={onClick}>{pressed ? <Check /> : null}{children}</button>;
+function Chip({ pressed, onClick, children, testId, tag, dim }: { pressed: boolean; onClick: () => void; children: ReactNode; testId?: string; tag?: boolean; dim?: boolean }) {
+  return <button type="button" aria-pressed={pressed} aria-disabled={dim || undefined} data-testid={testId} className={cx(s.chip, tag && s.chipTag, dim && s.chipDim)} onClick={dim ? undefined : onClick}>{pressed ? <Check /> : null}{children}</button>;
 }
 
 function Checkbox({ checked, onChange, label, testId }: { checked: boolean; onChange: () => void; label: string; testId?: string }) {
   return <input type="checkbox" className={s.check} checked={checked} onChange={onChange} aria-label={label} data-testid={testId} />;
 }
 
-function ActionButton({ action, job, onAct, kindOf }: { action: Action; job: Job; onAct: (job: Job, a: Action) => void; kindOf?: string }) {
-  const kind = kindOf ?? ({ Start: "play", Resume: "play", "Start timer": "play", Pause: "pause", Finish: "finish", Send: "send", Finished: "done" } as Record<string, string>)[action.label] ?? "plain";
+const TERTIARY = new Set<ActionLabel>(["Worksheet", "Machines", "Print", "Delivery note", "Release early", "Archive", "Rework", "Reopen"]);
+/** One state-aware primary per row (Start, Resume, Start timer, Pick a machine, Pause, or Inspected when it is the next step); Send and Finish are secondary; the rest are quiet. */
+export function primaryLabel(actions: Action[]): ActionLabel | null {
+  const play = actions.find((a) => ["Start", "Resume", "Start timer", "Pick a machine", "Pause"].includes(a.label));
+  if (play) return play.label;
+  const insp = actions.find((a) => a.label === "Inspected" && !a.disabled);
+  return insp ? insp.label : null;
+}
+const kindFor = (a: Action, primary: ActionLabel | null) => (a.disabled ? "off" : a.label === primary ? "primary" : TERTIARY.has(a.label) ? "tertiary" : "secondary");
+
+function ActionButton({ action, job, onAct, primary }: { action: Action; job: Job; onAct: (job: Job, a: Action) => void; primary?: ActionLabel | null }) {
+  const kind = kindFor(action, primary ?? null);
   return (
-    <button type="button" data-action={action.label} aria-disabled={action.disabled || undefined} className={cx(s.act, tone(`a_${kind}`), action.disabled && s.actOff)}
+    <button type="button" data-action={action.label} aria-disabled={action.disabled || undefined} className={cx(s.act, tone(`a_${kind}`))}
       title={action.disabled ? disabledReason(job, action.label) : undefined} onClick={() => onAct(job, action)}>{action.label}</button>
   );
 }
@@ -408,6 +422,11 @@ function MachinePicker({ job, onPick, children }: { job: Job; onPick: (job: Job,
 
 function StatusLine({ job }: { job: Job }) {
   return <span className={cx(s.statusLine, tone(`t_${family(job.status)}`))}><i className={s.lamp} aria-hidden />{STATUS_WORD[job.status]}</span>;
+}
+
+/** The one status grammar for Cards and List: dot plus status word, then the due word. */
+function IdState({ job }: { job: Job }) {
+  return <span className={s.idState}><StatusLine job={job} />{showsDueLight(job) && job.due ? <span className={cx(s.dueWord, tone(`d_${dueFamily[job.due]}`))}>{job.due}</span> : null}</span>;
 }
 
 function DueCell({ job }: { job: Job }) {
@@ -451,7 +470,7 @@ function MachineCell({ job, ctx }: { job: Job; ctx: RowCtx }) {
             </MachinePicker>
           ) : null}
           {job.timer ? <span className={s.timer}>{job.timer}</span> : null}
-          {releaseBtn ? <button type="button" className={cx(s.act, s.a_plain)} data-op="release" onClick={() => ctx.onRelease(job)}>Release</button> : null}
+          {releaseBtn ? <button type="button" className={cx(s.act, s.a_secondary)} data-op="release" onClick={() => ctx.onRelease(job)}>Release</button> : null}
           {addMachine ? <button type="button" className={cx(s.act, s.a_link)} data-op="add-machine" onClick={() => say.info("Add machine opens the Machine Schedule in the real board.")}>Add machine</button> : null}
         </span>
       ) : null}
@@ -478,7 +497,7 @@ function OperatorCell({ job, ctx }: { job: Job; ctx: RowCtx }) {
         </label>
       ) : null}
       {isOpen && ctx.role === "workshop" ? (
-        <button type="button" className={cx(s.act, s.a_plain)} data-op={mine ? "hand-back" : "take"} onClick={() => { ctx.dispatch({ t: "op", ref: job.ref, op: { type: "assign", to: mine ? null : ME } }); say.ok(mine ? `${job.ref} handed back.` : `${job.ref} is now yours.`); }}>{mine ? "Hand back" : "Take this job"}</button>
+        <button type="button" className={cx(s.act, s.a_secondary)} data-op={mine ? "hand-back" : "take"} onClick={() => { ctx.dispatch({ t: "op", ref: job.ref, op: { type: "assign", to: mine ? null : ME } }); say.ok(mine ? `${job.ref} handed back.` : `${job.ref} is now yours.`); }}>{mine ? "Hand back" : "Take this job"}</button>
       ) : null}
     </div>
   );
@@ -486,17 +505,18 @@ function OperatorCell({ job, ctx }: { job: Job; ctx: RowCtx }) {
 
 function RowActions({ job, ctx, align }: { job: Job; ctx: RowCtx; align?: "end" }) {
   const actions = actionsFor(job, ctx.role, ctx.view);
+  const primary = primaryLabel(actions);
   return (
     <div className={cx(s.actions, align === "end" && s.actionsEnd)}>
       {actions.map((a) => {
         if (a.label === "Pick a machine") {
           return (
             <MachinePicker key={a.label} job={job} onPick={ctx.onPick}>
-              <button type="button" data-action="Pick a machine" className={cx(s.act, s.a_pick)}>Pick a machine</button>
+              <button type="button" data-action="Pick a machine" className={cx(s.act, s.a_primary)}>Pick a machine</button>
             </MachinePicker>
           );
         }
-        return <ActionButton key={a.label} action={a} job={job} onAct={ctx.onAct} />;
+        return <ActionButton key={a.label} action={a} job={job} onAct={ctx.onAct} primary={primary} />;
       })}
     </div>
   );
@@ -529,7 +549,7 @@ function cellFor(key: ColumnKey, j: Job, ctx: RowCtx): ReactNode {
     case "ref": return (
       <div className={s.refCell}>
         <span className={s.refLine}><span className={s.ref}>{j.ref}</span>{j.internal ? <Badge word="Internal" color="violet" kind="tag" /> : null}</span>
-        <span className={s.idState}><StatusLine job={j} />{showsDueLight(j) && j.due ? <span className={cx(s.dueWord, tone(`d_${dueFamily[j.due]}`))}>{j.due}</span> : null}</span>
+        <IdState job={j} />
         <RelatedLinks job={j} ctx={ctx} />
       </div>
     );
@@ -547,6 +567,10 @@ function JobTable({ jobs, groups, view, columns, selected, expanded, role, ctx, 
   role: Role; ctx: RowCtx; flash: string | null; dispatch: (a: Act) => void;
 }) {
   const list = view === "list";
+  const scroller = useRef<HTMLDivElement>(null);
+  const [sc, setSc] = useState({ l: false, r: false });
+  const upd = useCallback(() => { const e = scroller.current; if (e) setSc({ l: e.scrollLeft > 2, r: e.scrollLeft + e.clientWidth < e.scrollWidth - 2 }); }, []);
+  useEffect(() => { upd(); window.addEventListener("resize", upd); return () => window.removeEventListener("resize", upd); }, [upd, jobs, columns, view]);
   const allTicked = jobs.length > 0 && jobs.every((j) => selected.includes(j.ref));
   const span = columns.length + (list ? 2 : 1);
   const row = (j: Job, scope = "") => {
@@ -565,7 +589,7 @@ function JobTable({ jobs, groups, view, columns, selected, expanded, role, ctx, 
               <span><b>Progress:</b> {j.progress}</span>
               {j.parts ? <span><b>Parts logged:</b> {j.parts}</span> : null}
               {j.reworkNote ? <span><b>Rework:</b> {j.reworkNote}</span> : null}
-              {extra.map((a) => <ActionButton key={a.label} action={a} job={j} onAct={ctx.onAct} />)}
+              {extra.map((a) => <ActionButton key={a.label} action={a} job={j} onAct={ctx.onAct} primary={null} />)}
             </div>
           </td>
         </tr>
@@ -573,8 +597,8 @@ function JobTable({ jobs, groups, view, columns, selected, expanded, role, ctx, 
     ];
   };
   return (
-    <div className={cx(s.tableCard, list ? s.isList : s.isTable)} data-testid={`view-${view}`}>
-      <div className={s.scroller} tabIndex={0} role="region" aria-label={`Jobs, ${view} view`}>
+    <div className={cx(s.tableCard, list ? s.isList : s.isTable)} data-testid={`view-${view}`} data-sl={sc.l || undefined} data-sr={sc.r || undefined}>
+      <div className={s.scroller} ref={scroller} onScroll={upd} tabIndex={0} role="region" aria-label={`Jobs, ${view} view`}>
         <table className={s.table}>
           <thead>
             <tr>
@@ -610,11 +634,10 @@ function JobCard({ j, columns, selected, ctx, flash, dispatch }: { j: Job; colum
         </div>
       </header>
       <div className={cx(s.badges, s.cardBadges)}>
-        <Badge word={STATUS_WORD[j.status]} color={family(j.status)} />
+        <IdState job={j} />
         {j.rework ? <Badge word="Rework" color="purple" kind="tag" /> : null}
         {j.problem ? <Badge word="Problem" color="red" kind="tag" /> : null}
-        {showsDueLight(j) && j.due ? <Badge word={j.due} color={dueFamily[j.due]} /> : null}
-        {j.status === "not_started" || j.status === "running" ? <span className={s.suffix}>{j.progress !== "Not started" ? `· ${j.progress}` : ""}</span> : null}
+        {j.status === "running" && j.progress !== "Not started" ? <span className={s.suffix}>{`· ${j.progress}`}</span> : null}
       </div>
       <dl className={s.fields}>
         {shown.map((f) => (
@@ -632,7 +655,7 @@ function JobCard({ j, columns, selected, ctx, flash, dispatch }: { j: Job; colum
 
 /* ---------------- header, tiles, filters, selection ---------------- */
 
-function Tiles({ counts, pressed, unit, dispatch }: { counts: Counts; pressed: Tile | null; unit: "days" | "hours"; dispatch: (a: Act) => void }) {
+function Tiles({ counts, pressed, unit, dispatch, loading, empty }: { counts: Counts; pressed: Tile | null; unit: "days" | "hours"; dispatch: (a: Act) => void; loading?: boolean; empty?: boolean }) {
   const tiles: Array<{ id: Tile; label: string; value: number; sub: string; hint: string; color: string }> = [
     { id: "open", label: "Open jobs", value: counts.open, sub: "Not started, running or waiting", hint: "Not started + Running + Waiting for inspection. Complete jobs are not counted.", color: "navy" },
     { id: "not_started", label: "Not started", value: counts.notStarted, sub: "No work yet", hint: "Open: no work started yet", color: "grey" },
@@ -645,13 +668,13 @@ function Tiles({ counts, pressed, unit, dispatch }: { counts: Counts; pressed: T
       {tiles.map((t) => (
         <button key={t.id} type="button" aria-pressed={pressed === t.id} title={t.hint} className={cx(s.tile, tone(`k_${t.color}`))} data-testid={`tile-${t.id}`} onClick={() => dispatch({ t: "tile", v: t.id })}>
           <span className={s.tileLabel}><i className={s.lamp} aria-hidden />{t.label}</span>
-          <span className={s.tileValue}>{t.value}</span>
+          <span className={cx(s.tileValue, loading && s.tileLoading)}>{loading ? "\u2014" : t.value}</span>
           <span className={s.tileSub}>{t.sub}</span>
         </button>
       ))}
       <div className={cx(s.tile, s.tileStatic, tone("k_grey"))} data-testid="tile-average">
         <span className={s.tileLabel}><i className={s.lamp} aria-hidden />Average job time</span>
-        <span className={s.tileValue}>{unit === "days" ? AVERAGE_JOB_TIME.days : AVERAGE_JOB_TIME.hours}</span>
+        <span className={cx(s.tileValue, loading && s.tileLoading)}>{loading || empty ? "\u2014" : unit === "days" ? AVERAGE_JOB_TIME.days : AVERAGE_JOB_TIME.hours}</span>
         <span className={s.tileSub}>Start to finish.
           <Segmented size="sm" label="Average job time unit" value={unit} onChange={(v) => dispatch({ t: "unit", v })} options={[{ v: "hours", label: "Hours", testId: "unit-hours" }, { v: "days", label: "Days", testId: "unit-days" }]} />
         </span>
@@ -664,27 +687,28 @@ function FilterRow({ label, note, children }: { label: string; note?: string; ch
   return <div className={s.fRow}><span className={s.fLabel}>{label}</span><div className={s.fChips}>{children}{note ? <span className={s.fNote}>{note}</span> : null}</div></div>;
 }
 
-function Filters({ f, counts, dispatch }: { f: Filters; counts: Counts; dispatch: (a: Act) => void }) {
-  const due: Array<{ v: DueFilter; label: string }> = [{ v: "all", label: "All" }, { v: "On time", label: `On time (${counts.due["On time"]})` }, { v: "At risk", label: `At risk (${counts.due["At risk"]})` }, { v: "Late", label: `Late (${counts.due.Late})` }, { v: "No due date", label: `No due date (${counts.due["No due date"]})` }];
+function Filters({ f, counts, dispatch, dim }: { f: Filters; counts: Counts; dispatch: (a: Act) => void; dim?: boolean }) {
+  const n = (v: number) => (dim ? "\u2014" : v);
+  const due: Array<{ v: DueFilter; label: string }> = [{ v: "all", label: "All" }, { v: "On time", label: `On time (${n(counts.due["On time"])})` }, { v: "At risk", label: `At risk (${n(counts.due["At risk"])})` }, { v: "Late", label: `Late (${n(counts.due.Late)})` }, { v: "No due date", label: `No due date (${n(counts.due["No due date"])})` }];
   return (
     <section className={s.filters} aria-label="Filters" data-testid="filters">
       <FilterRow label="Show">
-        {([["open", `Open (${counts.open})`], ["complete", `Complete (${counts.complete})`], ["archived", `Archived (${counts.archived})`], ["all", "All"]] as Array<[ShowFilter, string]>).map(([v, l]) => <Chip key={v} pressed={f.show === v && !f.listFilter} testId={`show-${v}`} onClick={() => dispatch({ t: "show", v })}>{l}</Chip>)}
+        {([["open", `Open (${n(counts.open)})`], ["complete", `Complete (${n(counts.complete)})`], ["archived", `Archived (${n(counts.archived)})`], ["all", "All"]] as Array<[ShowFilter, string]>).map(([v, l]) => <Chip dim={dim} key={v} pressed={f.show === v && !f.listFilter} testId={`show-${v}`} onClick={() => dispatch({ t: "show", v })}>{l}</Chip>)}
       </FilterRow>
       <FilterRow label="Type">
-        {([["all", "All"], ["customer", "Customer"], ["internal", `Internal (${counts.internal})`]] as Array<[TypeFilter, string]>).map(([v, l]) => <Chip key={v} pressed={f.type === v} testId={`type-${v}`} onClick={() => dispatch({ t: "type", v })}>{l}</Chip>)}
+        {([["all", "All"], ["customer", "Customer"], ["internal", `Internal (${n(counts.internal)})`]] as Array<[TypeFilter, string]>).map(([v, l]) => <Chip dim={dim} key={v} pressed={f.type === v} testId={`type-${v}`} onClick={() => dispatch({ t: "type", v })}>{l}</Chip>)}
       </FilterRow>
       <FilterRow label="Group">
-        {([["none", "None"], ["machine", "Machine"]] as Array<[GroupBy, string]>).map(([v, l]) => <Chip key={v} pressed={f.group === v} testId={`group-${v}`} onClick={() => dispatch({ t: "group", v })}>{l}</Chip>)}
+        {([["none", "None"], ["machine", "Machine"]] as Array<[GroupBy, string]>).map(([v, l]) => <Chip dim={dim} key={v} pressed={f.group === v} testId={`group-${v}`} onClick={() => dispatch({ t: "group", v })}>{l}</Chip>)}
       </FilterRow>
       <FilterRow label="Due" note="Not started and Running jobs only">
-        {due.map((d) => <Chip key={d.v} pressed={f.due === d.v} testId={`due-${d.v}`} onClick={() => dispatch({ t: "due", v: d.v })}>{d.label}</Chip>)}
+        {due.map((d) => <Chip dim={dim} key={d.v} pressed={f.due === d.v} testId={`due-${d.v}`} onClick={() => dispatch({ t: "due", v: d.v })}>{d.label}</Chip>)}
       </FilterRow>
       <FilterRow label="Tag" note="Running jobs put back after a failed inspection (or for replacements)">
-        <Chip tag pressed={f.rework} testId="tag-rework" onClick={() => dispatch({ t: "rework" })}>Rework ({counts.rework})</Chip>
+        <Chip dim={dim} tag pressed={f.rework} testId="tag-rework" onClick={() => dispatch({ t: "rework" })}>Rework ({counts.rework})</Chip>
       </FilterRow>
       <FilterRow label="Stage">
-        {STAGES.map((g) => <Chip key={g} pressed={f.stages.includes(g)} testId={`stage-${g.toLowerCase()}`} onClick={() => dispatch({ t: "stage", v: g })}>{g}</Chip>)}
+        {STAGES.map((g) => <Chip dim={dim} key={g} pressed={f.stages.includes(g)} testId={`stage-${g.toLowerCase()}`} onClick={() => dispatch({ t: "stage", v: g })}>{g}</Chip>)}
       </FilterRow>
     </section>
   );
@@ -717,7 +741,7 @@ function ExportMenu({ dark }: { dark: boolean }) {
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild><button type="button" className={cx(s.btn, dark ? s.btnOnDark : s.btnSecondary)} data-testid="export-trigger">Export<Chevron down /></button></DropdownMenu.Trigger>
       <DropdownMenu.Portal>
-        <DropdownMenu.Content className={s.menu} align="end" sideOffset={6}>
+        <DropdownMenu.Content className={cx(s.menu, s.menuNarrow)} align="end" sideOffset={6}>
           {["CSV", "Excel", "Word", "PDF"].map((fmt) => <DropdownMenu.Item key={fmt} className={s.menuItem} onSelect={() => say.info(`${fmt} export is not generated in the preview.`)}>{fmt}</DropdownMenu.Item>)}
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
@@ -765,7 +789,7 @@ function Dialogs({ dlg, close, st, dispatch, vis }: { dlg: DialogState | null; c
     const plan = planBulkFinish(selected);
     return (
       <Modal open title={`Finish ${selected.length} selected job${selected.length === 1 ? "" : "s"}?`} onClose={close}
-        footer={<>{cancel}<button type="button" className={cx(s.btn, s.btnFinish)} disabled={!plan.targets.length} onClick={() => { dispatch({ t: "bulkFinish", refs: plan.targets.map((j) => j.ref) }); close(); say.ok(`${plan.targets.length} job${plan.targets.length === 1 ? "" : "s"} finished on screen.`); }}>Finish {plan.targets.length} job{plan.targets.length === 1 ? "" : "s"}</button></>}>
+        footer={<>{cancel}<button type="button" className={cx(s.btn, s.btnPrimary)} disabled={!plan.targets.length} onClick={() => { dispatch({ t: "bulkFinish", refs: plan.targets.map((j) => j.ref) }); close(); say.ok(`${plan.targets.length} job${plan.targets.length === 1 ? "" : "s"} finished on screen.`); }}>Finish {plan.targets.length} job{plan.targets.length === 1 ? "" : "s"}</button></>}>
         <p className={s.lead}>Will be finished ({plan.targets.length}): {plan.targets.map((j) => j.ref).join(", ") || "none"}</p>
         {plan.skipped.length ? <p className={s.dlgText}>Will not change ({plan.skipped.length}): {plan.skipped.map((x) => `${x.job.ref} (${x.reason})`).join(", ")}</p> : null}
         <p className={s.dlgText}>Only the {selected.length} selected job{selected.length === 1 ? " is" : "s are"} affected, not every filtered job ({vis.length}).</p>
@@ -795,8 +819,8 @@ function Dialogs({ dlg, close, st, dispatch, vis }: { dlg: DialogState | null; c
   if (!job) return null;
   const op = (o: Op, msg: string) => { dispatch({ t: "op", ref: job.ref, op: o }); close(); say.ok(msg); };
   switch (dlg.k) {
-    case "pause": return <Modal open title={`Pause ${job.ref}?`} description="Are you sure you want to pause this job?" onClose={close} footer={<>{cancel}<button type="button" className={cx(s.btn, s.btnPause)} onClick={() => op({ type: "pause" }, `${job.ref} paused on screen.`)}>Pause job</button></>} />;
-    case "finish": return <Modal open title={`Finish ${job.ref}?`} description="Are you sure you want to finish this job?" onClose={close} footer={<>{cancel}<button type="button" className={cx(s.btn, s.btnFinish)} onClick={() => op({ type: "finish" }, `${job.ref} finished on screen: now Waiting for inspection.`)}>Finish job</button></>} />;
+    case "pause": return <Modal open title={`Pause ${job.ref}?`} description="Are you sure you want to pause this job?" onClose={close} footer={<>{cancel}<button type="button" className={cx(s.btn, s.btnPrimary)} onClick={() => op({ type: "pause" }, `${job.ref} paused on screen.`)}>Pause job</button></>} />;
+    case "finish": return <Modal open title={`Finish ${job.ref}?`} description="Are you sure you want to finish this job?" onClose={close} footer={<>{cancel}<button type="button" className={cx(s.btn, s.btnPrimary)} onClick={() => op({ type: "finish" }, `${job.ref} finished on screen: now Waiting for inspection.`)}>Finish job</button></>} />;
     case "releaseMachine": return <Modal open title={`Release ${job.inUse?.split(",")[0] ?? "machine"}?`} description={`${job.ref} stops using the machine.`} onClose={close} footer={<>{cancel}<button type="button" className={cx(s.btn, s.btnPrimary)} onClick={() => op({ type: "releaseMachine" }, `${job.inUse?.split(",")[0] ?? "Machine"} released (was ${job.ref}).`)}>Release</button></>} />;
     case "takeover": return (
       <Modal open title={`Check before using ${dlg.machine}`} description={`${dlg.machine} is in use. Take over ${job.ref}?`} onClose={close}
@@ -866,15 +890,15 @@ function SkeletonRows() {
   );
 }
 
-function Dock({ st, dispatch, onReset }: { st: State; dispatch: (a: Act) => void; onReset: () => void }) {
-  const [isOpen, setOpen] = useState(false);
+function PreviewControls({ st, dispatch, onReset }: { st: State; dispatch: (a: Act) => void; onReset: () => void }) {
   const roles: Array<{ v: Role; label: string }> = [{ v: "admin", label: "Admin" }, { v: "office", label: "Office" }, { v: "workshop", label: "Workshop" }, { v: "viewer", label: "Viewer" }];
   const screens: Array<{ v: Screen | "overdue"; label: string }> = [{ v: "ready", label: "Normal" }, { v: "loading", label: "Loading" }, { v: "error", label: "Failed to load" }, { v: "empty", label: "No jobs" }, { v: "offline", label: "Offline" }, { v: "truncated", label: "Truncated" }, { v: "overdue", label: "Dashboard filter" }];
   const current = st.filters.listFilter ? "overdue" : st.screen;
   return (
-    <aside className={s.dock} aria-label="Preview controls" data-testid="dock">
-      {isOpen ? (
-        <div className={s.dockPanel}>
+    <Popover.Root>
+      <Popover.Trigger asChild><button type="button" className={s.dockToggle} data-testid="dock-toggle">Preview controls<span>{st.role}</span></button></Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content className={s.dockPanel} align="start" sideOffset={8} data-testid="dock" aria-label="Preview controls">
           <p className={s.dockTitle}>Preview controls <span>Not part of Tolra</span></p>
           <Segmented label="Role" value={st.role} options={roles} onChange={(v) => dispatch({ t: "role", v })} size="sm" />
           <p className={s.dockLabel}>Screen state</p>
@@ -883,10 +907,33 @@ function Dock({ st, dispatch, onReset }: { st: State; dispatch: (a: Act) => void
           </div>
           <button type="button" className={cx(s.btn, s.btnSecondary, s.dockReset)} onClick={onReset}>Reset preview data</button>
           <p className={s.dockNote}>Sample data. States are simulated; no request is made.</p>
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
+  );
+}
+
+function Toasts({ resetKey }: { resetKey: string }) {
+  const [items, setItems] = useState<ToastItem[]>([]);
+  useEffect(() => {
+    const f = (item: ToastItem | null) => {
+      if (!item) { setItems([]); return; }
+      setItems((c) => [...c.slice(-1), item]);
+      window.setTimeout(() => setItems((c) => c.filter((x) => x.id !== item.id)), 3500);
+    };
+    toastSubs.add(f);
+    return () => { toastSubs.delete(f); };
+  }, []);
+  useEffect(() => { setItems([]); }, [resetKey]);
+  return (
+    <div className={s.toasts} role="status" aria-live="polite">
+      {items.map((x) => (
+        <div key={x.id} className={cx(s.toast, x.kind === "error" && s.toastErr)} data-testid="toast">
+          <p>{x.kind === "preview" ? <b>Preview only. </b> : null}{x.text}{x.kind === "preview" ? " Nothing was saved." : ""}</p>
+          <button type="button" aria-label="Dismiss message" className={s.toastClose} onClick={() => setItems((c) => c.filter((y) => y.id !== x.id))}><svg viewBox="0 0 16 16" width="12" height="12" aria-hidden><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg></button>
         </div>
-      ) : null}
-      <button type="button" className={s.dockToggle} aria-expanded={isOpen} onClick={() => setOpen(!isOpen)} data-testid="dock-toggle">Preview controls<span>{st.role}</span></button>
-    </aside>
+      ))}
+    </div>
   );
 }
 
@@ -905,7 +952,8 @@ export default function JobsPreview() {
   const view: ViewMode = wide ? st.view : "cards";
 
   const counts = useMemo(() => countsOf(st.jobs), [st.jobs]);
-  const vis = useMemo(() => visibleJobs(st.jobs, st.filters), [st.jobs, st.filters]);
+  const vis = useMemo(() => (st.screen === "empty" || st.screen === "loading" ? [] : visibleJobs(st.jobs, st.filters)), [st.jobs, st.filters, st.screen]);
+  const shown = st.screen === "empty" ? countsOf([]) : counts;
   const selectedVisible = useMemo(() => vis.filter((j) => st.selected.includes(j.ref)), [vis, st.selected]);
   const columns = COLUMNS.filter((c) => c.locked || !st.hidden.includes(c.key));
   const groups = st.filters.group === "machine" ? machineGroups(vis) : null;
@@ -966,30 +1014,34 @@ export default function JobsPreview() {
           <div className={s.titleLine}>
             <h1 className={s.title}>Job Board</h1>
             <span className={s.previewTag} title="Everything on this screen is fictional sample data. Nothing is read from or saved to your account.">Preview · sample data, nothing is saved</span>
+            <PreviewControls st={st} dispatch={dispatch} onReset={() => { dispatch({ t: "reset", view: st.view }); say.info("Sample data reset."); }} />
           </div>
           <p className={s.subtitle}>Jobs are the work in the workshop. Follow each one from start to finish.</p>
         </div>
         <div className={s.headControls}>
           <ColumnsMenu hidden={st.hidden} role={st.role} dispatch={dispatch} />
           {notPhone ? (
-            <Segmented label="View" value={view} onChange={setView} options={[{ v: "cards", label: "Cards", testId: "view-cards-btn" }, { v: "list", label: "List", hidden: !wide, testId: "view-list-btn" }, { v: "table", label: "Table", hidden: !wide, testId: "view-table-btn" }]} />
+            <Segmented label="View" value={view} onChange={setView} options={[{ v: "cards", label: "Cards", testId: "view-cards-btn" }, { v: "list", label: "List", disabled: wide ? undefined : "Needs a screen wider than 1024px", testId: "view-list-btn" }, { v: "table", label: "Table", disabled: wide ? undefined : "Needs a screen wider than 1024px", testId: "view-table-btn" }]} />
           ) : null}
           {viewer ? null : <button type="button" className={cx(s.btn, s.btnPrimary)} data-testid="new-job" onClick={() => setDlg({ k: "newjob" })}>New job</button>}
         </div>
       </header>
 
       {st.screen === "offline" ? (
-        <div className={s.banner} role="status" data-testid="state-offline"><b>Offline - last synced 09:41</b><span>2 changes waiting to sync.</span><button type="button" className={cx(s.btn, s.btnSecondary, s.btnSm)} onClick={() => say.info("Nothing to sync: the preview queued no changes.")}>Sync now</button></div>
+        <div className={s.banner} role="status" data-testid="state-offline"><b>Offline - last synced 09:41</b><span>2 changes waiting to sync.</span><span className={s.sim}>Simulated: this preview queues nothing.</span><button type="button" className={cx(s.btn, s.btnSecondary, s.btnSm)} onClick={() => say.info("Nothing to sync: the preview queued no changes.")}>Sync now</button></div>
       ) : null}
 
       {st.screen === "error" ? (
-        <div className={s.errorCard} role="alert" data-testid="state-error"><p>Couldn{"’"}t load jobs.</p><button type="button" className={cx(s.btn, s.btnSecondary)} onClick={reload}>Retry</button></div>
+        <div className={s.errorCard} role="alert" data-testid="state-error">
+          <div><p className={s.stateTitle}>Couldn{"\u2019"}t load jobs.</p><p className={s.stateText}>The list could not be fetched. This is a simulated failure: no request was made and nothing was lost.</p></div>
+          <button type="button" className={cx(s.btn, s.btnSecondary)} onClick={reload}>Retry</button>
+        </div>
       ) : null}
 
       {st.screen !== "error" ? (
         <>
-          <Tiles counts={counts} pressed={pressedTile(st.filters)} unit={st.unit} dispatch={dispatch} />
-          <Filters f={st.filters} counts={counts} dispatch={dispatch} />
+          <Tiles counts={shown} pressed={pressedTile(st.filters)} unit={st.unit} dispatch={dispatch} loading={st.screen === "loading"} empty={st.screen === "empty"} />
+          <Filters f={st.filters} counts={shown} dispatch={dispatch} dim={st.screen === "loading"} />
           {st.filters.listFilter ? (
             <div className={s.notice} role="status" data-testid="state-listfilter"><span>Showing only: Jobs past their required date</span><button type="button" className={cx(s.btn, s.btnSecondary, s.btnSm)} onClick={() => dispatch({ t: "clearListFilter" })}>Show everything</button></div>
           ) : null}
@@ -1011,7 +1063,7 @@ export default function JobsPreview() {
           {st.screen === "truncated" ? <p className={s.notice} role="status" data-testid="state-truncated">Showing the newest 1,000 records only. Older records exist but aren{"’"}t listed here.</p> : null}
 
           {st.screen === "loading" ? <SkeletonRows /> : noJobs ? (
-            <div className={s.emptyCard} data-testid="state-empty"><p>{EMPTY_HINT[st.role]}</p></div>
+            <div className={s.emptyCard} data-testid="state-empty"><p className={s.stateTitle}>{EMPTY_HINT[st.role]}</p>{viewer ? null : <button type="button" className={cx(s.btn, s.btnPrimary)} onClick={() => setDlg({ k: "newjob" })}>New job</button>}</div>
           ) : view === "cards" ? (
             groups ? (
               <div className={s.cardGroups}>{groups.map((g) => <section key={g.heading}><h2 className={s.groupHead}>{g.heading}</h2><div className={s.cards}>{g.jobs.map((j) => <JobCard key={`${g.heading}/${j.ref}`} j={j} columns={columns} selected={st.selected.includes(j.ref)} ctx={ctx} flash={st.flash === j.ref} dispatch={dispatch} />)}</div></section>)}</div>
@@ -1027,7 +1079,7 @@ export default function JobsPreview() {
       ) : null}
 
       <Dialogs dlg={dlg} close={() => setDlg(null)} st={st} dispatch={dispatch} vis={vis} />
-      <Dock st={st} dispatch={dispatch} onReset={() => { dispatch({ t: "reset", view: st.view }); say.info("Sample data reset."); }} />
+      <Toasts resetKey={`${st.screen}|${st.role}|${st.filters.listFilter ?? ""}`} />
     </div>
   );
 }

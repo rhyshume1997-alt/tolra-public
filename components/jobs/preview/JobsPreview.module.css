@@ -6,7 +6,7 @@
  * Motion: 120 to 200 ms, composite properties only, all of it off under prefers-reduced-motion.
  */
 
-.root {
+.root, .dialog, .menu, .pop, .dockPanel, .toasts {
   --pv-brand: var(--brand, #1e3472);
   --pv-accent: var(--brand-accent, #2e52b8);
   --pv-ink-on-brand: var(--brand-ink, #ffffff);
@@ -23,12 +23,13 @@
   --pv-sh1: 0 1px 2px rgba(14, 23, 38, 0.06), 0 4px 14px -8px rgba(14, 23, 38, 0.12);
   --pv-ring: 0 0 0 1px var(--pv-line2);
   --pv-ease: cubic-bezier(0.2, 0, 0, 1);
-
+}
+.root {
   display: flex;
   flex-direction: column;
   gap: 14px;
   max-width: 1720px;
-  padding-bottom: 56px;
+  padding-bottom: 16px;
   color: var(--pv-ink);
   font-family: var(--font-archivo, "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif);
   font-size: 14px;
@@ -169,7 +170,7 @@ button.tile:active { transform: translateY(1px); box-shadow: 0 0 0 1px #aeb6c5, 
 .row[data-selected] td { background: var(--pv-soft); }
 .row[data-flash] td { animation: flash 1.6s var(--pv-ease); }
 @keyframes flash { 0%, 35% { background: #fff1b8; } 100% { background: var(--pv-surface); } }
-.row[data-status="running"] .c_ref, .row[data-status="paused"] .c_ref, .row[data-status="waiting"] .c_ref { box-shadow: inset 3px 0 0 var(--rail), 10px 0 10px -10px rgba(14, 23, 38, 0.18); }
+
 .groupRow th { height: 40px; padding: 0 16px; background: #eef1f6; color: var(--pv-ink); font-size: 13px; font-weight: 650; border-bottom: 1px solid var(--pv-line2); border-top: 1px solid var(--pv-line2); }
 .groupText { position: sticky; left: 16px; }
 .expandRow td { background: #fafbfd; padding: 4px 12px 8px 140px; }
@@ -387,3 +388,108 @@ button.tile:active { transform: translateY(1px); box-shadow: 0 0 0 1px #aeb6c5, 
 .pop { max-height: var(--radix-popover-content-available-height, 80vh); overflow-y: auto; }
 .stickyR { position: static; box-shadow: none; }
 .table th.stickyR { z-index: auto; }
+
+/* ================= revision 2 (independent review) ================= */
+/* numerals: Archivo with tabular figures (IBM Plex Mono is shipped and loads, but read as a typewriter face next to Archivo) */
+.tileValue { font-family: inherit; font-weight: 600; font-size: 30px; line-height: 34px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums lining-nums; }
+.tileLoading { color: #a9b1c0; }
+.ref { font-family: inherit; font-weight: 650; font-size: 14.5px; letter-spacing: 0.005em; font-variant-numeric: tabular-nums lining-nums; }
+.timer, .file { font-family: var(--pv-mono); }
+
+/* panels quieter than the controls inside them */
+.filters, .bar, .tile, .tableCard, .card, .errorCard, .emptyCard, .skelCard { --pv-ring: 0 0 0 1px rgba(14, 23, 38, 0.09); }
+.tile, .filters, .tableCard, .card { box-shadow: 0 0 0 1px rgba(14, 23, 38, 0.09), 0 1px 2px rgba(14, 23, 38, 0.04), 0 6px 16px -10px rgba(14, 23, 38, 0.12); }
+.tile[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--pv-brand), 0 6px 14px -8px color-mix(in srgb, var(--pv-brand) 40%, transparent); }
+button.tile:hover { box-shadow: 0 0 0 1px rgba(14, 23, 38, 0.24), 0 2px 4px rgba(14, 23, 38, 0.06), 0 8px 18px -10px rgba(14, 23, 38, 0.18); }
+.chip { height: 32px; padding: 0 11px; color: #2b3445; font-weight: 500; box-shadow: inset 0 1px 0 #fff, inset 0 0 0 1px rgba(14, 23, 38, 0.24), 0 1px 1px rgba(14, 23, 38, 0.05); }
+.chip:hover { background: #f6f8fb; box-shadow: inset 0 1px 0 #fff, inset 0 0 0 1px rgba(14, 23, 38, 0.3), 0 1px 2px rgba(14, 23, 38, 0.07); }
+.chip[aria-pressed="true"] { color: var(--pv-ink-on-brand); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), inset 0 -1px 0 rgba(0, 0, 0, 0.22), 0 1px 2px rgba(14, 23, 38, 0.25); }
+.chipDim { opacity: 0.55; cursor: default; }
+.chipDim:hover { background: #fff; }
+.filters { grid-template-columns: max-content minmax(0, 1fr); column-gap: 28px; padding: 6px 14px; }
+.fChips { flex-wrap: wrap; gap: 6px; }
+.fNote { white-space: nowrap; color: var(--pv-ink2); }
+.fRow { min-height: 38px; align-items: center; }
+
+/* controls: three sizes only. 32 chips/toggles/idle toolbar, 40 header and dialog buttons, 48 row hit areas (face 32) */
+.btnSm { height: 32px; }
+.segSm { padding: 2px; }
+.segSm .segBtn { height: 28px; }
+.segBtn[aria-disabled="true"] { opacity: 0.45; cursor: default; }
+.segBtn[aria-disabled="true"]:hover { background: transparent; color: var(--pv-ink2); }
+.act::before, .pickBtn::before, .selWrap::before { inset: 8px 1px; }
+.a_primary { --fg: var(--pv-brand); --bg: color-mix(in srgb, var(--pv-brand) 9%, #fff); --bgh: color-mix(in srgb, var(--pv-brand) 16%, #fff); --sh: inset 0 0 0 1px color-mix(in srgb, var(--pv-brand) 32%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.7); --shh: inset 0 0 0 1px color-mix(in srgb, var(--pv-brand) 50%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.7); font-weight: 650; }
+.a_secondary { --fg: #1b2a4a; --bg: #fff; --bgh: #f4f6fa; --sh: inset 0 1px 0 #fff, inset 0 0 0 1px rgba(14, 23, 38, 0.24), 0 1px 1px rgba(14, 23, 38, 0.05); --shh: inset 0 1px 0 #fff, inset 0 0 0 1px rgba(14, 23, 38, 0.3), 0 1px 2px rgba(14, 23, 38, 0.07); font-weight: 600; }
+.a_tertiary { --fg: #3b4559; --bg: transparent; --bgh: #eef1f6; --sh: none; --shh: none; font-weight: 500; }
+.a_off { --fg: #5f697c; --bg: transparent; --bgh: transparent; --sh: none; --shh: none; font-weight: 500; cursor: default; }
+.a_off:active::before { transform: none; }
+.actions { gap: 0; }
+.act { padding: 0 11px; }
+
+/* identity cell: calm, max three lines, one status grammar */
+.refCell { gap: 0; padding: 0; }
+.idState { gap: 0 8px; }
+.row td { height: 60px; }
+.related { min-height: 48px; margin: -14px 0; padding: 14px 0; line-height: 20px; font-size: 12.5px; }
+.table td.c_ref, .table th.c_ref { border-left: 3px solid transparent; }
+.row[data-status="running"] td.c_ref, .row[data-status="paused"] td.c_ref, .row[data-status="waiting"] td.c_ref { border-left-color: var(--rail); }
+.tableCard { position: relative; }
+.tableCard[data-sl] td.c_ref, .tableCard[data-sl] th.c_ref { box-shadow: 10px 0 10px -10px rgba(14, 23, 38, 0.2); }
+.tableCard[data-sr]::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; width: 28px; pointer-events: none; background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(14, 23, 38, 0.07)); }
+.row[data-selected] td { background: #eef2fb; }
+.cardBadges { margin-top: 0; }
+.field dt { font-size: 12.5px; color: var(--pv-ink2); font-weight: 600; }
+.card { min-height: 0; }
+.cardHead { min-height: 48px; }
+
+/* selection bar: idle = minimal toolbar, active = navy */
+.bar:not(.barOn) { padding: 0; background: transparent; box-shadow: none; gap: 8px; }
+.bar:not(.barOn) .btn { height: 32px; padding: 0 12px; font-size: 13px; }
+.barOn { padding: 8px; }
+.barOn .btnOnDark { background: rgba(255, 255, 255, 0.14); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), inset 0 0 0 1px rgba(255, 255, 255, 0.4); }
+.barOn .btnOnDark:hover:not([disabled]) { background: rgba(255, 255, 255, 0.24); }
+.barOn .btnOnDark[disabled] { opacity: 0.6; }
+.barNote { margin: 0 2px; color: var(--pv-ink2); font-size: 13px; }
+
+/* toasts: one neutral "Preview only" style, below the top bar, never over the bell or Log out */
+.toasts { position: fixed; top: 76px; right: 16px; z-index: 100; display: flex; flex-direction: column; gap: 8px; width: min(380px, calc(100vw - 32px)); pointer-events: none; font-family: var(--font-archivo, "Archivo", system-ui, sans-serif); }
+.toast { pointer-events: auto; display: flex; align-items: flex-start; gap: 8px; padding: 10px 8px 10px 14px; border-radius: 10px; background: #fff; color: #0e1726; box-shadow: 0 0 0 1px rgba(14, 23, 38, 0.1), 0 10px 26px -12px rgba(14, 23, 38, 0.38); border-left: 3px solid #1e3472; animation: toastIn 160ms cubic-bezier(0.2, 0, 0, 1); }
+.toastErr { border-left-color: #b83232; }
+.toast p { margin: 0; flex: 1; font-size: 13px; line-height: 19px; }
+.toast p b { font-weight: 650; }
+.toastClose { flex: none; display: inline-grid; place-items: center; width: 24px; height: 24px; margin-top: -1px; border: 0; border-radius: 6px; background: transparent; color: #566074; cursor: pointer; transition: background-color 120ms; }
+.toastClose:hover { background: #eef1f6; color: #0e1726; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(-4px); } }
+
+/* menus */
+.menu { min-width: 190px; padding: 5px; border-radius: 10px; max-height: min(var(--radix-dropdown-menu-content-available-height, 70vh), 420px); }
+.menuNarrow { min-width: 150px; }
+.menuItem { min-height: 32px; padding: 0 10px 0 28px; border-radius: 6px; font-size: 13.5px; }
+.menuItem:hover:not([data-disabled]), .menuItem[data-highlighted] { background: #f0f3f9; }
+.menuItem:focus-visible { outline: 2px solid var(--brand-accent, #2e52b8); outline-offset: -2px; }
+.menuTick { left: 8px; }
+.menuNote { max-width: 230px; }
+@media (pointer: coarse) { .menuItem { min-height: 44px; } }
+
+/* preview controls: inline popover next to the tag, never over the table */
+.dockToggle { height: 24px; padding: 0 8px; border-radius: 6px; gap: 6px; font-size: 12px; background: #fff; color: #0e1726; box-shadow: inset 0 0 0 1px rgba(14, 23, 38, 0.22); }
+.dockToggle:hover { background: #f3f5f9; }
+.dockToggle span { background: #0e1726; color: #fff; padding: 0 6px; border-radius: 4px; }
+.dockPanel { z-index: 80; }
+
+/* dialogs: one pattern */
+.dlgTitle { font-size: 18px; }
+.dlgFoot .btn { height: 40px; }
+.dialog { border-radius: 14px; padding: 24px 24px 20px; }
+
+/* states */
+.errorCard { gap: 12px 24px; justify-content: space-between; border-left: 4px solid #b83232; border-radius: 12px; min-height: 120px; box-shadow: 0 0 0 1px rgba(184, 50, 50, 0.22), 0 1px 2px rgba(14, 23, 38, 0.04); }
+.emptyCard { flex-direction: column; align-items: center; justify-content: center; text-align: center; min-height: 180px; gap: 6px; }
+.stateTitle { margin: 0; font-size: 15px; font-weight: 650; color: var(--pv-ink); }
+.stateText { margin: 2px 0 6px; font-size: 13.5px; color: var(--pv-ink2); font-weight: 400; }
+.emptyCard .stateTitle { max-width: 520px; font-weight: 600; }
+.sim { color: #5c3b00; font-size: 12.5px; }
+.skelRow i { background: #e9ecf2; }
+.errorCard .stateText, .emptyCard .stateText { font-size: 13.5px; font-weight: 400; color: var(--pv-ink2); }
+.errorCard p.stateTitle { font-size: 15px; font-weight: 650; }
+@media (max-width: 1279px) { .filters { grid-auto-flow: row; grid-template-rows: none; grid-template-columns: minmax(0, 1fr); } }
