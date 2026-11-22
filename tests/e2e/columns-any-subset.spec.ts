@@ -6,7 +6,8 @@
  *   - everything ticked: header texts == the definition's labels in order, header count == cell count on every row, and each cell's
  *     own label (the Cards' labelled fields) walks the same order; Quotes' Cards show the labelled fields under the card title;
  *   - an every-second-column subset unticked through the page's Columns button: headers and cells go together, counts still equal,
- *     order kept, the locked columns (selection box, Actions) still there; the choice survives a reload;
+ *     order kept, the locked columns (selection box, Actions) still there; the choice survives a reload (the reload waits for the
+ *     server's answer to the save of that choice, columnsSaved below, so it tests what was stored, not a save cut off mid-flight);
  *   - Reset to default brings every column back.
  * The page never scrolls sideways, and a table's own scroll container reaches its last header.
  * Offered views: the switcher is hidden on phones (390 = the stacked cards every page shows), and Table is offered above 1024px only.
@@ -137,6 +138,28 @@ async function expectLockedDisabled(page: Page, labels: string[]) {
 
 const labelsOf = (table: TableDef, hidden: Set<string>) => table.columns.filter((column) => !hidden.has(column.key)).map((column) => column.label);
 
+/**
+ * Resolves when the server has answered the save that stores exactly this table's hidden columns. The picker changes the screen at
+ * once, but the choice is saved afterwards (lib/org-settings persistChange: re-read, then an upsert to organization_settings that
+ * sends the whole hidden_columns object, one save per tick). A reload made before that answer cuts the save off and the page loads
+ * the older stored choice (run 44921972717: Status came back after the reload). Create it BEFORE the ticks that cause the save.
+ */
+function columnsSaved(page: Page, tableKey: string, hidden: Set<string>): Promise<unknown> {
+  const wanted = JSON.stringify([...hidden].sort());
+  const saved = page.waitForResponse((response) => {
+    const request = response.request();
+    if (request.method() !== "POST" || !response.url().includes("/rest/v1/organization_settings") || !response.ok()) return false;
+    try {
+      const sent = (request.postDataJSON() as { hidden_columns?: Record<string, string[]> } | null)?.hidden_columns;
+      return JSON.stringify([...(sent?.[tableKey] ?? [])].sort()) === wanted;
+    } catch {
+      return false;
+    }
+  }, { timeout: 20_000 });
+  saved.catch(() => undefined); // awaited below; this only keeps a failure that lands before the await from being reported as unhandled
+  return saved;
+}
+
 test.describe.configure({ mode: "serial" });
 
 let page: Page;
@@ -187,11 +210,13 @@ for (const table of TABLES) {
         const first = await snapshot(page);
         if (first.table && locked === null) locked = first.headerCount - first.headers.length;
 
+        const saved = reloaded ? null : columnsSaved(page, table.key, hidden);
         await setColumnTicks(page, subset.map((column) => [column.label, false] as [string, boolean]));
         await expect.poll(async () => problems(await snapshot(page), table.key, some, locked), { message: `${where}: subset unticked` }).toEqual([]);
 
         if (!reloaded) {
           reloaded = true;
+          await saved; // the save of this subset has been answered: only then does a reload test what was stored
           await page.reload();
           if (view) await expect(page.getByRole("group", { name: "View" }).getByRole("button", { name: view, exact: true })).toHaveAttribute("aria-pressed", "true");
           await expect.poll(async () => problems(await snapshot(page), table.key, some, locked), { message: `${where}: subset survives a reload` }).toEqual([]);
