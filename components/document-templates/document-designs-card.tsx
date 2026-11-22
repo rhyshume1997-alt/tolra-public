@@ -115,11 +115,11 @@ export function DocumentDesignsCard() {
         {!settings ? <p>Loading…</p> : (
           <>
             <label className="flex items-center gap-2 font-medium">
-              <input type="checkbox" checked={settings.enabled} disabled={saving} onChange={(e) => void persist((current) => withTemplatesEnabled(current, e.target.checked), e.target.checked ? "on" : "off")} />
+              <input type="checkbox" checked={settings.enabled} disabled={saving} onChange={(e) => { const on = e.target.checked; void persist((current) => withTemplatesEnabled(current, on), on ? "on" : "off"); }} />
               Use these designs on my documents
             </label>
             <label className="flex items-center gap-2 font-medium">
-              <input type="checkbox" checked={colour} disabled={saving} onChange={(e) => void persist((current) => withBrandColour(current, e.target.checked), e.target.checked ? "colour on" : "colour off")} />
+              <input type="checkbox" checked={colour} disabled={saving} onChange={(e) => { const on = e.target.checked; void persist((current) => withBrandColour(current, on), on ? "colour on" : "colour off"); }} />
               Use my brand colours on the Modern and Minimal designs
             </label>
             <p className="text-slate-500">{colour ? "Modern and Minimal use the brand colour from Company details (a neutral navy if none is set)." : "Off: every design prints in black and white. Classic is always black and white."}</p>
