@@ -11,7 +11,10 @@ import { OnePlace } from "@/components/marketing/one-place";
 import { MarketingSheet } from "@/components/marketing/sheet";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { SiteHeader } from "@/components/marketing/site-header";
+import { ToolyGuide } from "@/components/marketing/tooly-guide";
+import { ToolyGuideProvider } from "@/components/marketing/tooly-guide-state";
 import { ToolyMark } from "@/components/marketing/tooly-mark";
+import { ToolyMenu } from "@/components/marketing/tooly-menu";
 import {
   CLOSE_CALL_LINE, CLOSE_TITLE, FAQ, FAQ_TITLE, FEATURES, FEATURES_TITLE, FOUNDER_LINK_LABEL, FOUNDER_NAME, FOUNDER_NOTE, FOUNDER_TITLE, FOUNDER_URL,
   HANDLES_TITLE, HERO_SUBHEAD, HERO_TITLE, MARKETING_ICONS, PAIN_CARDS, PAIN_TITLE, PROOF_LINE, SEE_HOW_LABEL, SHEET_LABELS, SITE_DESCRIPTION,
@@ -23,6 +26,9 @@ import { GEAR_COPY } from "@/lib/marketing/gear-workflow";
 // problems and the gear workflow, what it does, Meet Tooly, founder, who it is for, getting started, questions and the close.
 // Must not change: every claim in lib/marketing.ts, the one h1, the booking link on every call to action, the Screenshot / Illustration labels,
 // the JSON-LD, and middleware.ts (signed-in people never see this page: it sends them to /dashboard).
+// Tooly as a living guide (components/marketing/tooly-*.tsx): a "Job stages" menu in the header and a fixed Tooly with a caption for each section,
+// found by the section ids below (so keep every section's aria-labelledby id). Both render nothing until the page has mounted; both are off for
+// reduced motion apart from a still Tooly and the same captions; "Hide Tooly" removes him for the session.
 // "How Tolra handles it" shows the gear workflow (components/marketing/gear-workflow.tsx); its copy lives in lib/marketing/gear-workflow.ts.
 const OG_IMAGE = { url: `${SITE_URL}/marketing/tolra-og.png`, width: 1200, height: 630, alt: "Tolra: job management for small CNC and fabrication shops" };
 
@@ -53,9 +59,10 @@ const MUTED = "text-[#3c5277]";
 export default function Home() {
   return (
     <MarketingSheet>
+      <ToolyGuideProvider>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd()).replace(/</g, "\\u003c") }} />
 
-      <SiteHeader />
+      <SiteHeader menu={<ToolyMenu />} />
 
       <main id="main" className="flex-1">
         {/*
@@ -215,6 +222,8 @@ export default function Home() {
       </main>
 
       <SiteFooter />
+      <ToolyGuide />
+      </ToolyGuideProvider>
     </MarketingSheet>
   );
 }
