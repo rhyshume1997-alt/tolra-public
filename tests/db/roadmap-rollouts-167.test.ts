@@ -157,7 +157,7 @@ beforeAll(async () => {
   orgA = await makeOrg("alpha");
   orgB = await makeOrg("beta");
   orgC = await makeOrg("gamma");
-  orgGone = await makeOrg("gone", "suspended");
+  orgGone = await makeOrg("gone", "paused");
   owner = await makeOwner(orgA, "owner");
   companyAdmin = await makePerson(orgA, "a-admin", "admin");
   // Known starting points: A has an existing hidden item, B has no settings row at all, C has a setting of its own that must never move.
