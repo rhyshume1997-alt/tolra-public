@@ -1,7 +1,7 @@
 -- Post-144 release step 165 (Raise an issue for every signed-in user, and the platform owner's issues inbox; registered in
 -- supabase/release-plan.json as phase 165, after 163; CI's post-144 step installs it). One transaction; never part of baseline replay. Not applied
 -- anywhere hosted. Canonical source: supabase/proposals/p165_owner_issues.sql (its body between BEGIN; and COMMIT; is copied below verbatim;
--- scripts/check-release-plan.mjs fails if they drift). Number 164 belongs to the Companies screen and is not used or needed here.
+-- scripts/check-release-plan.mjs fails if they drift). Release 164 (the Companies screen) comes first in the plan; 165 needs nothing from it.
 -- WHAT IT DOES: adds two tables (public.issues, public.issue_owner_notes) and three functions (public.raise_issue, public.platform_list_issues,
 -- public.platform_update_issue). The app's "Raise an issue" button and the /platform/issues inbox call them; until this is applied the
 -- app's calls fail and the feature stays off (it is also off by default in the app: see below).

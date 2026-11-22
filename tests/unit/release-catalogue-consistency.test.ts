@@ -82,7 +82,7 @@ describe("release catalogue consistency", () => {
   const real = load();
 
   it("parses every catalogue (guards against a regex silently matching nothing)", () => {
-    expect(real.planPost.map(p => p.number)).toEqual([145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 156, 157, 158, 159, 160, 163, 165]);
+    expect(real.planPost.map(p => p.number)).toEqual([145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 156, 157, 158, 159, 160, 163, 164, 165]);
     expect(real.plan.length).toBeGreaterThan(real.planPost.length);
     for (const key of ["fixture", "ci", "script"] as const) expect(real[key].length, key).toBeGreaterThanOrEqual(real.planPost.length);
   });
