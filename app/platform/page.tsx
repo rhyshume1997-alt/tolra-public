@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { TolraAiControl } from "@/components/platform/tolra-ai-control";
 import { TolraAiCaps } from "@/components/platform/tolra-ai-caps";
 import { AppCredentialsCard } from "@/components/platform/app-credentials-card";
+import { OwnerToolsLinks } from "@/components/platform/owner-tools-links";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -213,6 +214,7 @@ export default function PlatformPage() {
           </DialogContent>
         </Dialog>
 
+        <OwnerToolsLinks />
         <AppCredentialsCard />
         <TolraAiControl />
         <TolraAiCaps />

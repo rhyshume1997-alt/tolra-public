@@ -192,6 +192,15 @@
       "rollback": "supabase/release/163_chase_steps_atomic.rollback.sql",
       "verify": "supabase/verify/chase_steps_atomic_163.sql",
       "marker": "post-144 marker 163 chase_steps_atomic"
+    },
+    {
+      "number": 167,
+      "after": "163",
+      "source": "supabase/proposals/p167_roadmap_rollouts.sql",
+      "release": "supabase/release/167_roadmap_rollouts.release.sql",
+      "rollback": "supabase/release/167_roadmap_rollouts.rollback.sql",
+      "verify": "supabase/verify/roadmap_rollouts_167.sql",
+      "marker": "post-144 marker 167 roadmap_rollouts"
     }
   ],
   "other_proposals": [
