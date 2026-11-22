@@ -192,6 +192,15 @@
       "rollback": "supabase/release/163_chase_steps_atomic.rollback.sql",
       "verify": "supabase/verify/chase_steps_atomic_163.sql",
       "marker": "post-144 marker 163 chase_steps_atomic"
+    },
+    {
+      "number": 164,
+      "after": "163",
+      "source": "supabase/proposals/p164_platform_companies.sql",
+      "release": "supabase/release/164_platform_companies.release.sql",
+      "rollback": "supabase/release/164_platform_companies.rollback.sql",
+      "verify": "supabase/verify/platform_companies_164.sql",
+      "marker": "post-144 marker 164 platform_companies"
     }
   ],
   "other_proposals": [
