@@ -2,8 +2,8 @@
 /**
  * The tour card (components/tooly/tour/admin-tour.tsx) for the three views. Proves, with the real card and faked sign-in, company settings,
  * route and done flag: nothing shows unless the server flag AND the marker for the person's view are on; admin, office and workshop each
- * get their own first step and step count; a viewer and a person who has already finished see nothing; the card only offers Back, Next and
- * Stop; and it never presses anything on the page behind it (a button on the page is not clicked while the tour moves through its steps).
+ * get their own first step and step count; a viewer and a person who has already finished see nothing; the card only offers Back, Next, the note
+ * toggle and Skip tour; the note opens on request; a person who has seen it gets only a Replay button, on the Dashboard; and it never presses anything on the page behind it (a button on the page is not clicked while the tour moves through its steps).
  * Must not change: this file proves; the plan and switch rules are proved in tooly-role-tours.test.ts and tooly-tour.test.ts.
  */
 import { act, createElement } from "react";
@@ -112,12 +112,47 @@ describe("who sees which tour", () => {
   });
 });
 
+describe("seen once, then replay", () => {
+  it("a person who has seen it gets a Replay button on the Dashboard only, and replay starts at step 1", async () => {
+    state.hiddenNav = [TOOLY_OFFICE_TOUR_ON_MARKER];
+    state.done = true;
+    await show(true);
+    expect(card()).toBeNull();
+    expect(host.querySelector('[data-testid="tooly-tour-replay"]')).not.toBeNull();
+    await press("tooly-tour-replay");
+    expect(count()).toBe("Step 1 of 17");
+    await press("tooly-tour-next");
+    await press("tooly-tour-stop");
+    expect(card()).toBeNull();
+    expect(markDone).toHaveBeenCalledTimes(1);
+  });
+  it("no Replay button on another page, with the switches off, or for a viewer", async () => {
+    state.hiddenNav = [TOOLY_OFFICE_TOUR_ON_MARKER];
+    state.done = true;
+    state.path = "/jobs";
+    await show(true);
+    expect(host.querySelector('[data-testid="tooly-tour-replay"]')).toBeNull();
+    state.path = "/dashboard";
+    await show(false);
+    expect(host.querySelector('[data-testid="tooly-tour-replay"]')).toBeNull();
+    state.role = "viewer";
+    await show(true);
+    expect(host.querySelector('[data-testid="tooly-tour-replay"]')).toBeNull();
+  });
+  it("opens by itself for a person who has not seen it, without a Replay button", async () => {
+    state.hiddenNav = [TOOLY_OFFICE_TOUR_ON_MARKER];
+    await show(true);
+    expect(card()).not.toBeNull();
+    expect(host.querySelector('[data-testid="tooly-tour-replay"]')).toBeNull();
+  });
+});
+
 describe("walking through it", () => {
-  it("offers only Back, Next and Stop, moves one step at a time, and goes to the step's page by navigation", async () => {
+  it("offers only Back, Next, the note toggle and Skip tour, moves one step at a time, and goes to the step's page by navigation", async () => {
     state.role = "workshop";
     state.hiddenNav = [TOOLY_WORKSHOP_TOUR_ON_MARKER];
     await show(true);
-    expect(Array.from(host.querySelectorAll("button")).map((b) => b.getAttribute("data-testid"))).toEqual(["tooly-tour-back", "tooly-tour-next", "tooly-tour-stop"]);
+    expect(Array.from(host.querySelectorAll("button")).map((b) => b.getAttribute("data-testid"))).toEqual(["tooly-tour-note-toggle", "tooly-tour-back", "tooly-tour-next", "tooly-tour-stop"]);
     expect((host.querySelector('[data-testid="tooly-tour-back"]') as HTMLButtonElement).disabled).toBe(true);
     await press("tooly-tour-next");
     expect(count()).toBe("Step 2 of 13");
@@ -128,13 +163,24 @@ describe("walking through it", () => {
     expect(count()).toBe("Step 4 of 13");
     expect(push).toHaveBeenCalledWith("/jobs");
   });
-  it("Stop saves the done flag once and closes the card", async () => {
+  it("Skip tour saves the done flag once and closes the card", async () => {
     state.hiddenNav = [TOOLY_OFFICE_TOUR_ON_MARKER];
     await show(true);
     await press("tooly-tour-stop");
     expect(markDone).toHaveBeenCalledTimes(1);
     expect(markDone.mock.calls[0][1]).toBe("u1");
     expect(card()).toBeNull();
+  });
+  it("each step has a note that is closed until asked for, and closes again on the next step", async () => {
+    state.hiddenNav = [TOOLY_OFFICE_TOUR_ON_MARKER];
+    await show(true);
+    expect(host.querySelector('[data-testid="tooly-tour-note"]')).toBeNull();
+    await press("tooly-tour-note-toggle");
+    expect(host.querySelector('[data-testid="tooly-tour-note"]')?.textContent).toContain("How it gets produced");
+    expect(host.querySelector('[data-testid="tooly-tour-note-toggle"]')?.getAttribute("aria-expanded")).toBe("true");
+    await press("tooly-tour-next");
+    expect(host.querySelector('[data-testid="tooly-tour-note"]')).toBeNull();
+    expect(markDone).not.toHaveBeenCalled();
   });
   it("the last step says Finish and saves the done flag", async () => {
     state.role = "workshop";
