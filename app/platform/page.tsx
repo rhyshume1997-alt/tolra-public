@@ -228,5 +228,5 @@ function CompaniesPage() {
 
 /** Owner Home (module 12): while PLATFORM_OWNER_HOME_ENABLED is off the page above is shown exactly as before. */
 export default function PlatformPage() {
-  return <OwnerHomeGate legacy={<CompaniesPage />}><AppCredentialsCard /><TolraAiControl /><TolraAiCaps /></OwnerHomeGate>;
+  return <OwnerHomeGate legacy={<CompaniesPage />}><OwnerToolsLinks /><AppCredentialsCard /><TolraAiControl /><TolraAiCaps /></OwnerHomeGate>;
 }
