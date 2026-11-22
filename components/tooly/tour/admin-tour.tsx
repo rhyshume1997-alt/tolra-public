@@ -1,10 +1,12 @@
 "use client";
 
 /**
- * BOUNDARY (Tooly, first-login admin tour): the on-screen tour card. NOT mounted anywhere yet (mounting it in the shell is the next PR).
+ * BOUNDARY (Tooly, scripted tours): the on-screen tour card for the admin, office and workshop views (the file and export keep their first
+ * name because the shell mounts <AdminTour envOn />, which is not changed here). Mounted by the shell.
  * Inputs: `envOn` (the server flag as a boolean), the signed-in person (lib/use-user), the company's hidden_nav (lib/org-settings), the
  * saved "done" flag (lib/auth/tour-flag). Outputs: a small card and a ring around the thing being pointed at; on Stop or Finish it saves
- * the done flag. It renders nothing unless the env flag, the company marker and the admin role all agree and the tour is not done.
+ * the done flag. It renders nothing unless the env flag and the company marker for the person's view (admin, office or workshop) both
+ * agree and the tour is not done; a viewer never sees one.
  * It POINTS only: the ring ignores the mouse, no app button is ever pressed, no dialog is opened, no form is touched. Moving to the
  * next page is plain navigation. It works with AI off and calls no API.
  * Must not change: the "points, never clicks" rule, the off-by-default gate (tour-switch.ts), or that all 23 steps are mandatory
@@ -13,8 +15,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-import { type PlannedStep, planAdminTour } from "@/components/tooly/tour/tour-plan";
-import { toolyTourEnabled } from "@/components/tooly/tour/tour-switch";
+import { type PlannedStep, planTour } from "@/components/tooly/tour/tour-plan";
+import { toolyTourEnabledFor } from "@/components/tooly/tour/tour-switch";
 import type { TourTarget } from "@/components/tooly/tour/tour-steps";
 import { isTourDone, markTourDone } from "@/lib/auth/tour-flag";
 import { useOrgSettings } from "@/lib/org-settings";
@@ -75,10 +77,10 @@ export function AdminTour({ envOn }: { envOn: boolean }) {
   const [index, setIndex] = useState(0);
   const [closed, setClosed] = useState(false);
 
-  const enabled = toolyTourEnabled({ envOn, hiddenNav, role: activeRole });
+  const enabled = toolyTourEnabledFor({ envOn, hiddenNav, role: activeRole });
   const done = !user || isTourDone(user.id, user.user_metadata);
   const plan = useMemo(
-    () => (enabled ? planAdminTour({ activeRole, hiddenSections, hiddenNav, phone: !wide }) : []),
+    () => (enabled ? planTour({ activeRole, hiddenSections, hiddenNav, phone: !wide }) : []),
     [enabled, activeRole, hiddenSections, hiddenNav, wide],
   );
   const planned = plan[Math.min(index, Math.max(plan.length - 1, 0))];
