@@ -59,6 +59,13 @@ Break work into these. Agents own one module at a time. Cross-module changes req
 - Saved "done" flag: module 1 (`lib/auth/tour-flag.ts`, auth user_metadata plus a browser copy). This module only calls it.
 - Mounting the tour in the shell, the float and dialog layering belong to the Shell (module 7) and are their own PR. Quiz results need their own table later (not allowed here).
 
+## 12. Owner Home (platform owner's first screen)
+- Allowed: `lib/platform/owner-home/**`, `components/platform/owner-home*.tsx`, `app/api/platform/owner-home/**`, `tests/unit/owner-home*`; and only the small gate in `app/platform/page.tsx` (it wraps the existing page, which is otherwise untouched).
+- Goal: the platform owner's home at `/platform`: companies with status and counts, New company, Enter company, simple metrics. Read only, no AI, no e-mail, no SQL of its own.
+- Off by default: the server env flag `PLATFORM_OWNER_HOME_ENABLED` (exactly "true"). Off means `/platform` is the existing company list.
+- Counts: all come through `lib/platform/owner-home/counts.ts`; the Companies screen's counts function (release 164) joins there and nowhere else. Open issues are read defensively (0 if the table is absent).
+- Reuses, never changes: `platform_list_organizations`, `platform_create_organization` (via `POST /api/platform/organizations`), `platform_enter_organization`.
+
 ## Shared
 - `lib/utils.ts`, types, zod schemas: only if the task lists them.
 - Prefer new files under `lib/<module>/` or `components/<module>/` for extractions.
