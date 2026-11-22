@@ -295,7 +295,7 @@ jobs:
         # A targeted manual run (workflow_dispatch with `specs` and skip_db=true) skips this and the rehearsal; every other run keeps them.
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.specs != '' && inputs.skip_db == 'true') }}
         # Full command, no exclusions. The sequencer runs every baseline file first,
-        # then all release proofs prepare/verify 145 to 163 on this disposable backend.
+        # then all release proofs prepare/verify 145 to 164 on this disposable backend.
         # The baseline and upgrade rehearsal still test only numbered migrations first.
         # Post-144 release plan (supabase/release-plan.json): 145 N5, 146 N2/cap, 147 delivery note, 148 job costing, 149 Xero switch, 150 AI cap/key-off, 151 Xero invite hardening, 152 SliQ import route, 153 document customer links, 154 portal sign-in, 156 invoice number case, 157 jobs integrity guard (155 reserved), 158 machine run integrity, 159 job drawings overwrite refused, 160 legacy reopen_job closed to the browser; proofs remain mandatory.
         env:
@@ -366,6 +366,8 @@ jobs:
           node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/legacy-reopen-revoke-160.test.ts || rc=1
           echo "== Chase steps save in one call (release 163): admin and office save, ids kept, stale snapshot refused 40001, bad lists refused 22023, workshop, viewer, support, read-only, another company, anon and a first-step-only (aal1) session refused, one winner of two simultaneous saves, release, rollback and re-release =="
           node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/chase-steps-atomic-163.test.ts || rc=1
+          echo "== Platform owner Companies (release 164): counts per company for the platform owner only; Close needs the second step, a code under 15 minutes old, the exact name and a reason; the company the owner is inside is refused; reopen; company admin, office, workshop, viewer, support and anon refused; nothing deleted; release, rollback and re-release =="
+          node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/platform-companies-164.test.ts || rc=1
           echo "== SliQ releases 140 and 141: isolation and preflight proofs =="
           node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/opening-wip-141-isolation.test.ts tests/db/sliq-import-preflight-140-141.test.ts || rc=1
           echo "== Costing rates (release 143, after 141 and before 144): no built-in rate, company scoping, roles, second step, stale refusal, serialised saves, all-or-nothing, past records unchanged =="
@@ -380,11 +382,11 @@ jobs:
           set -a; . ./.env.test.local; set +a
           NEXT_PUBLIC_SUPABASE_URL="$TEST_SUPABASE_URL" NEXT_PUBLIC_SUPABASE_ANON_KEY="$TEST_SUPABASE_ANON_KEY" npm run build
       # The upgrade rehearsal ends with `scripts/test-backend.sh reset`, which
-      # rebuilds the disposable database from numbered migrations only, so the one-time releases 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 156, 157, 158, 159, 160 and 163 that the test:db fixture
+      # rebuilds the disposable database from numbered migrations only, so the one-time releases 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 156, 157, 158, 159, 160, 163 and 164 that the test:db fixture
       # installed are gone and the browser backend has no company_setup_progress / Tolra AI tables. Re-install them here the way
       # tests/support/post-144-release-fixture.ts does (preflight marker, release file, verify file with every row true, schema reload).
       # Loopback database only; each marker is checked first so a release file is never applied twice.
-      - name: "Install one-time releases 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 156, 157, 158, 159, 160 and 163 on the disposable database "
+      - name: "Install one-time releases 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 156, 157, 158, 159, 160, 163 and 164 on the disposable database "
         run: |
           set -euo pipefail
           set -a; . ./.env.test.local; set +a
@@ -393,7 +395,7 @@ jobs:
             *) echo "Refusing: $TEST_DATABASE_URL is not the local disposable database" >&2; exit 1 ;;
           esac
           psql_q() { psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -X -At -F '|' "$@"; }
-          for phase in "145_company_setup|company_setup_145|post-144 marker 145 company_setup" "146_tolra_provided_ai|tolra_provided_ai_146|post-144 marker 146 tolra_provided_ai" "147_job_delivery_note|job_delivery_note_147|post-144 marker 147 job_delivery_note" "148_job_profitability_actuals|job_profitability_actuals_148|post-144 marker 148 job_profitability_actuals" "149_xero_launch_hold|xero_launch_hold_149|post-144 marker 149 xero_launch_hold" "150_ai_cap_key_off|ai_cap_key_off_150|post-144 marker 150 ai_cap_key_off" "151_xero_invite_hardening|xero_invite_hardening_151|post-144 marker 151 xero_invite_hardening" "152_sliq_import_route|sliq_import_route_152|post-144 marker 152 sliq_import_route" "153_document_customer_link|document_customer_link_153|post-144 marker 153 document_customer_link" "154_customer_portal_signin|customer_portal_signin_154|post-144 marker 154 customer_portal_signin" "156_invoice_ref_case|invoice_ref_case_156|post-144 marker 156 invoice_ref_case" "157_jobs_integrity_guard|jobs_integrity_guard_157|post-144 marker 157 jobs_integrity_guard" "158_machine_run_integrity|machine_run_integrity_158|post-144 marker 158 machine_run_integrity" "159_drawings_update_roles|drawings_update_roles_159|post-144 marker 159 drawings_update_roles" "160_legacy_reopen_revoke|legacy_reopen_revoke_160|post-144 marker 160 legacy_reopen_revoke" "163_chase_steps_atomic|chase_steps_atomic_163|post-144 marker 163 chase_steps_atomic"; do
+          for phase in "145_company_setup|company_setup_145|post-144 marker 145 company_setup" "146_tolra_provided_ai|tolra_provided_ai_146|post-144 marker 146 tolra_provided_ai" "147_job_delivery_note|job_delivery_note_147|post-144 marker 147 job_delivery_note" "148_job_profitability_actuals|job_profitability_actuals_148|post-144 marker 148 job_profitability_actuals" "149_xero_launch_hold|xero_launch_hold_149|post-144 marker 149 xero_launch_hold" "150_ai_cap_key_off|ai_cap_key_off_150|post-144 marker 150 ai_cap_key_off" "151_xero_invite_hardening|xero_invite_hardening_151|post-144 marker 151 xero_invite_hardening" "152_sliq_import_route|sliq_import_route_152|post-144 marker 152 sliq_import_route" "153_document_customer_link|document_customer_link_153|post-144 marker 153 document_customer_link" "154_customer_portal_signin|customer_portal_signin_154|post-144 marker 154 customer_portal_signin" "156_invoice_ref_case|invoice_ref_case_156|post-144 marker 156 invoice_ref_case" "157_jobs_integrity_guard|jobs_integrity_guard_157|post-144 marker 157 jobs_integrity_guard" "158_machine_run_integrity|machine_run_integrity_158|post-144 marker 158 machine_run_integrity" "159_drawings_update_roles|drawings_update_roles_159|post-144 marker 159 drawings_update_roles" "160_legacy_reopen_revoke|legacy_reopen_revoke_160|post-144 marker 160 legacy_reopen_revoke" "163_chase_steps_atomic|chase_steps_atomic_163|post-144 marker 163 chase_steps_atomic" "164_platform_companies|platform_companies_164|post-144 marker 164 platform_companies"; do
             IFS='|' read -r release verify marker <<< "$phase"
             state="$(psql_q -f supabase/verify/release_preflight.sql | awk -F'|' -v m="$marker" '$1==m {print $2}')"
             [ -n "$state" ] || { echo "Missing release preflight marker: $marker" >&2; exit 1; }
@@ -418,7 +420,7 @@ jobs:
           node scripts/ci-evidence.mjs vitest-summary evidence/rehearsal.json REHEARSAL
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: "SCHEMA MARKER before the browser tests (no reset since the 145/146/147/148/149/150/151/152/153/154/156/157/158/159/160/163 install step)"
+      - name: "SCHEMA MARKER before the browser tests (no reset since the 145/146/147/148/149/150/151/152/153/154/156/157/158/159/160/163/164 install step)"
         run: scripts/ci-schema-markers.sh
       - name: Browser suite
         # A manual run may name spec files (`specs`): only those run, in the same disposable stack. Empty = the whole suite.
