@@ -10,6 +10,8 @@ import { OfflineBanner } from "@/components/offline-banner";
 import { Sidebar } from "@/components/sidebar";
 import { SupportBanner } from "@/components/support-banner";
 import { ThemeColour } from "@/components/theme-colour";
+import { ToolyFloat } from "@/components/tooly/tooly-float";
+import { AdminTour } from "@/components/tooly/tour/admin-tour";
 import { Topbar } from "@/components/topbar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { type ShellBrand, shellColours } from "@/lib/brand-pending";
@@ -34,7 +36,7 @@ function useRememberBrand(organizationId: string | null | undefined) {
   }, [organizationId]);
 }
 
-function ShellInner({ children }: { children: React.ReactNode }) {
+function ShellInner({ children, toolyTour }: { children: React.ReactNode; toolyTour: boolean }) {
   const router = useRouter();
   const { user, profile, loading, error, activeRole } = useUser();
   // Signs this device out after the idle limit for the role being worked as (lib/session-policy.ts).
@@ -84,7 +86,9 @@ function ShellInner({ children }: { children: React.ReactNode }) {
         <div role="alert" className="max-w-md rounded-lg border border-amber-300 bg-white p-6 text-center shadow-sm">
           <h1 className="text-lg font-semibold text-slate-950">Connect to sign in again</h1>
           <p className="mt-2 text-sm text-slate-600">
-            This device has been offline for more than {OFFLINE_IDENTITY_MAX_AGE_HOURS} hours, so it can&apos;t be used offline any longer. Get back online and try again.
+            {"This device has been offline for more than "}
+            {OFFLINE_IDENTITY_MAX_AGE_HOURS}
+            {" hours, so it can't be used offline any longer. Get back online and try again."}
           </p>
           <p className="mt-2 text-sm font-medium text-slate-800" data-testid="offline-kept">
             {error.pending
@@ -100,7 +104,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
         <div role="alert" className="max-w-md rounded-lg border border-red-200 bg-white p-6 text-center shadow-sm">
-          <h1 className="text-lg font-semibold text-slate-950">Can&apos;t load your account</h1>
+          <h1 className="text-lg font-semibold text-slate-950">{"Can't load your account"}</h1>
           <p className="mt-2 text-sm text-slate-600">{friendlyError(error, "Can't reach the server. Check your connection and try again.")}</p>
           <button type="button" onClick={() => window.location.reload()} className="mt-4 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-hover">Retry</button>
         </div>
@@ -119,6 +123,9 @@ function ShellInner({ children }: { children: React.ReactNode }) {
         <Topbar />
         <main className="w-full px-4 py-6 md:px-6 md:py-8 desk:px-8 desk:py-8 print:p-0"><DisplayNamePrompt /><OfflineBanner /><CompanySetupGuide key={profile?.organization_id ?? "none"} />{children}</main>
       </div>
+      <ToolyFloat />
+      {/* First-login admin tour: shows nothing unless the server flag, the company marker and the admin role all agree (components/tooly/tour). */}
+      <AdminTour envOn={toolyTour} />
     </div>
   );
 }
@@ -128,7 +135,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
  * browser reads the company as before. It is held until the full profile loads (lib/company.ts primeShellBrand), and its colours
  * go into the server HTML, so the first paint already wears the company's brand (no neutral placeholder, no product navy).
  */
-export function DashboardShell({ children, company }: { children: React.ReactNode; company?: ShellBrand }) {
+export function DashboardShell({ children, company, toolyTour = false }: { children: React.ReactNode; company?: ShellBrand; toolyTour?: boolean }) {
   // Held once per page load (browser only) before the children render. The server HTML has no company content: the shell renders its loading state there.
   useState(() => { if (company) primeShellBrand(company); return null; });
   const colours = company ? shellColours(company, false) : null;
@@ -136,7 +143,7 @@ export function DashboardShell({ children, company }: { children: React.ReactNod
     <UserProvider>
       {/* Hex colours only (shellColours validates them), so nothing else can reach CSS. */}
       {colours ? <style>{`:root{--brand:${colours.primary};--brand-accent:${colours.accent};--brand-ink:${colours.ink}}`}</style> : null}
-      <ShellInner>{children}</ShellInner>
+      <ShellInner toolyTour={toolyTour}>{children}</ShellInner>
     </UserProvider>
   );
 }

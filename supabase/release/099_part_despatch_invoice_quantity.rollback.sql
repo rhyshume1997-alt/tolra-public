@@ -5,7 +5,7 @@
 -- draft_invoice_balances, draft_invoice_order_lines and jobs_awaiting_despatch_or_invoice, the tables invoice_job_finish_legacy and invoice_notes_legacy, and the
 -- columns invoice_line_items.sales_order_line_id (with its index) and line_kind (with its check).
 -- No invoice, line quantity or delivery note is changed: drafts made under 099 keep the despatched quantities they bill (only their
--- order-line links go). Afterwards Job Finish again drafts the order's full quantities, and draft quantities are not checked against
+-- order-line links go; a Job Finish draft 099 made with nothing despatched is already the 081 shape: full quantities, unlinked). Afterwards Job Finish again drafts the order's full quantities, and draft quantities are not checked against
 -- what was despatched. Run the whole text as one transaction, then the release preflight (marker 099 shows "not applied").
 BEGIN;
 DO $$
@@ -23,7 +23,7 @@ BEGIN
   IF v_dn IS NULL OR v_dn NOT IN ('d467a505ab13a1cc1b1fa51cd8922f58', 'cff9113a2490bda9b901764974adfa0a') THEN
     RAISE EXCEPTION '099 rollback: invoice_from_delivery_notes_draft (md5 %) is neither 099''s nor 059''s; stop and compare', coalesce(v_dn, 'missing');
   END IF;
-  IF v_jf IS NULL OR v_jf NOT IN ('8c4d3694cec4ac679916f916afc41985', '492fa39d76311ecfc78ce860a5f1160b') THEN
+  IF v_jf IS NULL OR v_jf NOT IN ('47652936f36f4372a9056b9829887bc9', '492fa39d76311ecfc78ce860a5f1160b') THEN
     RAISE EXCEPTION '099 rollback: job_finish_draft_invoice (md5 %) is neither 099''s nor 081''s; stop and compare', coalesce(v_jf, 'missing');
   END IF;
   IF v_td IS NULL OR v_td NOT IN ('c1464c01f419d1866e7143a41076e7d0', '52a9771fec832f0e20e9d780e7561caa') THEN

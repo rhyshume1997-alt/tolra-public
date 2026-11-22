@@ -41,10 +41,12 @@ BEGIN;
 --    quantity freed from a draft of the order (the next draft takes it). A line with nothing left is left off; nothing left at all is
 --    refused (22023 'nothing_outstanding'). Everything else as 059.
 -- f. job_finish_draft_invoice (081's body, the lines step changed): bills each order line's outstanding (despatched, not invoiced),
---    linked, and puts the order's sent-out notes that are on no live invoice on the draft. OPEN QUESTION for the reviewers, one
---    branch (marked "OPEN QUESTION" below): a job finished with nothing despatched gets no draft ('nothing-despatched'); the delivery
---    note path drafts when it ships, and (j) lists the job meanwhile. As before: nothing for an internal job, a job without an order,
---    or a job with a live invoice.
+--    linked, and puts the order's sent-out notes that are on no live invoice on the draft. DECIDED (Rhys, 20 Nov): a job finished with
+--    NOTHING despatched (and nothing on any live invoice) still gets a DRAFT that bills the order lines' full quantity, as 081 did,
+--    whether or not the customer has paid; it is a draft only, never issued here, and the person edits it. Those lines are UNLINKED and
+--    the invoice is recorded in invoice_job_finish_legacy (as an 081 draft is), so the order counts as invoiced while the draft is live
+--    and nothing can bill it twice; voiding the draft frees it. As before: nothing for an internal job, a job without an order, or a job
+--    with a live invoice; and when something is despatched the rule above holds (outstanding only, linked).
 -- g. delivery_note_try_draft (081's body, its job step changed): a note whose job has a live DRAFT goes on that draft and adds, as (e),
 --    what it despatched plus any freed quantity of its order (invoice_add_delivery_note, internal); a note whose job has only issued
 --    invoices gets a draft of its own when anything is left to bill, else (an 081 Job Finish invoice billed it) goes on the oldest live
@@ -93,7 +95,7 @@ BEGIN
   IF v_dn IS NULL OR v_dn NOT IN ('cff9113a2490bda9b901764974adfa0a', 'd467a505ab13a1cc1b1fa51cd8922f58') THEN
     RAISE EXCEPTION '099: public.invoice_from_delivery_notes_draft is not 059''s (md5 without whitespace %); stop and compare it first', coalesce(v_dn, 'missing');
   END IF;
-  IF v_jf IS NULL OR v_jf NOT IN ('492fa39d76311ecfc78ce860a5f1160b', '8c4d3694cec4ac679916f916afc41985') THEN
+  IF v_jf IS NULL OR v_jf NOT IN ('492fa39d76311ecfc78ce860a5f1160b', '47652936f36f4372a9056b9829887bc9') THEN
     RAISE EXCEPTION '099: public.job_finish_draft_invoice is not 081''s (md5 without whitespace %); stop and compare it first', coalesce(v_jf, 'missing');
   END IF;
   IF v_td IS NULL OR v_td NOT IN ('52a9771fec832f0e20e9d780e7561caa', 'c1464c01f419d1866e7143a41076e7d0') THEN
@@ -554,6 +556,7 @@ DECLARE
   v_note    RECORD;
   v_state   TEXT;
   v_msg     TEXT;
+  v_full    BOOLEAN := FALSE;
 BEGIN
   IF p_org IS NULL OR p_org IS DISTINCT FROM public.current_user_organization_id() THEN
     RETURN 'not_authorised';
@@ -598,11 +601,25 @@ BEGIN
                 WHERE l.sales_order_id = v_order AND l.organization_id = p_org AND l.quantity > 0) c
           WHERE c.quantity > 0) g;
     IF v_lines IS NULL THEN
-      -- OPEN QUESTION (099, for the reviewers): the job is finished with nothing despatched and not yet invoiced. The rule decided is
-      -- "the draft bills what was despatched", so no draft is made now: the delivery note path drafts each part as it is sent out.
-      -- Flipping this one branch (drafting the undespatched order quantity here) would need that draft's lines unlinked and the invoice
-      -- recorded in invoice_job_finish_legacy (as an 081 draft is), so nothing could be billed twice.
-      RETURN 'nothing-despatched';
+      -- DECIDED (Rhys, 20 Nov): nothing outstanding. If nothing at all has been despatched or invoiced on the order, the draft bills the
+      -- order lines' full quantity (as 081 did), UNLINKED, and the invoice is recorded in invoice_job_finish_legacy below, so the whole
+      -- order counts as invoiced while it is live (nothing can bill it twice) and voiding it frees the order. Anything else (despatched
+      -- and already on a live invoice) has nothing left to bill.
+      IF EXISTS (SELECT 1 FROM public.sales_order_lines l CROSS JOIN LATERAL public.order_line_billing(l.id, NULL) b
+                 WHERE l.sales_order_id = v_order AND l.organization_id = p_org AND (b.despatched > 0 OR b.invoiced > 0 OR b.unbilled_notes > 0)) THEN
+        RETURN 'nothing-outstanding';
+      END IF;
+      SELECT jsonb_agg(jsonb_build_object('position', g.n - 1, 'description', g.description, 'quantity', g.quantity, 'unit_price', g.unit_price,
+                                          'vat_pct', g.vat_pct, 'vat_exempt', g.vat_exempt) ORDER BY g.n),
+             coalesce(sum(round(g.quantity * g.unit_price, 2)), 0),
+             coalesce(sum(CASE WHEN g.vat_exempt THEN 0 ELSE round(round(g.quantity * g.unit_price, 2) * g.vat_pct / 100, 2) END), 0)
+        INTO v_lines, v_net, v_vat
+      FROM (SELECT row_number() OVER (ORDER BY l.position, l.id) AS n, l.description, l.quantity, l.unit_price, l.vat_pct, l.vat_exempt
+            FROM public.sales_order_lines l WHERE l.sales_order_id = v_order AND l.organization_id = p_org AND l.quantity > 0) g;
+      IF v_lines IS NULL THEN
+        RETURN 'no-lines';
+      END IF;
+      v_full := TRUE;
     END IF;
     v_vat := CASE WHEN v_vat_on THEN v_vat ELSE 0 END;
 
@@ -611,7 +628,9 @@ BEGIN
     v_terms := left(coalesce(v_terms, '30 days'), 200);
     v_days := CASE WHEN v_terms ~* 'receipt' THEN 0 ELSE coalesce(least(substring(v_terms FROM '(\d{1,4})')::INT, 366), 30) END;
 
-    PERFORM set_config('quoteflow.invoice_line_link', 'on', TRUE);
+    IF NOT v_full THEN
+      PERFORM set_config('quoteflow.invoice_line_link', 'on', TRUE);
+    END IF;
     v_invoice := public.create_with_lines(
       'invoices',
       jsonb_strip_nulls(jsonb_build_object(
@@ -622,6 +641,9 @@ BEGIN
         'quote_ref', v_so.quote_ref, 'customer_po', v_so.customer_po, 'job_id', p_job, 'status', 'draft', 'amount_paid', 0)),
       'invoice_line_items', 'invoice_id', v_lines);
     PERFORM set_config('quoteflow.invoice_line_link', '', TRUE);
+    IF v_full THEN
+      INSERT INTO public.invoice_job_finish_legacy (invoice_id, organization_id, sales_order_id) VALUES (v_invoice, p_org, v_order) ON CONFLICT (invoice_id) DO NOTHING;
+    END IF;
     -- 099: the order's sent-out notes on no live invoice (and with no hand-typed invoice reference) go on the draft that bills them. A
     -- note being changed at this moment is skipped (its own send-out puts it on this draft).
     FOR v_note IN
@@ -1029,7 +1051,7 @@ DECLARE
   f TEXT;
 BEGIN
   IF (SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) FROM pg_proc p WHERE p.oid = to_regprocedure('public.invoice_from_delivery_notes_draft(uuid,uuid[],date,date,text)')) IS DISTINCT FROM 'd467a505ab13a1cc1b1fa51cd8922f58'
-     OR (SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) FROM pg_proc p WHERE p.oid = to_regprocedure('public.job_finish_draft_invoice(uuid,uuid)')) IS DISTINCT FROM '8c4d3694cec4ac679916f916afc41985'
+     OR (SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) FROM pg_proc p WHERE p.oid = to_regprocedure('public.job_finish_draft_invoice(uuid,uuid)')) IS DISTINCT FROM '47652936f36f4372a9056b9829887bc9'
      OR (SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) FROM pg_proc p WHERE p.oid = to_regprocedure('public.delivery_note_try_draft(uuid,uuid,text)')) IS DISTINCT FROM 'c1464c01f419d1866e7143a41076e7d0'
      OR (SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) FROM pg_proc p WHERE p.oid = to_regprocedure('public.replace_draft_invoice(uuid,timestamp with time zone,jsonb,jsonb)')) IS DISTINCT FROM '8e8e4cc70d1cd7ad4c3268c49e52f305' THEN
     RAISE EXCEPTION '099: a replaced function is not 099''s after the replace';

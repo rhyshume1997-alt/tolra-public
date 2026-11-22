@@ -36,61 +36,51 @@ test("N2: Tolra mode starts hidden and an ordinary company admin cannot activate
   const response=await page.request.get("/api/ai-helper/status");expect(response.ok()).toBe(true);
   expect(await response.json()).toMatchObject({tolra_available:false,tolra_enabled:false});
   await expect(page.getByTestId("tolra-ai-card")).toHaveCount(0);
-  // Guided page: the old Tolra card is gone, so the same fact is read from the AI card's own Tolra choice.
-  await expect(page.getByTestId("setup-card-ai").getByRole("radio",{name:/Tolra-provided AI.*\(not available\)/})).toBeVisible();
+  // Shared (Tolra) mode is switched off (C4): the AI card no longer offers the Tolra choice at all.
+  await expect(page.getByTestId("setup-card-ai").getByRole("radio",{name:/Tolra-provided AI/})).toHaveCount(0);
   expect((await page.request.post("/api/platform/tolra-ai",{data:{enabled:true,key:KEY}})).status()).toBe(403);
   expect((await page.request.post("/api/ai-helper/tolra-mode",{data:{enabled:true}})).status()).toBe(403);
 });
 
-test("N2: Rhys's guarded switch, secret input, company choice, separate usage and hard monthly cap",async({page,browser})=>{
+test("N2: shared Tolra AI is switched off: owner can only store the key switched off, no company choice, no shared-key request",async({page,browser})=>{
   test.setTimeout(180_000);
   await ownerOnPlatform(page);
   const input=page.getByLabel("Tolra Anthropic key",{exact:true});
-  await expect(input).toHaveValue("");await input.fill(KEY);
-  const saving=page.waitForResponse(r=>r.url().endsWith("/api/platform/tolra-ai")&&r.request().method()==="POST");
-  await page.getByRole("button",{name:"Switch on and save key",exact:true}).click();
-  const response=await saving;expect(response.ok()).toBe(true);
-  expect(await response.json()).toEqual({enabled:true,key_set:true});
-  await expect(input).toHaveValue("");await page.reload();await expect(input).toHaveValue("");
+  await expect(input).toHaveValue("");
+  // The owner may store the key, but only switched off (the platform stays off, valid before and after the database refuses ON).
+  const saved=await page.request.post("/api/platform/tolra-ai",{data:{enabled:false,key:KEY}});
+  expect(saved.ok()).toBe(true);
+  expect(await saved.json()).toEqual({enabled:false,key_set:true});
+  await page.reload();await expect(input).toHaveValue("");
   await expect(page.locator("body")).not.toContainText(KEY);await expect(page.locator("body")).not.toContainText("ZXY9");
-  const stored=await withDb(db=>db.query("SELECT api_key_enc FROM public.ai_helper_tolra_control WHERE singleton"));
+  const stored=await withDb(db=>db.query("SELECT enabled,api_key_enc FROM public.ai_helper_tolra_control WHERE singleton"));
+  expect(stored.rows[0].enabled).toBe(false);
   expect(stored.rows[0].api_key_enc).toMatch(/^v1\./);expect(stored.rows[0].api_key_enc).not.toContain(KEY);
   const a=await createSoloTenant(world().runId,"n2-company-a");
-  const b=await createSoloTenant(world().runId,"n2-company-b");
   await page.context().clearCookies();await signIn(page,a.admin);await page.goto("/admin/integrations");
-  // Guided page: Tolra-provided AI is chosen in the AI card, and its one "Turn on AI" switch replaces the old "Turn Tolra AI on" button.
   const card=page.getByTestId("setup-card-ai");await expect(card).toBeVisible();
-  await card.getByRole("radio",{name:/Tolra-provided AI/}).check();
-  await expect(card.locator("input:not([type=radio]),select")).toHaveCount(0);
-  const aiSwitch=card.getByRole("switch",{name:"Turn on AI"});
-  await aiSwitch.click();
-  await expect(aiSwitch).toHaveAttribute("aria-checked","true");
-  await page.reload();await expect(card.getByTestId("activation-badge-ai")).toHaveText("AI: On");
-  // This runs against the existing deterministic AI provider, never Anthropic.
-  // A successful request must settle usage without creating/approving a quote.
-  const suggestion=await page.request.post("/api/ai-helper/rfq",{data:{text:RFQ}});
-  expect(suggestion.ok()).toBe(true);expect((await suggestion.json()).requestId).toBeTruthy();
-  const used=await page.request.get("/api/ai-helper/status");expect(used.ok()).toBe(true);
-  const usage=await used.json();expect(usage.month_spent_pence).toBeGreaterThan(0);expect(usage.month_reserved_pence).toBe(0);
+  await expect(card.getByRole("radio",{name:/Tolra-provided AI/})).toHaveCount(0);
+  expect((await page.request.post("/api/ai-helper/tolra-mode",{data:{enabled:true}})).status()).toBe(403);
+  const status=await page.request.get("/api/ai-helper/status");expect(status.ok()).toBe(true);
+  expect(await status.json()).toMatchObject({tolra_enabled:false,month_spent_pence:0,month_reserved_pence:0});
+  // The company's AI stays off, nothing is reserved, and no suggestion or quote is created.
+  expect((await page.request.post("/api/ai-helper/rfq",{data:{text:RFQ}})).status()).toBe(404);
+  const requests=await adminClient().from("ai_helper_requests").select("status").eq("organization_id",a.id);
+  expect(requests.error).toBeNull();expect(requests.data).toEqual([]);
   const quotes=await adminClient().from("quotes").select("id").eq("organization_id",a.id);
   expect(quotes.error).toBeNull();expect(quotes.data).toEqual([]);
+  // Company B is untouched by A's actions: same switched-off state, nothing spent, reserved or requested.
+  const b=await createSoloTenant(world().runId,"n2-company-b");
   const context=await browser.newContext({baseURL:new URL(page.url()).origin});
   try {
     const other=await context.newPage();await signIn(other,b.admin);await other.goto("/admin/integrations");
-    const otherCard=other.getByTestId("setup-card-ai");
-    await otherCard.getByRole("radio",{name:/Tolra-provided AI/}).check();
-    await expect(otherCard.getByTestId("activation-badge-ai")).toHaveText("AI: Off");
-    const status=await other.request.get("/api/ai-helper/status");expect(status.ok()).toBe(true);
-    expect(await status.json()).toMatchObject({tolra_enabled:false,month_spent_pence:0,month_reserved_pence:0});
+    await expect(other.getByTestId("setup-card-ai").getByRole("radio",{name:/Tolra-provided AI/})).toHaveCount(0);
+    const otherStatus=await other.request.get("/api/ai-helper/status");expect(otherStatus.ok()).toBe(true);
+    expect(await otherStatus.json()).toMatchObject({tolra_enabled:false,month_spent_pence:0,month_reserved_pence:0});
+    const otherRequests=await adminClient().from("ai_helper_requests").select("status").eq("organization_id",b.id);
+    expect(otherRequests.error).toBeNull();expect(otherRequests.data).toEqual([]);
+    expect((await other.request.post("/api/ai-helper/tolra-mode",{data:{enabled:true}})).status()).toBe(403);
   } finally {await context.close();}
-  // Fill only A's allowance on the disposable backend; B remains untouched.
-  await withDb(db=>db.query("INSERT INTO public.ai_helper_usage(organization_id,month,spent_pence,reserved_pence) VALUES($1,date_trunc('month',now() AT TIME ZONE 'Europe/London')::date,1000,0) ON CONFLICT(organization_id,month) DO UPDATE SET spent_pence=1000,reserved_pence=0",[a.id]));
-  const capped=await page.request.post("/api/ai-helper/rfq",{data:{text:RFQ}});
-  expect(capped.status()).toBe(429);expect((await capped.json()).code).toBe("cap");
-  const requests=await adminClient().from("ai_helper_requests").select("status,refusal,key_source").eq("organization_id",a.id).order("created_at",{ascending:true});
-  expect(requests.error).toBeNull();expect(requests.data).toEqual([{status:"suggested",refusal:null,key_source:"tolra"},{status:"refused",refusal:"cap",key_source:"tolra"}]);
-  await card.getByRole("switch",{name:"Turn on AI"}).click();await expect(card.getByTestId("activation-badge-ai")).toHaveText("AI: Off");
-  expect((await page.request.post("/api/ai-helper/rfq",{data:{text:RFQ}})).status()).toBe(404);
 });
 
 test("N2: office and viewer accounts cannot change mode or read the owner controls",async({page})=>{

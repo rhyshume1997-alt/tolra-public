@@ -1,10 +1,13 @@
 "use client";
 
+// Module 2 worksheet presentation: consumes the loaded row's edit check; server permissions and parent Jobs page stay unchanged.
+
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AlertTriangle, Download, Upload } from "lucide-react";
 
 import { CustomerSignOff } from "@/components/customer-signoff";
+import { PlannedVsActualPanel } from "@/components/jobs/planned-vs-actual-panel";
 import { JobSignOff } from "@/components/job-signoff";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +21,7 @@ import {
   CHECKLIST_ITEMS, type DrawingFile, type JobWorksheet, type WorksheetJobInfo,
   drawingUrl, emptyWorksheet, isOverrun, currentWorksheetVersion, listDrawings, loadMachineNames, loadWorksheet, saveWorksheet, setDrawingRevision, setInspectionRequirements, missingTraceability, uploadDrawing, uploadNewRevision, validateDrawing,
   WorksheetConflictError, WorksheetMissingError,
-  signOffState,
+  signOffState, worksheetEditCheck,
 } from "@/lib/job-worksheet";
 import { type CustomerPoFile, listCustomerPos } from "@/lib/job-files";
 import { supabase } from "@/lib/supabase";
@@ -70,6 +73,7 @@ export function JobWorksheetForm({ job, onSaved, onDirtyChange }: {
   const [offlineCopy, setOfflineCopy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [editJob, setEditJob] = useState<{ id: string; row: Record<string, unknown> | undefined } | null>(null);
   const [attempt, setAttempt] = useState(0);
   const { saving, run } = useSaving();
   const { activeRole } = useUser();
@@ -101,6 +105,7 @@ export function JobWorksheetForm({ job, onSaved, onDirtyChange }: {
     async function load() {
       setLoading(true);
       setLoadError(null);
+      setEditJob(null);
       const [loaded, names, stored, source] = await Promise.all([
         loadWorksheet(jobRef.current), loadMachineNames(), listDrawings(jobRef.current.id),
         // Reads only; null (no prefill) when it can't be read, e.g. offline.
@@ -118,6 +123,7 @@ export function JobWorksheetForm({ job, onSaved, onDirtyChange }: {
       setShown(JSON.stringify(filled.worksheet));
       setPrefilled(filled.filled);
       setVersion(loaded.version);
+      setEditJob({ id: job.id, row: loaded.row });
       setRequired({ certs: Boolean(loaded.row?.certs_required), checklist: Boolean(loaded.row?.checklist_required) });
       setTraceable(typeof loaded.row?.traceable === "boolean" ? loaded.row.traceable : null);
       setConflict(false);
@@ -146,7 +152,7 @@ export function JobWorksheetForm({ job, onSaved, onDirtyChange }: {
   }, [dirty]);
 
   // Saving is only safe when the worksheet really came from the database (or demo mode is on).
-  const canEdit = activeRole !== "viewer";
+  const { canEdit, completeReadOnly } = worksheetEditCheck(activeRole, editJob?.id === job.id ? editJob.row : undefined);
   /** Approving a drawing revision is for admins; what an inspection requires is set by admin and office (migration 034). */
   const canApprove = activeRole === "admin";
   const canRequire = activeRole === "admin" || activeRole === "office";
@@ -171,6 +177,7 @@ export function JobWorksheetForm({ job, onSaved, onDirtyChange }: {
         setBaseline(JSON.stringify(ws));
         setShown(JSON.stringify(ws));
         setVersion(result.version);
+        if (result.row) setEditJob({ id: job.id, row: result.row });
         if ("queued" in result && result.queued) {
           // Offline: kept in this device's outbox and sent when the connection is back (lib/offline).
           toast.success("Saved on this device. It will sync when you're back online.");
@@ -300,6 +307,7 @@ export function JobWorksheetForm({ job, onSaved, onDirtyChange }: {
       {offlineCopy && !loadError ? <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">Offline: showing this device&apos;s copy. Changes you save are kept here and sync when you&apos;re back online.</p> : null}
       {demo && !loadError ? <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800">{DEMO_MODE ? "Demo mode: changes are kept in this session only." : "Supabase is not configured, so this worksheet can't be saved."}</p> : null}
       {loading ? <p className="text-xs text-slate-500">Loading worksheet...</p> : null}
+      {completeReadOnly && !loadError ? <p role="status" data-testid="worksheet-complete-readonly" className="rounded-lg border border-slate-300 bg-slate-50 p-3 text-sm text-slate-700">This job is Complete. Its worksheet is read-only for workshop users. Ask an admin or office user if a correction is needed.</p> : null}
       {pendingPrefill.length && !loadError ? <p data-testid="worksheet-prefill" className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs text-sky-900">Filled in from the job&apos;s machines, schedule bookings and machine runs: {pendingPrefill.map((key) => PREFILL_LABELS[key]).join(", ")}. Check them and Save the worksheet to keep them.</p> : null}
       {loadError ? null : <>
 
@@ -361,6 +369,8 @@ export function JobWorksheetForm({ job, onSaved, onDirtyChange }: {
         <Bar className={overrun ? "bg-[#fde2e2] text-[#c00000]" : BG.blueGrey}>{overrun ? <AlertTriangle className="size-4" /> : null}Reasons for Overrun / Delays{overrun ? ` - taken ${ws.job_time_taken_hr} hr vs quoted ${ws.job_time_quoted_hr} hr` : ""}</Bar>
         <Textarea readOnly={!canEdit} value={ws.overrun_reasons} onChange={(event) => set("overrun_reasons", event.target.value)} className={`min-h-16 ${SHEET_TEXT} ${overrun ? "border-2 border-t-0 border-[#c00000]" : "border-black"}`} placeholder={overrun ? "Job has overrun - please explain why." : ""} />
       </div>
+
+      <PlannedVsActualPanel jobId={job.id} />
 
       {customerPos.length ? (
         <div className="border border-black px-2 py-1.5" aria-label="Customer PO">

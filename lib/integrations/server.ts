@@ -157,6 +157,7 @@ export async function finishConnect(service: SupabaseClient, org: string, userId
  * Connect, step 3, once the state is used up (the admin's own callback above, or the accountant's link: app/api/integrations/invite):
  * the code is exchanged with the verifier at the redirect URI the authorisation was sent with (ready.config.redirectUri), the
  * organisation chosen, the tokens stored for `org` as `userId` (the database checks that person is still an active admin of it).
+ * With offerPicker (the admin's own callback) even ONE organisation is offered for confirmation and nothing is stored until the admin confirms.
  */
 export async function completeConnect(service: SupabaseClient, org: string, userId: string, verifier: string, code: string, ready: { config: XeroConfig; key: Buffer },
                                       deps: { fetchImpl?: typeof fetch; now?: () => number; offerPicker?: boolean; inviteStateHash?: string } = {}): Promise<ConnectOutcome> {
@@ -171,6 +172,12 @@ export async function completeConnect(service: SupabaseClient, org: string, user
     }
     await cleanUpConnections(service, tokens.accessToken, chosen.fresh, fetchImpl, deps.now);
     return { ok: false, reason: chosen.reason === "several" ? "choose_one" : "no_organisation" };
+  }
+  // Exactly one organisation: when the caller can show the picker (the admin's own callback) it is confirmed there too, never stored
+  // unasked. The accountant link (no offerPicker) cannot ask, so it stores as before; turning transfers ON then confirms the organisation.
+  if (deps.offerPicker) {
+    const c = chosen.connection;
+    return { ok: false, reason: "choose_organisation", offer: { refreshToken: tokens.refreshToken, eventId: tokens.authEventId, orgs: [{ id: c.id, tenantId: c.tenantId, tenantName: c.tenantName }] } };
   }
   return storeChosen(service, org, userId, tokens, chosen.connection, [chosen.connection], ready, deps);
 }

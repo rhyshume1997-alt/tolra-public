@@ -26,6 +26,15 @@ test.beforeAll(async () => {
 });
 
 const row = (page: Page, key: string) => page.locator(`tr[data-job-id="${ids[key]}"]`);
+/**
+ * After Play: wait until the Pause control is shown AND the board is idle. askPause/askFinish ignore a tap while `saving || startingId`
+ * (a toast, no dialog). `saving` disables the row's machine picker trigger ("Add a machine to J-..." while running), and saving only ends
+ * after startingId clears, so an enabled trigger means neither is in flight. No fixed delay.
+ */
+async function runningAndIdle(page: Page, key: string) {
+  await expect(pauseControl(row(page, key), J[key])).toBeVisible();
+  await expect(row(page, key).getByRole("button", { name: new RegExp(`^Add a machine to ${J[key]}`) })).toBeEnabled();
+}
 const finishButton = (page: Page, key: string) => row(page, key).getByRole("button", { name: "Finish", exact: true });
 const runsOf = async (key: string) => (await adminClient().from("machine_runs").select("end_reason").eq("job_id", ids[key]).order("started_at")).data!.map((r) => r.end_reason as string | null);
 const finishedAt = async (key: string) => (await adminClient().from("jobs").select("finished_at").eq("id", ids[key]).single()).data!.finished_at as string | null;
@@ -43,7 +52,7 @@ test("Pause: the dialog names the job and takes focus; Cancel and Escape send no
   await signIn(page, w.tenants.alpha.users.workshop);
   await page.goto("/jobs");
   await playJob(page, row(page, "pause"), J.pause, { bench: true });
-  await expect(pauseControl(row(page, "pause"), J.pause)).toBeVisible();
+  await runningAndIdle(page, "pause");
   const sent = countRpc(page, "pause_machine_run");
   const dialog = page.getByRole("dialog", { name: `Pause ${J.pause}?` });
 
@@ -72,7 +81,7 @@ test("Finish: Cancel and Escape send nothing; Confirm finishes once", async ({ p
   await signIn(page, w.tenants.alpha.users.workshop);
   await page.goto("/jobs");
   await playJob(page, row(page, "finish"), J.finish, { bench: true });
-  await expect(pauseControl(row(page, "finish"), J.finish)).toBeVisible();
+  await runningAndIdle(page, "finish");
   const sent = countRpc(page, "finish_job");
   const dialog = page.getByRole("dialog", { name: `Finish ${J.finish}?` });
 
@@ -100,7 +109,7 @@ test("offline Pause: Cancel queues nothing; Confirm queues once and syncs once",
   await signIn(page, w.tenants.alpha.users.workshop);
   await page.goto("/jobs");
   await playJob(page, row(page, "offPause"), J.offPause, { bench: true });
-  await expect(pauseControl(row(page, "offPause"), J.offPause)).toBeVisible();
+  await runningAndIdle(page, "offPause");
   await goOffline(page);
   const dialog = page.getByRole("dialog", { name: `Pause ${J.offPause}?` });
   await pauseControl(row(page, "offPause"), J.offPause).click();
@@ -123,7 +132,7 @@ test("offline Finish: Cancel queues nothing; Confirm queues once and syncs once"
   await signIn(page, w.tenants.alpha.users.workshop);
   await page.goto("/jobs");
   await playJob(page, row(page, "offFinish"), J.offFinish, { bench: true });
-  await expect(pauseControl(row(page, "offFinish"), J.offFinish)).toBeVisible();
+  await runningAndIdle(page, "offFinish");
   await goOffline(page);
   const dialog = page.getByRole("dialog", { name: `Finish ${J.offFinish}?` });
   await finishButton(page, "offFinish").click();

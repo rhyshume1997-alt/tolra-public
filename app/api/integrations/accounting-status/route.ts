@@ -12,14 +12,12 @@ export async function GET() {
   if (auth.session?.support) return jsonError("Support access cannot read accounting status.", 403);
   const org = auth.profile.organization_id;
   const sends = () => auth.supabase.from("integration_sends").select("status,updated_at").eq("organization_id", org).eq("provider", "xero");
-  const [config, overview, launch, last, failure, sage, quickbooks] = await Promise.all([
+  const [config, overview, launch, last, failure] = await Promise.all([
     xeroReady().then(Boolean).catch(() => null),
     auth.supabase.rpc("integration_overview", { p_provider: "xero" }),
     auth.supabase.rpc("integration_xero_launch_status"),
     sends().order("updated_at", { ascending: false }).limit(1),
     sends().in("status", ["failed", "needs_check"]).order("updated_at", { ascending: false }).limit(1),
-    auth.supabase.rpc("integration_overview", { p_provider: "sage" }),
-    auth.supabase.rpc("integration_overview", { p_provider: "quickbooks" }),
   ]);
   // The company's own switch (release 149), separate from Connected. Unreadable (149 not applied, or an error) is null: Unknown, never On or Off.
   const enabled = !launch.error && typeof launch.data?.enabled === "boolean" ? (launch.data.enabled as boolean) : null;
@@ -29,7 +27,6 @@ export async function GET() {
       configured: config, overview: ov(overview), enabled,
       last: last.error ? null : last.data?.[0] ?? null, lastReadOk: !last.error,
       lastFailure: failure.error ? null : failure.data?.[0] ?? null, failureReadOk: !failure.error,
-      sage: ov(sage), quickbooks: ov(quickbooks),
     }),
   }, { headers: { "cache-control": "no-store" } });
 }

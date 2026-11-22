@@ -1,3 +1,7 @@
+// BOUNDARY (Session 13): runAiHelper reserves a request count via ai_helper_reserve_allowance when the company has an allowance tier
+// (organizations.ai_allowance_tier), and keeps the pence-only reserve when it has none. Inputs/outputs of runAiHelper are unchanged except
+// that a monthly-allowance refusal returns { kind: "cap" } with no requestId. MUST NOT CHANGE: AI stays off by default; estimatePence and
+// actualPence stay in limits.ts; no keys, flags or SQL are touched here.
 import "server-only";
 
 import { createHash } from "node:crypto";
@@ -5,8 +9,11 @@ import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { anthropicProvider } from "@/lib/ai-helper/anthropic";
+import { tierAllowance } from "@/lib/ai-helper/allowance";
 import { AI_HELPER_EFFORT, AI_HELPER_MODELS, AI_REQUEST_TIMEOUT_MS, type AiHelperFeature, MAX_OUTPUT_TOKENS, actualPence, estimatePence } from "@/lib/ai-helper/limits";
 import { mockProvider } from "@/lib/ai-helper/mock";
+import { xaiProvider } from "@/lib/ai-helper/providers/xai";
+import { SHARED_TOLRA_AI_ACTIVE } from "@/lib/ai-helper/shared-ai-deactivation";
 import { type AiFailure, type AiHelperProvider, AiProviderError, type AiUsage } from "@/lib/ai-helper/provider";
 import { decryptSecret } from "@/lib/integrations/crypto";
 import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
@@ -15,16 +22,19 @@ import { TOLRA_AI_KEY_CONTEXT } from "@/lib/ai-helper/tolra-key-context";
 /**
  * The model provider this server uses: the company's own Anthropic account, or (AI_HELPER_PROVIDER=mock, tests and local runs only) the
  * deterministic mock. The mock is refused on any Vercel deployment (VERCEL_ENV set), so a stray setting can't fake answers in use.
+ * xAI (AI_HELPER_PROVIDER=xai) is opt-in only: unset or any other value keeps Anthropic. Its model allow-list is EMPTY, so every model is
+ * refused before any network call until Rhys/PM add confirmed entries (providers/xai.ts). No key, price or allow-list entry is set here.
  */
 export function aiHelperProvider(env: Record<string, string | undefined> = process.env): AiHelperProvider | null {
   if (env.AI_HELPER_PROVIDER === "mock") return env.VERCEL_ENV ? null : mockProvider();
+  if (env.AI_HELPER_PROVIDER === "xai") return xaiProvider();
   return anthropicProvider();
 }
 
 export type RunOutcome<T> =
   | { kind: "ok"; requestId: string; value: T }
   | { kind: "off" }
-  | { kind: "cap"; requestId: string }
+  | { kind: "cap"; requestId?: string }
   | { kind: "no_key"; requestId: string }
   | { kind: "failed"; failure: AiFailure; detail?: "auth" | "rate" | "key" | "tolra_key" | "tolra_auth" }
   | { kind: "unavailable" };
@@ -58,6 +68,18 @@ type RunInput<T> = {
   provider?: AiHelperProvider | null;
 };
 
+/** The company's allowance tier, or null for no tier. Any read problem means null, so the existing pence reserve decides (it still enforces the pence cap). */
+async function companyAllowanceTier(supabase: SupabaseClient, organizationId: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase.from("organizations").select("ai_allowance_tier").eq("id", organizationId).maybeSingle();
+    if (error) return null;
+    const tier = (data as { ai_allowance_tier?: unknown } | null)?.ai_allowance_tier;
+    return typeof tier === "string" && tierAllowance(tier) !== null ? tier : null;
+  } catch {
+    return null;
+  }
+}
+
 const digest = (text: string) => createHash("sha256").update(text, "utf8").digest("hex");
 
 /**
@@ -79,18 +101,36 @@ export async function runAiHelper<T>(input: RunInput<T>): Promise<RunOutcome<T>>
     console.error("[ai-helper] service role not configured");
     return { kind: "unavailable" };
   }
+  // C4: no shared Tolra key. The company's mode is read first (ai_helper_status, the caller's own read that the routes already make; no new
+  // SQL). A company in shared mode is refused here: nothing is reserved, no key is read, no provider is called. An unreadable status refuses too.
+  if (!SHARED_TOLRA_AI_ACTIVE) {
+    const { data: mode, error: modeError } = await input.supabase.rpc("ai_helper_status");
+    if (modeError) {
+      console.error("[ai-helper] mode read refused", modeError.code ?? "error");
+      return { kind: "unavailable" };
+    }
+    if ((mode as { tolra_enabled?: boolean } | null)?.tolra_enabled === true) return { kind: "unavailable" };
+  }
   const reserveArgs = { p_estimate_pence: estimate, p_input_digest: digest(input.data), p_input_bytes: Buffer.byteLength(input.data, "utf8") };
+  // Allowance (Session 13): a company with a tier reserves one REQUEST through ai_helper_reserve_allowance, which checks the monthly request
+  // count and then runs the same pence reserve unchanged. A company with no tier (or a tier that can't be read, for example before the
+  // column exists) keeps today's pence-only reserve below. See lib/ai-helper/allowance.ts for the tier sizes; they are not repeated here.
+  const tier = await companyAllowanceTier(input.supabase, input.organizationId);
   // The assistant (G3) reserves through its own function (migration 134: 133's reserve rules for the one feature), so 133's
   // ai_helper_reserve stays exactly as it is.
-  const { data: reserved, error } = input.feature === "assistant"
-    ? await input.supabase.rpc("ai_helper_reserve_assistant", reserveArgs)
-    : await input.supabase.rpc("ai_helper_reserve", { p_feature: input.feature, ...reserveArgs });
+  const { data: reserved, error } = tier !== null
+    ? await input.supabase.rpc("ai_helper_reserve_allowance", { p_feature: input.feature, ...reserveArgs })
+    : input.feature === "assistant"
+      ? await input.supabase.rpc("ai_helper_reserve_assistant", reserveArgs)
+      : await input.supabase.rpc("ai_helper_reserve", { p_feature: input.feature, ...reserveArgs });
   if (error) {
     if (error.hint === "ai_helper_off") return { kind: "off" };
     console.error("[ai-helper] reserve refused", error.code ?? "error");
     return { kind: "unavailable" };
   }
   const answer = reserved as { ok?: boolean; reason?: string; request_id?: string; key_source?: "own" | "tolra" } | null;
+  // The allowance reserver refuses without writing a request row, so there is no request id: show the same monthly-limit message.
+  if (tier !== null && answer?.ok === false && answer.reason === "allowance") return { kind: "cap" };
   if (!answer?.request_id) return { kind: "unavailable" };
   const requestId = answer.request_id;
   if (!answer.ok) return answer.reason === "cap" ? { kind: "cap", requestId } : { kind: "no_key", requestId };
@@ -104,6 +144,11 @@ export async function runAiHelper<T>(input: RunInput<T>): Promise<RunOutcome<T>>
     return !settleError;
   };
   const none = { inputTokens: 0, outputTokens: 0 };
+  // C4 backstop for the race (mode switched on between the read above and the reservation): settle at 0 and read no key.
+  if (answer.key_source === "tolra" && !SHARED_TOLRA_AI_ACTIVE) {
+    await settle("failed", "unavailable", none, null, null, 0);
+    return { kind: "unavailable" };
+  }
 
   let apiKey: string;
   try {

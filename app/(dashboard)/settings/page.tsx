@@ -5,6 +5,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Archive, Building2, Columns3, FileArchive, ImageUp, LayoutList, Mail, Trash2, Workflow } from "lucide-react";
 
+import { JobsReportsSettingsCard } from "@/components/jobs/jobs-reports-settings-card";
+import { IsoSwitchCard } from "@/components/iso/iso-switch-card";
 import { CostingRatesCard } from "@/components/costing/costing-rates-card";
 import { AiHelperSettingsCard } from "@/components/ai-helper/settings-card";
 import { EmailSchedulesCard } from "@/components/email-schedules/settings-card";
@@ -659,6 +661,8 @@ export default function SettingsPage() {
         <SiteNetworkCard />
         <ClockInLockCard />
         <CustomerSignOffCard />
+        <JobsReportsSettingsCard />
+        <IsoSwitchCard />
         <PrintLayoutCard />
         <YearEndExportCard />
         <AiHelperSettingsCard />

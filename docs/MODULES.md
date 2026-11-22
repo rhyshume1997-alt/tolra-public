@@ -11,6 +11,7 @@ Break work into these. Agents own one module at a time. Cross-module changes req
 - Allowed: `app/(dashboard)/jobs/**`, `app/(dashboard)/schedule/**`, `app/(dashboard)/time/**`, `lib/job-*`, `lib/machine-*`, `lib/time-*`, related components
 - Goal: Extract board, status flows, machine plans, time sheets from god pages into components/hooks. Core workshop flow solid.
 - Current problem: `jobs/page.tsx` 142k, `schedule/page.tsx` 56k.
+- Also owns (read-only, off by default, admin and office): `lib/jobs/**` (planned vs actual #471: `planned-vs-actual*.ts`, `load-planned-vs-actual.ts`; NCR register #469: `ncr-register*.ts`, `load-ncr-register.ts`) and its UI `components/jobs/planned-vs-actual-panel.tsx`, `components/jobs/ncr-register.tsx`, `components/jobs/jobs-reports-settings-card.tsx`. The report functions are SELECT-only and write nothing; the reports (module 7) call them and never import internals beyond these.
 
 ## 3. Quotes / RFQ / Sales Orders
 - Allowed: `app/(dashboard)/quotes/**`, `app/(dashboard)/rfq/**`, `app/(dashboard)/sales-orders/**`, `lib/quote-*`, `lib/rfq-*`, related
@@ -27,17 +28,36 @@ Break work into these. Agents own one module at a time. Cross-module changes req
 - Goal: Simple CRUD + linking. Low risk.
 
 ## 6. Integrations (Xero, AI, Email, M365, Costing Engine, Resend)
-- Allowed: `lib/integrations/**`, `lib/ai/**`, `components/integrations/**`, related API routes, settings cards
+- Allowed: `lib/integrations/**`, `lib/ai/**`, `lib/accounting/**`, `components/integrations/**`, `app/api/accounting/[provider]/[action]/route.ts`, related API routes, settings cards
 - Goal: Isolated, off-by-default, feature-flagged per company. Deployed only when verified.
 - Do not touch core financial or job logic.
 
 ## 7. Dashboard / Reports / Numbers / Shared UI
 - Allowed: `app/(dashboard)/dashboard/**`, `app/(dashboard)/numbers/**`, `components/ui/**`, shared hooks, charts
 - Goal: Read-only or thin. No business rules here.
+- Reporting: revenue (PM-approved R0): `app/(dashboard)/reports/revenue/**`, `components/reports/revenue/**`, `lib/reports/revenue/**`. Read only, off by default, admin and office. Invoiced and cash basis shown separately and never added; quote pipeline never counted as revenue.
+- Reporting, operations (#483, excluding revenue above): `app/(dashboard)/reports/page.tsx`, `components/reports/*` (cards and `reports-view.tsx`), top-level `lib/reports/*.ts` only, not `lib/reports/revenue/**` (`load-reports`, `reports-switch`, `on-time-completion`, `wip-ageing`, `machine-hours-variance`, `ncr-trend`, `last-despatch`). Read only (SELECT under the person's own session), off by default (`reports:on` marker in `hidden_nav`), admin and office. No costs shown. Figures come from `lib/jobs` functions (module 2); no business rules here beyond the report maths in `lib/reports`.
 
 ## 8. Database / Migrations / Releases
 - Allowed: `supabase/**` ONLY when task explicitly says "migration allowed" and lists the file.
 - Goal: Versioned, verified, never broken. Agents do not invent SQL.
+
+## 9. ISO templates (PM-approved 6a)
+- Allowed: `app/(dashboard)/admin/iso/**`, `components/iso/**`, `lib/iso/**`
+- Goal: Admin-only, off by default, downloadable draft templates. No AI, no SQL, no saved documents. Outputs need company review and are not certification evidence.
+
+## 10. Customer portal
+- Allowed: `app/portal/**`, `app/api/portal/**`, `lib/portal/**`, `components/portal/**`, `tests/{unit,db,e2e}/portal-*`
+- Goal: Customer sign-in, quotes and jobs view. Off by default: needs both the server flag `CUSTOMER_PORTAL_ENABLED` (exactly "true") AND the company switch. All authorisation lives in the release 154 functions (service role only).
+- Rules: one generic refusal, and nothing ever says whether a contact, code, document or account exists. No TOTP. Never show the customer `sends` or `email`. Never log or audit an e-mail address, name, IP, code, ref or token. Sign-in e-mails go only through the platform's verified Resend sender (`EMAIL_FROM`); never through a company's Microsoft 365 mailbox and never written to `email_history`. The platform flag and the company switch are both enforced on the server before any portal work.
+- Frozen elsewhere: `middleware.ts` belongs to module 1; any portal change to it is its own PR with explicit approval.
+
+## 11. Tooly (first-login admin tour)
+- Allowed: `components/tooly/**` (the Tooly face and float; the tour is under `components/tooly/tour/**`), `tests/unit/tooly-*`
+- Goal: a scripted, admin-only tour that POINTS at screens and never clicks, saves or sends. 23 mandatory fixed steps; no AI, no quiz, no answers; works with AI off.
+- Off by default at two levels: the server env flag `TOOLY_ADMIN_TOUR_ENABLED` (exactly "true") AND the per-company marker `tooly-admin-tour:on` in `hidden_nav`. Both are enforced before the tour shows.
+- Saved "done" flag: module 1 (`lib/auth/tour-flag.ts`, auth user_metadata plus a browser copy). This module only calls it.
+- Mounting the tour in the shell, the float and dialog layering belong to the Shell (module 7) and are their own PR. Quiz results need their own table later (not allowed here).
 
 ## Shared
 - `lib/utils.ts`, types, zod schemas: only if the task lists them.

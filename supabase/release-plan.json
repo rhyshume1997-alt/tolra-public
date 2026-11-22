@@ -44,7 +44,8 @@
     }
   ],
   "numbers_not_in_this_candidate": {
-    "142": "email_schedule_weekdays: optional, off by default, not in the JNR cutover"
+    "142": "email_schedule_weekdays: optional, off by default, not in the JNR cutover",
+    "155": "reserved for AI credentials; not delivered in this candidate (156 follows 154)"
   },
   "mode": "post-numbered-one-time",
   "phases": [
@@ -119,16 +120,92 @@
       "rollback": "supabase/release/152_sliq_import_route.rollback.sql",
       "verify": "supabase/verify/sliq_import_route_152.sql",
       "marker": "post-144 marker 152 sliq_import_route"
+    },
+    {
+      "number": 153,
+      "after": "152",
+      "source": "supabase/proposals/p153_document_customer_link.sql",
+      "release": "supabase/release/153_document_customer_link.release.sql",
+      "rollback": "supabase/release/153_document_customer_link.rollback.sql",
+      "verify": "supabase/verify/document_customer_link_153.sql",
+      "marker": "post-144 marker 153 document_customer_link"
+    },
+    {
+      "number": 154,
+      "after": "153",
+      "source": "supabase/proposals/p154_customer_portal_signin.sql",
+      "release": "supabase/release/154_customer_portal_signin.release.sql",
+      "rollback": "supabase/release/154_customer_portal_signin.rollback.sql",
+      "verify": "supabase/verify/customer_portal_signin_154.sql",
+      "marker": "post-144 marker 154 customer_portal_signin"
+    },
+    {
+      "number": 156,
+      "after": "154",
+      "source": "supabase/proposals/p156_invoice_ref_case.sql",
+      "release": "supabase/release/156_invoice_ref_case.release.sql",
+      "rollback": "supabase/release/156_invoice_ref_case.rollback.sql",
+      "verify": "supabase/verify/invoice_ref_case_156.sql",
+      "marker": "post-144 marker 156 invoice_ref_case"
+    },
+    {
+      "number": 157,
+      "after": "156",
+      "source": "supabase/proposals/p157_jobs_integrity_guard.sql",
+      "release": "supabase/release/157_jobs_integrity_guard.release.sql",
+      "rollback": "supabase/release/157_jobs_integrity_guard.rollback.sql",
+      "verify": "supabase/verify/jobs_integrity_guard_157.sql",
+      "marker": "post-144 marker 157 jobs_integrity_guard"
+    },
+    {
+      "number": 158,
+      "after": "157",
+      "source": "supabase/proposals/p158_machine_run_integrity.sql",
+      "release": "supabase/release/158_machine_run_integrity.release.sql",
+      "rollback": "supabase/release/158_machine_run_integrity.rollback.sql",
+      "verify": "supabase/verify/machine_run_integrity_158.sql",
+      "marker": "post-144 marker 158 machine_run_integrity"
+    },
+    {
+      "number": 159,
+      "after": "158",
+      "source": "supabase/proposals/p159_drawings_update_roles.sql",
+      "release": "supabase/release/159_drawings_update_roles.release.sql",
+      "rollback": "supabase/release/159_drawings_update_roles.rollback.sql",
+      "verify": "supabase/verify/drawings_update_roles_159.sql",
+      "marker": "post-144 marker 159 drawings_update_roles"
+    },
+    {
+      "number": 160,
+      "after": "159",
+      "source": "supabase/proposals/p160_legacy_reopen_revoke.sql",
+      "release": "supabase/release/160_legacy_reopen_revoke.release.sql",
+      "rollback": "supabase/release/160_legacy_reopen_revoke.rollback.sql",
+      "verify": "supabase/verify/legacy_reopen_revoke_160.sql",
+      "marker": "post-144 marker 160 legacy_reopen_revoke"
+    },
+    {
+      "number": 163,
+      "after": "160",
+      "source": "supabase/proposals/p163_chase_steps_atomic.sql",
+      "release": "supabase/release/163_chase_steps_atomic.release.sql",
+      "rollback": "supabase/release/163_chase_steps_atomic.rollback.sql",
+      "verify": "supabase/verify/chase_steps_atomic_163.sql",
+      "marker": "post-144 marker 163 chase_steps_atomic"
     }
   ],
   "other_proposals": [
     {
       "source": "supabase/proposals/builder2_chase_settings_atomic.sql",
-      "disposition": "separate chase settings release decision; requires 138; browser fixture is not production packaging"
+      "disposition": "reviewed original of the function released as numbered phase 163 (canonical source now supabase/proposals/p163_chase_steps_atomic.sql, same function text); not applied directly on production; this file stays and its own test reads it"
     },
     {
       "source": "supabase/proposals/builder2_costing_settings_atomic.sql",
       "disposition": "superseded: the hardened function ships inside numbered release 143 (after 141, before 144); this original proposal is never applied"
+    },
+    {
+      "source": "supabase/proposals/p162_ai_allowance.sql",
+      "disposition": "number 162 allocated (Rhys); not yet a numbered phase (no rollback, verify or preflight marker file): tier allowance (small 100, medium 400, large 1500 requests per UTC month) over 150's reserve functions; release 161 belongs to PR #536; not applied; AI stays off"
     },
     {
       "source": "supabase/proposals/builder2_atomic_settings.rollback.sql",

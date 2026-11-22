@@ -25,6 +25,7 @@ const pageTitles: Record<string, string> = {
   "/rfq": "RFQ Control Centre",
   "/quotes": "Quote Generator",
   "/jobs": "Job Board",
+  "/jobs/ncr": "NCR register",
   "/schedule": "Machine Schedule",
   "/time": "Weekly hours",
   "/time/week": "Weekly hours",
@@ -43,6 +44,7 @@ const pageTitles: Record<string, string> = {
   "/admin/activity": "Activity",
   "/admin/data": "Data",
   "/numbers": "Numbers",
+  "/reports": "Reports",
   "/admin/integrations": "Integrations",
   "/settings": "Settings",
 };

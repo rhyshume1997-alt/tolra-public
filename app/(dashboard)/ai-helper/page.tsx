@@ -14,7 +14,7 @@ const AI_SETUP_HREF = "/admin/integrations#ai";
 
 /**
  * The AI section (office and admin; anyone else gets the role gate's message): what each feature shows and the working panels for whichever
- * features are on. Setting AI up (the company's own key, the on/off switch, Tolra-provided AI, the monthly limit) is NOT done here any more: those
+ * features are on. Setting AI up (the company's own key, the on/off switch, the monthly limit) is NOT done here any more: those
  * actions need a fresh authenticator code, which only the AI card on Admin > Integrations asks for. This page says so and links there, so there is no
  * button here that the server would refuse. Hidden entirely when this server has the AI helper off. Online only: nothing here is queued offline.
  */
@@ -39,7 +39,7 @@ export default function AiHelperPage() {
             <div className="rounded-lg border p-3 text-sm text-slate-700" data-testid="ai-helper-manage-notice">
               {status.can_manage ? (
                 <p>
-                  AI is set up in one place now, the AI card on Admin &gt; Integrations: your key, the on/off switch, Tolra-provided AI and the monthly limit.{" "}
+                  AI is set up in one place now, the AI card on Admin &gt; Integrations: your key, the on/off switch and the monthly limit.{" "}
                   <Link href={AI_SETUP_HREF} className="font-medium underline" data-testid="ai-helper-manage-link">Open Admin &gt; Integrations</Link>
                 </p>
               ) : (
