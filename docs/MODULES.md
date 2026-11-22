@@ -52,10 +52,11 @@ Break work into these. Agents own one module at a time. Cross-module changes req
 - Rules: one generic refusal, and nothing ever says whether a contact, code, document or account exists. No TOTP. Never show the customer `sends` or `email`. Never log or audit an e-mail address, name, IP, code, ref or token. Sign-in e-mails go only through the platform's verified Resend sender (`EMAIL_FROM`); never through a company's Microsoft 365 mailbox and never written to `email_history`. The platform flag and the company switch are both enforced on the server before any portal work.
 - Frozen elsewhere: `middleware.ts` belongs to module 1; any portal change to it is its own PR with explicit approval.
 
-## 11. Tooly (first-login admin tour)
-- Allowed: `components/tooly/**` (the Tooly face and float; the tour is under `components/tooly/tour/**`), `tests/unit/tooly-*`
-- Goal: a scripted, admin-only tour that POINTS at screens and never clicks, saves or sends. 23 mandatory fixed steps; no AI, no quiz, no answers; works with AI off.
-- Off by default at two levels: the server env flag `TOOLY_ADMIN_TOUR_ENABLED` (exactly "true") AND the per-company marker `tooly-admin-tour:on` in `hidden_nav`. Both are enforced before the tour shows.
+## 11. Tooly (scripted tours: admin, office, workshop)
+- Allowed: `components/tooly/**` (the Tooly face and float; the tours are under `components/tooly/tour/**`), `tests/unit/tooly-*`
+- Goal: a scripted tour per view that POINTS at screens and never clicks, saves or sends. Admin 23, office 17 and workshop 13 mandatory fixed steps (`tour-steps.ts`, `role-tour-steps.ts`); no AI, no quiz, no answers; works with AI off. A viewer has none.
+- Off by default at two levels: the server env flag `TOOLY_ADMIN_TOUR_ENABLED` (exactly "true", one flag for all three views) AND the per-company marker of the view in `hidden_nav`: `tooly-admin-tour:on`, `tooly-office-tour:on`, `tooly-workshop-tour:on`. Each marker switches on only its own view. Both are enforced before the tour shows.
+- First sign-in (module H): the tour opens by itself for a person who has not seen it (no extra switch; the two switches above still decide whether it exists). Each step has a closed-by-default note "What happens here and how it gets produced" (`tour-notes.ts`, one per step id, pinned by a test). "Skip tour" closes it and saves the seen flag. Once seen, a "Replay tour" button shows on the Dashboard only, inside `admin-tour.tsx` (never the float, sidebar or middleware); replay starts at step 1 and does not clear the flag.
 - Saved "done" flag: module 1 (`lib/auth/tour-flag.ts`, auth user_metadata plus a browser copy). This module only calls it.
 - Mounting the tour in the shell, the float and dialog layering belong to the Shell (module 7) and are their own PR. Quiz results need their own table later (not allowed here).
 
