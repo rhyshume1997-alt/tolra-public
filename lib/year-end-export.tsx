@@ -339,7 +339,7 @@ export async function buildYearEndZip(from: string, to: string, company: Company
       try {
         const path = `purchase-orders/${safe(ref)}.pdf`;
         files[path] = await render(<PurchaseOrderPDF data={{
-          number: ref, date: fmtDate(row.date), requiredBy: fmtDate(day(r.expected_delivery)), supplier: [String(r.supplier || "")],
+          number: ref, issuedAt: row.date, date: fmtDate(row.date), requiredBy: fmtDate(day(r.expected_delivery)), supplier: [String(r.supplier || "")],
           deliverTo: [company.documentName, ...company.addressLines], lineItems: items, vatEnabled: r.vat_enabled === true, notes: r.notes ? [String(r.notes)] : undefined, company,
         }} />);
         row.pdf = path;
@@ -360,7 +360,7 @@ export async function buildYearEndZip(from: string, to: string, company: Company
       const shipDate = day(r.ship_date) || row.date;
       const path = `delivery-notes/${safe(ref)}.pdf`;
       files[path] = await render(<DeliveryNotePDF data={{
-        number: ref, taxDate: fmtDate(day(r.tax_date) || shipDate), shipDate: fmtDate(shipDate), shipVia: r.ship_via || undefined,
+        number: ref, issuedAt: row.date, taxDate: fmtDate(day(r.tax_date) || shipDate), shipDate: fmtDate(shipDate), shipVia: r.ship_via || undefined,
         billTo: await resolveCustomerAddress(row.party), items, company,
         signedByName: String(r.status || "").toLowerCase() === "signed" ? (r.signed_by_name as string | null) : null, signedDate: r.signed_at ? fmtDate(day(r.signed_at)) : null,
       }} />);

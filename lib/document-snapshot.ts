@@ -32,6 +32,8 @@ export function issuedCompany(current: CompanyProfile, snapshot: unknown): Compa
       (issued[field] as string) = value;
     }
   }
+  // When it was captured: the design in force then is the design this document prints in (module J, components/pdf/templates/document-pdf).
+  if (typeof snapshot.capturedAt === "string") issued.issuedAt = snapshot.capturedAt;
   // A snapshot taken before invoices had a message of their own (migration 032) printed the company's one shared message
   // on its invoice: keep exactly that, whatever the company has set since. Newer snapshots carry the key (maybe empty).
   if (!("defaultInvoiceMessage" in snapshot)) issued.defaultInvoiceMessage = [...issued.defaultCustomerMessage];

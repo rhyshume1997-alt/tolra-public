@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Archive, Building2, Columns3, FileArchive, ImageUp, LayoutList, Mail, Trash2, Workflow } from "lucide-react";
 
+import { DocumentDesignsCard } from "@/components/document-templates/document-designs-card";
 import { JobsReportsSettingsCard } from "@/components/jobs/jobs-reports-settings-card";
 import { IsoSwitchCard } from "@/components/iso/iso-switch-card";
 import { CostingRatesCard } from "@/components/costing/costing-rates-card";
@@ -655,6 +656,7 @@ export default function SettingsPage() {
         <div><h1 className="page-title">Settings</h1><p className="mt-2 text-sm text-slate-500">Company-wide settings for {PRODUCT.name}. Only admins can change them.</p></div>
         {settings.loaded && settings.localOnly ? <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Company settings aren&apos;t available right now. Menu and column choices are saved in this browser only.</div> : null}
         <section id="setup-company"><CompanyDetailsCard timeSettings={timeSettings} /></section>
+        <DocumentDesignsCard />
         <ArchiveSettingsCard />
         <AutoConvertCard />
         <section id="setup-breaks"><TimeSettingsCard key={organizationId} onSettings={onTimeSettings} /></section>

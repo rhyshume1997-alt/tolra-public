@@ -16,6 +16,7 @@ import { companyLogoUrl, isHexColour } from "@/lib/branding";
 import type { ShellBrand } from "@/lib/brand-pending";
 import { announceCompanyChanged } from "@/lib/company-sync";
 import { DEMO_MODE } from "@/lib/demo";
+import { type DocumentTemplateSettings, parseDocumentTemplates, withStoredDocumentTemplates } from "@/lib/document-templates/document-template-settings";
 import { type PrintLayout, parsePrintLayout, withStoredPrintLayout } from "@/lib/print-layout";
 import { supabase } from "@/lib/supabase";
 
@@ -83,6 +84,10 @@ export type CompanyProfile = {
   /** The job worksheet print layout an admin chose (Settings > Print layout; lib/print-layout). Absent: never chosen, so the company's
    *  default applies. saveCompanyProfile keeps whatever the stored row holds, even while the rest of the profile is incomplete. */
   printLayout?: PrintLayout;
+  /** Module J: which printed design each document type uses (Settings > Document designs). Off by default; absent means classic. */
+  documentTemplates?: DocumentTemplateSettings;
+  /** Set only by issuedCompany() on the company as it was when a quote or invoice was created (snapshot capturedAt): which design that document prints in (module J). */
+  issuedAt?: string;
 };
 
 /** One day's working hours ("HH:MM"; an end of "24:00" is midnight). */
@@ -269,6 +274,7 @@ export function parseCompanyProfile(value: unknown): CompanyProfile | null {
     showCreditsInBalance: v.showCreditsInBalance === true,
     ...parseWorkingHours(v),
     ...(parsePrintLayout(v.printLayout) ? { printLayout: parsePrintLayout(v.printLayout) as PrintLayout } : {}),
+    ...(v.documentTemplates !== undefined ? { documentTemplates: parseDocumentTemplates(v.documentTemplates) } : {}),
   };
   const complete = REQUIRED.every((k) => (Array.isArray(profile[k]) ? (profile[k] as string[]).length > 0 : Boolean(profile[k])))
     // A VAT-registered company must print its VAT number.
@@ -330,7 +336,7 @@ export async function saveCompanyProfile(organizationId: string, next: Omit<Comp
   if (readError) throw readError;
   const { error } = await supabase
     .from("organization_settings")
-    .upsert({ organization_id: organizationId, company_profile: withStoredPrintLayout(next, (stored as { company_profile?: unknown } | null)?.company_profile), updated_at: new Date().toISOString() }, { onConflict: "organization_id" });
+    .upsert({ organization_id: organizationId, company_profile: withStoredDocumentTemplates(withStoredPrintLayout(next, (stored as { company_profile?: unknown } | null)?.company_profile), (stored as { company_profile?: unknown } | null)?.company_profile), updated_at: new Date().toISOString() }, { onConflict: "organization_id" });
   if (error) throw error;
   await loadCompanyProfile(true);
   // The other open tabs hold the old copy until they load again: tell them (lib/company-sync.ts).
