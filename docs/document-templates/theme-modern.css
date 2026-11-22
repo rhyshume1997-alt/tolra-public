@@ -1,6 +1,6 @@
 /* Modern: soft teal, side stripe, tinted panels, gentle rounding, sentence-case type. */
 @import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400&display=swap");
-:root{--brand:#0f766e;--accent:#14b8a6;--head-font:"Plus Jakarta Sans",sans-serif;--line:#e2ecea;--soft:#f0faf8;--r:2mm;--onbrand:#fff}
+:root{--brand:var(--c,#0f766e);--accent:color-mix(in srgb,var(--brand) 65%,#fff);--head-font:"Plus Jakarta Sans",sans-serif;--line:color-mix(in srgb,var(--brand) 14%,#fff);--soft:color-mix(in srgb,var(--brand) 8%,#fff);--r:2mm;--onbrand:var(--on-c,#fff)}
 body{font-family:"Plus Jakarta Sans",sans-serif}
 .page{padding-left:20mm}
 .bar{top:0;bottom:0;right:auto;width:7mm;height:auto;background:linear-gradient(var(--brand),var(--accent))}
@@ -8,12 +8,12 @@ header{margin-top:0}
 .title h1{font-weight:800;text-transform:none;letter-spacing:-.01em;font-size:28pt}
 .title .ref{color:var(--muted)}
 .status{border:0;background:var(--soft);color:var(--brand);border-radius:99px;padding:1mm 4mm;text-transform:none;letter-spacing:.02em}
-.logo{border-radius:var(--r);background:var(--soft);border-color:#9ccfc8}
+.logo{border-radius:var(--r);background:var(--soft);border-color:color-mix(in srgb,var(--brand) 40%,#fff)}
 .meta{border:0;background:var(--soft);border-radius:var(--r)}.meta>div{border:0;padding:3mm 4mm}
 .parties h3{border:0;color:var(--brand)}
 .parties>div{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:3.5mm 4mm}
 table{border-radius:var(--r);overflow:hidden}
 thead th{background:var(--soft);color:var(--brand);font-weight:700;border-bottom:2px solid var(--brand)}
 tbody tr:nth-child(even) td{background:transparent}
-.totals .grand{border-radius:var(--r);background:var(--brand)}
+.totals .grand{border-radius:var(--r);background:var(--brand);color:var(--onbrand)}
 .box{border-radius:var(--r);background:var(--soft);border:0}.box h4{color:var(--brand)}

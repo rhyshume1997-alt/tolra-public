@@ -1,6 +1,6 @@
 /* Classic: white, charcoal ink, serif headings, thin rules. No colour fill. */
 @import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@400&display=swap");
-:root{--brand:#1c1c1c;--accent:#9a7b3f;--head-font:"Playfair Display",Georgia,serif;--num-font:"Source Sans 3",sans-serif;--line:#d9d6cf;--soft:#faf8f4;--onbrand:#1c1c1c}
+:root{--brand:#1c1c1c;--accent:var(--c,#9a7b3f);--head-font:"Playfair Display",Georgia,serif;--num-font:"Source Sans 3",sans-serif;--line:#d9d6cf;--soft:#faf8f4;--onbrand:#1c1c1c}
 body{font-family:"Source Sans 3",sans-serif}
 .bar{height:0}
 header{border-bottom:3px double var(--brand);padding-bottom:5mm;margin-top:0}
