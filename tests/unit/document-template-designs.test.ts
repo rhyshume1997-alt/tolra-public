@@ -5,6 +5,7 @@
  */
 import { createElement } from "react";
 import { renderToBuffer } from "@react-pdf/renderer";
+import { inflateSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 
 import { DeliveryNotePDF } from "@/components/pdf/DeliveryNotePDF";
@@ -14,7 +15,7 @@ import { QuotePDF } from "@/components/pdf/QuotePDF";
 import { brandColour, FALLBACK_BRAND, inkOn } from "@/components/pdf/templates/document-model";
 import { designFor, DOCUMENT_DESIGNS } from "@/components/pdf/templates/registry";
 import { issuedCompany } from "@/lib/document-snapshot";
-import { withTemplatesEnabled, setDesignChoice } from "@/lib/document-templates/document-template-settings";
+import { withBrandColour, withTemplatesEnabled, setDesignChoice } from "@/lib/document-templates/document-template-settings";
 import { sampleDocument } from "@/lib/document-templates/sample-documents";
 import { FIXTURE_COMPANY, FIXTURE_DELIVERY_NOTE, FIXTURE_INVOICE, FIXTURE_INVOICE_PAID, FIXTURE_PURCHASE_ORDER, FIXTURE_QUOTE } from "../support/document-template-fixtures";
 import { pdfText } from "../support/pdf-text";
@@ -77,6 +78,34 @@ describe("what comes out is the company's", () => {
       const data = { ...FIXTURE_QUOTE, design: id, storedTotals: { reference: "QUO-0042", issued: true, total: 1 } };
       await expect(renderToBuffer(createElement(QuotePDF, { data }) as never)).rejects.toThrow();
     }
+  });
+});
+
+/** Every colour the PDF sets (as #rrggbb), read from its drawing instructions; the printed words are the same whatever the colours. */
+const colours = (pdf: Buffer) => {
+  const streams = [...pdf.toString("latin1").matchAll(/stream\r?\n([\s\S]*?)\nendstream/g)].map((m) => { try { return inflateSync(Buffer.from(m[1], "latin1")).toString("latin1"); } catch { return ""; } }).join("\n");
+  const hex = (v: string) => Math.round(Number(v) * 255).toString(16).padStart(2, "0");
+  return new Set([...streams.matchAll(/([\d.]+) ([\d.]+) ([\d.]+) (?:scn|SCN)/g)].map((m) => `#${hex(m[1])}${hex(m[2])}${hex(m[3])}`));
+};
+
+describe("brand colours are the company's choice", () => {
+  const BRAND = "#7a1f3d"; // FIXTURE_COMPANY.brandPrimary
+  const withColour = (on: boolean) => ({ ...FIXTURE_COMPANY, documentTemplates: on ? withBrandColour(withTemplatesEnabled(null, true), true) : withTemplatesEnabled(null, true) });
+  const render = async (design: string, company: typeof FIXTURE_COMPANY) => renderToBuffer(createElement(InvoicePDF, { data: { ...FIXTURE_INVOICE, design, company } }) as never);
+  it.each(["modern", "minimal"])("%s: black and white by default, the brand colour only when switched on; same words either way", async (design) => {
+    const off = await render(design, withColour(false));
+    const on = await render(design, withColour(true));
+    expect(colours(off).has(BRAND)).toBe(false);
+    expect(colours(on).has(BRAND)).toBe(true);
+    expect(pdfText(on)).toBe(pdfText(off));
+  });
+  it("classic is black and white whatever the colour setting says", async () => {
+    expect(colours(await render("classic", withColour(true))).has(BRAND)).toBe(false);
+    expect(pdfText(await render("classic", withColour(true)))).toBe(await text(CASES[1].make, "classic"));
+  });
+  it("colour on with no brand colour set uses the neutral navy", async () => {
+    const company = { ...withColour(true), brandPrimary: "" };
+    expect(colours(await render("modern", company)).has(FALLBACK_BRAND)).toBe(true);
   });
 });
 

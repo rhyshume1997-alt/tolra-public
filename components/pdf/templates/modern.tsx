@@ -1,10 +1,10 @@
 import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 
 import { CustomerSignOffBlock, type PdfDocumentData } from "@/components/pdf/BaseDocumentPDF";
-import { brandColour, buildDocumentModel, inkOn } from "@/components/pdf/templates/document-model";
+import { buildDocumentModel, inkOn } from "@/components/pdf/templates/document-model";
 
 /**
- * Design "modern" (module J): the company's brand colour in the title, a rule and the table heading, logo top left, key details beside
+ * Design "modern" (module J): the accent colour (brand colour if the company switched it on, else black) in the title, a rule and the table heading, logo top left, key details beside
  * the title, soft row lines. Inputs: a PdfDocumentData. Output: a react-pdf <Document>. Everything printed comes from buildDocumentModel
  * (components/pdf/templates/document-model.ts), so figures, VAT, totals, bank details, payment wording and numbering equal every other design.
  * Must not change: it must not work out or reword any amount, label or document number itself.
@@ -52,7 +52,7 @@ const s = StyleSheet.create({
 
 export function ModernDocument({ data }: { data: PdfDocumentData }) {
   const m = buildDocumentModel(data);
-  const brand = brandColour(m.company);
+  const brand = m.accent;
   const widthOf = (heading: string, index: number) => (index === 0 ? undefined : NUMERIC_WIDTH[heading] ?? 70);
   const cell = (index: number, heading: string) => (index === 0 ? s.desc : [s.num, { width: widthOf(heading, index) }]);
   return (

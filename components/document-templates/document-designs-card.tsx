@@ -17,7 +17,7 @@ import { auditEvent } from "@/lib/audit";
 import { type CompanyProfile, loadCompanyProfile } from "@/lib/company";
 import {
   currentDesignId, DEFAULT_DESIGN_ID, DOCUMENT_TYPE_LABELS, DOCUMENT_TYPES, type DocumentTemplateSettings, type DocumentType,
-  setDesignChoice, withTemplatesEnabled,
+  setDesignChoice, withBrandColour, withTemplatesEnabled,
 } from "@/lib/document-templates/document-template-settings";
 import { loadDocumentTemplates, saveDocumentTemplates } from "@/lib/document-templates/document-template-store";
 import { sampleDocument } from "@/lib/document-templates/sample-documents";
@@ -64,12 +64,14 @@ export function DocumentDesignsCard() {
 
   const saved = currentDesignId(settings, type);
   const selected = picked[type] ?? saved;
+  const colour = settings?.colour === true;
 
   useEffect(() => {
     if (!company) return;
     let active = true;
     setPreviewError(false);
-    void sampleBlob(type, company, selected).then(
+    // The preview follows the saved colour choice, so ticking the box shows the brand colour straight away.
+    void sampleBlob(type, { ...company, documentTemplates: { enabled: true, colour: colour || undefined } }, selected).then(
       (blob) => {
         if (!active) return;
         const url = URL.createObjectURL(blob);
@@ -80,7 +82,7 @@ export function DocumentDesignsCard() {
       () => { if (active) setPreviewError(true); },
     );
     return () => { active = false; };
-  }, [company, type, selected]);
+  }, [company, type, selected, colour]);
   useEffect(() => () => { if (urlRef.current) URL.revokeObjectURL(urlRef.current); }, []);
 
   const persist = useCallback(async (change: (current: DocumentTemplateSettings) => DocumentTemplateSettings, what: string) => {
@@ -116,6 +118,11 @@ export function DocumentDesignsCard() {
               <input type="checkbox" checked={settings.enabled} disabled={saving} onChange={(e) => void persist((current) => withTemplatesEnabled(current, e.target.checked), e.target.checked ? "on" : "off")} />
               Use these designs on my documents
             </label>
+            <label className="flex items-center gap-2 font-medium">
+              <input type="checkbox" checked={colour} disabled={saving} onChange={(e) => void persist((current) => withBrandColour(current, e.target.checked), e.target.checked ? "colour on" : "colour off")} />
+              Use my brand colours on the Modern and Minimal designs
+            </label>
+            <p className="text-slate-500">{colour ? "Modern and Minimal use the brand colour from Company details (a neutral navy if none is set)." : "Off: every design prints in black and white. Classic is always black and white."}</p>
             {!settings.enabled ? <p className="text-slate-500">Switched off: every document prints the {DEFAULT_DESIGN_ID} design, as it always has. You can still try the designs below.</p> : null}
             <div role="tablist" aria-label="Document type" className="flex flex-wrap gap-2">
               {DOCUMENT_TYPES.map((t) => (

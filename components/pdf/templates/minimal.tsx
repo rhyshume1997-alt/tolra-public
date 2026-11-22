@@ -1,7 +1,7 @@
 import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 
 import { CustomerSignOffBlock, type PdfDocumentData } from "@/components/pdf/BaseDocumentPDF";
-import { brandColour, buildDocumentModel } from "@/components/pdf/templates/document-model";
+import { buildDocumentModel } from "@/components/pdf/templates/document-model";
 
 /**
  * Design "minimal" (module J): black on white with plenty of space, the brand colour only on the title, a short rule under it and the
@@ -50,7 +50,7 @@ const s = StyleSheet.create({
 
 export function MinimalDocument({ data }: { data: PdfDocumentData }) {
   const m = buildDocumentModel(data);
-  const brand = brandColour(m.company);
+  const brand = m.accent;
   const widthOf = (heading: string) => NUMERIC_WIDTH[heading] ?? 70;
   return (
     <Document title={`${m.title} ${m.documentNumber}`} author={m.company.name} creator={m.company.name}>

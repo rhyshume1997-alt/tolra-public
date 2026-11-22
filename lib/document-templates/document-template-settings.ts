@@ -6,7 +6,7 @@
  * or picks a design.
  *
  * Stored shape (no migration; the profile is already the per-company jsonb and only an admin can write it, trigger 006):
- *   { enabled: boolean, quote?: Choice[], invoice?: Choice[], purchase_order?: Choice[], delivery_note?: Choice[] }
+ *   { enabled: boolean, colour?: true, quote?: Choice[], invoice?: Choice[], purchase_order?: Choice[], delivery_note?: Choice[] }
  *   Choice = { design: "<slug>", from: "<ISO date or date-time the choice took effect>" }
  * The list is append-only history. A document is printed with the choice in force on the day it was issued, so a document issued
  * before a change keeps its design for ever, and a document issued (or not yet issued) after it gets the new one.
@@ -37,7 +37,11 @@ export const DEFAULT_DESIGN_ID = "classic";
 
 export type DesignChoice = { design: string; from: string };
 
-export type DocumentTemplateSettings = { enabled: boolean } & Partial<Record<DocumentType, DesignChoice[]>>;
+/**
+ * `colour`: the company's brand colour is used on the Modern and Minimal designs. Off (absent) by default: they print in black and white like Classic.
+ * Classic is always black and white. One setting for the whole company, not per document type.
+ */
+export type DocumentTemplateSettings = { enabled: boolean; colour?: boolean } & Partial<Record<DocumentType, DesignChoice[]>>;
 
 export const NO_DOCUMENT_TEMPLATES: DocumentTemplateSettings = { enabled: false };
 
@@ -56,7 +60,7 @@ const toTime = (value: string) => {
 export function parseDocumentTemplates(value: unknown): DocumentTemplateSettings {
   if (!value || typeof value !== "object" || Array.isArray(value)) return { ...NO_DOCUMENT_TEMPLATES };
   const raw = value as Record<string, unknown>;
-  const out: DocumentTemplateSettings = { enabled: raw.enabled === true };
+  const out: DocumentTemplateSettings = { enabled: raw.enabled === true, ...(raw.colour === true ? { colour: true } : {}) };
   for (const type of DOCUMENT_TYPES) {
     const list = raw[type];
     if (!Array.isArray(list)) continue;
@@ -111,6 +115,15 @@ export function setDesignChoice(settings: DocumentTemplateSettings | null | unde
 
 /** The settings after the feature is switched on or off. Choices already made are kept either way. */
 export const withTemplatesEnabled = (settings: DocumentTemplateSettings | null | undefined, enabled: boolean): DocumentTemplateSettings => ({ ...parseDocumentTemplates(settings), enabled });
+
+/** The settings after brand colours are switched on or off for the Modern and Minimal designs. Everything else is kept. */
+export const withBrandColour = (settings: DocumentTemplateSettings | null | undefined, colour: boolean): DocumentTemplateSettings => {
+  const { colour: _drop, ...rest } = parseDocumentTemplates(settings); // eslint-disable-line @typescript-eslint/no-unused-vars
+  return colour ? { ...rest, colour: true } : rest;
+};
+
+/** True when documents print in the company's brand colour (the feature is on and colour is on). Classic ignores it. */
+export const brandColourOn = (settings: DocumentTemplateSettings | null | undefined): boolean => settings?.colour === true;
 
 /**
  * A profile about to be saved (Company details, logo) with the choices as stored in the row's raw company_profile: the stored value wins,

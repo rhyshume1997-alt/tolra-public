@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  currentDesignId, DEFAULT_DESIGN_ID, parseDocumentTemplates, resolveDesignId, setDesignChoice, withStoredDocumentTemplates, withTemplatesEnabled,
+  brandColourOn, currentDesignId, DEFAULT_DESIGN_ID, parseDocumentTemplates, resolveDesignId, setDesignChoice, withBrandColour, withStoredDocumentTemplates, withTemplatesEnabled,
 } from "@/lib/document-templates/document-template-settings";
 
 const T1 = new Date("2026-12-01T09:00:00Z");
@@ -75,5 +75,23 @@ describe("saving Company details keeps the stored choices", () => {
     const stored = { documentTemplates: { enabled: true, quote: [{ design: "modern", from: "2026-12-01T09:00:00.000Z" }] } };
     expect(withStoredDocumentTemplates({ name: "x", documentTemplates: { enabled: false } }, stored)).toEqual({ name: "x", documentTemplates: stored.documentTemplates });
     expect(withStoredDocumentTemplates({ name: "x", documentTemplates: { enabled: true } }, {})).toEqual({ name: "x" });
+  });
+});
+
+describe("brand colours are a per-company on/off setting, off by default", () => {
+  it("off when nothing is stored, when unreadable, and for any value but true", () => {
+    for (const stored of [undefined, {}, { enabled: true }, { enabled: true, colour: "yes" }, { enabled: true, colour: false }]) expect(brandColourOn(parseDocumentTemplates(stored))).toBe(false);
+    expect(brandColourOn(null)).toBe(false);
+  });
+  it("on only when stored true; switching it on or off keeps the designs chosen and the on/off switch", () => {
+    const base = withTemplatesEnabled(setDesignChoice(null, "quote", "modern", T1), true);
+    const on = withBrandColour(base, true);
+    expect(brandColourOn(on)).toBe(true);
+    expect(on.quote).toEqual(base.quote);
+    expect(on.enabled).toBe(true);
+    const off = withBrandColour(on, false);
+    expect(brandColourOn(off)).toBe(false);
+    expect(off).toEqual(base);
+    expect(brandColourOn(parseDocumentTemplates(JSON.parse(JSON.stringify(on))))).toBe(true);
   });
 });

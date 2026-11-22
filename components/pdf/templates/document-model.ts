@@ -14,6 +14,7 @@ import {
 } from "@/components/pdf/BaseDocumentPDF";
 import { resolvePdfTotals, storedTotalsProblem } from "@/components/pdf/pdf-totals";
 import { footerContactRows, getCompanyProfile, type CompanyProfile } from "@/lib/company";
+import { brandColourOn } from "@/lib/document-templates/document-template-settings";
 import { vatRowLabel } from "@/lib/money";
 
 export type ModelTotalRow = { label: string; value: string; bold: boolean };
@@ -44,6 +45,8 @@ export type DocumentModel = {
   /** True when the PAID watermark prints (the document says paid and its own balance due is nil). */
   paidWatermark: boolean;
   logo: string | undefined;
+  /** The colour a design uses for its accents: the company's brand colour only when the company has switched brand colours on, else black. */
+  accent: string;
   footerContacts: Array<[string, string]>;
 };
 
@@ -87,9 +90,12 @@ export function buildDocumentModel(data: PdfDocumentData): DocumentModel {
     closingLines: data.closingLines ?? [],
     paidWatermark: Boolean(data.paid) && totals.payments !== null && totals.balance <= 0,
     logo: data.logoSrc ?? company.logoSrc,
+    accent: brandColourOn(company.documentTemplates) ? brandColour(company) : MONO_ACCENT,
     footerContacts: footerContactRows(company),
   };
 }
+
+export const MONO_ACCENT = "#111111";
 
 /** The company's brand colour for designs that use one: its primary colour, else a neutral navy. Always a valid #rrggbb. */
 export const FALLBACK_BRAND = "#1e3472";
