@@ -67,7 +67,7 @@ Break work into these. Agents own one module at a time. Cross-module changes req
 - Counts: all come through `lib/platform/owner-home/counts.ts`; the Companies screen's counts function (release 164) joins there and nowhere else. Open issues are read defensively (0 if the table is absent).
 - Reuses, never changes: `platform_list_organizations`, `platform_create_organization` (via `POST /api/platform/organizations`), `platform_enter_organization`.
 
-## 13. Issues (Raise an issue and the owner inbox; modules C and E, release 165)
+## 14. Issues (Raise an issue and the owner inbox; modules C and E, release 165)
 - Allowed: `components/issues/**`, `lib/issues/**`, `components/platform/issues-inbox.tsx`, `app/platform/issues/**`, `app/api/platform/issues/**`, `supabase/**/165_*` and `owner_issues_165.sql`, `tests/{unit,db}/*issues*`, `tests/db/owner-issues-165.test.ts`
 - Goal: any signed-in person (every role) can tell the Tolra team something went wrong; the platform owner triages across all companies. In-app only: no e-mail, no AI.
 - Off by default at two levels: the per-company marker `issues:on` in `hidden_nav` (enforced by `raise_issue` in the database and hides the button) AND, for the owner inbox, the server env flag `OWNER_ISSUES_ENABLED` (exactly "true").
