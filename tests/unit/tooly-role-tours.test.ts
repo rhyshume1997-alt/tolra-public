@@ -29,30 +29,26 @@ const ROOT = path.resolve(__dirname, "../..");
 const ALL_ON = ["sales-orders:on"];
 const open = (role: string) => ({ activeRole: role, hiddenSections: [] as string[], hiddenNav: ALL_ON, phone: false });
 
-describe("one marker per view, all off by default", () => {
+describe("per-view markers (legacy: no longer needed to see a tour)", () => {
   it("the three markers are different texts and the admin one is unchanged", () => {
     expect(TOOLY_TOUR_ON_MARKER).toBe("tooly-admin-tour:on");
     expect(TOOLY_OFFICE_TOUR_ON_MARKER).toBe("tooly-office-tour:on");
     expect(TOOLY_WORKSHOP_TOUR_ON_MARKER).toBe("tooly-workshop-tour:on");
     expect(new Set([TOOLY_TOUR_ON_MARKER, TOOLY_OFFICE_TOUR_ON_MARKER, TOOLY_WORKSHOP_TOUR_ON_MARKER]).size).toBe(3);
   });
-  it("a view shows its tour only with the server flag AND its own marker", () => {
-    for (const [role, marker] of [["admin", TOOLY_TOUR_ON_MARKER], ["office", TOOLY_OFFICE_TOUR_ON_MARKER], ["workshop", TOOLY_WORKSHOP_TOUR_ON_MARKER]] as const) {
-      expect(toolyTourEnabledFor({ envOn: true, hiddenNav: [marker], role })).toBe(true);
-      expect(toolyTourEnabledFor({ envOn: false, hiddenNav: [marker], role })).toBe(false);
-      expect(toolyTourEnabledFor({ envOn: true, hiddenNav: [], role })).toBe(false);
-      expect(toolyTourEnabledFor({ envOn: true, hiddenNav: null, role })).toBe(false);
-      expect(toolyTourEnabledFor({ envOn: true, role })).toBe(false);
+  it("admin, office and workshop get their tour with no company marker at all; only the server's emergency switch turns it off", () => {
+    for (const role of ["admin", "office", "workshop"]) {
+      expect(toolyTourEnabledFor({ envOn: true, hiddenNav: [], role })).toBe(true);
+      expect(toolyTourEnabledFor({ envOn: true, hiddenNav: null, role })).toBe(true);
+      expect(toolyTourEnabledFor({ envOn: true, role })).toBe(true);
+      expect(toolyTourEnabledFor({ envOn: false, hiddenNav: [TOOLY_TOUR_ON_MARKER, TOOLY_OFFICE_TOUR_ON_MARKER, TOOLY_WORKSHOP_TOUR_ON_MARKER], role })).toBe(false);
     }
   });
-  it("one view's marker never turns on another view's tour", () => {
-    const only = (marker: string, role: string) => toolyTourEnabledFor({ envOn: true, hiddenNav: [marker], role });
-    expect(only(TOOLY_TOUR_ON_MARKER, "office")).toBe(false);
-    expect(only(TOOLY_TOUR_ON_MARKER, "workshop")).toBe(false);
-    expect(only(TOOLY_OFFICE_TOUR_ON_MARKER, "admin")).toBe(false);
-    expect(only(TOOLY_OFFICE_TOUR_ON_MARKER, "workshop")).toBe(false);
-    expect(only(TOOLY_WORKSHOP_TOUR_ON_MARKER, "admin")).toBe(false);
-    expect(only(TOOLY_WORKSHOP_TOUR_ON_MARKER, "office")).toBe(false);
+  it("a company marker neither adds nor removes a tour for any view", () => {
+    for (const marker of [TOOLY_TOUR_ON_MARKER, TOOLY_OFFICE_TOUR_ON_MARKER, TOOLY_WORKSHOP_TOUR_ON_MARKER]) {
+      for (const role of ["admin", "office", "workshop"]) expect(toolyTourEnabledFor({ envOn: true, hiddenNav: [marker], role })).toBe(true);
+      for (const role of ["viewer", null]) expect(toolyTourEnabledFor({ envOn: true, hiddenNav: [marker], role })).toBe(false);
+    }
   });
   it("a viewer, or anyone with no role, never gets a tour, whatever is switched on", () => {
     const everything = [TOOLY_TOUR_ON_MARKER, TOOLY_OFFICE_TOUR_ON_MARKER, TOOLY_WORKSHOP_TOUR_ON_MARKER];

@@ -62,12 +62,14 @@ const text = () => host.querySelector('[data-testid="tooly-tour-text"]')?.textCo
 const press = async (id: string) => { await act(async () => { (host.querySelector(`[data-testid="${id}"]`) as HTMLButtonElement).click(); }); };
 
 describe("who sees which tour", () => {
-  it("nothing shows with the marker but no server flag, or the flag but no marker", async () => {
-    state.hiddenNav = [TOOLY_OFFICE_TOUR_ON_MARKER];
-    await show(false);
-    expect(card()).toBeNull();
+  it("shows with no company marker at all, and nothing shows when the server's emergency switch has turned it off", async () => {
     state.hiddenNav = [];
     await show(true);
+    expect(card()).not.toBeNull();
+    await show(false);
+    expect(card()).toBeNull();
+    state.hiddenNav = [TOOLY_OFFICE_TOUR_ON_MARKER];
+    await show(false);
     expect(card()).toBeNull();
   });
   it("office gets the 17 office steps from Tooly's hello, with its own marker", async () => {
@@ -90,12 +92,12 @@ describe("who sees which tour", () => {
     await show(true);
     expect(count()).toBe("Step 1 of 23");
   });
-  it("the admin marker alone shows nothing to office or workshop, and the office marker alone shows nothing to admin", async () => {
-    for (const [role, marker] of [["office", TOOLY_TOUR_ON_MARKER], ["workshop", TOOLY_TOUR_ON_MARKER], ["admin", TOOLY_OFFICE_TOUR_ON_MARKER], ["workshop", TOOLY_OFFICE_TOUR_ON_MARKER]] as const) {
+  it("each view gets its own tour whatever markers the company has", async () => {
+    for (const [role, marker, steps] of [["office", TOOLY_TOUR_ON_MARKER, 17], ["workshop", TOOLY_TOUR_ON_MARKER, 13], ["admin", TOOLY_OFFICE_TOUR_ON_MARKER, 23], ["workshop", TOOLY_OFFICE_TOUR_ON_MARKER, 13]] as const) {
       state.role = role;
       state.hiddenNav = [marker];
       await show(true);
-      expect(card(), `${role} with ${marker}`).toBeNull();
+      expect(count(), `${role} with ${marker}`).toBe(`Step 1 of ${steps}`);
     }
   });
   it("a viewer sees nothing even with every marker on", async () => {

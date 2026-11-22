@@ -6,7 +6,7 @@ Keep it in step with docs/MODULES.md. PR states were read from GitHub on 2026-11
 
 # Flag rollout checklist
 
-Every switch below is OFF by default. Nothing is turned on by this document. Turning one on is a separate, explicit step that needs the approval named under it.
+Every switch below is OFF by default, except the Tooly tour in section 6 (ON by default by Rhys's decision, with an emergency off switch). Nothing is turned on by this document. Turning one on is a separate, explicit step that needs the approval named under it.
 
 Approver: "Rhys" is the project owner and PM named in `docs/release/KNOWN-LIMITATIONS-AND-RECOVERY.md`. Where a company switch is involved, the company's own admin flips it, but only after Rhys's approval.
 
@@ -90,11 +90,11 @@ Common steps for every flag (do not skip):
 
 ## 6. Tooly tours (module 11)
 
-- **Current state:** OFF. Two switches, both needed: the server env flag `TOOLY_ADMIN_TOUR_ENABLED` (exactly "true"; one flag for all three views) and one per-company marker in `hidden_nav` for each view: `tooly-admin-tour:on`, `tooly-office-tour:on`, `tooly-workshop-tour:on` (`components/tooly/tour/tour-switch.ts`). A marker switches on only its own view, so a company that has the admin tour on does not get the other two. A viewer never gets a tour. There is no Settings screen for the markers yet.
+- **Current state:** ON by default for every company (Rhys's decision; the one switch in this document that is not off by default). No env var and no company marker is needed. The emergency off switch is the server env var `TOOLY_TOUR_DISABLED`, exactly `"true"` (`components/tooly/tour/tour-switch.ts`); set it in Vercel and redeploy to turn the tour off for everyone. The older `TOOLY_ADMIN_TOUR_ENABLED` and the three `tooly-*-tour:on` markers are no longer read. A viewer never gets a tour.
 - **What it is:** a fixed script of plain-words steps (admin 23, office 17, workshop 13) that points at screens and never clicks, saves or sends. No AI, no keys, no new table. It opens by itself the first time a person signs in. Each step has a note ("What happens here and how it gets produced") they can open. A person who skips or finishes it is not shown it again (the saved flag in `lib/auth/tour-flag.ts`), and can replay it from a small button on the Dashboard.
 - **Check on Preview:**
-  - Env flag unset or no marker: nothing shows for anyone.
-  - Env flag on and one marker: only that view sees its tour; the other two do not.
+  - Nothing set: an admin, an office user and a workshop user each see their own tour (23, 17 and 13 steps) the first time they sign in; a viewer sees none.
+  - `TOOLY_TOUR_DISABLED=true`: nothing shows for anyone.
   - Office and workshop: a page switched off for the person (Admin > Users > Page access, or the company menu) is skipped or named as off, never walked to.
   - Skip tour, then reload: the tour does not come back, and a Replay tour button shows on the Dashboard (only there). Replay starts at step 1.
   - Open the note on a step: it explains the step and closes again on the next step.
