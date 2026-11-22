@@ -100,6 +100,14 @@ Common steps for every flag (do not skip):
   - Open the note on a step: it explains the step and closes again on the next step.
 - **Approve before on:** Rhys (the wording is staff-facing, and turning it on is a Vercel env change plus a company setting).
 
+## 7. Owner console: Companies (module 12)
+
+- **Current state:** OFF. One server flag, `PLATFORM_COMPANIES_ENABLED` (exactly "true"); with it off the two routes answer 404 (to a platform owner; anyone else is refused by the owner guard first) and the panel renders nothing. Platform owners only (the existing `/platform` guard).
+- **What it is:** a Companies card on `/platform`: every company with its people, jobs and invoices (issued ones separately), and Close or Reopen per company. Close needs the company's exact name typed, a reason and an authenticator code under 15 minutes old, and is refused for the company the owner is inside. Nothing is deleted; Reopen undoes a Close.
+- **Needs:** release 164 applied on that database (the panel shows "Couldn't load the company counts" until it is). Applying 164 on production needs Rhys's yes on the exact file after a fresh backup.
+- **Check on Preview:** flag unset: nothing shows and `/api/platform/companies` answers 404. Flag on, signed in as a platform owner at the second step: counts are right; Close with a wrong name is refused; Close then Reopen round-trips; a company admin cannot call either route.
+- **Approve before on:** Rhys (Close locks a live company's staff out at once).
+
 ---
 
 ## Not covered

@@ -60,6 +60,12 @@ Break work into these. Agents own one module at a time. Cross-module changes req
 - Saved "done" flag: module 1 (`lib/auth/tour-flag.ts`, auth user_metadata plus a browser copy). This module only calls it.
 - Mounting the tour in the shell, the float and dialog layering belong to the Shell (module 7) and are their own PR. Quiz results need their own table later (not allowed here).
 
+## 12. Owner console (platform owner only)
+- Allowed: `app/platform/**`, `app/api/platform/**`, `components/platform/**`, `lib/platform/**`, `tests/{unit,db,e2e}/platform-*`. `lib/server/platform.ts` (the owner guard) is shared: this module only calls it.
+- Goal: screens for the platform owner (Rhys) across all companies: Companies (counts, Close or Reopen), then the issues inbox, metrics, roadmap and rollouts, each in its own PR. Every screen is off by default behind its own server flag (exactly "true"; after the owner guard the route answers 404 when off), uses the owner's OWN session and the release's database function (never the service role), sends no email and makes no AI call.
+- Companies: flag `PLATFORM_COMPANIES_ENABLED`; needs release 164 (`platform_company_overview`, `platform_set_organization_status`). Nothing is deleted: Close only sets a company's status; it needs the typed name, a reason and an authenticator code under 15 minutes old.
+- Fixes to the product stay PRs, tests and deploys: nothing here edits live code.
+
 ## Shared
 - `lib/utils.ts`, types, zod schemas: only if the task lists them.
 - Prefer new files under `lib/<module>/` or `components/<module>/` for extractions.
