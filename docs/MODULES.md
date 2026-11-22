@@ -60,7 +60,14 @@ Break work into these. Agents own one module at a time. Cross-module changes req
 - Saved "done" flag: module 1 (`lib/auth/tour-flag.ts`, auth user_metadata plus a browser copy). This module only calls it.
 - Mounting the tour in the shell, the float and dialog layering belong to the Shell (module 7) and are their own PR. Quiz results need their own table later (not allowed here).
 
-## 12. Issues (Raise an issue and the owner inbox; modules C and E, release 165)
+## 12. Owner Home (platform owner's first screen)
+- Allowed: `lib/platform/owner-home/**`, `components/platform/owner-home*.tsx`, `app/api/platform/owner-home/**`, `tests/unit/owner-home*`; and only the small gate in `app/platform/page.tsx` (it wraps the existing page, which is otherwise untouched).
+- Goal: the platform owner's home at `/platform`: companies with status and counts, New company, Enter company, simple metrics. Read only, no AI, no e-mail, no SQL of its own.
+- Off by default: the server env flag `PLATFORM_OWNER_HOME_ENABLED` (exactly "true"). Off means `/platform` is the existing company list.
+- Counts: all come through `lib/platform/owner-home/counts.ts`; the Companies screen's counts function (release 164) joins there and nowhere else. Open issues are read defensively (0 if the table is absent).
+- Reuses, never changes: `platform_list_organizations`, `platform_create_organization` (via `POST /api/platform/organizations`), `platform_enter_organization`.
+
+## 13. Issues (Raise an issue and the owner inbox; modules C and E, release 165)
 - Allowed: `components/issues/**`, `lib/issues/**`, `components/platform/issues-inbox.tsx`, `app/platform/issues/**`, `app/api/platform/issues/**`, `supabase/**/165_*` and `owner_issues_165.sql`, `tests/{unit,db}/*issues*`, `tests/db/owner-issues-165.test.ts`
 - Goal: any signed-in person (every role) can tell the Tolra team something went wrong; the platform owner triages across all companies. In-app only: no e-mail, no AI.
 - Off by default at two levels: the per-company marker `issues:on` in `hidden_nav` (enforced by `raise_issue` in the database and hides the button) AND, for the owner inbox, the server env flag `OWNER_ISSUES_ENABLED` (exactly "true").
@@ -72,3 +79,9 @@ Break work into these. Agents own one module at a time. Cross-module changes req
 - Prefer new files under `lib/<module>/` or `components/<module>/` for extractions.
 
 Future-proof: Each module exposes a small set of functions. Other modules call them; they never import internals.
+
+## 13. Company look (installed app)
+- Allowed: `lib/company-look/**`, `components/company-look/**`, `app/manifest.webmanifest/route.ts`, `app/api/pwa-icon/route.tsx`, `tests/unit/company-look-*`; plus the small wiring in `app/login/page.tsx`, `app/login/login-form.tsx` and `app/layout.tsx` (manifest link).
+- Goal: each company's installed app (name, theme colour, icon) shows only that company's own look, taken from the same public sign-in branding; neutral Tolra otherwise.
+- Off by default: needs the server env flag `BRANDED_APP_ENABLED` (exactly "true") AND the company's existing "Branded sign-in page" switch (active company only). No SQL (company profile is JSON), no AI, no email.
+- Rules: only the public sign-in fields ever appear (name, tagline, primary colour, slug, version, logo). Unknown, inactive, opted-out and flag-off all give the same neutral answer. Branded responses are `private` with `Vary: Cookie`.
