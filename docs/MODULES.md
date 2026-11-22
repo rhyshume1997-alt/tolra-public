@@ -59,6 +59,13 @@ Break work into these. Agents own one module at a time. Cross-module changes req
 - Saved "done" flag: module 1 (`lib/auth/tour-flag.ts`, auth user_metadata plus a browser copy). This module only calls it.
 - Mounting the tour in the shell, the float and dialog layering belong to the Shell (module 7) and are their own PR. Quiz results need their own table later (not allowed here).
 
+## 12. Issues (Raise an issue and the owner inbox; modules C and E, release 165)
+- Allowed: `components/issues/**`, `lib/issues/**`, `components/platform/issues-inbox.tsx`, `app/platform/issues/**`, `app/api/platform/issues/**`, `supabase/**/165_*` and `owner_issues_165.sql`, `tests/{unit,db}/*issues*`, `tests/db/owner-issues-165.test.ts`
+- Goal: any signed-in person (every role) can tell the Tolra team something went wrong; the platform owner triages across all companies. In-app only: no e-mail, no AI.
+- Off by default at two levels: the per-company marker `issues:on` in `hidden_nav` (enforced by `raise_issue` in the database and hides the button) AND, for the owner inbox, the server env flag `OWNER_ISSUES_ENABLED` (exactly "true").
+- Data: `public.issues` (companies read only their own, no direct writes) and `public.issue_owner_notes` (owner notes and PR link; no browser grant or policy). Writes go only through `raise_issue`, `platform_list_issues` and `platform_update_issue`.
+- Shell mount: one line in `components/dashboard-shell.tsx` (module 7) renders `RaiseIssueButton`; nothing else in the shell changes. The `/platform/issues` page is reached by URL; linking it from the Companies screen (`app/platform/page.tsx`) is a separate change.
+
 ## Shared
 - `lib/utils.ts`, types, zod schemas: only if the task lists them.
 - Prefer new files under `lib/<module>/` or `components/<module>/` for extractions.

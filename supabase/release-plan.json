@@ -192,6 +192,15 @@
       "rollback": "supabase/release/163_chase_steps_atomic.rollback.sql",
       "verify": "supabase/verify/chase_steps_atomic_163.sql",
       "marker": "post-144 marker 163 chase_steps_atomic"
+    },
+    {
+      "number": 165,
+      "after": "163",
+      "source": "supabase/proposals/p165_owner_issues.sql",
+      "release": "supabase/release/165_owner_issues.release.sql",
+      "rollback": "supabase/release/165_owner_issues.rollback.sql",
+      "verify": "supabase/verify/owner_issues_165.sql",
+      "marker": "post-144 marker 165 owner_issues"
     }
   ],
   "other_proposals": [
