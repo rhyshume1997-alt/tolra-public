@@ -20,6 +20,8 @@ export const TOKEN_NAMES = [
   "--ui-ok", "--ui-ok-soft", "--ui-info", "--ui-info-soft", "--ui-neutral", "--ui-neutral-soft", "--ui-radius-sm", "--ui-radius-md",
   "--ui-radius-lg", "--ui-shadow-1", "--ui-shadow-pop", "--ui-shadow-dialog", "--ui-inset-light", "--ui-inset-dark", "--ui-ease",
   "--ui-t-fast", "--ui-t-base", "--ui-t-slow", "--ui-h-sm", "--ui-h-md", "--ui-h-lg", "--ui-font",
+  // v2 (added, none renamed): hit box, sheet widths, toast offsets.
+  "--ui-hit", "--ui-sheet-sm", "--ui-sheet-md", "--ui-sheet-lg", "--ui-toast-top", "--ui-toast-edge",
 ] as const;
 
 /** Joins class names, skipping anything falsy. */

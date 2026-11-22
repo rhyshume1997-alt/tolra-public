@@ -2,6 +2,7 @@
  * BOUNDARY (module 7, shared UI, NEW). Inputs: EmptyState {title, detail?, action?}; LoadingState {label, rows?}; FailedState {title, detail, onRetry, retryLabel?}.
  * Output: three honest panels (min 160 px high). Failed has a red bar and role="alert"; Loading is role="status" with aria-busy and a shimmer
  * that stops under reduced motion; Empty carries one next step.
+ * v2: EmptyState and FailedState take headingLevel (2 to 6, default 3 = the old output) so a page can match its own outline and pass the heading-order check.
  * Must not change: they show no numbers and no sample data, and FailedState only calls onRetry: it never pretends a retry worked.
  * A page showing one of these must hide or zero its own counters so the page never contradicts itself.
  */
@@ -10,10 +11,14 @@ import styles from "./premium.module.css";
 import { Button } from "./Button";
 import { cx, premiumTokens } from "./tokens";
 
-export function EmptyState({ title, detail, action }: { title: string; detail?: string; action?: ReactNode }) {
+export type HeadingLevel = 2 | 3 | 4 | 5 | 6;
+const tag = (n: HeadingLevel) => `h${n}` as "h2" | "h3" | "h4" | "h5" | "h6";
+
+export function EmptyState({ title, detail, action, headingLevel = 3 }: { title: string; detail?: string; action?: ReactNode; headingLevel?: HeadingLevel }) {
+  const H = tag(headingLevel);
   return (
     <section className={cx(premiumTokens, styles.state, styles.stateEmpty)} aria-label={title}>
-      <h3 className={styles.stateTitle}>{title}</h3>
+      <H className={styles.stateTitle}>{title}</H>
       {detail ? <p className={styles.stateText}>{detail}</p> : null}
       {action}
     </section>
@@ -32,10 +37,11 @@ export function LoadingState({ label, rows = 4 }: { label: string; rows?: number
   );
 }
 
-export function FailedState({ title, detail, onRetry, retryLabel = "Try again" }: { title: string; detail: string; onRetry?: () => void; retryLabel?: string }) {
+export function FailedState({ title, detail, onRetry, retryLabel = "Try again", headingLevel = 3 }: { title: string; detail: string; onRetry?: () => void; retryLabel?: string; headingLevel?: HeadingLevel }) {
+  const H = tag(headingLevel);
   return (
     <section className={cx(premiumTokens, styles.state, styles.stateFailed)} role="alert">
-      <h3 className={styles.stateTitle}>{title}</h3>
+      <H className={styles.stateTitle}>{title}</H>
       <p className={styles.stateText}>{detail}</p>
       {onRetry ? <Button variant="secondary" onClick={onRetry}>{retryLabel}</Button> : null}
     </section>

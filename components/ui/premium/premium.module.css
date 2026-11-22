@@ -5,6 +5,7 @@
  * root AND every portal layer (menu, popover, dialog, toast) so a portal never loses them. Control sizes are a three step scale
  * (32, 40, 48 px) and the hit area of every control is at least 44 px (buttons 48 px) by pseudo element, so the look can stay refined.
  * Motion: 120 to 200 ms, transform and opacity and colour only, all of it off under prefers-reduced-motion.
+ * Added (v2): segmented control, sheet, form fields, stat tile, toast placement. Fields draw their 48 px hit area as a transparent 4 px top and bottom border (the visible control is 40 px).
  * Forbidden here: gradients, backdrop-filter or blur (no glass), decorative icons, oversized cards.
  */
 
@@ -48,6 +49,12 @@
   --ui-h-sm: 32px;
   --ui-h-md: 40px;
   --ui-h-lg: 48px;
+  --ui-hit: 48px;
+  --ui-sheet-sm: 520px;
+  --ui-sheet-md: 680px;
+  --ui-sheet-lg: 860px;
+  --ui-toast-top: 76px;
+  --ui-toast-edge: 16px;
   --ui-font: var(--font-archivo, "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif);
   color: var(--ui-ink);
   font-family: var(--ui-font);
@@ -184,10 +191,16 @@
 .dialogActions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 22px; }
 
 /* ---------- toast: neutral, one layer ---------- */
-.toastRegion { position: fixed; top: 76px; right: 16px; z-index: 100; width: min(380px, calc(100vw - 32px)); pointer-events: none; }
+.toastRegion { position: fixed; top: var(--ui-toast-top); right: var(--ui-toast-edge); z-index: 100; width: min(380px, calc(100vw - 32px)); pointer-events: none; }
+/* placement: top-right is the default above; the others only move the same layer (inline top or bottom comes from the provider's offset) */
+.toastBottom { top: auto; bottom: var(--ui-toast-edge); }
+.toastLeft { right: auto; left: var(--ui-toast-edge); }
+.toastCentre { right: auto; left: 50%; transform: translateX(-50%); }
 .toast { pointer-events: auto; display: flex; align-items: flex-start; gap: 8px; padding: 10px 8px 10px 14px; border-radius: var(--ui-radius-md); background: #fff; color: var(--ui-ink); box-shadow: inset 3px 0 0 var(--ui-brand), var(--ui-shadow-pop); animation: toastIn var(--ui-t-base) var(--ui-ease); }
 .toastError { box-shadow: inset 3px 0 0 var(--ui-danger), var(--ui-shadow-pop); }
 @keyframes toastIn { from { opacity: 0; transform: translateY(-6px); } }
+.toastRegion[data-placement^="bottom"] .toast { animation-name: toastInUp; }
+@keyframes toastInUp { from { opacity: 0; transform: translateY(6px); } }
 .toastText { flex: 1; min-width: 0; font-size: 13px; line-height: 19px; }
 .toastTitle { margin: 0; font-weight: 650; }
 .toastDetail { margin: 0; color: var(--ui-ink-2); }
@@ -236,9 +249,89 @@
 .skelRow { display: block; height: 12px; border-radius: 6px; background: linear-gradient(90deg, #e6e9f0 0%, #eef1f6 50%, #e6e9f0 100%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
 @keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 
+/* ---------- segmented control: one choice of a few (view switch, role switch, filter). 40 px track with 32 px segments, or 32 with 24 ---------- */
+.seg { width: fit-content; max-width: 100%; display: inline-flex; align-items: center; gap: 2px; height: var(--ui-h-md); padding: 4px; border-radius: var(--ui-radius-md); background: var(--ui-surface-3); box-shadow: inset 0 1px 2px rgba(14, 23, 38, 0.1), inset 0 0 0 1px var(--ui-line); }
+.segSm { height: var(--ui-h-sm); border-radius: var(--ui-radius-sm); }
+.segBtn {
+  position: relative; height: 32px; padding: 0 12px; border: 0; border-radius: 7px; background: transparent; color: var(--ui-ink-2); font-size: 13px; font-weight: 550; white-space: nowrap;
+  transition: background-color var(--ui-t-base) var(--ui-ease), color var(--ui-t-base) var(--ui-ease), box-shadow var(--ui-t-base) var(--ui-ease), transform var(--ui-t-fast) var(--ui-ease);
+}
+.segSm .segBtn { height: 24px; padding: 0 10px; border-radius: 5px; font-size: 12.5px; }
+/* 48 px hit area: 32 + 16 on the 40 track, 24 + 24 on the 32 track */
+.segBtn::after { content: ""; position: absolute; inset: -8px -1px; }
+.segSm .segBtn::after { inset: -12px -1px; }
+.segBtn:hover:not([aria-checked="true"]):not([aria-selected="true"]):not([aria-disabled="true"]):not([disabled]) { background: rgba(255, 255, 255, 0.75); color: var(--ui-ink); }
+.segBtn:active:not([aria-disabled="true"]):not([disabled]) { transform: translateY(1px); }
+.segBtn[aria-checked="true"], .segBtn[aria-selected="true"] { background: var(--ui-brand); color: var(--ui-on-brand); font-weight: 600; box-shadow: var(--ui-inset-light), var(--ui-inset-dark), 0 1px 2px rgba(14, 23, 38, 0.25); }
+.segBtn:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 1px; }
+.segBtn[aria-disabled="true"], .segBtn[disabled] { opacity: 0.5; cursor: not-allowed; }
+.segBtn[aria-checked="true"][aria-disabled="true"], .segBtn[aria-selected="true"][aria-disabled="true"], .segBtn[aria-checked="true"][disabled] { opacity: 0.7; }
+@media (max-width: 640px) { .seg { overflow-x: auto; } }
+
+/* ---------- sheet: wide modal on the native dialog, header + scrolling body + custom footer ---------- */
+.sheet { position: fixed; inset: 0; margin: auto; padding: 0; border: 0; border-radius: var(--ui-radius-lg); background: #fff; color: var(--ui-ink); box-shadow: var(--ui-shadow-dialog); max-height: calc(100dvh - 32px); overflow: hidden; }
+.sheet_sm { width: min(var(--ui-sheet-sm), calc(100vw - 32px)); }
+.sheet_md { width: min(var(--ui-sheet-md), calc(100vw - 32px)); }
+.sheet_lg { width: min(var(--ui-sheet-lg), calc(100vw - 32px)); }
+.sheet[open] { animation: sheetIn var(--ui-t-slow) var(--ui-ease); }
+.sheet::backdrop { background: rgba(14, 23, 38, 0.45); animation: fadeIn var(--ui-t-base) ease-out; }
+@keyframes sheetIn { from { opacity: 0; transform: translateY(6px) scale(0.985); } }
+.sheetInner { display: flex; flex-direction: column; max-height: calc(100dvh - 32px); }
+.sheetHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 20px 20px 14px 24px; box-shadow: inset 0 -1px 0 var(--ui-line); }
+.sheetHeadText { min-width: 0; }
+.sheetTitle { margin: 0; font-size: 18px; line-height: 24px; font-weight: 600; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.sheetDesc { margin: 4px 0 0; color: var(--ui-ink-2); font-size: 14px; line-height: 20px; }
+.sheetBody { display: flex; flex-direction: column; gap: 16px; padding: 18px 24px; overflow-y: auto; overscroll-behavior: contain; }
+.sheetBody:focus-visible { outline-offset: -2px; }
+.sheetFoot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 14px 24px 16px; background: var(--ui-surface-2); box-shadow: inset 0 1px 0 var(--ui-line); }
+@media (max-width: 640px) { .sheetHead, .sheetBody, .sheetFoot { padding-left: 16px; padding-right: 16px; } }
+
+/* ---------- form fields: label, hint, error; 40 px visible control inside a 48 px box (a 4 px transparent border is the hit area) ---------- */
+.field { display: flex; flex-direction: column; min-width: 0; }
+.fieldLabel { padding-bottom: 0; color: var(--ui-ink-2); font-size: 12.5px; font-weight: 600; line-height: 17px; }
+.fieldNote { font-weight: 500; color: var(--ui-muted); }
+.fieldHint { margin: 0; color: var(--ui-muted); font-size: 12.5px; line-height: 17px; }
+.fieldError { margin: 0; color: #8f1f1f; font-size: 12.5px; font-weight: 550; line-height: 17px; }
+.input {
+  display: block; width: 100%; min-width: 0; height: var(--ui-hit); margin: 0; padding: 0 12px; border: 0 solid transparent; border-block-width: 4px; border-radius: var(--ui-radius-sm);
+  background-color: #fff; background-clip: padding-box; color: var(--ui-ink); font-size: 14px; line-height: 20px;
+  box-shadow: inset 0 1px 2px rgba(14, 23, 38, 0.06), inset 0 0 0 1px var(--ui-line-strong);
+  transition: box-shadow var(--ui-t-base) var(--ui-ease), background-color var(--ui-t-base) var(--ui-ease);
+}
+.input::placeholder { color: #6b7385; opacity: 1; }
+.input:hover:not(:disabled):not([aria-invalid="true"]) { box-shadow: inset 0 1px 2px rgba(14, 23, 38, 0.06), inset 0 0 0 1px var(--ui-line-hover); }
+.input:focus-visible { outline: 2px solid transparent; outline-offset: -2px; box-shadow: inset 0 0 0 2px var(--ui-accent); }
+.input[aria-invalid="true"]:focus-visible { box-shadow: inset 0 0 0 2px var(--ui-accent), inset 0 0 0 4px var(--ui-danger-soft); }
+.input[aria-invalid="true"] { box-shadow: inset 0 0 0 1.5px var(--ui-danger), inset 3px 0 0 var(--ui-danger); background-color: var(--ui-danger-soft); }
+.input:disabled { background-color: var(--ui-surface-2); color: var(--ui-muted); opacity: 0.75; cursor: not-allowed; }
+.inputArea { height: auto; min-height: 92px; padding-top: 8px; padding-bottom: 8px; resize: vertical; }
+.inputSelect { padding-right: 32px; appearance: none; -webkit-appearance: none; cursor: pointer; background-repeat: no-repeat; background-position: right 10px center; background-size: 10px 10px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10' fill='none'%3E%3Cpath d='M2 3.6 5 6.6 8 3.6' stroke='%233b4559' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+.inputSelect:disabled { cursor: not-allowed; }
+
+/* ---------- stat tile: a label, one tabular figure, an optional hint and delta word. No chart, no icon ---------- */
+.tiles { display: grid; grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr)); gap: 12px; }
+.tile {
+  position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 80px; padding: 12px 16px 10px; border: 0; border-radius: var(--ui-radius-md); background: #fff; color: var(--ui-ink); text-align: left;
+  box-shadow: 0 0 0 1px var(--ui-line), var(--ui-shadow-1), inset 0 1px 0 #fff;
+  transition: box-shadow var(--ui-t-base) var(--ui-ease), background-color var(--ui-t-base) var(--ui-ease), transform var(--ui-t-fast) var(--ui-ease);
+}
+.tilePress:hover:not([disabled]) { box-shadow: 0 0 0 1px var(--ui-line-hover), 0 2px 4px rgba(14, 23, 38, 0.08), 0 8px 18px -10px rgba(14, 23, 38, 0.2), inset 0 1px 0 #fff; }
+.tilePress:active:not([disabled]) { transform: translateY(1px); }
+.tilePress[aria-pressed="true"] { background: var(--ui-soft); box-shadow: 0 0 0 1.5px var(--ui-brand), var(--ui-shadow-1); }
+.tilePress[disabled] { cursor: default; }
+.tileLabel { color: var(--ui-ink-2); font-size: 12.5px; font-weight: 600; letter-spacing: 0.004em; }
+.tileValue { margin-top: 4px; font-size: 28px; line-height: 32px; font-weight: 650; letter-spacing: -0.015em; color: var(--ui-ink); }
+.tileHint { color: var(--ui-muted); font-size: 12.5px; line-height: 17px; }
+.tileDelta { font-size: 12.5px; line-height: 17px; font-weight: 600; color: var(--ui-ink-2); }
+.tileDelta_ok { color: #14532d; }
+.tileDelta_warn { color: #6b4300; }
+.tileDelta_danger { color: #8f1f1f; }
+@media (max-width: 1100px) { .tiles { grid-template-columns: repeat(min(var(--cols, 4), 2), minmax(0, 1fr)); } }
+@media (max-width: 640px) { .tiles { gap: 8px; } .tile { min-height: 80px; padding: 12px; } .tileValue { font-size: 24px; line-height: 28px; } }
+
 /* ---------- reduced motion: everything is instant ---------- */
 @media (prefers-reduced-motion: reduce) {
-  .tokens, .tokens *, .tokens *::before, .tokens *::after, .layer, .dialog, .dialog::backdrop, .toast { animation: none !important; transition: none !important; }
-  .btn:active, .chip:active { transform: none; }
+  .tokens, .tokens *, .tokens *::before, .tokens *::after, .layer, .dialog, .dialog::backdrop, .sheet::backdrop, .toast { animation: none !important; transition: none !important; }
+  .btn:active, .chip:active, .segBtn:active, .tilePress:active { transform: none; }
   .skelRow { background: #e6e9f0; }
 }

@@ -4,6 +4,7 @@
  * Output: a trigger button plus a layer in a portal. Menu is role="menu": arrows, Home/End, Escape (focus returns to the trigger), Tab closes.
  * Popover is a non-modal role="dialog" panel for controls such as a list of Switches: Escape or an outside press closes, focus returns.
  * Must not change: 32 px items (44 px on touch), 190 px minimum width, never taller than 420 px or the viewport, token class on the layer.
+ * v2: a Popover puts first focus on the first ENABLED control (a disabled Switch or button is skipped; with none, the panel itself), and its Tab wrap uses the same list.
  * It runs no action itself: onSelect is the caller's, and a disabled item says so by aria-disabled and stays out of the arrow order.
  */
 import { useCallback, useId, useRef, useState, type ReactNode } from "react";
@@ -25,6 +26,18 @@ export function nextMenuIndex(current: number, disabled: boolean[], key: "ArrowD
   for (let k = 0; k < n; k++) { i = (i + step + n) % n; if (!disabled[i]) return i; }
   return -1;
 }
+
+const POP_FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
+/** Pure: the first element that is neither disabled nor aria-disabled (exported for tests; takes anything with the two attributes). */
+export function pickFirstEnabled<E extends { disabled?: boolean; getAttribute(name: string): string | null }>(els: ArrayLike<E>): E | null {
+  for (let i = 0; i < els.length; i++) {
+    const e = els[i];
+    if (!e.disabled && e.getAttribute("aria-disabled") !== "true") return e;
+  }
+  return null;
+}
+const enabledIn = (root: ParentNode | null) => Array.from(root?.querySelectorAll<HTMLElement>(POP_FOCUSABLE) ?? []).filter((e) => pickFirstEnabled([e as HTMLElement & { disabled?: boolean }]));
 
 interface TriggerProps { label: string; variant?: ButtonVariant; size?: "sm" | "md" | "lg"; "data-testid"?: string }
 
@@ -124,7 +137,7 @@ export function Popover({ label, title, children, variant = "secondary", size = 
         onClick={() => {
           if (open) { setOpen(false); return; }
           setOpen(true);
-          requestAnimationFrame(() => requestAnimationFrame(() => layer.current?.querySelector<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')?.focus()));
+          requestAnimationFrame(() => requestAnimationFrame(() => { (enabledIn(layer.current)[0] ?? layer.current)?.focus(); }));
         }}
       >
         {label}
@@ -136,11 +149,12 @@ export function Popover({ label, title, children, variant = "secondary", size = 
           id={id}
           role="dialog"
           aria-label={title}
+          tabIndex={-1}
           className={cx(premiumTokens, styles.layer, styles.popPanel)}
           style={{ top: pos?.top ?? 0, left: pos?.left ?? 0, maxHeight: pos?.maxHeight, visibility: pos ? "visible" : "hidden", ["--origin" as string]: pos?.origin }}
           onKeyDown={(e) => {
             if (e.key !== "Tab") return;
-            const f = Array.from(layer.current?.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select, textarea, [href]') ?? []);
+            const f = enabledIn(layer.current);
             const first = f[0];
             const last = f[f.length - 1];
             if (e.shiftKey && document.activeElement === first) { e.preventDefault(); close(); }

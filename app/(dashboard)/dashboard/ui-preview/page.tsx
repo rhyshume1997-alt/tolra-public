@@ -3,12 +3,14 @@
  * BOUNDARY (module 7, shared UI, NEW, PREVIEW ONLY). Inputs: none (sample content for layout only). Output: every component of
  * components/ui/premium in every state, at /dashboard/ui-preview, behind the normal dashboard sign-in.
  * Must not change: it reads and writes nothing (no Supabase, no fetch, no storage). Nothing here saves, finishes or sends anything, and
- * no control reports success: a confirm just closes and says "Preview only". Delete this route when a real module has adopted the set.
+ * no control reports success: a confirm just closes and says "Preview only". v2 adds SegmentedControl, Sheet, form fields, StatTile and the toast, dialog,
+ * popover, state-panel and selection-bar options. Delete this route when a real module has adopted the set.
  */
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import {
-  Button, Checkbox, ChipGroup, Dialog, EmptyState, FailedState, FilterChip, LoadingState, Menu, Popover, ScrollTable, SelectionBar,
-  StatusBadge, Switch, ToastProvider, useToast, premiumTokens, tabularNumbers, cx,
+  Button, Checkbox, ChipGroup, Dialog, EmptyState, FailedState, Field, FilterChip, Input, LoadingState, Menu, Popover, ScrollTable, SegmentedControl,
+  Select, SelectionBar, Sheet, StatTile, StatTiles, StatusBadge, Switch, Textarea, ToastProvider, useToast, premiumTokens, tabularNumbers, cx,
+  type ToastPlacement,
 } from "@/components/ui/premium";
 
 const sec: CSSProperties = { display: "grid", gap: 14, paddingTop: 24, borderTop: "1px solid rgba(14,23,38,0.1)" };
@@ -41,16 +43,27 @@ const ROWS = [
   { id: "J-0435", customer: "Pennine Rail", desc: "Cover panel, folded", tone: "danger" as const, status: "Late", due: "2 days over", machine: "Press 1", qty: 16, mat: "5251", value: "1,018.00", owner: "Aisha" },
 ];
 
-function Showcase() {
+type Place = { placement: ToastPlacement; offset?: number };
+type SheetKind = null | "sm" | "md" | "lg";
+
+function Showcase({ setPlace }: { setPlace: (p: Place) => void }) {
   const toast = useToast();
+  const [view, setView] = useState<"table" | "cards" | "board">("table");
+  const [role, setRole] = useState<"admin" | "office" | "operator">("office");
+  const [size, setSize] = useState<"all" | "open" | "late">("open");
+  const [tab, setTab] = useState<"details" | "history">("details");
+  const [sheet, setSheet] = useState<SheetKind>(null);
+  const [tileOn, setTileOn] = useState<"open" | null>(null);
+  const [form, setForm] = useState({ name: "", qty: "0", note: "" });
   const [sw, setSw] = useState({ a: false, b: true, c: false });
   const [chips, setChips] = useState({ open: true, rework: false, late: false });
-  const [dlg, setDlg] = useState<null | "confirm" | "fields" | "busy">(null);
+  const [dlg, setDlg] = useState<null | "confirm" | "fields" | "busy" | "secondary">(null);
   const [busyError, setBusyError] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
   const [sel, setSel] = useState<string[]>([]);
   const [failedRetries, setFailedRetries] = useState(0);
   const [cols, setCols] = useState({ machine: true, material: true, value: false });
+  const [selOpts, setSelOpts] = useState<string[]>([]);
 
   useEffect(() => {
     if (!busy) return;
@@ -127,6 +140,56 @@ function Showcase() {
         </ChipGroup>
       </Section>
 
+      <Section id="s-seg" title="Segmented control" note="One choice of a few, for a view switch, a role switch or a filter. Radio group semantics (arrow keys move and select, Tab enters on the selected one), or tabs when each option has its own panel. 40 or 32 px high, 48 px hit area, disabled options stay visible and are skipped by the arrows.">
+        <div style={{ display: "grid", gap: 14 }}>
+          <Cell label="View switch (radio group, 40 px)"><SegmentedControl label="View" value={view} onChange={setView} data-testid="seg-view" options={[{ value: "table", label: "Table", testId: "seg-table" }, { value: "cards", label: "Cards" }, { value: "board", label: "Board" }]} /></Cell>
+          <Cell label="Role switch, one option off (32 px)"><SegmentedControl label="Role" size="sm" value={role} onChange={setRole} data-testid="seg-role" options={[{ value: "admin", label: "Admin" }, { value: "office", label: "Office" }, { value: "operator", label: "Operator", disabled: true, disabledReason: "Not available for your role" }]} /></Cell>
+          <Cell label="Filter with counts as words"><SegmentedControl label="Show" value={size} onChange={setSize} options={[{ value: "all", label: "All 24" }, { value: "open", label: "Open 19" }, { value: "late", label: "Late 2" }]} /></Cell>
+          <Cell label="Tabs (each option shows a panel)">
+            <div style={{ display: "grid", gap: 8 }}>
+              <SegmentedControl kind="tabs" label="Job sections" value={tab} onChange={setTab} data-testid="seg-tabs" options={[{ value: "details", label: "Details", controls: "panel-details" }, { value: "history", label: "History", controls: "panel-history" }]} />
+              <div id={tab === "details" ? "panel-details" : "panel-history"} role="tabpanel" aria-label={tab === "details" ? "Details" : "History"} style={{ fontSize: 13, color: "#3b4559" }}>{tab === "details" ? "Details panel: sample content." : "History panel: sample content."}</div>
+            </div>
+          </Cell>
+          <div style={row}>
+            <Cell label="Selected and disabled"><SegmentedControl label="Locked view" value="table" onChange={() => {}} options={[{ value: "table", label: "Table", disabled: true }, { value: "cards", label: "Cards", disabled: true }]} /></Cell>
+            <Cell label="Whole control disabled"><SegmentedControl label="Loading view" disabled value="cards" onChange={() => {}} options={[{ value: "table", label: "Table" }, { value: "cards", label: "Cards" }]} /></Cell>
+            <Cell label="Focus ring (keyboard)"><SegmentedControl label="Focus sample" value="b" onChange={() => {}} options={[{ value: "a", label: "First" }, { value: "b", label: "Second", testId: "seg-focus" }]} /></Cell>
+          </div>
+        </div>
+      </Section>
+
+      <Section id="s-fields" title="Form fields" note="Field gives the label, hint and error and wires id, aria-describedby and aria-invalid. The visible control is 40 px inside a 48 px hit box. An error is words plus a red edge, never colour alone.">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "10px 20px" }} data-testid="fields-grid">
+          <Field label="Customer" hint="Pick the customer this job is for."><Input placeholder="Customer name" data-testid="f-default" /></Field>
+          <Field label="Job name" required error={form.name.trim() === "" ? "Enter a job name." : undefined}><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} data-testid="f-live-error" /></Field>
+          <Field label="Quantity" error="Quantity must be at least 1." hint="Whole numbers only."><Input inputMode="numeric" value={form.qty} onChange={(e) => setForm({ ...form, qty: e.target.value })} data-testid="f-error" /></Field>
+          <Field label="Job number (locked)" hint="Set when the job is created."><Input value="J-0431" disabled data-testid="f-disabled" /></Field>
+          <Field label="Due date" optional><Input type="date" data-testid="f-date" /></Field>
+          <Field label="Machine"><Select defaultValue="" data-testid="f-select"><option value="">Choose a machine</option><option>Laser 2</option><option>Press 1</option><option>Mill 3</option></Select></Field>
+          <Field label="Material" error="Choose a material."><Select defaultValue="" data-testid="f-select-error"><option value="">Choose a material</option><option>S355</option><option>304</option></Select></Field>
+          <Field label="Machine (locked)"><Select disabled defaultValue="Laser 2"><option>Laser 2</option></Select></Field>
+          <Field label="Note" hint="Shown to the whole team." wide><Textarea rows={3} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} data-testid="f-area" /></Field>
+          <Field label="Note with an error" error="The note is too long (2,140 of 2,000)." wide><Textarea rows={2} defaultValue="Sample" data-testid="f-area-error" /></Field>
+          <Field label="Focus ring"><Input defaultValue="Focused look" style={{ boxShadow: "inset 0 0 0 2px var(--ui-accent)" }} /></Field>
+        </div>
+      </Section>
+
+      <Section id="s-tile" title="Stat tile" note="A label, one tabular figure, an optional hint and a delta in words. No chart, no icon. Loading shows a dash. With onPress it is a toggle that filters the list below.">
+        <StatTiles label="Sample figures" columns={4}>
+          <StatTile label="Open jobs" value="19" hint="£42,310.00 on the books" data-testid="tile-a" />
+          <StatTile label="Late jobs" value="2" hint="Past their due date" delta="Up 1 on last week" deltaTone="danger" />
+          <StatTile label="On time rate" value="94%" hint="Finished jobs, last 30 days" delta="Same as last week" />
+          <StatTile label="Hours booked" value="1,284.5" delta="Down 3.0 on last week" deltaTone="warn" />
+        </StatTiles>
+        <StatTiles label="Loading and pressable" columns={4}>
+          <StatTile label="Open jobs" value="19" loading data-testid="tile-loading" />
+          <StatTile label="Drafts" value="—" loading hint="hidden while loading" />
+          <StatTile label="Open quotes" value="7" hint="Filter the list" pressed={tileOn === "open"} onPress={() => setTileOn(tileOn === "open" ? null : "open")} data-testid="tile-press" />
+          <StatTile label="Accepted" value="12" hint="Filter the list" onPress={() => previewOnly("No filter was applied.")} />
+        </StatTiles>
+      </Section>
+
       <Section id="s-badge" title="Status badge" note="One grammar: dot plus word. Never colour alone.">
         <div style={row} data-testid="badges">
           <StatusBadge tone="neutral">Not started</StatusBadge>
@@ -153,6 +216,10 @@ function Showcase() {
             <Switch label="Value" checked={cols.value} onChange={(v) => setCols({ ...cols, value: v })} />
             <Switch label="Job number" hint="Always shown" checked disabled onChange={() => {}} />
           </Popover>
+          <Popover label="Locked first" title="Columns (first is locked)" data-testid="pop-locked">
+            <Switch label="Job number" hint="Always shown" checked disabled onChange={() => {}} />
+            <Switch label="Customer" checked={cols.machine} onChange={(v) => setCols({ ...cols, machine: v })} data-testid="pop-first-enabled" />
+          </Popover>
         </div>
       </Section>
 
@@ -161,6 +228,7 @@ function Showcase() {
           <Button onClick={() => setDlg("confirm")} data-testid="open-confirm">Confirmation</Button>
           <Button onClick={() => setDlg("fields")} data-testid="open-fields">With a field</Button>
           <Button onClick={() => { setBusyError(undefined); setDlg("busy"); }} data-testid="open-busy">Busy then error</Button>
+          <Button onClick={() => setDlg("secondary")} data-testid="open-secondary">With a middle action</Button>
         </div>
         <Dialog
           open={dlg === "confirm"}
@@ -184,6 +252,16 @@ function Showcase() {
           </label>
         </Dialog>
         <Dialog
+          open={dlg === "secondary"}
+          title="Leave this quote?"
+          description="You have changes that are not saved. Choose what to do with them."
+          confirmLabel="Save and leave"
+          secondaryLabel="Leave without saving"
+          onSecondary={() => { setDlg(null); previewOnly("Nothing was discarded."); }}
+          onClose={() => setDlg(null)}
+          onConfirm={() => { setDlg(null); previewOnly("Nothing was saved."); }}
+        />
+        <Dialog
           open={dlg === "busy"}
           title="Finish 2 jobs?"
           description="Both jobs move to Waiting for inspection."
@@ -195,17 +273,46 @@ function Showcase() {
         />
       </Section>
 
+      <Section id="s-sheet" title="Sheet" note="A wide modal for a longer form or a detail view: header, a body that scrolls on its own, a footer of your own buttons. Focus is trapped, Escape closes, focus returns to the button that opened it. Sizes sm 520, md 680, lg 860.">
+        <div style={row}>
+          <Button onClick={() => setSheet("sm")} data-testid="open-sheet-sm">Small sheet</Button>
+          <Button onClick={() => setSheet("md")} data-testid="open-sheet-md">Medium sheet</Button>
+          <Button onClick={() => setSheet("lg")} data-testid="open-sheet-lg">Large sheet, long body</Button>
+        </div>
+        <Sheet open={sheet !== null} size={sheet ?? "md"} testId="sheet" onClose={() => setSheet(null)}
+          title={sheet === "lg" ? "Quote QUO-0412 details" : sheet === "md" ? "Edit job" : "Send quote"}
+          description={sheet === "lg" ? "A long body scrolls while the header and footer stay." : "Sample content for layout only."}
+          footer={<>
+            <Button variant="secondary" onClick={() => setSheet(null)}>Cancel</Button>
+            <Button variant="secondary" onClick={() => previewOnly("Nothing was saved as a draft.")}>Save draft</Button>
+            <Button variant="primary" onClick={() => { setSheet(null); previewOnly("Nothing was sent."); }}>{sheet === "sm" ? "Send quote" : "Save changes"}</Button>
+          </>}>
+          <Field label="Customer"><Select defaultValue="Hartley Engineering"><option>Hartley Engineering</option><option>Northfield Fabrication</option></Select></Field>
+          <Field label="Note" hint="Shown on the quote."><Textarea rows={3} /></Field>
+          {sheet === "lg" ? Array.from({ length: 14 }, (_, i) => (
+            <p key={i} style={{ margin: 0, color: "#3b4559" }}>Line {i + 1}: Bracket, 6mm plate, laser cut and folded. Sample body text to make this sheet scroll inside its own body.</p>
+          )) : null}
+        </Sheet>
+      </Section>
+
       <Section id="s-toast" title="Toast" note="Neutral, one layer: a new message replaces the old one, nothing stacks. No green success tone. Info closes itself after 5 seconds and pauses on hover; an error stays until dismissed.">
         <div style={row}>
           <Button onClick={() => toast.show({ title: "Preview only", detail: "The job was not paused. Nothing was saved." })} data-testid="toast-info">Show message</Button>
           <Button onClick={() => toast.show({ title: "Could not load jobs", detail: "The connection dropped. Try again in a moment.", tone: "error" })} data-testid="toast-error">Show error</Button>
           <Button variant="quiet" onClick={toast.clear}>Clear</Button>
         </div>
+        <div style={row} role="group" aria-label="Toast placement">
+          <span style={cap}>Placement</span>
+          {([["top-right", undefined, "Top right (default)"], ["bottom-right", undefined, "Bottom right"], ["bottom-left", undefined, "Bottom left"], ["bottom-centre", undefined, "Bottom centre"], ["top-right", 130, "Top right, 130 px down"]] as const).map(([p, o, l]) => (
+            <Button key={l} size="sm" onClick={() => { setPlace({ placement: p, offset: o }); toast.show({ title: "Preview only", detail: `${l}. Nothing was saved.` }); }} data-testid={`place-${p}${o ? "-" + o : ""}`}>{l}</Button>
+          ))}
+        </div>
       </Section>
 
       <Section id="s-bar" title="Selection bar" note="Idle is one quiet line. Active is a navy bar with the live count and actions. Tick rows in the table below to drive the live one.">
         <div style={{ display: "grid", gap: 10 }}>
           <Cell label="Idle"><div style={{ width: "100%" }}><SelectionBar count={0} filteredTotal={5} noun="job" onSelectAll={() => {}} onClear={() => {}}><Button size="sm" variant="secondary" disabled>Finish selected</Button></SelectionBar></div></Cell>
+          <Cell label="Idle, Select all and Clear kept visible (selectAll and clear = always)"><div style={{ width: "100%" }}><SelectionBar count={selOpts.length} filteredTotal={24} noun="quote" selectAll="always" clear="always" idleNote="Nothing selected. 24 quotes match." statusText={({ count, filteredTotal }) => `${count} of ${filteredTotal} quotes ticked`} onSelectAll={() => setSelOpts(Array.from({ length: 24 }, (_, i) => String(i)))} onClear={() => setSelOpts([])} stickyTop="0px"><Button size="sm" variant="secondary" disabled={selOpts.length === 0}>Export selected</Button></SelectionBar></div></Cell>
           <Cell label="Active (static sample)"><div style={{ width: "100%" }}><SelectionBar count={2} filteredTotal={5} noun="job" onSelectAll={() => {}} onClear={() => {}} stickyTop="0px"><Button size="sm" variant="primary" onClick={() => previewOnly("No jobs were finished.")}>Finish selected (2)</Button></SelectionBar></div></Cell>
         </div>
       </Section>
@@ -247,9 +354,9 @@ function Showcase() {
         </ScrollTable>
       </Section>
 
-      <Section id="s-state" title="Empty, loading and failed" note="Honest panels: no numbers, no sample data. A real page zeroes or hides its own counters while one of these shows.">
+      <Section id="s-state" title="Empty, loading and failed" note="Honest panels: no numbers, no sample data. A real page zeroes or hides its own counters while one of these shows. headingLevel (2 to 6, default 3) lets a page match its own heading outline; here the section is an h2, so these are h3.">
         <div style={{ display: "grid", gap: 14 }}>
-          <EmptyState title="No jobs yet" detail="Jobs you create appear here. Start with your first one." action={<Button variant="primary" onClick={() => previewOnly("No job was created.")}>New job</Button>} />
+          <EmptyState headingLevel={3} title="No jobs yet" detail="Jobs you create appear here. Start with your first one." action={<Button variant="primary" onClick={() => previewOnly("No job was created.")}>New job</Button>} />
           <LoadingState label="Loading jobs" rows={4} />
           <FailedState
             title="Could not load jobs"
@@ -264,9 +371,10 @@ function Showcase() {
 }
 
 export default function UiPreviewPage() {
+  const [place, setPlace] = useState<Place>({ placement: "top-right" });
   return (
-    <ToastProvider>
-      <Showcase />
+    <ToastProvider placement={place.placement} offset={place.offset}>
+      <Showcase setPlace={setPlace} />
     </ToastProvider>
   );
 }
