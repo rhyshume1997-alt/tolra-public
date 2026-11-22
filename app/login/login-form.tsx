@@ -43,7 +43,7 @@ export function LoginForm({ initialBranding, syncInstalledApp = false }: { initi
   const searchParams = useSearchParams();
   const disabled = searchParams.get("disabled") === "1";
   const branding = useLoginBranding(initialBranding, Boolean(searchParams.get("org")?.trim()));
-  // Installed-app branding (module 12): the install manifest and icons follow the company this page shows. Off unless the server flag is on.
+  // Installed-app branding (module 13): the install manifest and icons follow the company this page shows. Off unless the server flag is on.
   useManifestLinkSync(syncInstalledApp, branding?.slug ?? null);
   const [error, setError] = useState<string | null>(disabled ? "Your account has been disabled" : null);
   const [messageType, setMessageType] = useState<"error" | "success">("error");

@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 // App icons for the manifest, apple-touch-icon and favicon. Tolra's own icon (lib/server/app-icon.tsx) unless the server flag
 // BRANDED_APP_ENABLED is on AND the company is active with sign-in branding on AND has a logo: then its logo on its brand colour
-// (module 12, lib/company-look). Explicit ?org= wins over the cookie (as for the manifest). Every other case is the Tolra icon.
+// (module 13, lib/company-look). Explicit ?org= wins over the cookie (as for the manifest). Every other case is the Tolra icon.
 export async function GET(request: Request) {
   if (!brandedAppEnabled()) return appIconResponse(request);
   const asked = Number(new URL(request.url).searchParams.get("size"));

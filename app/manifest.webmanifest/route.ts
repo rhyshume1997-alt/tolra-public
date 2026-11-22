@@ -5,7 +5,7 @@ import { BRANDED_CACHE, brandedAppEnabled, installedAppBrand, installedAppSlug }
 
 export const dynamic = "force-dynamic";
 
-// Web app manifest (module 12, Company look). With the server flag BRANDED_APP_ENABLED off (the default) it is always Tolra, exactly as
+// Web app manifest (module 13, Company look). With the server flag BRANDED_APP_ENABLED off (the default) it is always Tolra, exactly as
 // before. With it on, a company that is active and has "Sign-in page branding" on gets its own name, theme colour and icons; anything
 // else (no company, unknown, inactive, opted out) gets the same neutral Tolra answer. Only the public sign-in fields are ever used.
 const HEADERS = { "Content-Type": "application/manifest+json; charset=utf-8" };

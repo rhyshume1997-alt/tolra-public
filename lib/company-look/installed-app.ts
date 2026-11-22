@@ -1,5 +1,5 @@
 /**
- * BOUNDARY (module 12, Company look). Pure, no I/O.
+ * BOUNDARY (module 13, Company look). Pure, no I/O.
  * Inputs: a public brand (or null). Outputs: the installed-app manifest, the icon URLs and the manifest link for the sign-in page.
  * Must not change: the neutral Tolra manifest (null brand gives exactly what app/manifest.webmanifest always returned); what a
  * brand may contain (only the public sign-in fields: name, tagline, primary colour, slug, version).

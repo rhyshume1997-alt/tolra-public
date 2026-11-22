@@ -5,7 +5,7 @@ import type { Image } from "@/lib/server/branding";
 import { textOn } from "@/lib/branding";
 
 /**
- * BOUNDARY (module 12, Company look). Inputs: a company's brand colour and logo (its own PNG/JPEG only). Output: a square PNG.
+ * BOUNDARY (module 13, Company look). Inputs: a company's brand colour and logo (its own PNG/JPEG only). Output: a square PNG.
  * The logo sits on a white plate on the brand colour, so any logo stays readable. The "maskable" art keeps the plate inside the
  * safe circle (phones crop to a circle). Must not change: only this company's own logo is ever drawn (loadLogo checks the folder).
  */

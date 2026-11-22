@@ -1,5 +1,5 @@
 /**
- * Company look (module 12): the company icon is a real square PNG at each size, in both the normal and the maskable art.
+ * Company look (module 13): the company icon is a real square PNG at each size, in both the normal and the maskable art.
  */
 import { describe, expect, it, vi } from "vitest";
 

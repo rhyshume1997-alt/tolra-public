@@ -1,5 +1,5 @@
 /**
- * Company look (module 12): the installed-app manifest and icon URLs. Pure functions plus the server rules with the database mocked.
+ * Company look (module 13): the installed-app manifest and icon URLs. Pure functions plus the server rules with the database mocked.
  * Proves: neutral manifest is unchanged, a company's manifest holds only its own public fields, and nothing leaks across companies.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";

@@ -4,7 +4,7 @@ import { BRAND_COOKIE, getPublicBrandingMeta, loginSlug } from "@/lib/server/bra
 import { BRANDED_APP_ENV_FLAG, type InstalledAppBrand } from "@/lib/company-look/installed-app";
 
 /**
- * BOUNDARY (module 12, Company look). Inputs: a company slug (from ?org, the host or this device's brand cookie).
+ * BOUNDARY (module 13, Company look). Inputs: a company slug (from ?org, the host or this device's brand cookie).
  * Output: that company's installed-app brand, or null (= neutral Tolra). Read-only; writes nothing, calls no AI, sends no email.
  * Must not change: the rules below. A brand is returned only when ALL hold: the server flag is exactly "true", the company is
  * ACTIVE, and its admin switched "Sign-in page branding" on (the same opt-in and the same public fields as /api/branding).
