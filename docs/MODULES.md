@@ -72,3 +72,9 @@ Break work into these. Agents own one module at a time. Cross-module changes req
 - Prefer new files under `lib/<module>/` or `components/<module>/` for extractions.
 
 Future-proof: Each module exposes a small set of functions. Other modules call them; they never import internals.
+
+## 13. Company look (installed app)
+- Allowed: `lib/company-look/**`, `components/company-look/**`, `app/manifest.webmanifest/route.ts`, `app/api/pwa-icon/route.tsx`, `tests/unit/company-look-*`; plus the small wiring in `app/login/page.tsx`, `app/login/login-form.tsx` and `app/layout.tsx` (manifest link).
+- Goal: each company's installed app (name, theme colour, icon) shows only that company's own look, taken from the same public sign-in branding; neutral Tolra otherwise.
+- Off by default: needs the server env flag `BRANDED_APP_ENABLED` (exactly "true") AND the company's existing "Branded sign-in page" switch (active company only). No SQL (company profile is JSON), no AI, no email.
+- Rules: only the public sign-in fields ever appear (name, tagline, primary colour, slug, version, logo). Unknown, inactive, opted-out and flag-off all give the same neutral answer. Branded responses are `private` with `Vary: Cookie`.
