@@ -1,0 +1,36 @@
+/* Grid (style 5): editorial strict grid, Geist, black on off-white, hairlines, no fills.
+   Colour: --c (set by colour.js) only touches small marks (ref, title rule, total). Default is monochrome.
+   Do not change: own markup (grid-*.html); does not use base.css. */
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400&display=swap");
+:root{--ink:#111;--mute:#8a8a85;--hair:#e3e2dd;--ac:var(--c,#111)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#ecebe7;font-family:Geist,Inter,system-ui,sans-serif;color:var(--ink);font-size:8.5pt;line-height:1.4;padding:24px}
+.page{width:210mm;height:297mm;overflow:hidden;margin:0 auto;background:#fff;padding:14mm 15mm 10mm;display:flex;flex-direction:column;box-shadow:0 2px 18px rgba(0,0,0,.1)}
+.lab{color:var(--mute);font-size:7pt}
+.top{display:grid;grid-template-columns:1fr 1fr;gap:10mm}
+.who .logo{width:42mm;height:14mm;border:1px dashed #bbb;display:flex;align-items:center;justify-content:center;color:var(--mute);font-size:7pt;text-align:center;margin-bottom:4mm}
+.who b{font-weight:500;font-size:9.5pt;display:block}.who .ref{color:var(--ac);font-size:9.5pt}
+.kv{display:grid;grid-template-columns:34mm 1fr;row-gap:3.2mm;column-gap:4mm;align-content:start}
+.kv .v{white-space:pre-line}
+.big{margin-top:auto;text-align:right;font-size:46pt;font-weight:500;letter-spacing:-.045em;line-height:1;padding-bottom:5mm;border-bottom:1.5px solid var(--ac)}
+table{width:100%;border-collapse:collapse;margin-top:6mm}
+th{font-weight:400;color:var(--mute);font-size:7pt;text-align:left;padding:0 0 2mm;border-bottom:1px solid var(--hair)}
+td{padding:2.6mm 0;border-bottom:1px solid var(--hair);vertical-align:top}
+th.r,td.r{text-align:right}td.m{font-family:"Geist Mono",monospace;font-size:8pt;white-space:nowrap}
+td .s{display:block;color:var(--mute);font-size:7.5pt}
+.tot{margin:3mm 0 0 auto;width:70mm}
+.tot div{display:flex;justify-content:space-between;padding:1.1mm 0}
+.tot .g{border-top:1px solid var(--ink);margin-top:1.5mm;padding-top:2mm;font-weight:600;font-size:10pt}.tot .g span:last-child{color:var(--ac)}
+.det{margin-top:8mm;display:grid;grid-template-columns:34mm 1fr;row-gap:1.4mm;column-gap:4mm}
+.det h4{grid-column:1/-1;font-weight:500;font-size:8pt;margin-bottom:1mm}
+.terms{margin-top:6mm;font-size:6.8pt;color:var(--mute);max-width:150mm}.terms b{color:var(--ink);font-weight:500}
+.sign{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8mm;margin-top:8mm}.sign div{border-top:1px solid var(--ink);padding-top:1.5mm;color:var(--mute);font-size:7pt}
+.sign.tall div{margin-top:8mm}
+.ph{background:#f4f1d8}
+.chk{display:inline-block;width:3.5mm;height:3.5mm;border:1px solid var(--ink);vertical-align:middle}
+footer{margin-top:6mm;display:flex;justify-content:space-between;font-size:6.8pt;color:var(--mute)}
+@page{size:A4;margin:0}
+@media print{body{background:#fff;padding:0}.page{box-shadow:none}.colour-panel{display:none}}
+.colour-panel{position:fixed;right:16px;bottom:16px;background:#fff;border:1px solid #ccc;padding:8px 10px;display:flex;gap:8px;align-items:center;font:12px system-ui,sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.15);z-index:9}
+.colour-panel input[type=color]{width:34px;height:26px;border:0;padding:0;background:none}
+.colour-panel .hex{width:70px;font:12px monospace;padding:3px}
