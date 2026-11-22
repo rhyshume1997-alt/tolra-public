@@ -59,6 +59,12 @@ Break work into these. Agents own one module at a time. Cross-module changes req
 - Saved "done" flag: module 1 (`lib/auth/tour-flag.ts`, auth user_metadata plus a browser copy). This module only calls it.
 - Mounting the tour in the shell, the float and dialog layering belong to the Shell (module 7) and are their own PR. Quiz results need their own table later (not allowed here).
 
+## 12. Worksheet builder (module K)
+- Allowed: `lib/worksheet-builder/**`, `components/worksheet-builder/**`, `tests/unit/worksheet-builder-*`, `tests/postgres/worksheet-custom-170.proof.sql`, `docs/WORKSHEET_BUILDER.md`, and (release 170 proposal only, no migration) `supabase/proposals/p170_worksheet_custom.sql`, `supabase/release/170_worksheet_custom.*`, `supabase/verify/worksheet_custom_170.sql`.
+- Goal: a company designs its own job worksheet from a fixed palette of safe blocks; saved layouts sit beside Basic and JNR sheet in Print layout. Off by default (`worksheet-builder:on` in `hidden_nav`, admin).
+- Rules: Basic and JNR sheet are not edited and stay the defaults (golden snapshot `tests/unit/__snapshots__/worksheet-builder-golden.test.ts.snap` is never updated to get a change through). Internal sign-off, traceability and inspection (and customer sign-off while its switch is on) cannot be removed. Custom fields live only in `jobs.worksheet_custom`; signed-off worksheets never change.
+- Touches other modules only through these hooks, each a few lines: the Print layout picker and card (`components/print-layout-picker.tsx`, `components/print-layout-settings-card.tsx`, `lib/print-layout.ts` keeps the builder state when Company details is saved), the two print pages, the Settings page mount, and `components/job-worksheet-form.tsx` (one `JobCustomFields` mount, renders nothing unless the builder is on).
+
 ## Shared
 - `lib/utils.ts`, types, zod schemas: only if the task lists them.
 - Prefer new files under `lib/<module>/` or `components/<module>/` for extractions.

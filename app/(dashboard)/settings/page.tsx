@@ -12,6 +12,7 @@ import { AiHelperSettingsCard } from "@/components/ai-helper/settings-card";
 import { EmailSchedulesCard } from "@/components/email-schedules/settings-card";
 import { EmailTemplatesCard } from "@/components/email/email-templates-card";
 import { PrintLayoutCard } from "@/components/print-layout-settings-card";
+import { WorksheetBuilderCard } from "@/components/worksheet-builder/worksheet-builder-card";
 import { RoleGate } from "@/components/role-gate";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -664,6 +665,7 @@ export default function SettingsPage() {
         <JobsReportsSettingsCard />
         <IsoSwitchCard />
         <PrintLayoutCard />
+        <WorksheetBuilderCard />
         <YearEndExportCard />
         <AiHelperSettingsCard />
         <CostingRatesCard />

@@ -9,6 +9,7 @@ import { AlertTriangle, Download, Upload } from "lucide-react";
 import { CustomerSignOff } from "@/components/customer-signoff";
 import { PlannedVsActualPanel } from "@/components/jobs/planned-vs-actual-panel";
 import { JobSignOff } from "@/components/job-signoff";
+import { JobCustomFields } from "@/components/worksheet-builder/job-custom-fields";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -440,6 +441,9 @@ export function JobWorksheetForm({ job, onSaved, onDirtyChange }: {
         </div>
       </div>
       <p className="text-center text-[10.5px] font-bold text-[#c00000]">ALL PARTS MUST BE CHECKED AND MARKED FOR IDENTIFICATION BEFORE SIGN OFF (e.g. Black Ink Marker)<br />ANY EXCESS MATERIAL MUST BE MARKED WITH MATERIAL GRADE AND HEAT/CAST NUMBER.</p>
+
+      {/* Module K: the company's own custom fields (nothing unless the worksheet builder is on and its layout has some). */}
+      <JobCustomFields jobId={job.id} row={editJob?.id === job.id ? editJob.row : undefined} version={version} canEditWorksheet={canEdit} demo={demo} />
 
       <div className="border border-black">
         <p className="bg-[#ffe44d] px-2 py-1 text-center text-[11px] font-bold uppercase">INTERNAL SIGN OFF (All Worksheets Must Be Signed Off)</p>
