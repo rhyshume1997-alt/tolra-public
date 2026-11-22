@@ -1,0 +1,18 @@
+/* Mono: monospaced, black on white, hairlines, no fills. Technical and plain. */
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap");
+:root{--brand:#111;--accent:#111;--head-font:"IBM Plex Mono",monospace;--num-font:"IBM Plex Mono",monospace;--line:#cfcfcf;--soft:#f6f6f6;--onbrand:#111;--muted:#666}
+body,.page{font-family:"IBM Plex Mono",monospace;font-size:9pt}
+.bar{height:0}
+header{margin-top:0}
+.title h1{font-size:20pt;font-weight:600;letter-spacing:.14em}
+.title .ref{font-size:10pt}
+.status{border:1px solid #111;color:#111;font-weight:500}
+.logo{background:#fff}
+.meta{border:1px solid var(--brand)}.meta>div{border-right:1px solid var(--brand)}
+.parties h3{border-bottom:1px solid var(--brand);color:#111}
+thead th{background:transparent;color:#111;border-top:1px solid #111;border-bottom:1px solid #111;font-weight:600}
+tbody tr:nth-child(even) td{background:transparent}
+tbody td{font-size:9pt}
+.totals .grand{background:transparent;color:#111;border:2px solid #111;font-size:11pt}
+.box{border:1px solid var(--line)}.box h4{color:#111}
+.ph{background:#eee}

@@ -1,0 +1,18 @@
+/* Bold: heavy black and signal orange, big condensed title, thick rules. */
+@import url("https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap");
+:root{--brand:#111;--accent:#ff5a1f;--head-font:Anton,Impact,sans-serif;--line:#d6d6d6;--soft:#f4f4f2;--onbrand:#fff}
+.bar{height:9mm;background:var(--accent)}
+header{margin-top:6mm}
+.title h1{font-size:44pt;letter-spacing:.02em;line-height:.95}
+.title .ref{background:var(--brand);color:#fff;display:inline-block;padding:1mm 3mm;margin-top:2mm}
+.status{background:var(--accent);border:0;color:#111}
+.logo{border:2px dashed #111;background:#fff}
+.meta{border:2px solid var(--brand)}.meta>div{border-right:2px solid var(--brand);background:#fff7f2}
+.parties h3{color:var(--brand);border-bottom:4px solid var(--accent)}
+thead th{background:var(--brand);color:#fff;font-size:8.5pt}
+tbody td{border-bottom:2px solid var(--brand)}
+tbody tr:nth-child(even) td{background:transparent}
+.totals .grand{background:var(--accent);color:#111;font-family:var(--head-font);font-weight:400;font-size:16pt;letter-spacing:.04em}
+.box{border:2px solid var(--brand)}.box h4{color:var(--accent)}
+.sign div{border-top:2px solid var(--brand)}
+footer{border-top:4px solid var(--brand);color:#111}

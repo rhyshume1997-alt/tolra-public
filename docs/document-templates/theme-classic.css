@@ -1,0 +1,17 @@
+/* Classic: white, charcoal ink, serif headings, thin rules. No colour fill. */
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@400&display=swap");
+:root{--brand:#1c1c1c;--accent:#9a7b3f;--head-font:"Playfair Display",Georgia,serif;--num-font:"Source Sans 3",sans-serif;--line:#d9d6cf;--soft:#faf8f4;--onbrand:#1c1c1c}
+body{font-family:"Source Sans 3",sans-serif}
+.bar{height:0}
+header{border-bottom:3px double var(--brand);padding-bottom:5mm;margin-top:0}
+.title h1{font-weight:500;text-transform:none;letter-spacing:0;font-size:32pt}
+.title .ref{color:var(--accent);font-weight:600}
+.status{border:0;border-bottom:1px solid var(--accent);color:var(--accent);font-style:italic;letter-spacing:.03em;text-transform:none;font-weight:600;padding:0 0 .5mm}
+.logo{background:#fff}
+.meta{border:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.parties h3{color:var(--accent);border-bottom:1px solid var(--brand)}
+thead th{background:transparent;color:var(--brand);border-top:1.5px solid var(--brand);border-bottom:1.5px solid var(--brand)}
+tbody tr:nth-child(even) td{background:transparent}
+.totals .grand{background:transparent;color:var(--brand);border-top:1.5px solid var(--brand);border-bottom:3px double var(--brand);font-family:var(--head-font)}
+.box{border:0;border-top:1px solid var(--brand);padding-left:0}
+.box h4{color:var(--accent)}
