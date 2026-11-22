@@ -151,4 +151,33 @@ describe("jobs preview: hierarchy and honest states", () => {
     expect(host.querySelector("[data-testid=show-open]")?.textContent).toContain("(\u2014)");
     await act(async () => { root.unmount(); });
   });
+
+  it("Columns and Rework are real switches: role, aria-checked, locked ones disabled, local state only", async () => {
+    const root = createRoot(host);
+    await act(async () => { root.render(createElement(JobsPreview)); });
+    await act(async () => { (host.querySelector("[data-testid=columns-trigger]") as HTMLElement).click(); });
+    const sw = (id: string) => document.querySelector(`[data-testid=${id}]`) as HTMLElement;
+    const all = document.querySelectorAll("[data-testid=columns-panel] [role=switch]");
+    expect(all).toHaveLength(14);
+    expect(sw("col-ref").getAttribute("aria-checked")).toBe("true");
+    expect(sw("col-ref").getAttribute("aria-disabled")).toBe("true");
+    await act(async () => { sw("col-ref").click(); });
+    expect(sw("col-ref").getAttribute("aria-checked")).toBe("true");
+    const headers = () => host.querySelectorAll("thead th").length;
+    const before = headers();
+    await act(async () => { sw("col-specification").click(); });
+    expect(sw("col-specification").getAttribute("aria-checked")).toBe("false");
+    expect(headers()).toBe(before - 1);
+    expect(document.querySelector("[data-testid=columns-panel]")).not.toBeNull();
+    await act(async () => { sw("col-specification").click(); });
+    expect(headers()).toBe(before);
+    expect(window.localStorage.getItem("jobs-preview:columns")).toBeNull();
+    await act(async () => { document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); });
+    const rework = host.querySelector("[data-testid=tag-rework]") as HTMLElement;
+    expect(rework.getAttribute("role")).toBe("switch");
+    await act(async () => { rework.click(); });
+    expect(rework.getAttribute("aria-checked")).toBe("true");
+    expect(host.querySelectorAll("tbody tr[data-job]")).toHaveLength(2);
+    await act(async () => { root.unmount(); });
+  });
 });

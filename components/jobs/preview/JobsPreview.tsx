@@ -381,6 +381,18 @@ function Chip({ pressed, onClick, children, testId, tag, dim }: { pressed: boole
   return <button type="button" aria-pressed={pressed} aria-disabled={dim || undefined} data-testid={testId} className={cx(s.chip, tag && s.chipTag, dim && s.chipDim)} onClick={dim ? undefined : onClick}>{pressed ? <Check /> : null}{children}</button>;
 }
 
+/** A real switch (role="switch", aria-checked): label left, track right, whole row is the hit area (at least 44px). Local state only. */
+function Switch({ checked, onChange, label, note, disabled, testId, compact, id }: { checked: boolean; onChange: (next: boolean) => void; label: ReactNode; note?: string; disabled?: string; testId?: string; compact?: boolean; id?: string }) {
+  return (
+    <button type="button" role="switch" id={id} aria-checked={checked} aria-disabled={disabled ? true : undefined} title={disabled} data-testid={testId} className={cx(s.sw, compact && s.swCompact)}
+      onClick={() => { if (!disabled) onChange(!checked); }}>
+      <span className={s.swLabel}>{label}</span>
+      {note ? <span className={s.swNote}>{note}</span> : null}
+      <span className={s.swTrack} aria-hidden><span className={s.swThumb} /></span>
+    </button>
+  );
+}
+
 function Checkbox({ checked, onChange, label, testId }: { checked: boolean; onChange: () => void; label: string; testId?: string }) {
   return <input type="checkbox" className={s.check} checked={checked} onChange={onChange} aria-label={label} data-testid={testId} />;
 }
@@ -705,7 +717,7 @@ function Filters({ f, counts, dispatch, dim }: { f: Filters; counts: Counts; dis
         {due.map((d) => <Chip dim={dim} key={d.v} pressed={f.due === d.v} testId={`due-${d.v}`} onClick={() => dispatch({ t: "due", v: d.v })}>{d.label}</Chip>)}
       </FilterRow>
       <FilterRow label="Tag" note="Running jobs put back after a failed inspection (or for replacements)">
-        <Chip dim={dim} tag pressed={f.rework} testId="tag-rework" onClick={() => dispatch({ t: "rework" })}>Rework ({counts.rework})</Chip>
+        <Switch compact checked={f.rework} disabled={dim ? "Loading" : undefined} testId="tag-rework" label={`Rework (${n(counts.rework)})`} onChange={() => dispatch({ t: "rework" })} />
       </FilterRow>
       <FilterRow label="Stage">
         {STAGES.map((g) => <Chip dim={dim} key={g} pressed={f.stages.includes(g)} testId={`stage-${g.toLowerCase()}`} onClick={() => dispatch({ t: "stage", v: g })}>{g}</Chip>)}
@@ -717,22 +729,21 @@ function Filters({ f, counts, dispatch, dim }: { f: Filters; counts: Counts; dis
 function ColumnsMenu({ hidden, role, dispatch }: { hidden: ColumnKey[]; role: Role; dispatch: (a: Act) => void }) {
   const own = role === "workshop" || role === "viewer";
   return (
-    <DropdownMenu.Root>
-      <DropdownMenu.Trigger asChild><button type="button" className={cx(s.btn, s.btnSecondary)} data-testid="columns-trigger">Columns<Chevron down /></button></DropdownMenu.Trigger>
-      <DropdownMenu.Portal>
-        <DropdownMenu.Content className={s.menu} align="end" sideOffset={6}>
-          <DropdownMenu.Label className={s.menuLabel}>Job Board columns</DropdownMenu.Label>
+    <Popover.Root>
+      <Popover.Trigger asChild><button type="button" className={cx(s.btn, s.btnSecondary)} data-testid="columns-trigger">Columns<Chevron down /></button></Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content className={cx(s.pop, s.colsPop)} align="end" sideOffset={6} aria-label="Job Board columns" data-testid="columns-panel">
+          <p className={s.popTitle}>Job Board columns</p>
           {COLUMNS.map((c) => (
-            <DropdownMenu.CheckboxItem key={c.key} className={s.menuItem} checked={c.locked ? true : !hidden.includes(c.key)} disabled={c.locked} onSelect={(e) => e.preventDefault()} onCheckedChange={() => dispatch({ t: "toggleColumn", v: c.key })}>
-              <DropdownMenu.ItemIndicator className={s.menuTick}><Check /></DropdownMenu.ItemIndicator>{c.label}{c.locked ? <span className={s.menuLock}>Always on</span> : null}
-            </DropdownMenu.CheckboxItem>
+            <Switch key={c.key} checked={c.locked ? true : !hidden.includes(c.key)} label={c.label} note={c.locked ? "Always on" : undefined} disabled={c.locked ? `${c.label} is always shown` : undefined}
+              testId={`col-${c.key}`} onChange={() => dispatch({ t: "toggleColumn", v: c.key })} />
           ))}
-          <DropdownMenu.Separator className={s.menuSep} />
-          <DropdownMenu.Item className={s.menuItem} onSelect={(e) => { e.preventDefault(); dispatch({ t: "resetColumns" }); }}>{own ? "Reset to the company view" : "Reset to default (show all columns)"}</DropdownMenu.Item>
+          <div className={s.menuSep} />
+          <button type="button" className={s.popItem} onClick={() => dispatch({ t: "resetColumns" })}>{own ? "Reset to the company view" : "Reset to default (show all columns)"}</button>
           <p className={s.menuNote}>{own ? "Your own view on this device only. Everyone else, and the company setting, are not changed." : "Changes apply to everyone in this company."} Preview: nothing is saved.</p>
-        </DropdownMenu.Content>
-      </DropdownMenu.Portal>
-    </DropdownMenu.Root>
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
   );
 }
 
@@ -810,7 +821,7 @@ function Dialogs({ dlg, close, st, dispatch, vis }: { dlg: DialogState | null; c
       <Modal open title="New job" onClose={close} footer={<>{cancel}<button type="button" className={cx(s.btn, s.btnPrimary)} onClick={create}>Create job</button></>}>
         <label className={s.field2}><span>Customer</span><input className={s.input} value={form.customer} disabled={form.internal} onChange={(e) => setForm({ ...form, customer: e.target.value })} /></label>
         <label className={s.field2}><span>Description</span><input className={s.input} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></label>
-        <label className={s.checkLine}><input type="checkbox" className={s.checkNative} checked={form.internal} onChange={(e) => setForm({ ...form, internal: e.target.checked })} /> Internal job (no customer)</label>
+        <Switch checked={form.internal} label="Internal job (no customer)" testId="newjob-internal" onChange={(v) => setForm({ ...form, internal: v })} />
         {formError ? <p role="alert" className={s.formError}>{formError}</p> : null}
       </Modal>
     );
