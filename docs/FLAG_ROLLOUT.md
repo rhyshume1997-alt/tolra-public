@@ -98,6 +98,7 @@ Common steps for every flag (do not skip):
   - Office and workshop: a page switched off for the person (Admin > Users > Page access, or the company menu) is skipped or named as off, never walked to.
   - Skip tour, then reload: the tour does not come back, and a Replay tour button shows on the Dashboard (only there). Replay starts at step 1.
   - Open the note on a step: it explains the step and closes again on the next step.
+- **Game look:** a third, separate company marker `tooly-game-tour:on` switches the full-screen look on (dimmed page, spotlight, Tooly and a speech bubble). It does not make a tour appear on its own. Check on Preview with the env flag, a view marker and this marker: the page is dimmed and a click on it does nothing, the spotlight follows each step, the bubble moves clear of the thing pointed at, Skip tour and Replay still work, and with the marker removed the small card comes back.
 - **Approve before on:** Rhys (the wording is staff-facing, and turning it on is a Vercel env change plus a company setting).
 
 ---
