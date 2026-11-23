@@ -11,6 +11,8 @@
  * Added (v3, everything between the segmented control block and the v4 marker): danger and pressed buttons, menu hints, table variants, panel, callout, disclosure, list rows, form group, error summary, date range, link tile, large fields, compact empty state.
  * Added (v4, craft pass, additive): a type scale (--ui-fs-*, --ui-lh-*, --ui-fw-*, --ui-ls-*) applied to every component, three elevation levels (--ui-elev-*), motion tokens, PageHeader, Tabs, PreviewBar, StackedRows, StatusBadge text mode and
  * info-neutral tone, Panel nested and flat variants, ScrollTable flush. Defaults whose look changed on purpose are listed in components/ui/premium/index.ts.
+ * Added (v5, gaps found by the module builders, additive; the block sits before the reduced motion block): 48 px wide segments and a scrolling phone track, PreviewBar wrap and shortLabel, one-row SelectionBar on phones, danger menu item, multi-line dialog text and the danger dialog edge, pinned first N columns, attention and clear
+ * disclosure variants, StatTile control slot, 48 px icon button, removable chip, filters popover, and overflow guards for bars and slots.
  * Forbidden here: gradients (other than the three small functional ones), backdrop-filter or blur (no glass), decorative icons, oversized cards.
  */
 
@@ -631,6 +633,122 @@
 .stackNarrow { display: none; }
 @media (max-width: 640px) { .stackNarrow { display: block; } .tableNarrowHidden { display: none; } }
 @media (hover: hover) and (pointer: fine) { .stackRow[data-link="true"]:hover { background: var(--ui-surface-2); } }
+
+/* ====================================================================================================================
+   v5 additions (gaps found by the module builders). Additive, gradient free, token driven. Visual defaults changed on purpose: segments are at least 48 px wide; under 640 px a
+   segmented control scrolls inside itself instead of wrapping and the PreviewBar text wraps instead of being cut; under 640 px an active SelectionBar is one row.
+   ==================================================================================================================== */
+
+/* ---------- overflow guard (the 15 px sideways scroll at 390 px): a bar or slot that cannot shrink must still never be wider than its parent. The PreviewBar was the cause: its nowrap text and a flex: none slot gave it a minimum width of about 389 px, wider than a phone with a scrollbar (375 px). ---------- */
+.pbar { min-width: 0; max-width: 100%; }
+.pbarSlot, .phActions, .rowTrailing, .calloutAction { max-width: 100%; }
+
+/* ---------- segmented control: every segment is at least 48 px wide (so "All", "List", "3" are real targets); the scroller wrapper is invisible (display: contents) above 640 px ---------- */
+.segBtn { min-width: 48px; }
+.segScroll { display: contents; }
+@media (max-width: 640px) {
+  /* one row that scrolls inside the track: no lone segment on a second row. The wrapper is 48 px tall (8 px padding above and below, pulled back by the same margin) so the 48 px hit area is never clipped by the scroll box. */
+  .seg { flex-wrap: nowrap; min-width: 0; padding-left: 0; padding-right: 0; } /* min-width 0: the scroll row must never push a flex or grid parent wider than the screen */
+  .segScroll { position: relative; display: flex; align-items: center; gap: 2px; flex: 0 1 auto; min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; padding: 8px 4px; margin: -8px 0; }
+  .segScroll::-webkit-scrollbar { display: none; }
+  .segSm .segScroll { padding-top: 12px; padding-bottom: 12px; margin: -12px 0; }
+  .segScroll .segBtn { flex: 0 0 auto; }
+}
+
+/* ---------- preview bar: under 640 px the label wraps (two short lines) instead of being cut; shortLabel swaps in a shorter visible text and keeps the full text for assistive technology ---------- */
+.pbarText { position: relative; }
+.pbarShort { display: none; }
+@media (max-width: 640px) {
+  .pbar { height: auto; min-height: 28px; padding-top: 4px; padding-bottom: 4px; }
+  .pbarText { overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; line-height: 16px; }
+  .pbarHasShort .pbarFull { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  .pbarHasShort .pbarShort { display: inline; }
+}
+
+/* ---------- selection bar under 640 px: an active bar is ONE row. The actions scroll inside it (16 px apart; a focused button scrolls into view); with the compact prop the row is count + one primary + a More menu instead ---------- */
+.barCompact { display: none; }
+@media (max-width: 640px) {
+  .barOn { flex-wrap: nowrap; gap: 12px; }
+  .barOn .barCount { flex: 0 1 auto; min-width: 0; }
+  .barOn .barSpacer { display: none; }
+  .barOn .barActions { flex: 1 1 0; min-width: 0; contain: inline-size; flex-wrap: nowrap; justify-content: flex-start; gap: 16px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; padding: 8px 12px 8px 2px; margin: -8px -12px -8px 0; }
+  .barOn .barActions::-webkit-scrollbar { display: none; }
+  .barOn .barActions > * { flex: none; }
+  .barOn[data-compact="true"] .barActions { display: none; }
+  .barOn[data-compact="true"] .barCompact { display: flex; flex: 1 1 0; min-width: 0; align-items: center; justify-content: flex-end; gap: 16px; }
+}
+
+/* ---------- menu: a danger item (red words, a red tint on hover and focus; the label says what is destroyed, so colour is never the only signal) ---------- */
+.menuItemDanger { color: var(--ui-danger); font-weight: 500; }
+.menuItem.menuItemDanger:focus-visible { background: #fbe3e3; }
+.menuItemDanger[aria-disabled="true"] { color: var(--ui-muted); font-weight: 400; }
+@media (hover: hover) and (pointer: fine) { .menuItem.menuItemDanger:hover:not([aria-disabled="true"]) { background: #fbe3e3; } }
+
+/* ---------- dialog: multi-line description (a line break in the text is kept) and the danger convention ---------- */
+.dialogDesc { white-space: pre-line; overflow-wrap: anywhere; }
+.dialogDanger { box-shadow: inset 0 3px 0 var(--ui-danger), var(--ui-elev-modal); }
+
+/* ---------- scroll table: pin the first N columns (N = 0 to 4; widths are measured and published as --ui-pin-1 to --ui-pin-3). Only the LAST pinned column carries the scroll shadow, and only once scrolled. ---------- */
+.tableWrap[data-pin-first="0"] .table td:first-child { position: static; }
+.tableWrap[data-pin-first="0"] .table th:first-child { left: auto; z-index: 3; }
+.tableWrap[data-pin-first="0"] .table :is(th, td):first-child::after { content: none; }
+.tableWrap:is([data-pin-first="2"], [data-pin-first="3"], [data-pin-first="4"]) .table :is(th, td):first-child::after { content: none; }
+.tableWrap:is([data-pin-first="2"], [data-pin-first="3"], [data-pin-first="4"]) .table :is(th, td):nth-child(2):not([colspan]) { position: sticky; left: var(--ui-pin-1, 0px); z-index: 2; }
+.tableWrap:is([data-pin-first="3"], [data-pin-first="4"]) .table :is(th, td):nth-child(3):not([colspan]) { position: sticky; left: var(--ui-pin-2, 0px); z-index: 2; }
+.tableWrap[data-pin-first="4"] .table :is(th, td):nth-child(4):not([colspan]) { position: sticky; left: var(--ui-pin-3, 0px); z-index: 2; }
+.tableWrap[data-pin-first="2"] .table thead th:nth-child(-n+2):not([colspan]), .tableWrap[data-pin-first="3"] .table thead th:nth-child(-n+3):not([colspan]), .tableWrap[data-pin-first="4"] .table thead th:nth-child(-n+4):not([colspan]) { z-index: 4; }
+.tableWrap[data-pin-first="2"] .table :is(th, td):nth-child(2):not([colspan])::after,
+.tableWrap[data-pin-first="3"] .table :is(th, td):nth-child(3):not([colspan])::after,
+.tableWrap[data-pin-first="4"] .table :is(th, td):nth-child(4):not([colspan])::after { content: ""; position: absolute; top: 0; right: -9px; bottom: 0; width: 9px; pointer-events: none; opacity: 0; box-shadow: inset 8px 0 8px -8px rgba(14, 23, 38, 0.2); transition: opacity var(--ui-t-base) var(--ui-ease-out); }
+.tableWrap[data-scrolled="true"][data-pin-first="2"] .table :is(th, td):nth-child(2):not([colspan])::after,
+.tableWrap[data-scrolled="true"][data-pin-first="3"] .table :is(th, td):nth-child(3):not([colspan])::after,
+.tableWrap[data-scrolled="true"][data-pin-first="4"] .table :is(th, td):nth-child(4):not([colspan])::after { opacity: 1; }
+/* the pinned columns would fill most of the screen: pin nothing (no sticky, no shadow) rather than leave no room to scroll */
+.tableWrap[data-pin-fit="false"] .table td:nth-child(-n+4) { position: static; }
+.tableWrap[data-pin-fit="false"] .table th:nth-child(-n+4) { left: auto; z-index: 3; }
+.tableWrap[data-pin-fit="false"] .table :is(th, td):nth-child(-n+4)::after { content: none; }
+
+/* ---------- disclosure: summary variants. attention = amber tint with a 3 px bar ("3 things need attention"), clear = green ("Nothing needs attention"). The words carry the meaning; the tint repeats it. ---------- */
+.discAttention { background: var(--ui-warn-soft); color: #4d3200; box-shadow: inset 3px 0 0 #d99a06, inset 0 0 0 1px rgba(217, 154, 6, 0.4); }
+.discClear { background: var(--ui-ok-soft); color: #12482a; box-shadow: inset 3px 0 0 #1f8a4c, inset 0 0 0 1px rgba(31, 138, 76, 0.28); }
+:is(.discAttention, .discClear) > .discSummary { color: inherit; }
+:is(.discAttention, .discClear) > .discSummary .discChevron { color: currentColor; }
+.discAttention[open] > .discSummary { box-shadow: inset 0 -1px 0 rgba(217, 154, 6, 0.4); }
+.discClear[open] > .discSummary { box-shadow: inset 0 -1px 0 rgba(31, 138, 76, 0.28); }
+:is(.discAttention, .discClear) > .discBody { color: var(--ui-ink); }
+@media (hover: hover) and (pointer: fine) { :is(.discAttention, .discClear) > .discSummary:hover { background: rgba(14, 23, 38, 0.04); } }
+
+/* ---------- stat tile: a slot for one inline control (for example an Hours / Days toggle) on the label row; it wraps under the label when the tile is narrow ---------- */
+.tileHead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; width: 100%; }
+.tileHead .tileLabel { flex: 1 1 auto; min-width: 0; }
+.tileControl { flex: none; max-width: 100%; }
+
+/* ---------- button: a 48 px icon-only size (needs an aria-label; use it for an expander or a close), and an expander chevron that turns ---------- */
+.sizeIcon { width: 48px; height: 48px; padding: 0; font-size: 14px; }
+.sizeIcon::after { inset: 0; }
+.expChevron { flex: none; transition: transform var(--ui-t-base) var(--ui-ease-in-out); }
+.btn[aria-expanded="true"] .expChevron { transform: rotate(180deg); }
+
+/* ---------- removable chip: 32 px, a word and a cross, 48 px hit area; a row of them keeps 16 px between wrapped rows ---------- */
+.chipRow { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 8px; margin: 0; padding: 0; list-style: none; }
+.chipX {
+  position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 48px; height: var(--ui-h-sm); padding: 0 10px 0 12px; border: 0; border-radius: var(--ui-radius-sm);
+  background: #fff; color: var(--ui-ink); font-size: 13px; font-weight: 500; white-space: nowrap;
+  box-shadow: inset 0 1px 0 #fff, inset 0 0 0 1px var(--ui-line-strong), 0 1px 1px rgba(14, 23, 38, 0.05);
+  transition: background-color var(--ui-t-base) var(--ui-ease-out), box-shadow var(--ui-t-base) var(--ui-ease-out), transform var(--ui-t-fast) var(--ui-ease-out);
+}
+.chipX::after { content: ""; position: absolute; inset: -8px 0; }
+.chipX:active:not([disabled]) { transform: scale(var(--ui-press)); }
+.chipX[disabled] { opacity: 0.55; cursor: not-allowed; }
+.chipXMark { flex: none; color: var(--ui-ink-2); }
+@media (hover: hover) and (pointer: fine) { .chipX:hover:not([disabled]) { background: var(--ui-surface-2); box-shadow: inset 0 1px 0 #fff, inset 0 0 0 1px var(--ui-line-hover), 0 1px 2px rgba(14, 23, 38, 0.07); } }
+
+/* ---------- filters popover: the trigger with its count, Clear filters, and the row of active chips under them ---------- */
+.fp { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 8px; min-width: 0; }
+.fpChips { flex: 1 1 100%; min-width: 0; }
+.fpBody { display: grid; gap: 16px; padding: 6px 0 10px; }
+.fpGroup { display: grid; gap: 8px; min-width: 0; border: 0; margin: 0; padding: 0; }
+.fpGroupLabel { margin: 0; padding: 0; color: var(--ui-ink-2); font-size: var(--ui-fs-label); line-height: var(--ui-lh-label); font-weight: 600; }
 
 /* ---------- reduced motion: movement is removed, a short opacity fade stays on the layers that appear and disappear ---------- */
 @media (prefers-reduced-motion: reduce) {
