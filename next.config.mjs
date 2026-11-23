@@ -16,7 +16,7 @@ const supabase = supabaseOrigins();
 // 'wasm-unsafe-eval' lets @react-pdf/renderer compile its layout engine (WebAssembly) without allowing JS eval.
 // 'unsafe-eval' is only added for the dev server (React Refresh).
 /** The policy for app pages. Static invitation responses use the restrictive policy below. */
-const policy = (formAction) => [
+const policy = (formAction, previewFrames = false) => [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${isProd ? "" : " 'unsafe-eval'"}`,
   "style-src 'self' 'unsafe-inline'",
@@ -27,11 +27,17 @@ const policy = (formAction) => [
   "base-uri 'self'",
   `form-action ${formAction}`,
   "object-src 'none'",
+  // Only the Settings page: its Document designs preview shows a generated PDF (a blob: URL) in a frame, and without this Chrome refuses the
+  // frame (default-src 'self' covers frames). Nothing else changes: object-src stays 'none' and default-src stays 'self'. Every other page
+  // keeps no frame-src of its own. Checked in Chromium: with this alone the PDF viewer opens.
+  ...(previewFrames ? ["frame-src blob:"] : []),
   // Installable app: the service worker (/sw.js) and the per-company manifest are same-origin only.
   "worker-src 'self'",
   "manifest-src 'self'",
 ].join("; ");
 const csp = policy("'self'");
+/** Settings only (the Document designs preview): the global policy plus frame-src blob:, nothing else. */
+const settingsCsp = policy("'self'", true);
 // The accountant's connect link (/api/integrations/invite/<22-character reference>): its Continue button is a form POST answered with a
 // redirect to Xero, and a browser checks form-action against the redirect target too. These self-contained pages have no scripts or
 // external resources: preserve the route's restrictive CSP and referrer policy when Next applies configured headers.
@@ -63,6 +69,7 @@ const nextConfig = {
         ],
       },
       // Later rule wins for the same key (Next documents this): every other header above still applies to this path.
+      { source: "/settings", headers: [{ key: "Content-Security-Policy", value: settingsCsp }] },
       {
         source: "/api/integrations/invite/:ref([A-Za-z0-9_-]{22})",
         headers: [

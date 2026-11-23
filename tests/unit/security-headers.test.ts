@@ -45,15 +45,15 @@ afterEach(() => vi.unstubAllEnvs());
 describe("next.config.mjs security headers (production)", () => {
   it("keeps global headers and scopes the accountant's restrictive headers to22-character invite references", async () => {
     const { rules, get } = await loadHeaders({ NODE_ENV: "production", supabaseUrl: SUPABASE_URL });
-    expect(rules.map((rule) => rule.source)).toEqual(["/(.*)", "/api/integrations/invite/:ref([A-Za-z0-9_-]{22})"]);
-    expect(rules[1].headers.map((header) => header.key)).toEqual(["Content-Security-Policy", "Referrer-Policy"]);
-    expect(rules[1].headers.find(header => header.key === "Referrer-Policy")?.value).toBe("no-referrer");
+    expect(rules.map((rule) => rule.source)).toEqual(["/(.*)", "/settings", "/api/integrations/invite/:ref([A-Za-z0-9_-]{22})"]);
+    expect(rules[2].headers.map((header) => header.key)).toEqual(["Content-Security-Policy", "Referrer-Policy"]);
+    expect(rules[2].headers.find(header => header.key === "Referrer-Policy")?.value).toBe("no-referrer");
     expect(get("Referrer-Policy")).toBe("strict-origin-when-cross-origin");
   });
 
   it("the accountant's static invite page forbids scripts and other resources but permits its inline style and Xero form redirect", async () => {
     const { rules, get } = await loadHeaders({ NODE_ENV: "production", supabaseUrl: SUPABASE_URL });
-    const invite = rules[1].headers.find(header => header.key === "Content-Security-Policy")?.value;
+    const invite = rules[2].headers.find(header => header.key === "Content-Security-Policy")?.value;
     expect(invite).not.toBe(get("Content-Security-Policy"));
     expect(invite).toBe("default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; form-action 'self' https://login.xero.com");
     expect(invite).not.toContain("script-src");
@@ -112,6 +112,31 @@ describe("next.config.mjs security headers (production)", () => {
     expect(csp.get("worker-src")).toEqual(["'self'"]);
     expect(csp.get("manifest-src")).toEqual(["'self'"]);
     for (const [name, sources] of csp) expect(sources, `${name} must not allow 'unsafe-eval'`).not.toContain("'unsafe-eval'");
+  });
+
+  it("CSP: the Settings page alone adds frame-src blob: (the Document designs PDF preview); every other directive is identical and object-src stays 'none'", async () => {
+    const { rules, csp } = await loadHeaders({ NODE_ENV: "production", supabaseUrl: SUPABASE_URL });
+    const parse = (value: string) => new Map(value.split(";").map((part) => part.trim()).filter(Boolean).map((part) => { const [name, ...sources] = part.split(/\s+/); return [name, sources] as const; }));
+    const settingsRule = rules.find((rule) => rule.source === "/settings");
+    expect(settingsRule?.headers.map((header) => header.key)).toEqual(["Content-Security-Policy"]);
+    const settings = parse(settingsRule!.headers[0].value);
+    // The whole app: no frame-src of its own (frames fall back to default-src 'self'), so a blob: frame is refused everywhere else.
+    expect(csp.has("frame-src")).toBe(false);
+    expect(csp.has("child-src")).toBe(false);
+    expect(settings.get("frame-src")).toEqual(["blob:"]);
+    expect(settings.get("object-src")).toEqual(["'none'"]);
+    expect(settings.get("default-src")).toEqual(["'self'"]);
+    const without = new Map([...settings].filter(([name]) => name !== "frame-src"));
+    expect(without).toEqual(csp);
+    expect(settings.get("frame-ancestors")).toEqual(["'none'"]);
+    expect(settings.get("connect-src")).toEqual(csp.get("connect-src"));
+  });
+
+  it("CSP: the Settings policy is the same in development except for the dev-only unsafe-eval", async () => {
+    const { rules, csp } = await loadHeaders({ NODE_ENV: "development", supabaseUrl: SUPABASE_URL });
+    const settings = rules.find((rule) => rule.source === "/settings")!.headers[0].value;
+    expect(settings).toContain("frame-src blob:");
+    expect(settings.replace("; frame-src blob:", "")).toBe([...csp].map(([name, sources]) => [name, ...sources].join(" ")).join("; "));
   });
 
   it("CSP: 'unsafe-inline' is the only weakness and does not grow (L10)", async () => {
