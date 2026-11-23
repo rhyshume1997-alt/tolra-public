@@ -3,6 +3,8 @@
  * Output: three honest panels (min 160 px high). Failed has a red bar and role="alert"; Loading is role="status" with aria-busy and a shimmer
  * that stops under reduced motion; Empty carries one next step.
  * v2: EmptyState and FailedState take headingLevel (2 to 6, default 3 = the old output) so a page can match its own outline and pass the heading-order check.
+ * v3: EmptyState takes compact (no 160 px minimum, 16 px padding) for a panel that sits inside another one; without it the output is exactly as before.
+ * v4: titles are the card style of the type scale (15/22, weight 600) and text is 14/20; a compact EmptyState draws no card of its own (no ring or shadow), because it sits inside another card.
  * Must not change: they show no numbers and no sample data, and FailedState only calls onRetry: it never pretends a retry worked.
  * A page showing one of these must hide or zero its own counters so the page never contradicts itself.
  */
@@ -14,10 +16,10 @@ import { cx, premiumTokens } from "./tokens";
 export type HeadingLevel = 2 | 3 | 4 | 5 | 6;
 const tag = (n: HeadingLevel) => `h${n}` as "h2" | "h3" | "h4" | "h5" | "h6";
 
-export function EmptyState({ title, detail, action, headingLevel = 3 }: { title: string; detail?: string; action?: ReactNode; headingLevel?: HeadingLevel }) {
+export function EmptyState({ title, detail, action, headingLevel = 3, compact }: { title: string; detail?: string; action?: ReactNode; headingLevel?: HeadingLevel; /** v3: no minimum height. */ compact?: boolean }) {
   const H = tag(headingLevel);
   return (
-    <section className={cx(premiumTokens, styles.state, styles.stateEmpty)} aria-label={title}>
+    <section className={cx(premiumTokens, styles.state, styles.stateEmpty, compact && styles.stateCompact)} aria-label={title}>
       <H className={styles.stateTitle}>{title}</H>
       {detail ? <p className={styles.stateText}>{detail}</p> : null}
       {action}

@@ -6,6 +6,7 @@
  * different way to look at the same data). kind "tabs" is role=tablist with role=tab and aria-selected (use only when each option shows its own panel;
  * give each option controls="panel id"). Roving tabindex: Tab enters on the selected segment, Left/Up and Right/Down move AND select, Home/End jump,
  * disabled segments stay in view (aria-disabled, with disabledReason as a tooltip) but are skipped by the arrows. 48 px hit area by pseudo element.
+ * v3: the track wraps instead of scrolling (visible overflow, so the 48 px hit area is never clipped under 640 px); a wrapped second row sits 16 px lower so hit areas do not overlap.
  * Must not change: it is controlled (the caller owns value); it never fetches or saves anything; no icons; names stay words (never colour alone).
  */
 import { useRef, type ReactNode } from "react";
