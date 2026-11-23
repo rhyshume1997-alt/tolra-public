@@ -1,0 +1,138 @@
+/*
+ * BOUNDARY (RFQ module 3, PREVIEW ONLY). Inputs: the class names used by components/rfq/preview/RfqPreview.tsx, and the --ui-* tokens that
+ * components/ui/premium defines on its token class (applied to the page root, so no value is repeated here). Output: the look of the RFQ Control Centre
+ * preview only (page layout, filter panel, the RFQ list rows, the e-mail link panels, the sheets' content). Must not change: no global selectors,
+ * nothing outside this module, no business rules. Control heights stay on the 32 / 40 / 48 px scale and every row control keeps a 48 px hit area (the shared
+ * Button draws it). Motion is 120 to 200 ms, opacity, colour and transform only, all of it off under prefers-reduced-motion.
+ * Forbidden: gradients, blur or glass, decorative icons.
+ */
+
+.root { display: flex; flex-direction: column; gap: 16px; max-width: 1720px; padding-bottom: 24px; font-feature-settings: "kern", "liga"; }
+.srOnly { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* ---------- header ---------- */
+.head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 16px; }
+.titleBlock { min-width: 0; }
+.titleLine { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.title { margin: 0; font-size: 28px; line-height: 34px; font-weight: 650; letter-spacing: -0.022em; color: var(--ui-ink); }
+.previewTag { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 6px; background: #fff8e1; color: #6b4300; box-shadow: inset 0 0 0 1px #e6c25a; font-size: 12px; font-weight: 600; letter-spacing: 0.005em; }
+.subtitle { margin: 2px 0 0; color: var(--ui-ink-2); font-size: 14px; }
+.headControls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+
+/* ---------- preview dock (inside the shared popover) ---------- */
+.dock { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding-bottom: 8px; max-width: 320px; }
+.dockNote { margin: 0 0 4px; color: var(--ui-muted); font-size: 12.5px; line-height: 17px; }
+.dockLabel { margin: 6px 0 0; color: var(--ui-ink-2); font-size: 12px; font-weight: 650; }
+.dockStates { display: flex; flex-direction: column; gap: 4px; width: 100%; margin-bottom: 6px; }
+.dockBtn { position: relative; height: 32px; padding: 0 10px; border: 0; border-radius: 8px; background: #fff; text-align: left; font-size: 13px; font-weight: 500; box-shadow: inset 0 0 0 1px var(--ui-line-strong); transition: background-color var(--ui-t-fast) var(--ui-ease); }
+.dockBtn::after { content: ""; position: absolute; inset: -8px 0; }
+.dockBtn:hover { background: var(--ui-surface-2); }
+.dockBtn[aria-pressed="true"] { background: var(--ui-brand); color: var(--ui-on-brand); font-weight: 600; box-shadow: var(--ui-inset-light), var(--ui-inset-dark); }
+.colScope { margin: 0 0 4px; color: var(--ui-muted); font-size: 12.5px; line-height: 17px; max-width: 260px; }
+.colLocked { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; margin: 0; color: var(--ui-ink); font-size: 13.5px; font-weight: 550; }
+.colLocked span:last-child { color: var(--ui-muted); font-size: 12.5px; font-weight: 500; }
+.colReset { padding: 6px 0 4px; }
+
+/* ---------- tiles (three across, down to a phone) ---------- */
+.root .tiles3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.root .tileFlat { min-height: 64px; padding: 10px 16px 8px; }
+.root .tileFlat > span:nth-child(2) { margin-top: 0; }
+
+/* ---------- filter panel ---------- */
+.panel { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 32px; padding: 10px 16px; border-radius: var(--ui-radius-lg); background: #fff; box-shadow: 0 0 0 1px var(--ui-line), var(--ui-shadow-1); }
+.panelRow { display: flex; align-items: center; gap: 12px; min-width: 0; }
+/* the shared chip draws a 44 px hit area; raised to 48 here (and the wrapped rows kept 16 px apart so neighbours never overlap): promote to the shared chip */
+.panel [role="group"] { row-gap: 16px; }
+.panel button[aria-pressed]::after { inset: -8px 0; }
+.panelLabel { color: var(--ui-ink-2); font-size: 12.5px; font-weight: 650; }
+.segFlow { max-width: 100%; }
+.notice { flex: 1 0 100%; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 8px 8px 8px 12px; border-radius: var(--ui-radius-sm); background: var(--ui-surface-2); box-shadow: inset 3px 0 0 var(--ui-brand), inset 0 0 0 1px var(--ui-line); font-size: 13.5px; }
+.notice p { margin: 0; }
+.warnNote { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 8px 8px 8px 14px; border-radius: var(--ui-radius-sm); background: var(--ui-warn-soft); box-shadow: inset 3px 0 0 #d99a06, inset 0 0 0 1px rgba(217, 154, 6, 0.4); color: #4d3200; font-size: 13.5px; }
+.warnNote p { margin: 0; }
+
+/* ---------- the RFQ list ---------- */
+.list { margin: 0; padding: 0; list-style: none; border-radius: var(--ui-radius-lg); background: #fff; box-shadow: 0 0 0 1px var(--ui-line), var(--ui-shadow-1); overflow: hidden; }
+.row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px 24px; padding: 12px 16px 12px 20px;
+  box-shadow: inset 0 -1px 0 var(--ui-line); transition: background-color var(--ui-t-base) var(--ui-ease);
+}
+.row:last-child { box-shadow: none; }
+.row:hover { background: #fafbfd; }
+.rowMain { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.rowTitle { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-width: 0; }
+.customer { margin: 0; min-width: 0; font-size: 15px; line-height: 22px; font-weight: 650; letter-spacing: -0.003em; color: var(--ui-ink); overflow-wrap: anywhere; }
+.desc { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; max-width: 78ch; margin: 0; color: var(--ui-ink-2); font-size: 13.5px; line-height: 20px; }
+.meta { display: flex; flex-wrap: wrap; gap: 2px 20px; margin: 0; color: var(--ui-ink-2); font-size: 13px; }
+.meta b { color: var(--ui-ink); font-weight: 650; }
+.metaLabel { color: var(--ui-muted); font-weight: 550; }
+.rowActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px 6px; }
+.rowEmail { grid-column: 1 / -1; }
+
+/* ---------- e-mail link panels ---------- */
+.emailPanel { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px 10px 14px; border-radius: var(--ui-radius-sm); font-size: 13px; color: var(--ui-ink); }
+.emailLinked { background: var(--ui-ok-soft); box-shadow: inset 3px 0 0 #1f8a4c, inset 0 0 0 1px rgba(31, 138, 76, 0.22); }
+.emailSuggest { background: var(--ui-warn-soft); box-shadow: inset 3px 0 0 #d99a06, inset 0 0 0 1px rgba(217, 154, 6, 0.4); }
+.emailHead { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 0; }
+.emailHead b { font-weight: 650; }
+.headLink { margin-left: auto; }
+.emailFacts { margin: 0; color: var(--ui-ink-2); font-size: 12.5px; }
+.emailFacts b { color: var(--ui-ink); font-weight: 600; }
+.emailLinks { display: flex; flex-wrap: wrap; gap: 4px 20px; margin: 0; }
+.refChip { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 6px; background: #fff; box-shadow: inset 0 0 0 1px var(--ui-line-strong); font-size: 12.5px; font-weight: 650; }
+.suggestList { display: flex; flex-direction: column; gap: 16px; margin: 0; padding: 0; list-style: none; }
+.suggestItem { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 12px; }
+.suggestPo { font-weight: 600; }
+.snippet { min-width: 0; color: var(--ui-ink-2); font-size: 12.5px; }
+.textLink { position: relative; padding: 0; border: 0; background: none; color: var(--ui-accent); font-size: 13px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; transition: color var(--ui-t-fast) var(--ui-ease); }
+.textLink::after { content: ""; position: absolute; inset: -14px -6px; }
+.textLink:hover { color: var(--ui-brand); text-decoration-thickness: 2px; }
+
+/* ---------- denied ---------- */
+.denied { padding: 32px; border-radius: var(--ui-radius-lg); background: #fff; text-align: center; box-shadow: 0 0 0 1px var(--ui-line), var(--ui-shadow-1); }
+.deniedTitle { margin: 0; font-size: 24px; line-height: 30px; font-weight: 650; letter-spacing: -0.015em; }
+.deniedText { margin: 8px 0 0; color: var(--ui-ink-2); }
+.deniedNote { margin: 14px auto 0; max-width: 520px; color: var(--ui-muted); font-size: 12.5px; }
+
+/* ---------- sheet content ---------- */
+.sheetNote { margin: 0; color: var(--ui-muted); font-size: 12.5px; line-height: 17px; }
+.sheetStatus:empty { display: none; }
+.blockMsg { margin: 0; padding: 10px 12px; border-radius: var(--ui-radius-sm); background: var(--ui-danger-soft); color: #8f1f1f; box-shadow: inset 3px 0 0 var(--ui-danger), inset 0 0 0 1px rgba(179, 45, 45, 0.18); font-size: 13px; }
+.viewDesc { margin: 0; font-size: 14.5px; line-height: 22px; color: var(--ui-ink); }
+.facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 24px; margin: 0; padding: 16px; border-radius: var(--ui-radius-md); background: var(--ui-surface-2); box-shadow: inset 0 0 0 1px var(--ui-line); }
+.facts dt { color: var(--ui-muted); font-size: 12px; font-weight: 600; letter-spacing: 0.01em; }
+.facts dd { margin: 2px 0 0; font-weight: 600; font-size: 14px; }
+.factWide { grid-column: 1 / -1; }
+.factWide dd { font-weight: 500; }
+.breakWords { overflow-wrap: anywhere; }
+.chipsRow { display: flex; flex-wrap: wrap; gap: 12px 8px; padding: 2px 0 4px; }
+.tall { min-height: 176px; }
+.emailBody { max-height: 56vh; margin: 0; padding: 14px 16px; overflow: auto; border-radius: var(--ui-radius-md); background: var(--ui-surface-2); box-shadow: inset 0 0 0 1px var(--ui-line); font-family: inherit; font-size: 13.5px; line-height: 20px; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* ---------- form ---------- */
+.form { display: flex; flex-direction: column; gap: 14px; }
+.formGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; }
+.formGrid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 16px; }
+.summary { padding: 12px 14px 12px 16px; border-radius: var(--ui-radius-sm); background: var(--ui-danger-soft); box-shadow: inset 3px 0 0 var(--ui-danger), inset 0 0 0 1px rgba(179, 45, 45, 0.18); color: #6e1717; font-size: 13.5px; }
+.summary:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
+.summaryTitle { margin: 0 0 4px; font-weight: 650; }
+.summary ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 14px; }
+.summary .textLink { color: #8f1f1f; text-align: left; }
+
+/* ---------- responsive ---------- */
+@media (max-width: 1023px) { .row { grid-template-columns: minmax(0, 1fr); } .rowActions { justify-content: flex-start; } }
+@media (max-width: 767px) {
+  .title { font-size: 24px; line-height: 30px; }
+  .panelRow { flex-wrap: wrap; gap: 6px; }
+  .row { padding: 14px 14px 14px 16px; }
+  .facts, .formGrid, .formGrid3 { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .root .tileFlat { min-height: 72px; padding: 8px 10px; }
+  .segFlow { overflow: visible; flex-wrap: wrap; height: auto; gap: 16px 2px; padding: 8px 4px; }
+}
+
+/* ---------- reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .row, .dockBtn, .textLink { animation: none !important; transition: none !important; }
+}
