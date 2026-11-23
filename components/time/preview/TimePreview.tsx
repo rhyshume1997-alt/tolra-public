@@ -10,6 +10,8 @@
  * payroll export send nothing and change nothing. The "Who is looking" control only changes which controls are drawn; it grants nothing. NO Supabase, auth, offline outbox, route or storage call.
  * Run-time imports from lib/ are pure functions and constants only (time-sheet, time-day-flags, time-week types, time-payroll-export weeks, working-hours text, dates, org-settings list) and types.
  * The rules inline in components/time/day-sheet.tsx, week-review.tsx and time-dialogs.tsx are mirrored here and pinned to that source by tests/unit/timePreview.test.ts.
+ * v2 (owner-approved structure, STRUCTURAL-CHANGES-BRIEF items 4, 7, 10, 11): one PreviewBar strip; the generic sentence under the title is a tooltip and a screen-reader description of the title; each row has ONE primary action
+ * (Approve on a week row, with "Save suggested ticks" in its More menu when both apply; Correct on a job-time line, with Remove in its More menu) in a fixed-width actions column; the v4 type scale. No control was removed.
  * MUST NOT CHANGE: wording, roles, columns, buttons and who may use which control mirror today's pages (Admin, Office and Workshop may open Weekly hours, a Viewer may not; Workshop sees and clocks
  * only their own day and week; Admin and Office open anyone's; only Admin approves by default and only Admin corrects someone else's time). Hours only: no rates or pay. Do not wire this to
  * real data, a session or an action, do not add a control the real page lacks, keep every control on a 48 px hit area. The printable A4 sheets are NOT part of this preview (Print answers with a
@@ -18,8 +20,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
-  Button, Checkbox, EmptyState, FailedState, Field, Input, LoadingState, Popover, ScrollTable, SegmentedControl, Select, Sheet, StatTile, StatusBadge, Switch, Textarea,
-  ToastProvider, cx, premiumTokens, tabularNumbers, useToast,
+  Button, Checkbox, EmptyState, FailedState, Field, Input, LoadingState, Menu, PageHeader, Popover, PreviewBar, ScrollTable, SegmentedControl, Select, Sheet, StatTile, StatusBadge, Switch, Textarea,
+  ToastProvider, cx, premiumTokens, srOnly, tabularNumbers, typeScale, useToast,
 } from "@/components/ui/premium";
 import type { StatusTone } from "@/components/ui/premium";
 import { fmtDateText, fmtDateTime } from "@/lib/dates";
@@ -57,6 +59,8 @@ export const canEditDay = (r: Role, own: boolean) => own || r === "admin";
 /** WeekReview: canApprove = hasAnyRole(settings.approverRoles); the default is admin only. */
 export const canApprove = (r: Role, settings: TimeSettings = DEFAULT_TIME_SETTINGS) => settings.approverRoles.includes(r);
 export const ACTION_LABEL: Record<string, string> = { in: "Clock in", out: "Clock out", break_start: "Break start", break_end: "Break end", void: "Removed" };
+/** The page sentence under the title: generic, so it is the title's tooltip and screen-reader description, not a visible line. */
+export const TIME_INTRO = "Clock in and out, and see the hours worked each day and week.";
 export const REASON_MIN = 3;
 export const REASON_MAX = 500;
 export const reasonOk = (reason: string) => reason.trim().length >= REASON_MIN;
@@ -252,32 +256,29 @@ function Inner() {
 
   return (
     <div className={cx(premiumTokens, s.root)} data-testid="time-preview" data-role={role}>
-      <header className={s.head}>
-        <div>
-          <div className={s.titleLine}>
-            <h1 className={s.title}>{allowed ? "Weekly hours" : "Access Denied"}</h1>
-            <span className={s.previewTag} title="Everything on this screen is fictional sample data. Nothing is read from or saved to your account.">Preview, sample data, nothing is saved</span>
-            <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
-              <div className={s.dock}>
-                <p className={s.dockNote}>Not part of Tolra. Sample data; the preview clock starts at Mon 23/11/2026 10:30. Clock actions are drawn from local records only, nothing is granted and no request is made.</p>
-                <p className={s.dockLabel}>Who is looking (changes the drawing only)</p>
-                <SegmentedControl label="Role" value={role} options={ROLE_OPTIONS} size="sm" onChange={(v) => { setRole(v); setDlgState(null); toast.clear(); if (!seesEveryone(v)) setPerson(ME); }} />
-                <p className={s.dockLabel}>Screen state</p>
-                <div className={s.dockStates} role="group" aria-label="Screen state">
-                  {SCREENS.map((x) => <button key={x.v} type="button" aria-pressed={screen === x.v} className={s.dockBtn} onClick={() => pickScreen(x.v)}>{x.label}</button>)}
-                </div>
-                <p className={s.dockLabel}>Preview clock ({localTimeOf(new Date(simNow))})</p>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <Button size="sm" onClick={() => advance(15)} data-testid="adv-15">+15 min</Button>
-                  <Button size="sm" onClick={() => advance(60)} data-testid="adv-60">+1 h</Button>
-                </div>
-                <Button size="sm" variant="secondary" onClick={resetAll}>Reset preview</Button>
-              </div>
-            </Popover>
+      <PreviewBar data-testid="preview-bar" controls={
+        <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
+          <div className={s.dock}>
+            <p className={s.dockNote}>Not part of Tolra. Sample data; the preview clock starts at Mon 23/11/2026 10:30. Clock actions are drawn from local records only, nothing is granted and no request is made.</p>
+            <p className={s.dockLabel}>Who is looking (changes the drawing only)</p>
+            <SegmentedControl label="Role" value={role} options={ROLE_OPTIONS} size="sm" onChange={(v) => { setRole(v); setDlgState(null); toast.clear(); if (!seesEveryone(v)) setPerson(ME); }} />
+            <p className={s.dockLabel}>Screen state</p>
+            <div className={s.dockStates} role="group" aria-label="Screen state">
+              {SCREENS.map((x) => <button key={x.v} type="button" aria-pressed={screen === x.v} className={s.dockBtn} onClick={() => pickScreen(x.v)}>{x.label}</button>)}
+            </div>
+            <p className={s.dockLabel}>Preview clock ({localTimeOf(new Date(simNow))})</p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <Button size="sm" onClick={() => advance(15)} data-testid="adv-15">+15 min</Button>
+              <Button size="sm" onClick={() => advance(60)} data-testid="adv-60">+1 h</Button>
+            </div>
+            <Button size="sm" variant="secondary" onClick={resetAll}>Reset preview</Button>
           </div>
-          <p className={s.subtitle}>{allowed ? "Clock in and out, and see the hours worked each day and week." : "Redirecting you back to the dashboard."}</p>
-        </div>
-      </header>
+        </Popover>
+      } />
+      <PageHeader
+        title={<span title={allowed ? TIME_INTRO : undefined} data-testid="time-title">{allowed ? "Weekly hours" : "Access Denied"}</span>}
+        description={allowed ? <span className={srOnly}>{TIME_INTRO}</span> : "Redirecting you back to the dashboard."}
+      />
 
       {!allowed ? (
         <section className={s.panel}><div className={s.denied} data-testid="access-denied"><h2 className={s.panelTitle}>Access Denied</h2><p className={s.deniedNote}>Preview only: no redirect happens here. Weekly hours is for Admin, Office and Workshop; a Viewer is refused by the route check and sent to the dashboard.</p></div></section>
@@ -420,7 +421,7 @@ function TodayBody({ day, date, pid, own, isToday, role, clockedIn, onBreak, sin
           {own || seesEveryone(role) ? (
             <section className={s.panel} aria-labelledby="ticks-h" data-testid="day-flags-card">
               <div className={s.panelHead}>
-                <h3 id="ticks-h" className={s.panelTitle}>Day ticks</h3>
+                <h3 id="ticks-h" className={cx(typeScale.card, s.panelTitle)}>Day ticks</h3>
                 {!saved ? <Button size="sm" disabled={!editableDay} onClick={() => confirmTicks(pickFlags(ticks))} data-testid="day-flags-confirm">Confirm</Button> : null}
               </div>
               <div className={s.panelBody}>
@@ -435,7 +436,7 @@ function TodayBody({ day, date, pid, own, isToday, role, clockedIn, onBreak, sin
           ) : null}
 
           <section className={s.panel} aria-labelledby="rec-h">
-            <div className={s.panelHead}><h3 id="rec-h" className={s.panelTitle}>Clock in and out</h3>{canEdit ? <Button size="sm" onClick={() => setDlg({ kind: "clock", existing: null })} data-testid="add-missing">Add missing</Button> : null}</div>
+            <div className={s.panelHead}><h3 id="rec-h" className={cx(typeScale.card, s.panelTitle)}>Clock in and out</h3>{canEdit ? <Button size="sm" onClick={() => setDlg({ kind: "clock", existing: null })} data-testid="add-missing">Add missing</Button> : null}</div>
             <div className={s.panelBody}>
               {recs.length ? (
                 <ul className={s.recList} data-testid="clock-records">
@@ -457,7 +458,7 @@ function TodayBody({ day, date, pid, own, isToday, role, clockedIn, onBreak, sin
           </section>
 
           <section className={s.panel} aria-labelledby="jobs-h">
-            <div className={s.panelHead}><h3 id="jobs-h" className={s.panelTitle}>Jobs worked</h3>{canEdit ? <Button size="sm" onClick={() => setDlg({ kind: "labour", existing: null })} data-testid="add-time">Add time</Button> : null}</div>
+            <div className={s.panelHead}><h3 id="jobs-h" className={cx(typeScale.card, s.panelTitle)}>Jobs worked</h3>{canEdit ? <Button size="sm" onClick={() => setDlg({ kind: "labour", existing: null })} data-testid="add-time">Add time</Button> : null}</div>
             <div className={s.panelBody}>
               {showClock ? (
                 <div className={s.startRow}>
@@ -481,7 +482,7 @@ function TodayBody({ day, date, pid, own, isToday, role, clockedIn, onBreak, sin
                                 {canEdit ? (
                                   <span className={s.rowBtns}>
                                     <Button size="sm" variant="quiet" aria-label={`Correct job time for ${j?.job_no}`} onClick={() => setDlg({ kind: "labour", existing: x })}>Correct</Button>
-                                    <Button size="sm" variant="quiet" aria-label={`Remove job time for ${j?.job_no}`} onClick={() => setDlg({ kind: "remove", session: x })}>Remove</Button>
+                                    <Menu label="More" size="sm" variant="quiet" aria-label={`More actions for job time ${j?.job_no} ${clockTime(x.started_at, date)}`} items={[{ id: "remove", label: `Remove job time for ${j?.job_no}`, onSelect: () => setDlg({ kind: "remove", session: x }) }]} />
                                   </span>
                                 ) : null}
                               </div>
@@ -560,12 +561,22 @@ function WeekBody({ people, week, role, wide, isVisible, onOpenDay, onApprove, o
     <span><span style={{ color: p.state === "approved" ? "#14532d" : p.state === "changed_since_approval" ? "#6b4300" : undefined }}><StatusBadge tone={STATE_TONE[p.state]}>{WEEK_STATE_TEXT[p.state]}</StatusBadge></span>
       {p.approvedAt ? <span className={s.hint} style={{ display: "block", marginTop: 2 }}>{NAMES_WITH_ADMIN[p.approvedBy ?? ""] ?? UNKNOWN}, {fmtDateTime(p.approvedAt)}</span> : null}</span>
   );
-  const actions = (p: PersonWeekRow) => (
-    <span className={s.actions}>
-      {p.dayFlags.anySuggested && every ? <Button size="sm" onClick={() => onSaveSuggested(p.userId)} data-testid="save-suggested-ticks" aria-label={`Save suggested ticks for ${PEOPLE_NAMES[p.userId]}`}>Save suggested ticks</Button> : null}
-      {approver && p.state !== "approved" && !isFuture ? <Button size="sm" variant="primary" onClick={() => onApprove(p.userId)} data-testid="approve-week" aria-label={`Approve ${PEOPLE_NAMES[p.userId]}'s week`}>Approve</Button> : null}
-    </span>
-  );
+  /** ONE primary action per row: Approve when it applies (with "Save suggested ticks" in More when both apply); otherwise "Save suggested ticks" is the row's one action. */
+  const actions = (p: PersonWeekRow) => {
+    const who = PEOPLE_NAMES[p.userId];
+    const canApproveRow = approver && p.state !== "approved" && !isFuture;
+    const canSuggest = p.dayFlags.anySuggested && every;
+    return (
+      <span className={s.actions}>
+        {canApproveRow ? (
+          <>
+            <Button size="sm" variant="primary" onClick={() => onApprove(p.userId)} data-testid="approve-week" aria-label={`Approve ${who}'s week`}>Approve</Button>
+            {canSuggest ? <Menu label="More" size="sm" aria-label={`More actions for ${who}`} data-testid="week-more" items={[{ id: "suggested", label: "Save suggested ticks", onSelect: () => onSaveSuggested(p.userId) }]} /> : null}
+          </>
+        ) : canSuggest ? <Button size="sm" onClick={() => onSaveSuggested(p.userId)} data-testid="save-suggested-ticks" aria-label={`Save suggested ticks for ${who}`}>Save suggested ticks</Button> : null}
+      </span>
+    );
+  };
   return (
     <>
       <section className={cx(s.panel, s.tblWrap, s.tbl)} aria-label="The week per person" data-testid="week-table">
@@ -579,21 +590,21 @@ function WeekBody({ people, week, role, wide, isVisible, onOpenDay, onApprove, o
               <th scope="col" className="num">Paid</th>
               {isVisible("jobs") ? <th scope="col" className="num">On jobs</th> : null}
               {ticksOn ? <th scope="col">Day ticks</th> : null}
-              <th scope="col">Check</th><th scope="col">Approval</th><th scope="col"><span className={s.srOnly}>Actions</span></th>
+              <th scope="col">Check</th><th scope="col">Approval</th><th scope="col" className={s.actCol}><span className={s.srOnly}>Actions</span></th>
             </tr></thead>
             <tbody>
               {people.map((p) => (
                 <tr key={p.userId} data-testid={`week-row-${p.userId}`}>
-                  <td className="nm"><button type="button" className={s.personName} onClick={() => onOpenDay(p.userId, week)}>{PEOPLE_NAMES[p.userId]}</button></td>
+                  <td className={s.nm}><button type="button" className={s.personName} onClick={() => onOpenDay(p.userId, week)}>{PEOPLE_NAMES[p.userId]}</button></td>
                   {isVisible("days") ? <td className={cx(s.right, tabularNumbers)}>{p.week.daysWorked}</td> : null}
                   <td className={cx(s.right, tabularNumbers)}>{hm(p.week.attendance)}</td>
                   {isVisible("breaks") ? <td className={cx(s.right, tabularNumbers)}>{hmSigned(-p.week.breakDeduction)}</td> : null}
                   <td className={cx(s.right, tabularNumbers)} data-testid="week-paid"><b style={{ fontWeight: 650 }}>{hm(p.week.paid)}</b></td>
                   {isVisible("jobs") ? <td className={cx(s.right, tabularNumbers)}>{hm(p.week.labour)}</td> : null}
-                  {ticksOn ? <td className="tk" data-testid="week-day-flags"><DayTicksCell flags={p.dayFlags} /></td> : null}
-                  <td className="ck"><span className={s.cellWarn}>{p.week.flags.map((f) => FLAG_TEXT[f] ?? f).join("; ")}</span></td>
-                  <td className="ap" data-testid="week-state">{approval(p)}</td>
-                  <td>{actions(p)}</td>
+                  {ticksOn ? <td className={s.tk} data-testid="week-day-flags"><DayTicksCell flags={p.dayFlags} /></td> : null}
+                  <td className={s.ck}><span className={s.cellWarn}>{p.week.flags.map((f) => FLAG_TEXT[f] ?? f).join("; ")}</span></td>
+                  <td className={s.ap} data-testid="week-state">{approval(p)}</td>
+                  <td className={s.actCol}>{actions(p)}</td>
                 </tr>
               ))}
             </tbody>

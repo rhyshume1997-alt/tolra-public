@@ -12,6 +12,9 @@
  * Run-time imports from lib/ are the REAL pure functions (machine-schedule: finish, overlap, status, day plan, window maths; schedule-live: status card text, run bars; run-plan: unbooked run view;
  * machine-runs: live-use shapes and the paused warning; status-colours legend; org-settings: the real Show / hide list) and types. The rules that live inline in
  * app/(dashboard)/schedule/page.tsx are mirrored here and pinned to that source text by tests/unit/schedulePreview.test.ts.
+ * v2 (owner-approved structure, STRUCTURAL-CHANGES-BRIEF items 4, 8, 10, 11): day columns are at least 90 px wide and the timeline scrolls sideways in its own named region; every booking and run bar always shows its
+ * job number (cut short with an ellipsis, the full text is its title and accessible name); the machine card says "In use by ... since ..." once (the duplicated red in-use line is gone); one PreviewBar strip; the generic sentence
+ * under the title is a tooltip and a screen-reader description of the title; the v4 type scale. Nothing was removed.
  * MUST NOT CHANGE: wording, roles, columns, buttons and who may use which control mirror today's page (Admin, Office, Workshop and Viewer may open it; Admin and Office manage machines and
  * remove bookings; Workshop also books and updates; Viewer only looks; only Admin may book over another job). Do not wire this to real data, a session or an action, do not add a control
  * the real page lacks, keep every control on a 48 px hit area. Delete the four preview files (this component and its .module.css, app/(dashboard)/schedule/preview/page.tsx,
@@ -21,8 +24,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { CSSProperties, FormEvent } from "react";
 import {
-  Button, Checkbox, EmptyState, FailedState, Field, Input, LoadingState, Popover, ScrollTable, SegmentedControl, Select, Sheet, StatusBadge, Switch, Textarea,
-  ToastProvider, cx, premiumTokens, tabularNumbers, useToast,
+  Button, Checkbox, EmptyState, FailedState, Field, Input, LoadingState, PageHeader, Popover, PreviewBar, ScrollTable, SegmentedControl, Select, Sheet, StatusBadge, Switch, Textarea,
+  ToastProvider, cx, premiumTokens, srOnly, tabularNumbers, typeScale, useToast,
 } from "@/components/ui/premium";
 import type { StatusTone } from "@/components/ui/premium";
 import { fmtDate, fmtDateText, fmtDayDateTime } from "@/lib/dates";
@@ -202,6 +205,12 @@ const ROLE_OPTIONS = ROLES.map((r) => ({ value: r, label: titleCase(r) }));
 const SPANS = [{ days: 7, label: "1 week" }, { days: 14, label: "2 weeks" }, { days: 28, label: "4 weeks" }];
 const SPAN_OPTIONS = SPANS.map((o) => ({ value: String(o.days), label: o.label }));
 const LABEL_COL = 160;
+/** Narrowest a day column is drawn on any span (the 4 week span scrolls sideways instead of squeezing the bars). */
+export const MIN_DAY_COL = 90;
+/** Narrowest a bar is drawn (px): wide enough for "J-0431" cut short, so no bar is ever blank. */
+export const MIN_BAR_PX = 44;
+/** The page sentence under the title: generic, so it is the title's tooltip and screen-reader description, not a visible line. */
+export const SCHEDULE_INTRO = "Book jobs onto machines and see when each machine is free.";
 /** Narrowest a booking bar is drawn, as a share of its day cell (the real timeline's own floor). */
 export const MIN_BAR_PERCENT = 12;
 /** A booking remainder beside actual use is drawn as its own bar only from this share of the day cell (below it, the slim strip). */
@@ -218,10 +227,10 @@ function useMedia(query: string, fallback: boolean): boolean {
 const dash = <span className={s.none} aria-label="None">-</span>;
 const addDays = (d: Date, n: number) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
 const sameDay = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-/** A bar's position inside its day cell: never narrower than 24 px; beside actual use it starts after that block's own 24 px floor so the two never overlap. */
+/** A bar's position inside its day cell: never narrower than MIN_BAR_PX; beside actual use it starts after that block's own floor so the two never overlap. */
 export function barStyle(left: number, width: number, besideRun = false): CSSProperties {
-  if (besideRun && left > 0) return { left: `min(max(${left}%, 26px), calc(100% - 24px))`, width: `max(calc(${left + width}% - max(${left}%, 26px)), 24px)` };
-  return { left: `min(${left}%, calc(100% - 24px))`, width: `max(${width}%, 24px)` };
+  if (besideRun && left > 0) return { left: `min(max(${left}%, ${MIN_BAR_PX + 2}px), calc(100% - ${MIN_BAR_PX}px))`, width: `max(calc(${left + width}% - max(${left}%, ${MIN_BAR_PX + 2}px)), ${MIN_BAR_PX}px)` };
+  return { left: `min(${left}%, calc(100% - ${MIN_BAR_PX}px))`, width: `max(${width}%, ${MIN_BAR_PX}px)` };
 }
 const oneLine = (t: string) => t.replace(/\n/g, ", ");
 
@@ -283,31 +292,30 @@ function Inner() {
 
   return (
     <div className={cx(premiumTokens, s.root)} data-testid="schedule-preview" data-role={role}>
-      <header className={s.head}>
-        <div className={s.titleBlock}>
-          <div className={s.titleLine}>
-            <h1 className={s.title}>Machine Schedule</h1>
-            <span className={s.previewTag} title="Everything on this screen is fictional sample data. Nothing is read from or saved to your account.">Preview, sample data, nothing is saved</span>
-            <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
-              <div className={s.dock}>
-                <p className={s.dockNote}>Not part of Tolra. Sample data as of Mon 23/11/2026 10:30; states are simulated, nothing is granted and no request is made.</p>
-                <p className={s.dockLabel}>Who is looking (changes the drawing only)</p>
-                <SegmentedControl label="Role" value={role} options={ROLE_OPTIONS} size="sm" onChange={(v) => { setRole(v); setSelState(null); toast.clear(); }} />
-                <p className={s.dockLabel}>Screen state</p>
-                <div className={s.dockStates} role="group" aria-label="Screen state">
-                  {SCREENS.map((x) => <button key={x.v} type="button" aria-pressed={screen === x.v} className={s.dockBtn} onClick={() => pickScreen(x.v)}>{x.label}</button>)}
-                </div>
-                <Button size="sm" variant="secondary" onClick={resetAll}>Reset preview</Button>
-              </div>
-            </Popover>
+      <PreviewBar data-testid="preview-bar" controls={
+        <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
+          <div className={s.dock}>
+            <p className={s.dockNote}>Not part of Tolra. Sample data as of Mon 23/11/2026 10:30; states are simulated, nothing is granted and no request is made.</p>
+            <p className={s.dockLabel}>Who is looking (changes the drawing only)</p>
+            <SegmentedControl label="Role" value={role} options={ROLE_OPTIONS} size="sm" onChange={(v) => { setRole(v); setSelState(null); toast.clear(); }} />
+            <p className={s.dockLabel}>Screen state</p>
+            <div className={s.dockStates} role="group" aria-label="Screen state">
+              {SCREENS.map((x) => <button key={x.v} type="button" aria-pressed={screen === x.v} className={s.dockBtn} onClick={() => pickScreen(x.v)}>{x.label}</button>)}
+            </div>
+            <Button size="sm" variant="secondary" onClick={resetAll}>Reset preview</Button>
           </div>
-          <p className={s.subtitle}>Book jobs onto machines and see when each machine is free.</p>
-        </div>
-        <div className={s.headControls}>
-          <ColumnsPopover own={own} isVisible={isVisible} setColumn={setColumn} hidden={hidden} reset={() => { setHidden([]); if (!own) preview("This would show every item again for everyone in the company."); }} />
-          {canBook(role) ? <Button variant="primary" data-testid="new-booking" disabled={!activeMachines.length} onClick={() => setSel({ kind: "book" })}>New booking</Button> : null}
-        </div>
-      </header>
+        </Popover>
+      } />
+      <PageHeader
+        title={<span title={SCHEDULE_INTRO} data-testid="schedule-title">Machine Schedule</span>}
+        description={<span className={srOnly}>{SCHEDULE_INTRO}</span>}
+        actions={
+          <>
+            <ColumnsPopover own={own} isVisible={isVisible} setColumn={setColumn} hidden={hidden} reset={() => { setHidden([]); if (!own) preview("This would show every item again for everyone in the company."); }} />
+            {canBook(role) ? <Button variant="primary" data-testid="new-booking" disabled={!activeMachines.length} onClick={() => setSel({ kind: "book" })}>New booking</Button> : null}
+          </>
+        }
+      />
 
       {liveError && loaded ? (
         <p role="alert" data-testid="schedule-live-error" className={cx(s.callout, s.calloutWarn)}>
@@ -392,14 +400,13 @@ function MachineCards({ statuses, live, unbooked, isVisible }: { statuses: Retur
             <li key={st.machine.id} className={cx(s.card, text.inUse && s.cardInUse)} data-testid="machine-status" data-machine={st.machine.name} data-in-use={text.inUse ? "true" : undefined}>
               <div className={s.cardHead}>
                 <div>
-                  <h3 className={s.cardName}>{st.machine.name}</h3>
-                  {st.machine.type && isVisible("machine-type") ? <p className={s.cardType}>{st.machine.type}</p> : null}
+                  <h3 className={cx(typeScale.card, s.cardName)}>{st.machine.name}</h3>
+                  {st.machine.type && isVisible("machine-type") ? <p className={cx(typeScale.secondary, s.cardType)}>{st.machine.type}</p> : null}
                 </div>
                 <StatusBadge tone={tone} className={s.pill}><span data-testid="machine-status-pill">{text.pill}</span></StatusBadge>
               </div>
-              {l ? <p data-testid="machine-in-use" className={s.cardInUseLine}>IN USE: {l.job_no}, by {l.operator_name ?? "—"} since {sinceText(l.started_at, NOW)}</p> : null}
               {text.staleNote ? <p className={s.cardStale}>{text.staleNote}</p> : null}
-              <p className={s.cardLine}>{text.body}</p>
+              <p className={s.cardLine} data-testid={l ? "machine-in-use" : undefined}>{text.body}</p>
               {isVisible("next-free") ? (
                 <p className={s.cardNext}>Next free: <b>{text.nextFree}</b>{st.next ? <> · Next job {st.next.jobNo} from {fmtDayDateTime(st.nextStart ?? st.next.start)}</> : null}</p>
               ) : null}
@@ -424,7 +431,7 @@ function Timeline({ machines, bookings, runs, span, setSpan, startDate, setStart
   const days = useMemo(() => Array.from({ length: span }, (_, i) => addDays(startDate, i)), [span, startDate]);
   const todayIndex = days.findIndex((d) => sameDay(d, NOW));
   const nowFraction = Math.min(1, Math.max(0, (NOW.getHours() + NOW.getMinutes() / 60 - 8) / 8));
-  const minCol = span >= 28 ? 38 : span >= 14 ? 52 : 84;
+  const minCol = MIN_DAY_COL;
   const cols = `${LABEL_COL}px repeat(${days.length}, minmax(${minCol}px, 1fr))`;
 
   function segmentsFor(machine: Machine, day: Date, dayIdx: number): Segment[] {
@@ -460,7 +467,7 @@ function Timeline({ machines, bookings, runs, span, setSpan, startDate, setStart
     <section className={s.panel} aria-labelledby="tl-h" data-testid="timeline">
       <div className={cx(s.panelHead, s.tlHead)}>
         <div>
-          <h2 id="tl-h" className={s.panelTitle}>Machine timeline</h2>
+          <h2 id="tl-h" className={cx(typeScale.section, s.panelTitle)}>Machine timeline</h2>
           <p className={s.panelSub}><span className={tabularNumbers}>{rangeLabel}</span>.{legend ? <span className={s.legendText}> {scheduleLegendText()}</span> : null}</p>
         </div>
         <div className={s.panelControls}>
@@ -481,7 +488,7 @@ function Timeline({ machines, bookings, runs, span, setSpan, startDate, setStart
                 return (
                   <div key={i} data-testid="day-header" data-today={isToday ? "true" : undefined} className={cx(s.tlDay, weekend && s.tlWeekend, isToday && s.tlToday)} aria-current={isToday ? "date" : undefined}>
                     <span className={s.tlDayName}>{day.toLocaleDateString("en-GB", { weekday: "short" })}</span>
-                    <span className={s.tlDayDate}>{span >= 28 ? day.getDate() : fmtDateText(localDateString(day))}</span>
+                    <span className={s.tlDayDate}>{fmtDateText(localDateString(day))}</span>
                   </div>
                 );
               })}
@@ -501,26 +508,32 @@ function Timeline({ machines, bookings, runs, span, setSpan, startDate, setStart
                     return (
                       <div key={i} className={cx(s.tlLane, !working && s.tlOff)} title={working ? `${machine.name}, ${dayName}${segments.length ? "" : ": free"}` : `${dayName}: not normally worked`}>
                         {segments.flatMap((seg) => {
-                          // a remainder too narrow to hit (under 30% of the day) is not drawn as a bar of its own: the booking keeps its slim strip along the top, as when it is wholly covered
-                          const parts = uncoveredParts(seg.left, seg.width, actual.map((bar) => ({ left: bar.usedLeft, width: bar.usedWidth }))).filter((part) => part.width >= MIN_PART_PERCENT);
+                          // with no machine use in this cell the booking is always a full, labelled bar (v2: no blank slim strips). Beside actual use, a remainder too narrow to read (under 30% of the day) is not drawn as a bar of its own:
+                          // the booking keeps its slim strip along the top (as when it is wholly covered) and its job number is on the machine-use bar above it.
+                          const parts = uncoveredParts(seg.left, seg.width, actual.map((bar) => ({ left: bar.usedLeft, width: bar.usedWidth }))).filter((part) => !actual.length || part.width >= MIN_PART_PERCENT);
                           if (!parts.length) return [{ seg: { ...seg, first: false }, partIdx: 0, covered: true }];
                           return parts.map((part, partIdx) => ({ seg: { ...seg, left: part.left, width: part.width, first: seg.first && partIdx === 0 }, partIdx, covered: false }));
                         }).map(({ seg, partIdx, covered }) => {
                           const done = seg.booking.status === "complete";
                           const running = !done && seg.booking.status === "running";
                           const state = done ? "complete" : running ? "running" : "booked";
-                          const label = covered ? `${seg.booking.jobNo} on ${machine.name}, hidden under machine use (${seg.booking.status})` : oneLine(bookingTitle(seg, machine));
+                          // the accessible name starts with exactly the words drawn on the bar (WCAG label in name), then the full description (which is also the title)
+                          const drawn = covered ? "" : [
+                            isVisible("running-badge") && seg.first && running ? "Running" : isVisible("running-badge") && seg.first && done ? "Complete" : "",
+                            isVisible("bar-labels") ? seg.booking.jobNo || "Booking" : "",
+                            isVisible("bar-labels") && seg.planned ? `${seg.planned.from}-${seg.planned.to} ${formatMinutes(seg.planned.minutes)}${seg.outOfHours ? " (out of hours)" : ""}` : "",
+                          ].filter(Boolean).join(" ");
+                          const label = covered ? `${seg.booking.jobNo} on ${machine.name}, hidden under machine use (${seg.booking.status})` : `${drawn ? `${drawn}. ` : ""}${oneLine(bookingTitle(seg, machine))}`;
                           return (
                             <button key={`${seg.booking.id}-${partIdx}`} type="button" data-booking-id={seg.booking.id} data-covered={covered ? "true" : undefined} data-testid="booking-bar" data-state={state}
                               aria-label={label} title={bookingTitle(seg, machine)} data-plan-date={seg.planned?.date} data-out-of-hours={seg.outOfHours ? "true" : undefined}
                               onClick={() => onSelect(seg.booking)} className={cx(s.bar, s[`s_${state}`], covered && s.covered, seg.outOfHours && s.ooh)} style={barStyle(seg.left, seg.width, !covered && actual.length > 0)}>
                               {covered ? null : (
                                 <span className={s.barText}>
-                                  {isVisible("running-badge") && seg.first && running ? <span className={s.barWord}>Running</span> : null}
-                                  {isVisible("running-badge") && seg.first && done ? <span className={s.barWord}>Complete</span> : null}
-                                  {!isVisible("bar-labels") ? null : seg.planned
-                                    ? <>{seg.first ? <>{seg.booking.jobNo} </> : null}<small>{seg.planned.from}-{seg.planned.to} {formatMinutes(seg.planned.minutes)}{seg.outOfHours ? " (out of hours)" : ""}</small></>
-                                    : seg.first ? <>{seg.booking.jobNo}</> : null}
+                                  {isVisible("running-badge") && seg.first && running ? <><span className={s.barWord}>Running</span>{" "}</> : null}
+                                  {isVisible("running-badge") && seg.first && done ? <><span className={s.barWord}>Complete</span>{" "}</> : null}
+                                  {!isVisible("bar-labels") ? null : <><span className={s.barJob} data-testid="bar-label">{seg.booking.jobNo || "Booking"}</span>{" "}</>}
+                                  {isVisible("bar-labels") && seg.planned ? <small className={s.barSub}>{seg.planned.from}-{seg.planned.to} {formatMinutes(seg.planned.minutes)}{seg.outOfHours ? " (out of hours)" : ""}</small> : null}
                                 </span>
                               )}
                             </button>
@@ -533,11 +546,11 @@ function Timeline({ machines, bookings, runs, span, setSpan, startDate, setStart
                           return (
                             <button key={bar.run.id} type="button" data-testid="run-bar" data-run-id={bar.run.id} data-state={bar.open ? "open" : "ended"} data-kind={bar.kind} data-from={timeOf(bar.from)} data-to={timeOf(bar.to)}
                               aria-label={`${label}${bar.outOfHours ? ` (partly or wholly outside ${machine.name}'s hours, drawn at the edge of the day)` : ""}`} title={label}
-                              onClick={() => onSelectRun(bar, label)} className={cx(s.bar, s.run, s[`s_${state}`], bar.outOfHours && s.ooh)} style={{ left: `min(${bar.left}%, calc(100% - 24px))`, width: `max(${bar.width}%, 24px)` }}>
+                              onClick={() => onSelectRun(bar, label)} className={cx(s.bar, s.run, s[`s_${state}`], bar.outOfHours && s.ooh)} style={{ left: `min(${bar.left}%, calc(100% - ${MIN_BAR_PX}px))`, width: `max(${bar.width}%, ${MIN_BAR_PX}px)` }}>
                               {bar.marks.map((m) => <span key={m} aria-hidden="true" className={s.runMark} style={{ left: `${m}%` }} />)}
                               <span className={s.barText}>
-                                {isVisible("running-badge") ? <span className={s.barWord}>{word}</span> : null}
-                                {isVisible("bar-labels") ? <span style={{ fontWeight: 500 }}>{bar.run.job_no}</span> : null}
+                                {isVisible("running-badge") ? <><span className={s.barWord}>{word}</span>{" "}</> : null}
+                                {isVisible("bar-labels") ? <span className={s.barJob} data-testid="bar-label">{bar.run.job_no || "Run"}</span> : null}
                               </span>
                             </button>
                           );
@@ -589,10 +602,10 @@ function JobsTable({ rows, running, unbooked, canBook: book, wide, isVisible, li
     : <span className={s.hoursLeft}><b style={{ fontWeight: 650 }}>{formatHours(b.hoursLeft)}</b><span className={s.whenSub}>of {formatHours(b.estimatedHours)}</span></span>);
   return (
     <section className={cx(s.panel, s.tbl)} aria-labelledby="jobs-h" data-testid="jobs-table">
-      <div className={s.panelHead}><h2 id="jobs-h" className={s.panelTitle}>Jobs on machines</h2></div>
+      <div className={s.panelHead}><h2 id="jobs-h" className={cx(typeScale.section, s.panelTitle)}>Jobs on machines</h2></div>
       {empty ? <p className={s.tlNoMachines} data-testid="jobs-empty">No jobs booked onto machines yet.</p> : wide ? (
         <ScrollTable label="Jobs on machines, table">
-          <thead><tr><th scope="col">Job</th><th scope="col">Machine</th><th scope="col">Start</th><th scope="col">Est. finish</th>{left ? <th scope="col">Hours left</th> : null}<th scope="col">Status</th><th scope="col">Required</th><th scope="col"><span className={s.srOnly}>Action</span></th></tr></thead>
+          <thead><tr><th scope="col">Job</th><th scope="col">Machine</th><th scope="col">Start</th><th scope="col">Est. finish</th>{left ? <th scope="col">Hours left</th> : null}<th scope="col">Status</th><th scope="col">Required</th><th scope="col" className={s.actCol}><span className={s.srOnly}>Action</span></th></tr></thead>
           <tbody>
             {running.map((r) => {
               const req = jobs.find((j) => j.id === r.job_id)?.dateRequired || "";
@@ -606,7 +619,7 @@ function JobsTable({ rows, running, unbooked, canBook: book, wide, isVisible, li
                   {left ? <td data-testid="unbooked-left">{view ? unbookedLeftText(view) : "-"}</td> : null}
                   <td><div className={s.statusCell}><StatusBadge tone="danger">Running now (not booked)</StatusBadge><span className={s.statusNote}>by {r.operator_name ?? "—"} since {sinceText(r.started_at, NOW)}{view?.clock ? `, ${runningForText(view.clock.elapsedMinutes)}` : ""}</span></div></td>
                   <td>{req ? fmtDate(req) : dash}</td>
-                  <td>{book ? <Button size="sm" onClick={() => onBookIt(r.job_id, r.machine_id)} aria-label={`Book ${r.job_no} on ${r.machine_name}`}>Book it</Button> : null}</td>
+                  <td className={s.actCol}>{book ? <Button size="sm" onClick={() => onBookIt(r.job_id, r.machine_id)} aria-label={`Book it, ${r.job_no} on ${r.machine_name}`}>Book it</Button> : null}</td>
                 </tr>
               );
             })}
@@ -622,7 +635,7 @@ function JobsTable({ rows, running, unbooked, canBook: book, wide, isVisible, li
                   {left ? <td>{hoursLeftOf(b)}</td> : null}
                   <td><StatusBadge tone={b.status === "complete" ? "ok" : b.status === "running" ? "progress" : bookedNotStarted(b, NOW) ? "warn" : "neutral"}>{bookingStatusLabel(b, NOW)}</StatusBadge></td>
                   <td>{req ? fmtDate(req) : dash}</td>
-                  <td><Button size="sm" onClick={() => onOpen(b.id)} aria-label={`${book ? "Update" : "View"} ${b.jobNo} on ${b.machine.name}`}>{book ? "Update" : "View"}</Button></td>
+                  <td className={s.actCol}><Button size="sm" onClick={() => onOpen(b.id)} aria-label={`${book ? "Update" : "View"} ${b.jobNo} on ${b.machine.name}`}>{book ? "Update" : "View"}</Button></td>
                 </tr>
               );
             })}
@@ -695,12 +708,12 @@ function MachinesTable({ machines, manage, wide, isVisible, onEdit, onAdd, onTem
   return (
     <section id="machines" className={cx(s.panel, s.tbl)} aria-labelledby="machines-h" data-testid="machines-table">
       <div className={s.panelHead}>
-        <h2 id="machines-h" className={s.panelTitle}>Machines</h2>
+        <h2 id="machines-h" className={cx(typeScale.section, s.panelTitle)}>Machines</h2>
         {manage ? <Button onClick={onAdd} data-testid="add-machine">Add machine</Button> : null}
       </div>
       {!machines.length ? emptyNote : wide ? (
         <ScrollTable label="Machines, table">
-          <thead><tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col" className={s.numCol}>Hours per day</th><th scope="col">Working days</th><th scope="col">Active</th><th scope="col"><span className={s.srOnly}>Action</span></th></tr></thead>
+          <thead><tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col" className={s.numCol}>Hours per day</th><th scope="col">Working days</th><th scope="col">Active</th><th scope="col" className={s.actCol}><span className={s.srOnly}>Action</span></th></tr></thead>
           <tbody>
             {machines.map((m) => (
               <tr key={m.id} data-testid="machine-row">
@@ -709,7 +722,7 @@ function MachinesTable({ machines, manage, wide, isVisible, onEdit, onAdd, onTem
                 <td className={cx(s.numCol, tabularNumbers)}>{m.hoursPerDay}</td>
                 <td>{workingDaysText(m)}</td>
                 <td><StatusBadge tone={m.active ? "ok" : "neutral"}>{m.active ? "Yes" : "No"}</StatusBadge></td>
-                <td>{manage ? <Button size="sm" onClick={() => onEdit(m)} aria-label={`Edit ${m.name}`}>Edit</Button> : null}</td>
+                <td className={s.actCol}>{manage ? <Button size="sm" onClick={() => onEdit(m)} aria-label={`Edit ${m.name}`}>Edit</Button> : null}</td>
               </tr>
             ))}
           </tbody>

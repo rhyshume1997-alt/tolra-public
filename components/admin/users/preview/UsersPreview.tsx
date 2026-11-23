@@ -12,6 +12,9 @@
  * Run-time imports from lib/ are pure modules only (password, username, display-name, mfa-policy, sign-in-access, sections, company-access, empty-hints, dates,
  * product, shell-status) and types. The form checks are the REAL pure validators; the few rules that live inline in app/(dashboard)/admin/users/page.tsx and
  * components/authorised-inspectors.tsx are mirrored here and pinned to that source text by tests/unit/usersPreview.test.ts.
+ * v2 (owner-approved structure, STRUCTURAL-CHANGES-BRIEF items 3, 4, 7, 9, 10, 11): the per-row clock-in toggles ("On site only", "Can clock in off site (while the network lock is on)") live in the Edit user sheet (same
+ * labels, same rules: only for an active, non-support person, and only when the database has migration 075 / 114); the two stacked notices are ONE "N things need attention" Disclosure that opens to the two original messages
+ * verbatim; one role pill style plus a dot-and-word status; ONE primary action (Edit) per row, the rest in More; one PreviewBar strip; the generic page sentence is a tooltip and a screen-reader description of the title.
  * MUST NOT CHANGE: wording, roles, columns, row actions and who may see which control mirror today's page (Admin only: everyone else sees "Access Denied"). Do not
  * wire this to real data, a session or an action, do not add a control the real page lacks, keep row controls at a 48 px hit area. Delete the four preview files
  * (this component and its .module.css, app/(dashboard)/admin/users/preview/page.tsx, tests/unit/usersPreview.test.ts) to remove it completely.
@@ -21,8 +24,8 @@ import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useSta
 import type { FormEvent, ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
-  Button, Checkbox, EmptyState, FailedState, Field, Input, LoadingState, Popover, ScrollTable, SegmentedControl, Select, Sheet, StatusBadge, Switch, Textarea,
-  ToastProvider, cx, nextMenuIndex, placeLayer, premiumTokens, tabularNumbers, useToast,
+  Button, Checkbox, Disclosure, EmptyState, FailedState, Field, Input, LoadingState, PageHeader, Popover, PreviewBar, ScrollTable, SegmentedControl, Select, Sheet, StatusBadge, Switch, Textarea,
+  ToastProvider, cx, nextMenuIndex, placeLayer, premiumTokens, srOnly, tabularNumbers, typeScale, useToast,
 } from "@/components/ui/premium";
 import type { LayerPosition, StatusTone } from "@/components/ui/premium";
 import { fmtDateTime } from "@/lib/dates";
@@ -64,6 +67,14 @@ export const REQUIRED_UNLESS_USERNAME = "Required unless you enter a username.";
 /** The browser's own type="email" check (the real field relies on it), mirrored: something, an @, something with a dot-free or dotted domain. */
 export const EMAIL_PROBLEM = "Enter an email address with an @ in it.";
 export const SELF_ADMIN_NOTE = "You can't remove your own admin rights; another admin can.";
+/** The page sentence under the title, split: the first part is generic (a tooltip and a screen-reader description of the title), the second states a rule (kept visible). Together they are the real wording. */
+export const USERS_INTRO_GENERIC = `Add people to ${COMPANY_NAME}, choose what they can open, and manage their passwords.`;
+export const USERS_INTRO_RULE = "Nothing is e-mailed unless you press Send password reset e-mail.";
+/** The real page's two long clock-in explanations (the tooltips of the two row switches), kept word for word. */
+export const ON_SITE_RULE = "On site only: clock-ins from another network are flagged for the office (never refused) while the check is on in Settings.";
+export const OFF_SITE_RULE = "While clock-in is locked to the workshop network (Settings), only people ticked here can clock in from another network.";
+export const ON_SITE_LABEL = "On site only";
+export const OFF_SITE_LABEL = "Can clock in off site (while the network lock is on)";
 export const FLAGS_FALLBACK = "Couldn't load who can record inspections.";
 export const ACCESS_LOAD_FALLBACK = "Couldn't load their access to your other companies.";
 export const PREVIEW_ONLY_NOTE = "Preview only. Nothing is read from or saved to your account.";
@@ -184,6 +195,11 @@ export function statusOf(u: SeedUser, o: { checking: boolean; state: SignInState
   if (!u.lastLogin) return { tone: "neutral", text: "Not signed in yet" };
   return { tone: "ok", text: "Active" };
 }
+/** The real row rule (components/time/on-site-only.tsx, clock-in-off-site.tsx, page.tsx): the two clock-in switches are for an active person who is not Tolra support, each one only when the database has its migration (075, 114). Now drawn in the Edit user sheet. */
+export const clockSwitchesFor = (u: Pick<SeedUser, "active" | "support">, db: { has075: boolean; has114: boolean }) => {
+  const person = u.active && !u.support;
+  return { onSite: person && db.has075, offSite: person && db.has114 };
+};
 export const pagesOf = (u: Pick<SeedUser, "role" | "secondary" | "hidden">) => {
   const available = sectionsForRoles([u.role, u.secondary]);
   const hiddenCount = available.filter((section) => u.hidden.includes(section.key)).length;
@@ -212,7 +228,7 @@ export function validateAdd(v: AddValues): AddErrors {
   if (problem) e.password = problem;
   return e;
 }
-export type EditValues = { fullName: string; role: Role; secondary: Role | ""; username: string; hidden: string[]; inspector: boolean };
+export type EditValues = { fullName: string; role: Role; secondary: Role | ""; username: string; hidden: string[]; inspector: boolean; onSite?: boolean; offSite?: boolean };
 export type EditErrors = Partial<Record<"fullName" | "username", string>>;
 /** page.tsx submitEdit: the username rule, then the display name rule only when the name changed. */
 export function validateEdit(v: EditValues, original: Pick<SeedUser, "fullName">): EditErrors {
@@ -233,6 +249,8 @@ export function editChanges(v: EditValues, original: SeedUser, o: { flagsError: 
   if (normaliseUsername(v.username) !== original.username) out.push("username");
   if ([...v.hidden].sort().join() !== [...original.hidden].sort().join()) out.push("page access");
   if (!o.flagsError && v.inspector !== original.inspector) out.push("inspection setting");
+  if (v.onSite !== undefined && v.onSite !== original.onSite) out.push("on site only");
+  if (v.offSite !== undefined && v.offSite !== original.offSite) out.push("off-site clock-in");
   return out;
 }
 export const passwordForm = (password: string): { password?: string } => { const p = passwordProblem(password); return p ? { password: p } : {}; };
@@ -313,47 +331,41 @@ function Inner() {
     if (a.id === "sign-in") return preview(`${name} would be able to sign in again.`);
     if (a.id === "deactivate") return preview(`${name} would be reactivated.`);
   };
-  const toggleFlag = (u: SeedUser, what: "on-site" | "off-site") => preview(what === "on-site"
-    ? `${nameOf(u)} would be set ${u.onSite ? "to work off site" : "to on site only"}.`
-    : `${nameOf(u)} would ${u.offSite ? "clock in from the locked network" : "be able to clock in off site while the network lock is on"}.`);
-
   const showNotices = loaded;
+  /** Only a message that asks for something counts: the missing-names note, and the two-step line unless it is the "all set" one or the still-checking one. */
+  const mfaNeedsLook = !(mfaRule?.tone === "ok") && !(mfaChecking && !mfaRule);
+  const attentionCount = (missingNames ? 1 : 0) + (mfaNeedsLook ? 1 : 0);
+  const attentionSummary = attentionCount ? `${attentionCount} ${attentionCount === 1 ? "thing needs" : "things need"} attention` : mfaChecking && !mfaRule ? "Checking two-step sign-in status" : "Nothing needs attention";
   const inspectorsShown = has083 && loaded && !flagsError;
 
   return (
     <div className={cx(premiumTokens, s.root)} data-testid="users-preview" data-role={role}>
-      <header className={s.head}>
-        <div className={s.titleBlock}>
-          <div className={s.titleLine}>
-            <h1 className={s.title}>{denied ? "Access Denied" : "User Management"}</h1>
-            <span className={s.previewTag} title="Everything on this screen is fictional sample data. Nothing is read from or saved to your account.">Preview, sample data, nothing is saved</span>
-            <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
-              <div className={s.dock}>
-                <p className={s.dockNote}>Not part of Tolra. Sample data; states are simulated, nothing is granted and no request is made.</p>
-                <p className={s.dockLabel}>Who is looking (changes the drawing only)</p>
-                <SegmentedControl label="Role" value={role} options={ROLE_OPTIONS} size="sm" onChange={(v) => { setRole(v); setDlgState(null); toast.clear(); }} />
-                <p className={s.dockLabel}>Screen state</p>
-                <div className={s.dockStates} role="group" aria-label="Screen state">
-                  {SCREENS.map((x) => <button key={x.v} type="button" aria-pressed={screen === x.v} className={s.dockBtn} onClick={() => pickScreen(x.v)}>{x.label}</button>)}
-                </div>
-                <p className={s.dockLabel}>Database features</p>
-                <Switch label="Other companies" hint="Admins of more than one company (066)." checked={multi} onChange={(on) => { setMulti(on); setDlgState(null); }} data-testid="dock-multi" />
-                <Switch label="Authorised inspectors list" hint="Migration 083." checked={has083} onChange={(on) => { setHas083(on); setDlgState(null); }} data-testid="dock-083" />
-                <Switch label="On site only" hint="Migration 075." checked={has075} onChange={setHas075} data-testid="dock-075" />
-                <Switch label="Off-site clock-in" hint="Migration 114." checked={has114} onChange={setHas114} data-testid="dock-114" />
-                <p className={s.dockLabel}>Sample dialog</p>
-                <Button size="sm" variant="secondary" data-testid="dock-shown" onClick={() => setDlg({ kind: "shown" })}>Show &quot;Give these details&quot;</Button>
-                <Button size="sm" variant="secondary" onClick={resetAll}>Reset preview</Button>
-              </div>
-            </Popover>
+      <PreviewBar data-testid="preview-bar" controls={
+        <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
+          <div className={s.dock}>
+            <p className={s.dockNote}>Not part of Tolra. Sample data; states are simulated, nothing is granted and no request is made.</p>
+            <p className={s.dockLabel}>Who is looking (changes the drawing only)</p>
+            <SegmentedControl label="Role" value={role} options={ROLE_OPTIONS} size="sm" onChange={(v) => { setRole(v); setDlgState(null); toast.clear(); }} />
+            <p className={s.dockLabel}>Screen state</p>
+            <div className={s.dockStates} role="group" aria-label="Screen state">
+              {SCREENS.map((x) => <button key={x.v} type="button" aria-pressed={screen === x.v} className={s.dockBtn} onClick={() => pickScreen(x.v)}>{x.label}</button>)}
+            </div>
+            <p className={s.dockLabel}>Database features</p>
+            <Switch label="Other companies" hint="Admins of more than one company (066)." checked={multi} onChange={(on) => { setMulti(on); setDlgState(null); }} data-testid="dock-multi" />
+            <Switch label="Authorised inspectors list" hint="Migration 083." checked={has083} onChange={(on) => { setHas083(on); setDlgState(null); }} data-testid="dock-083" />
+            <Switch label="On site only" hint="Migration 075." checked={has075} onChange={setHas075} data-testid="dock-075" />
+            <Switch label="Off-site clock-in" hint="Migration 114." checked={has114} onChange={setHas114} data-testid="dock-114" />
+            <p className={s.dockLabel}>Sample dialog</p>
+            <Button size="sm" variant="secondary" data-testid="dock-shown" onClick={() => setDlg({ kind: "shown" })}>Show &quot;Give these details&quot;</Button>
+            <Button size="sm" variant="secondary" onClick={resetAll}>Reset preview</Button>
           </div>
-          <p className={s.subtitle}>
-            {denied ? "Redirecting you back to the dashboard."
-              : `Add people to ${COMPANY_NAME}, choose what they can open, and manage their passwords. Nothing is e-mailed unless you press Send password reset e-mail.`}
-          </p>
-        </div>
-        {denied ? null : <div className={s.headControls}><Button variant="primary" data-testid="new-user" onClick={() => setDlg({ kind: "add" })}>New user</Button></div>}
-      </header>
+        </Popover>
+      } />
+      <PageHeader
+        title={<span title={denied ? undefined : USERS_INTRO_GENERIC} data-testid="users-title">{denied ? "Access Denied" : "User Management"}</span>}
+        description={denied ? "Redirecting you back to the dashboard." : <><span className={srOnly}>{USERS_INTRO_GENERIC} </span>{USERS_INTRO_RULE}</>}
+        actions={denied ? undefined : <Button variant="primary" data-testid="new-user" onClick={() => setDlg({ kind: "add" })}>New user</Button>}
+      />
 
       {denied ? (
         <section className={s.denied} data-testid="access-denied">
@@ -364,16 +376,22 @@ function Inner() {
           {screen === "error" ? <FailedState headingLevel={2} title="Couldn’t load users." detail="The list could not be fetched. This is a simulated failure: no request was made and nothing was lost." onRetry={retry} retryLabel="Retry" /> : null}
 
           {showNotices ? (
-            <div className={s.notices}>
-              {missingNames ? (
-                <p className={cx(s.callout, s.calloutWarn)} data-testid="missing-names">
-                  {missingNames === 1 ? "1 person has" : `${missingNames} people have`} no display name, so the Job Board can&apos;t say who a job is assigned to. Use Edit to add one, or ask them to add it in Account Settings.
-                </p>
-              ) : null}
-              <p className={cx(s.callout, mfaRule?.tone === "ok" ? s.calloutOk : mfaChecking && !mfaRule ? s.calloutNeutral : s.calloutWarn)} data-testid="admin-mfa-rule">
-                {mfaRule ? mfaRule.text : mfaChecking ? "Checking two-step sign-in status for admins…" : "Two-step sign-in status for admins isn't available yet."}
-              </p>
-            </div>
+            <Disclosure
+              className={cx(s.attn, attentionCount ? s.attnWarn : s.attnQuiet)}
+              data-testid="attention"
+              summary={<span data-testid="attention-summary">{attentionSummary}</span>}
+            >
+              <ul className={s.attnList}>
+                {missingNames ? (
+                  <li data-testid="missing-names">
+                    {missingNames === 1 ? "1 person has" : `${missingNames} people have`} no display name, so the Job Board can&apos;t say who a job is assigned to. Use Edit to add one, or ask them to add it in Account Settings.
+                  </li>
+                ) : null}
+                <li data-testid="admin-mfa-rule" data-tone={mfaRule?.tone ?? (mfaChecking ? "neutral" : "warn")}>
+                  {mfaRule ? mfaRule.text : mfaChecking ? "Checking two-step sign-in status for admins…" : "Two-step sign-in status for admins isn't available yet."}
+                </li>
+              </ul>
+            </Disclosure>
           ) : null}
 
           <h2 className={s.srOnly}>People</h2>
@@ -383,14 +401,14 @@ function Inner() {
             : screen === "error" ? null
             : !wide ? (
               <div className={s.cards} data-testid="view-cards">
-                {rows.map((u) => <UserCard key={u.id} u={u} ctx={ctx} mfa={mfa} has075={has075} has114={has114} run={run} toggleFlag={toggleFlag} />)}
+                {rows.map((u) => <UserCard key={u.id} u={u} ctx={ctx} mfa={mfa} run={run} />)}
               </div>
             ) : (
               <ScrollTable label="Users" className={s.table}>
                 <thead><tr>
-                  <th className={s.thFirst}>Name</th><th>Username</th><th>Roles</th><th>Pages</th><th>Status</th><th>Last login</th><th className={s.right}>Actions</th>
+                  <th className={s.thFirst}>Name</th><th>Username</th><th>Roles</th><th>Pages</th><th>Status</th><th>Last login</th><th className={cx(s.right, s.thActions)}>Actions</th>
                 </tr></thead>
-                {rows.map((u) => <UserRecord key={u.id} u={u} ctx={ctx} mfa={mfa} has075={has075} has114={has114} run={run} toggleFlag={toggleFlag} />)}
+                <tbody>{rows.map((u) => <UserRow key={u.id} u={u} ctx={ctx} mfa={mfa} run={run} />)}</tbody>
               </ScrollTable>
             )}
 
@@ -406,8 +424,8 @@ function Inner() {
         </>
       )}
 
-      {dlg?.kind === "add" && !denied ? <UserSheet key="add" mode="add" multi={multi} has083={has083} flagsError={flagsError} access={screen} onClose={() => setDlg(null)} preview={preview} /> : null}
-      {dlg?.kind === "edit" && !denied ? <UserSheet key={`edit-${dlg.id}`} mode="edit" user={find(dlg.id)} multi={multi} has083={has083} flagsError={flagsError} access={screen} onClose={() => setDlg(null)} preview={preview} /> : null}
+      {dlg?.kind === "add" && !denied ? <UserSheet key="add" mode="add" multi={multi} has083={has083} has075={has075} has114={has114} flagsError={flagsError} access={screen} onClose={() => setDlg(null)} preview={preview} /> : null}
+      {dlg?.kind === "edit" && !denied ? <UserSheet key={`edit-${dlg.id}`} mode="edit" user={find(dlg.id)} multi={multi} has083={has083} has075={has075} has114={has114} flagsError={flagsError} access={screen} onClose={() => setDlg(null)} preview={preview} /> : null}
       {dlg?.kind === "password" && !denied ? <PasswordSheet key={dlg.id} user={find(dlg.id)} onClose={() => setDlg(null)} preview={preview} /> : null}
       {dlg?.kind === "shown" ? <ShownSheet onClose={() => setDlg(null)} preview={preview} /> : null}
       {dlg?.kind === "confirm" && !denied ? <ConfirmSheet action={dlg.action} user={find(dlg.id)} onClose={() => setDlg(null)} preview={preview} /> : null}
@@ -416,78 +434,58 @@ function Inner() {
   );
 }
 
-/* ---------- the table: one tbody per person (the person row, and under it the two clock-in switches when the database has them) ---------- */
-type RowProps = { u: SeedUser; ctx: Context; mfa: AdminMfaOverview | null; has075: boolean; has114: boolean; run: (u: SeedUser, a: RowAction) => void; toggleFlag: (u: SeedUser, w: "on-site" | "off-site") => void };
+/* ---------- the table: one row per person (the clock-in switches are in the Edit user sheet) ---------- */
+type RowProps = { u: SeedUser; ctx: Context; mfa: AdminMfaOverview | null; run: (u: SeedUser, a: RowAction) => void };
 
 function NameBlock({ u, children }: { u: SeedUser; children?: ReactNode }) {
   const isSelf = u.id === ME;
   return (
     <span className={s.nameCell}>
-      <span className={cx(s.name, !u.active && s.nameOff)}>{u.fullName || <span className={s.noName}>No name</span>}{isSelf ? <span className={s.you}> (you)</span> : null}</span>
-      <span className={s.email}>{mail(u.email)}</span>
+      <span className={cx(typeScale.name, s.name, !u.active && s.nameOff)}>{u.fullName || <span className={s.noName}>No name</span>}{isSelf ? <span className={s.you}> (you)</span> : null}</span>
+      <span className={cx(typeScale.secondary, s.email)}>{mail(u.email)}</span>
       {!u.fullName && !u.support ? <span data-testid="no-display-name" className={s.nameBadge}><StatusBadge tone="warn">No display name</StatusBadge></span> : null}
       {children}
     </span>
   );
 }
+/** One role pill style for every role (the first role, and "+ second role" in the same pill); the two-step state is a dot and a word under them. */
 function RoleBlock({ u, mfa }: { u: SeedUser; mfa: AdminMfaOverview | null }) {
-  const status = mfa && u.active && !u.support && holdsAdmin({ role: u.role, secondary_role: u.secondary || null }) ? mfa.admins.get(u.id) : undefined;
   const show = Boolean(mfa && u.active && !u.support && holdsAdmin({ role: u.role, secondary_role: u.secondary || null }));
+  const status = show ? mfa!.admins.get(u.id) : undefined;
   return (
     <span className={s.roleCell}>
       <span className={s.roleRow}>
-        <span className={cx(s.role, u.role === "admin" && s.roleAdmin)}>{titleCase(u.role)}</span>
-        {u.secondary ? <span className={cx(s.role, s.roleSecond)}>+ {titleCase(u.secondary)}</span> : null}
+        <span className={s.role} data-testid="role-pill">{titleCase(u.role)}</span>
+        {u.secondary ? <span className={s.role} data-testid="role-pill">+ {titleCase(u.secondary)}</span> : null}
       </span>
-      {show ? <span data-testid="admin-mfa-status"><StatusBadge tone={status?.enrolled ? "ok" : status ? "warn" : "neutral"} className={s.mfaBadge}>{adminMfaStatusLabel(status)}</StatusBadge></span> : null}
+      {show ? <span data-testid="admin-mfa-status"><StatusBadge mode="text" tone={status?.enrolled ? "ok" : status ? "warn" : "neutral"} className={s.mfaWord}>{adminMfaStatusLabel(status)}</StatusBadge></span> : null}
     </span>
   );
 }
 function StatusBlock({ u, ctx }: { u: SeedUser; ctx: Context }) {
   const v = statusOf(u, { checking: ctx.signInChecking, state: ctx.signIn.get(u.id) });
-  return <span data-testid={v.testId}><StatusBadge tone={v.tone} className={v.text.length > 26 ? s.longBadge : undefined}>{v.text}</StatusBadge></span>;
+  return <span data-testid={v.testId}><StatusBadge mode="text" tone={v.tone} className={s.statusWord}>{v.text}</StatusBadge></span>;
 }
 /** "23/11/2026, 08:41" as the date over the time (the same text, the same order). */
 function LastLogin({ value }: { value: string | null }) {
   if (!value) return <>Never</>;
   const [date, time] = fmtDateTime(value).split(", ");
-  return <span className={s.when}><span>{date}</span>{time ? <span className={s.whenTime}>{time}</span> : null}</span>;
+  return <span className={s.when}><span>{date}</span>{time ? <span className={cx(typeScale.secondary, s.whenTime)}>{time}</span> : null}</span>;
 }
-function ClockIn({ u, has075, has114, toggleFlag }: { u: SeedUser; has075: boolean; has114: boolean; toggleFlag: RowProps["toggleFlag"] }) {
-  if (!(u.active && !u.support) || !(has075 || has114)) return null;
+function UserRow({ u, ctx, mfa, run }: RowProps) {
   return (
-    <div className={s.clock} role="group" aria-label={`Clock-in settings for ${nameOf(u)}`}>
-      {has075 ? (
-        <label className={s.clockItem} data-testid="on-site-only" title="On site only: clock-ins from another network are flagged for the office (never refused) while the check is on in Settings.">
-          <Checkbox checked={u.onSite} onChange={() => toggleFlag(u, "on-site")} /><span>On site only</span>
-        </label>
-      ) : null}
-      {has114 ? (
-        <label className={s.clockItem} data-testid="clock-in-off-site" title="While clock-in is locked to the workshop network (Settings), only people ticked here can clock in from another network.">
-          <Checkbox checked={u.offSite} onChange={() => toggleFlag(u, "off-site")} /><span>Can clock in off site (while the network lock is on)</span>
-        </label>
-      ) : null}
-    </div>
+    <tr data-testid="user-row" data-user={nameOf(u)} data-inactive={!u.active || undefined}>
+      <td className={s.tdFirst}><NameBlock u={u} /></td>
+      <td className={cx(s.mono, s.tdUser)}>{u.username || dash}</td>
+      <td className={s.tdRoles}><RoleBlock u={u} mfa={mfa} /></td>
+      <td className={cx(s.nowrap, s.muted2)}>{pagesOf(u)}</td>
+      <td className={s.tdStatus}><StatusBlock u={u} ctx={ctx} /></td>
+      <td className={cx(s.nowrap, tabularNumbers)}><LastLogin value={u.lastLogin} /></td>
+      <td className={cx(s.right, s.tdActions)}><div className={s.rowActions}><Actions u={u} ctx={ctx} run={run} /></div></td>
+    </tr>
   );
 }
-function UserRecord({ u, ctx, mfa, has075, has114, run, toggleFlag }: RowProps) {
-  const hasClock = u.active && !u.support && (has075 || has114);
-  return (
-    <tbody className={s.rec} data-user={nameOf(u)}>
-      <tr data-testid="user-row" data-inactive={!u.active || undefined} className={hasClock ? s.hasSub : undefined}>
-        <td className={s.tdFirst}><NameBlock u={u} /></td>
-        <td className={cx(s.mono, s.tdUser)}>{u.username || dash}</td>
-        <td className={s.tdRoles}><RoleBlock u={u} mfa={mfa} /></td>
-        <td className={cx(s.nowrap, s.muted2)}>{pagesOf(u)}</td>
-        <td className={s.tdStatus}><StatusBlock u={u} ctx={ctx} /></td>
-        <td className={cx(s.nowrap, tabularNumbers)}><LastLogin value={u.lastLogin} /></td>
-        <td className={s.right}><div className={s.rowActions}><Actions u={u} ctx={ctx} run={run} /></div></td>
-      </tr>
-      {hasClock ? <tr className={s.subRow}><td colSpan={7}><ClockIn u={u} has075={has075} has114={has114} toggleFlag={toggleFlag} /></td></tr> : null}
-    </tbody>
-  );
-}
-function UserCard({ u, ctx, mfa, has075, has114, run, toggleFlag }: RowProps) {
+function UserCard({ u, ctx, mfa, run }: RowProps) {
   const name = nameOf(u);
   return (
     <article className={cx(s.card, !u.active && s.cardOff)} data-testid="user-row" aria-label={name} data-user={name}>
@@ -499,13 +497,12 @@ function UserCard({ u, ctx, mfa, has075, has114, run, toggleFlag }: RowProps) {
         <div><dt>Status</dt><dd><StatusBlock u={u} ctx={ctx} /></dd></div>
         <div><dt>Last login</dt><dd className={tabularNumbers}>{u.lastLogin ? fmtDateTime(u.lastLogin) : "Never"}</dd></div>
       </dl>
-      <ClockIn u={u} has075={has075} has114={has114} toggleFlag={toggleFlag} />
       <div className={s.cardActions}><Actions u={u} ctx={ctx} run={run} /></div>
     </article>
   );
 }
 
-/** Edit and Set password stay in the row; the rest (the less frequent, the heavier ones) sit in one "More" menu named for the person. */
+/** ONE primary action per row (Edit, or Switch off support access on a support row); Set password and everything else sit in one "More" menu named for the person. */
 function Actions({ u, ctx, run }: { u: SeedUser; ctx: Context; run: RowProps["run"] }) {
   const plan = planRowActions(u, ctx);
   const name = nameOf(u);
@@ -607,7 +604,7 @@ function Inspectors({ rows, onAdd, onRemove }: { rows: SeedUser[]; onAdd: () => 
     <section className={s.inspectors} data-testid="authorised-inspectors" aria-labelledby="insp-h">
       <div className={s.inspHead}>
         <div>
-          <h2 id="insp-h" className={s.h2}>Inspectors</h2>
+          <h2 id="insp-h" className={cx(typeScale.section, s.h2)}>Inspectors</h2>
           <p className={s.inspText}>Only the people on this list can record an inspection pass or co-sign as the inspector. Each change needs a reason and is kept.</p>
         </div>
         <Button variant="secondary" disabled={!addable.length} onClick={onAdd}>Add inspector</Button>
@@ -631,18 +628,15 @@ function Inspectors({ rows, onAdd, onRemove }: { rows: SeedUser[]; onAdd: () => 
           </ul>
         ) : <p className={s.inspEmpty}>Nobody is on the list yet, so nobody can record an inspection pass.</p>}
       </div>
-      <details className={s.disclosure} open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
-        <summary>History ({SEED_HISTORY.length})</summary>
-        {open ? (
-          <ul className={s.histList}>
-            {SEED_HISTORY.map((h) => (
-              <li key={h.id} data-testid="inspector-history-row">
-                <span className={cx(s.histWhen, tabularNumbers)}>{fmtDateTime(h.changedAt)}</span> · {who(h.userId)} {h.change === "added" ? "added" : "removed"} by {who(h.changedBy)}{h.scope ? ` (scope: ${h.scope})` : ""}: {h.reason}
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </details>
+      <Disclosure summary={`History (${SEED_HISTORY.length})`} open={open} onToggle={setOpen} data-testid="inspector-history">
+        <ul className={s.histList}>
+          {SEED_HISTORY.map((h) => (
+            <li key={h.id} data-testid="inspector-history-row">
+              <span className={cx(s.histWhen, tabularNumbers)}>{fmtDateTime(h.changedAt)}</span> · {who(h.userId)} {h.change === "added" ? "added" : "removed"} by {who(h.changedBy)}{h.scope ? ` (scope: ${h.scope})` : ""}: {h.reason}
+            </li>
+          ))}
+        </ul>
+      </Disclosure>
     </section>
   );
 }
@@ -715,18 +709,21 @@ function MustChange({ checked, onChange }: { checked: boolean; onChange: (v: boo
     </label>
   );
 }
-const Callout = ({ children, testId }: { children: ReactNode; testId?: string }) => <p className={cx(s.callout, s.calloutWarn)} data-testid={testId}>{children}</p>;
+const Callout = ({ children, testId }: { children: ReactNode; testId?: string }) => <p className={s.sheetWarn} data-testid={testId}>{children}</p>;
 
 /** Add user and Edit user: the real fields in the real order, grouped; checks run on submit and then live, each beside its field. */
-function UserSheet({ mode, user, multi, has083, flagsError, access, onClose, preview }: {
-  mode: "add" | "edit"; user?: SeedUser; multi: boolean; has083: boolean; flagsError: string | null; access: Screen; onClose: () => void; preview: (d: string) => void;
+function UserSheet({ mode, user, multi, has083, has075, has114, flagsError, access, onClose, preview }: {
+  mode: "add" | "edit"; user?: SeedUser; multi: boolean; has083: boolean; has075: boolean; has114: boolean; flagsError: string | null; access: Screen; onClose: () => void; preview: (d: string) => void;
 }) {
   const adding = mode === "add";
   const self = user?.id === ME;
   const [v, setV] = useState({
     fullName: user?.fullName ?? "", email: "", username: user?.username ?? "", role: (user?.role ?? "workshop") as Role, secondary: (user?.secondary ?? "") as Role | "",
     hidden: user?.hidden ?? ([] as string[]), password: adding ? generatePassword() : "", mustChange: true, inspector: user?.inspector ?? false,
+    onSite: user?.onSite ?? false, offSite: user?.offSite ?? false,
   });
+  /** The real row rule: the two clock-in switches are for an active person who is not Tolra support, and each one only when the database has its migration (075, 114). */
+  const { onSite: clockOn, offSite: clockOff } = adding || !user ? { onSite: false, offSite: false } : clockSwitchesFor(user, { has075, has114 });
   const accessRows = user?.access ?? MY_COMPANIES;
   const [drafts, setDrafts] = useState<CompanyDraft[]>(() => (multi ? draftCompanies(adding ? MY_COMPANIES : accessRows) : []));
   const [submitted, setSubmitted] = useState(false);
@@ -758,7 +755,7 @@ function UserSheet({ mode, user, multi, has083, flagsError, access, onClose, pre
       preview(`${who} would be added as ${titleCase(v.role)}${v.secondary ? ` + ${titleCase(v.secondary)}` : ""}${extra ? `, with access to ${extra} other ${extra === 1 ? "company" : "companies"}` : ""}. No e-mail would be sent.`);
       return;
     }
-    const changed = editChanges(v, user!, { flagsError: Boolean(flagsError) });
+    const changed = editChanges({ ...v, onSite: clockOn ? v.onSite : undefined, offSite: clockOff ? v.offSite : undefined }, user!, { flagsError: Boolean(flagsError) });
     const companies = accessLoading || accessError ? [] : planCompanyChanges(accessRows, drafts);
     if (companies.length) changed.push(`access to ${companies.length} other ${companies.length === 1 ? "company" : "companies"}`);
     onClose();
@@ -837,6 +834,24 @@ function UserSheet({ mode, user, multi, has083, flagsError, access, onClose, pre
           <h3 id="g-pages" className={s.legend}>Pages they can open</h3>
           <PageAccess roles={roles} hidden={v.hidden} onChange={(h) => set("hidden", h)} />
         </div>
+
+        {clockOn || clockOff ? (
+          <div role="group" aria-labelledby="g-clock" className={s.group} data-testid="clock-in-settings">
+            <h3 id="g-clock" className={s.legend}>Clock-in</h3>
+            {clockOn ? (
+              <label className={s.checkRow} data-testid="on-site-only">
+                <Checkbox aria-label={ON_SITE_LABEL} aria-describedby="clock-on-hint" checked={v.onSite} onChange={(e) => set("onSite", e.target.checked)} />
+                <span><span className={s.checkTitle}>{ON_SITE_LABEL}</span><span id="clock-on-hint" className={s.checkHint}>{ON_SITE_RULE}</span></span>
+              </label>
+            ) : null}
+            {clockOff ? (
+              <label className={s.checkRow} data-testid="clock-in-off-site">
+                <Checkbox aria-label={OFF_SITE_LABEL} aria-describedby="clock-off-hint" checked={v.offSite} onChange={(e) => set("offSite", e.target.checked)} />
+                <span><span className={s.checkTitle}>{OFF_SITE_LABEL}</span><span id="clock-off-hint" className={s.checkHint}>{OFF_SITE_RULE}</span></span>
+              </label>
+            ) : null}
+          </div>
+        ) : null}
 
         {adding ? (
           <div role="group" aria-labelledby="g-pw" className={s.group}>
