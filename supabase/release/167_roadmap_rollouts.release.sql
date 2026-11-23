@@ -1,5 +1,5 @@
 -- Post-144 release step 167 (modules F and G of the platform owner area: an owner-only Roadmap list and owner-only Rollouts of the existing per-company
--- feature switches; registered in supabase/release-plan.json as phase 167, after 164; CI's post-144 step installs it). One transaction; never part of
+-- feature switches; registered in supabase/release-plan.json as phase 167, after 165; CI's post-144 step installs it). One transaction; never part of
 -- baseline replay. Not applied anywhere hosted. Canonical source: supabase/proposals/p167_roadmap_rollouts.sql (its body between BEGIN; and COMMIT; is
 -- copied below verbatim; scripts/check-release-plan.mjs fails if they drift).
 -- WHAT IT DOES: adds TWO tables (public.platform_roadmap_items, public.platform_rollout_log) and SEVEN functions (platform_roadmap_list, _save, _move,

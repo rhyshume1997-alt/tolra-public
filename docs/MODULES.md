@@ -67,8 +67,21 @@ Break work into these. Agents own one module at a time. Cross-module changes req
 - Counts: all come through `lib/platform/owner-home/counts.ts`; the Companies screen's counts function (release 164) joins there and nowhere else. Open issues are read defensively (0 if the table is absent).
 - Reuses, never changes: `platform_list_organizations`, `platform_create_organization` (via `POST /api/platform/organizations`), `platform_enter_organization`.
 
+## 14. Issues (Raise an issue and the owner inbox; modules C and E, release 165)
+- Allowed: `components/issues/**`, `lib/issues/**`, `components/platform/issues-inbox.tsx`, `app/platform/issues/**`, `app/api/platform/issues/**`, `supabase/**/165_*` and `owner_issues_165.sql`, `tests/{unit,db}/*issues*`, `tests/db/owner-issues-165.test.ts`
+- Goal: any signed-in person (every role) can tell the Tolra team something went wrong; the platform owner triages across all companies. In-app only: no e-mail, no AI.
+- Off by default at two levels: the per-company marker `issues:on` in `hidden_nav` (enforced by `raise_issue` in the database and hides the button) AND, for the owner inbox, the server env flag `OWNER_ISSUES_ENABLED` (exactly "true").
+- Data: `public.issues` (companies read only their own, no direct writes) and `public.issue_owner_notes` (owner notes and PR link; no browser grant or policy). Writes go only through `raise_issue`, `platform_list_issues` and `platform_update_issue`.
+- Shell mount: one line in `components/dashboard-shell.tsx` (module 7) renders `RaiseIssueButton`; nothing else in the shell changes. The `/platform/issues` page is reached by URL; linking it from the Companies screen (`app/platform/page.tsx`) is a separate change.
+
 ## Shared
 - `lib/utils.ts`, types, zod schemas: only if the task lists them.
 - Prefer new files under `lib/<module>/` or `components/<module>/` for extractions.
 
 Future-proof: Each module exposes a small set of functions. Other modules call them; they never import internals.
+
+## 13. Company look (installed app)
+- Allowed: `lib/company-look/**`, `components/company-look/**`, `app/manifest.webmanifest/route.ts`, `app/api/pwa-icon/route.tsx`, `tests/unit/company-look-*`; plus the small wiring in `app/login/page.tsx`, `app/login/login-form.tsx` and `app/layout.tsx` (manifest link).
+- Goal: each company's installed app (name, theme colour, icon) shows only that company's own look, taken from the same public sign-in branding; neutral Tolra otherwise.
+- Off by default: needs the server env flag `BRANDED_APP_ENABLED` (exactly "true") AND the company's existing "Branded sign-in page" switch (active company only). No SQL (company profile is JSON), no AI, no email.
+- Rules: only the public sign-in fields ever appear (name, tagline, primary colour, slug, version, logo). Unknown, inactive, opted-out and flag-off all give the same neutral answer. Branded responses are `private` with `Vary: Cookie`.

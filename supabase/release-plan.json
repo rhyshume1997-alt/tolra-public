@@ -203,8 +203,17 @@
       "marker": "post-144 marker 164 platform_companies"
     },
     {
-      "number": 167,
+      "number": 165,
       "after": "164",
+      "source": "supabase/proposals/p165_owner_issues.sql",
+      "release": "supabase/release/165_owner_issues.release.sql",
+      "rollback": "supabase/release/165_owner_issues.rollback.sql",
+      "verify": "supabase/verify/owner_issues_165.sql",
+      "marker": "post-144 marker 165 owner_issues"
+    },
+    {
+      "number": 167,
+      "after": "165",
       "source": "supabase/proposals/p167_roadmap_rollouts.sql",
       "release": "supabase/release/167_roadmap_rollouts.release.sql",
       "rollback": "supabase/release/167_roadmap_rollouts.rollback.sql",
