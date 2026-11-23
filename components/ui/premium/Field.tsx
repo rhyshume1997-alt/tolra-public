@@ -6,12 +6,14 @@
  * focus ring, error (red edge, tint AND the error words, never colour alone), disabled. Input, Textarea and Select also work alone (give them an aria-label).
  * Must not change: it validates nothing and stores nothing: error is text the caller decides on. Inside a Field do not pass id (the Field owns it). Native controls only, so autofill,
  * mobile keyboards and date pickers keep working. Select is the browser's own list.
+ * v3 (optional): Field takes id (so an ErrorSummary can link to the control; otherwise the Field makes its own) and large; Input, Textarea and Select take large. large = 16 px text (stops iOS zooming on focus)
+ * and a 48 px VISIBLE control; without it the output is exactly v2 (40 px visible, 14 px text).
  */
 import { createContext, forwardRef, useContext, useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 import styles from "./premium.module.css";
 import { cx, premiumTokens, srOnly } from "./tokens";
 
-interface FieldCtx { id: string; describedBy?: string; invalid: boolean; required: boolean }
+interface FieldCtx { id: string; describedBy?: string; invalid: boolean; required: boolean; large: boolean }
 const FieldContext = createContext<FieldCtx | null>(null);
 
 /** Pure: the aria-describedby value for a field (hint first, then error), or undefined when it has neither. */
@@ -30,13 +32,18 @@ export interface FieldProps {
   optional?: boolean;
   /** Spans every column of a grid parent. */
   wide?: boolean;
+  /** v3: 16 px text and a 48 px visible control for every control inside. */
+  large?: boolean;
+  /** v3: your own id for the control (an ErrorSummary links to it). */
+  id?: string;
   className?: string;
   children: ReactNode;
 }
 
-export function Field({ label, hint, error, required, optional, wide, className, children }: FieldProps) {
-  const id = useId();
-  const ctx: FieldCtx = { id, describedBy: fieldDescribedBy(id, { hint: !!hint, error: !!error }), invalid: !!error, required: !!required };
+export function Field({ label, hint, error, required, optional, wide, large, id: ownId, className, children }: FieldProps) {
+  const autoId = useId();
+  const id = ownId ?? autoId;
+  const ctx: FieldCtx = { id, describedBy: fieldDescribedBy(id, { hint: !!hint, error: !!error }), invalid: !!error, required: !!required, large: !!large };
   return (
     <div className={cx(premiumTokens, styles.field, className)} style={wide ? { gridColumn: "1 / -1" } : undefined}>
       <label htmlFor={id} className={styles.fieldLabel}>
@@ -62,20 +69,20 @@ function wire<P extends { id?: string; invalid?: boolean; required?: boolean; "a
   };
 }
 
-export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "size"> { invalid?: boolean }
-export const Input = forwardRef<HTMLInputElement, InputProps>(function Input({ invalid, className, required, ...rest }, ref) {
+export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "size"> { invalid?: boolean; /** v3: 16 px text, 48 px visible. */ large?: boolean }
+export const Input = forwardRef<HTMLInputElement, InputProps>(function Input({ invalid, large, className, required, ...rest }, ref) {
   const ctx = useContext(FieldContext);
-  return <input {...rest} required={required} {...wire(ctx, { ...rest, invalid, required })} ref={ref} className={cx(premiumTokens, styles.input, className)} />;
+  return <input {...rest} required={required} {...wire(ctx, { ...rest, invalid, required })} ref={ref} className={cx(premiumTokens, styles.input, (large ?? ctx?.large) && styles.inputLg, className)} />;
 });
 
-export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> { invalid?: boolean }
-export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function Textarea({ invalid, className, required, ...rest }, ref) {
+export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> { invalid?: boolean; /** v3: 16 px text. */ large?: boolean }
+export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function Textarea({ invalid, large, className, required, ...rest }, ref) {
   const ctx = useContext(FieldContext);
-  return <textarea {...rest} required={required} {...wire(ctx, { ...rest, invalid, required })} ref={ref} className={cx(premiumTokens, styles.input, styles.inputArea, className)} />;
+  return <textarea {...rest} required={required} {...wire(ctx, { ...rest, invalid, required })} ref={ref} className={cx(premiumTokens, styles.input, styles.inputArea, (large ?? ctx?.large) && styles.inputLg, className)} />;
 });
 
-export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, "size"> { invalid?: boolean }
-export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select({ invalid, className, required, children, ...rest }, ref) {
+export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, "size"> { invalid?: boolean; /** v3: 16 px text, 48 px visible. */ large?: boolean }
+export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select({ invalid, large, className, required, children, ...rest }, ref) {
   const ctx = useContext(FieldContext);
-  return <select {...rest} required={required} {...wire(ctx, { ...rest, invalid, required })} ref={ref} className={cx(premiumTokens, styles.input, styles.inputSelect, className)}>{children}</select>;
+  return <select {...rest} required={required} {...wire(ctx, { ...rest, invalid, required })} ref={ref} className={cx(premiumTokens, styles.input, styles.inputSelect, (large ?? ctx?.large) && styles.inputLg, className)}>{children}</select>;
 });
