@@ -6,6 +6,8 @@
  * ".example" addresses, that the preview imports nothing that could read, write or send, and a few interaction rules (nothing is sent, nothing reports success) by rendering the preview.
  * Must not change: never loosen these to make a change pass. No network, no Supabase. Written with createElement (no JSX) so it runs under the existing vitest.config.ts include pattern.
  */
+import * as v2fs from "node:fs";
+import * as v2path from "node:path";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { act, createElement } from "react";
@@ -113,6 +115,9 @@ const click = (el: Element | undefined | null) => { if (!el) throw new Error("el
 const dock = () => { const b = byText(document.body, "button", /Preview controls/); if (b?.getAttribute("aria-expanded") !== "true") click(b); };
 const pickRole = (l: string) => { dock(); click(byText(document.body, '[role="radiogroup"][aria-label="Role"] [role="radio"]', l)); };
 const pickScreen = (l: string) => { dock(); click(byText(document.body, '[role="group"][aria-label="Screen state"] button', l)); };
+/** The chips live under the Filters (n) popover (structural item 1); the settle choices live in the row's More menu (item 7). */
+const chip = (id: string) => { const trig = document.querySelector<HTMLElement>('[data-testid="filters-trigger"]')!; if (trig.getAttribute("aria-expanded") !== "true") click(trig); return document.querySelector(`[data-testid="chip-${id}"]`); };
+const settle = (h: HTMLElement, label: string) => { const more = h.querySelector<HTMLElement>('[data-testid="row-more"]'); if (!more) return undefined; if (more.getAttribute("aria-expanded") !== "true") click(more); return byText(document.getElementById(more.getAttribute("aria-controls") ?? "")!, "[role=menuitem]", label); };
 const rowsIn = (h: HTMLElement) => h.querySelectorAll('[aria-label="Emails"] tbody tr').length;
 
 describe("email preview: rendered behaviour", () => {
@@ -132,28 +137,35 @@ describe("email preview: rendered behaviour", () => {
     const h = mount();
     click(h.querySelector('[data-testid="tile-failed"]'));
     expect(rowsIn(h)).toBe(1);
-    expect(h.querySelector('[data-testid="chip-failed"]')?.getAttribute("aria-pressed")).toBe("true");
-    click(h.querySelector('[data-testid="chip-drafted"]'));
+    expect(chip("failed")?.getAttribute("aria-pressed")).toBe("true");
+    expect(h.querySelector('[data-testid="filters-trigger"]')?.textContent).toContain("Filters (1)");
+    expect(h.querySelector('[data-testid="active-chips"]')?.textContent).toContain("Failed");
+    click(chip("drafted"));
     expect(rowsIn(h)).toBe(3);
-    click(h.querySelector('[data-testid="chip-all"]'));
+    expect(h.querySelector('[data-testid="filters-trigger"]')?.textContent).toContain("Filters (2)");
+    click(chip("all"));
+    expect(rowsIn(h)).toBe(12);
+    expect(h.querySelector('[data-testid="active-chips"]')).toBeNull();
+    click(chip("failed"));
+    click(h.querySelector('[data-testid="clear-filters"]'));
     expect(rowsIn(h)).toBe(12);
   });
   it("the needs-checking panel shows for an unknown job e-mail only, with the admin buttons for an admin and the sentence for office", () => {
     const h = mount();
     expect(h.querySelectorAll('[data-testid="settle-panel"]')).toHaveLength(1);
-    expect(byText(h, "button", "It was sent")).toBeTruthy();
+    expect(settle(h, "It was sent")).toBeTruthy();
     pickRole("Office");
-    expect(byText(h, "button", "It was sent")).toBeUndefined();
+    expect(h.querySelector('[data-testid="row-more"]')).toBeNull();
     expect(h.querySelector('[data-testid="settle-panel"]')?.textContent).toContain(P.ADMIN_SETTLES);
   });
   it("It was sent and It was not sent answer with the neutral Preview-only toast and never a success", () => {
     const h = mount();
-    click(byText(h, "button", "It was sent"));
+    click(settle(h, "It was sent"));
     let text = document.body.textContent ?? "";
     expect(text).toContain("Preview only");
     expect(text).toContain("Nothing was saved.");
     expect(text).not.toMatch(/Marked as sent|marked as sent\b|sent successfully|has been sent/);
-    click(byText(h, "button", "It was not sent"));
+    click(settle(h, "It was not sent"));
     text = document.body.textContent ?? "";
     expect(text).toContain("Nothing was saved.");
   });
@@ -180,5 +192,25 @@ describe("email preview: rendered behaviour", () => {
     pickRole("Workshop");
     expect(h.querySelector('[data-testid="access-denied"]')?.textContent).toContain("Access Denied");
     expect(h.querySelector('[aria-label="Emails"]')).toBeNull();
+  });
+});
+
+describe("v2 structure (owner approved items 4, 7, 10, 11): shared PreviewBar and PageHeader, v4 type scale, no local preview pill", () => {
+  const SRC2 = v2fs.readFileSync(v2path.join(process.cwd(), "components/integrations/preview/EmailHistoryPreview.tsx"), "utf8");
+  const CSS2 = v2fs.readFileSync(v2path.join(process.cwd(), "components/integrations/preview/EmailHistoryPreview.module.css"), "utf8");
+  it("uses the shared strip and heading, and keeps the Preview controls trigger", () => {
+    expect(SRC2).toContain("<PreviewBar");
+    expect(SRC2).toContain("PageHeader");
+    expect(SRC2).toContain('label="Preview controls"');
+    expect(SRC2).not.toContain("s.previewTag");
+    expect(SRC2).not.toContain("<h1 className={s.title}");
+  });
+  it("sizes text from the v4 scale tokens, not loose pixel sizes", () => {
+    expect(CSS2).toContain("var(--ui-fs-");
+    expect(CSS2).not.toMatch(/font-size:\s*(12\.5|13\.5)px/);
+    expect(CSS2).not.toMatch(/font-weight:\s*(650|550)/);
+  });
+  it("builds narrow records from the shared primitive: StackedRows", () => {
+    expect(SRC2).toContain("StackedRows");
   });
 });

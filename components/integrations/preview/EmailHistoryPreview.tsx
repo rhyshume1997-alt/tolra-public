@@ -2,6 +2,7 @@
 
 /**
  * BOUNDARY (Email history, Integrations module 6 by the coordinator's decision: ASSUMPTION for the project owner to confirm, docs/MODULES.md does not list app/(dashboard)/email; PREVIEW ONLY).
+ * v2 (claude/portal-admin-v2, owner approved STRUCTURAL-CHANGES-BRIEF items 4, 7, 9, 10, 11): shared PreviewBar and PageHeader replace the local preview pill and h1, text uses the v4 type scale, a row with several actions shows one primary and a More menu, narrow records use the shared StackedRows. Presentation only: wording, controls, states, roles and rules are unchanged.
  * Inputs: none from the server. Everything shown is fictional sample data (made-up companies and people on reserved ".example" addresses, as of 23/11/2026) held in this file, plus the person's
  * clicks. Message bodies are plain placeholder text, not real correspondence. Outputs: a look-and-feel prototype of the real Email & Payment Automation page (app/(dashboard)/email/page.tsx): the
  * "Coming soon" notice, the five email-history counts, the filter chips, the table (To, Subject, Related to, Date, Status, Actions), View, the needs-checking panel with its admin-only
@@ -15,8 +16,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Button, Callout, ChipGroup, EmptyState, FilterChip, LoadingState, Panel, Popover, ScrollTable, SegmentedControl, Sheet, StatTile, StatTiles, StatusBadge, ToastProvider,
-  cx, premiumTokens, tabularNumbers, useToast,
+  Button, Callout, ChipGroup, EmptyState, FilterChip, LoadingState, Panel, Popover, ScrollTable, SegmentedControl, Sheet, StatTile, StatTiles, StatusBadge, ToastProvider, cx, premiumTokens, tabularNumbers, useToast, PageHeader, PreviewBar, StackedRows, Menu, typeScale,
 } from "@/components/ui/premium";
 import type { StatusTone } from "@/components/ui/premium";
 import { fmtDateTime } from "@/lib/dates";
@@ -62,7 +62,7 @@ const TONE: Record<string, StatusTone> = { drafted: "neutral", copied: "neutral"
 /* 2. Sample data (fictional)                                          */
 /* ================================================================== */
 
-const body = (greeting: string, line: string) => `${greeting},\n\n${line}\n\nThis is sample text for the preview, not a real message.\n\nExample Engineering Ltd (sample)`;
+const body = (greeting: string, line: string) => `${greeting},\n\n${line}\n\nThis is sample text for the preview, not a real message.\n\nFernhill Engineering Ltd`;
 const row = (id: string, to: string, subject: string, status: string, related: string, iso: string, line: string): EmailRow => (
   { id, to, subject, status, related, when: fmtDateTime(iso), body: body("Hello", line) }
 );
@@ -136,16 +136,24 @@ function Inner() {
   const retry = () => { setScreen("loading"); toast.clear(); timer.current = window.setTimeout(() => { setScreen("ready"); preview("Sample history shown again. No server was contacted."); }, 700); };
   const resetAll = () => { setRole("admin"); setScreen("ready"); setFilters(new Set(["all"])); setViewing(null); toast.clear(); };
   const denied = !canUseEmail(role);
+  const rowActions = (r: EmailRow) => (
+    <div className={s.rowActions}>
+      <Button size="sm" variant="secondary" aria-label={`View email to ${r.to}`} onClick={() => { toast.clear(); setViewing(r); }}>View</Button>
+      {showsSettlePanel(r) && canSettle(role) ? (
+        <Menu label="More" size="sm" aria-label={`More actions for the email to ${r.to}`} data-testid="row-more" items={[
+          { id: "sent", label: "It was sent", onSelect: () => preview("It would be recorded as sent.") },
+          { id: "not-sent", label: "It was not sent", onSelect: () => preview("It would be recorded as not sent and could be sent again.") },
+        ]} />
+      ) : null}
+    </div>
+  );
+  const activeFilters = FILTER_OPTIONS.filter((o) => o.value !== "all" && filters.has(o.value));
 
   return (
     <div className={cx(premiumTokens, s.root)} data-testid="email-preview" data-role={role}>
-      <header className={s.head}>
-        <div className={s.headText}>
-          {denied ? null : <h1 className={s.title}>{PAGE_TITLE}</h1>}
-          {denied ? null : <p className={s.subtitle}>{PAGE_SUBTITLE}</p>}
-        </div>
-        <div className={s.previewBar}>
-          <span className={s.previewTag} title="Everything on this screen is fictional sample data. Nothing is read from or saved to your account.">Preview, sample data, nothing is saved</span>
+      <PreviewBar
+        data-testid="preview-bar"
+        controls={
           <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
             <div className={s.dock}>
               <p className={s.dockNote}>Not part of Tolra. Sample data; states are simulated and no request is made and nothing is sent.</p>
@@ -158,8 +166,9 @@ function Inner() {
               <Button size="sm" variant="secondary" onClick={resetAll}>Reset preview</Button>
             </div>
           </Popover>
-        </div>
-      </header>
+        }
+      />
+      {denied ? null : <PageHeader title={PAGE_TITLE} description={PAGE_SUBTITLE} />}
 
       {denied ? (
         <section className={s.denied} data-testid="access-denied">
@@ -181,12 +190,30 @@ function Inner() {
             </StatTiles>
           </Panel>
 
-          <div className={s.filterRow}>
-            <span className={s.filterLabel} id="email-filters-label">Filters</span>
-            <ChipGroup label="Filters">
-              {FILTER_OPTIONS.map((o) => <FilterChip key={o.value} selected={filters.has(o.value)} onToggle={() => setFilters((f) => toggleFilter(f, o.value))} data-testid={`chip-${o.value}`}>{o.label}</FilterChip>)}
-            </ChipGroup>
-          </div>
+          <section className={s.filterBar} aria-label="Filters" data-testid="filters">
+            <div className={s.fRow}>
+              <Popover label={activeFilters.length ? `Filters (${activeFilters.length})` : "Filters"} title="Filters" data-testid="filters-trigger">
+                <div className={s.filterBody} data-testid="filters-panel">
+                  <ChipGroup label="Filters">
+                    {FILTER_OPTIONS.map((o) => <FilterChip key={o.value} selected={filters.has(o.value)} onToggle={() => setFilters((f) => toggleFilter(f, o.value))} data-testid={`chip-${o.value}`}>{o.label}</FilterChip>)}
+                  </ChipGroup>
+                </div>
+              </Popover>
+              {activeFilters.length ? <Button variant="quiet" data-testid="clear-filters" onClick={() => setFilters(new Set(["all"]))}>Clear filters</Button> : null}
+            </div>
+            {activeFilters.length ? (
+              <ul className={s.chipRow} aria-label="Active filters" data-testid="active-chips">
+                {activeFilters.map((o) => (
+                  <li key={o.value}>
+                    <Button size="sm" variant="secondary" aria-label={`Remove filter ${o.label}`} data-chip={o.value} onClick={() => setFilters((f) => toggleFilter(f, o.value))}>
+                      {o.label}
+                      <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M3 3 9 9M9 3 3 9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </section>
 
           {error ? (
             <div className={s.errorCard} role="alert" data-testid="load-error">
@@ -198,7 +225,25 @@ function Inner() {
           {loading ? <LoadingState label="Loading email history" rows={5} /> : visible.length === 0 && !error ? (
             <EmptyState title={NO_EMAILS} headingLevel={2} compact />
           ) : error ? null : (
-            <ScrollTable label="Emails" dense className={s.cardTable}>
+            <>
+            <StackedRows
+              narrowOnly
+              label="Emails"
+              data-testid="email-stacked"
+              rows={visible.map((r) => ({
+                id: r.id,
+                title: r.to,
+                status: <StatusBadge tone={TONE[r.status] ?? "neutral"}>{STATUS_LABEL[r.status] ?? r.status}</StatusBadge>,
+                fields: [
+                  { label: "Subject", value: r.subject },
+                  { label: "Related to", value: <span className={s.relatedText}>{r.related}</span> },
+                  { label: "Date", value: <span className={tabularNumbers}>{r.when}</span> },
+                  ...(showsSettlePanel(r) ? [{ label: "Note", value: <>{UNKNOWN_NOTE}{canSettle(role) ? null : <> {ADMIN_SETTLES}</>}</> }] : []),
+                ],
+                actions: rowActions(r),
+              }))}
+            />
+            <ScrollTable label="Emails" dense narrowHidden>
               <thead><tr>{COLUMNS.map((h) => <th key={h} scope="col">{h}</th>)}</tr></thead>
               <tbody>
                 {visible.map((r) => (
@@ -209,25 +254,23 @@ function Inner() {
                     <td data-label="Date" className={cx(s.nowrap, tabularNumbers)}>{r.when}</td>
                     <td data-label="Status">
                       <div className={s.statusCell}>
-                        <StatusBadge tone={TONE[r.status] ?? "neutral"}>{STATUS_LABEL[r.status] ?? r.status}</StatusBadge>
+                        <StatusBadge mode="text" tone={TONE[r.status] ?? "neutral"}>{STATUS_LABEL[r.status] ?? r.status}</StatusBadge>
                         {showsSettlePanel(r) ? (
                           <div className={s.settle} data-testid="settle-panel">
                             <p>{UNKNOWN_NOTE}</p>
-                            {canSettle(role) ? (
-                              <div className={s.settleActions}>
-                                <Button size="sm" variant="secondary" onClick={() => preview("It would be recorded as sent.")}>It was sent</Button>
-                                <Button size="sm" variant="secondary" onClick={() => preview("It would be recorded as not sent and could be sent again.")}>It was not sent</Button>
-                              </div>
-                            ) : <p className={s.settleNote}>{ADMIN_SETTLES}</p>}
+                            {canSettle(role) ? null : <p className={s.settleNote}>{ADMIN_SETTLES}</p>}
                           </div>
                         ) : null}
                       </div>
                     </td>
-                    <td data-label="Actions" data-actions><Button size="sm" variant="secondary" aria-label={`View email to ${r.to}`} onClick={() => { toast.clear(); setViewing(r); }}>View</Button></td>
+                    <td data-label="Actions" data-actions>
+                      {rowActions(r)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </ScrollTable>
+            </>
           )}
         </>
       )}

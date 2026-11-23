@@ -11,6 +11,10 @@
  * put in state, in the page address, in a toast or anywhere else, and the form is cleared. Every action answers with the neutral "Preview only" toast and nothing changes.
  * Run-time imports from the app are pure modules only: lib/money (gbp) and components/portal/format (portalDate); everything else from lib/portal is a TYPE. lib/portal/types.ts
  * and lib/portal/refusal.ts are server-only, so the words they and the real pages hold are mirrored here and pinned to the source text by tests/unit/portal-preview.test.ts.
+ * v2 (owner approved, STRUCTURAL-CHANGES-BRIEF 5, 10, 11): the shared PreviewBar replaces the yellow tag and bar; the signed in header carries the shop's name and a navy monogram (fictional,
+ * no logo); Home gets two summary cards that COUNT ONLY rows the Quotes and Jobs screens already show ("Quotes to look at" = quotes whose status word is "Awaiting your answer", "Jobs in progress"
+ * = jobs whose stage word is "In progress"), each linking to that existing screen, plus a "Latest" list of the first rows of those same lists; quote and job cards on a phone are the shared
+ * StackedRows; the title is the shared PageHeader; type uses the v4 scale. No new data source, no new action, no account or contact wording, no `sends`, no e-mail.
  * MUST NOT CHANGE: wording, screens, columns, tabs-per-permission and the "one generic refusal" rule mirror today's portal. Never show, vary by, or invent: whether a contact,
  * code, document or account exists, the `sends` list, an e-mail address, an id, a token, a reason for a refusal. Do not wire this to real data, a session or an action; do not
  * add a control the real portal lacks; keep every control at a 48 px hit area. Delete the four preview files (this component and its .module.css,
@@ -19,7 +23,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
-import { Button, Field, Input, LoadingState, ScrollTable, Select, StatusBadge, ToastProvider, cx, premiumTokens, tabularNumbers, useToast } from "@/components/ui/premium";
+import { Button, Field, Input, LoadingState, PageHeader, PreviewBar, ScrollTable, Select, StackedRows, StatTile, StatTiles, StatusBadge, ToastProvider, cx, premiumTokens, tabularNumbers, typeScale, useToast } from "@/components/ui/premium";
 import type { StatusTone } from "@/components/ui/premium";
 import { portalDate } from "@/components/portal/format";
 import { gbp } from "@/lib/money";
@@ -170,6 +174,28 @@ export function titleFor(screen: Screen, session: PreviewSession): string {
 export const orDash = (value: string | null): string => (value === null || value === "" ? "-" : value);
 export const money = (value: number | null): string => (value === null ? "-" : gbp(value));
 
+/** Pure: the shop's monogram for the header, the first letters of its first two words (a navy tile, never a logo). */
+export function monogram(name: string): string {
+  const words = name.split(/\s+/).filter(Boolean);
+  return words.slice(0, 2).map((w) => w.charAt(0).toUpperCase()).join("");
+}
+
+export const LATEST_COUNT = 3;
+export interface HomeSummary {
+  quotesToLookAt: number; quotesTotal: number; jobsInProgress: number; jobsTotal: number;
+  latestQuotes: PortalQuote[]; latestJobs: PortalJob[];
+}
+/** Pure: Home counts ONLY rows the Quotes and Jobs screens already list (same rows, same order, same status and stage words); a section the contact has no permission for is not summarised. */
+export function homeSummary(data: Pick<Sample, "quotes" | "jobs">, permissions: PortalPermission[]): HomeSummary {
+  const q = permissions.includes("quotes") ? data.quotes : [];
+  const j = permissions.includes("jobs") ? data.jobs : [];
+  return {
+    quotesToLookAt: q.filter((x) => x.status === "sent").length, quotesTotal: q.length,
+    jobsInProgress: j.filter((x) => x.stage === "in_progress").length, jobsTotal: j.length,
+    latestQuotes: q.slice(0, LATEST_COUNT), latestJobs: j.slice(0, LATEST_COUNT),
+  };
+}
+
 /* ---------- small pieces ---------- */
 function Dash() {
   return (
@@ -244,22 +270,22 @@ function Quotes({ quotes }: { quotes: PortalQuote[] }) {
           ))}
         </tbody>
       </ScrollTable>
-      <ul className={cx(s.cards, s.onlyNarrow)} aria-label="Your quotes" data-testid="portal-quotes">
-        {quotes.map((q) => (
-          <li key={q.quoteRef} className={s.card}>
-            <div className={s.cardHead}>
-              <span className={cx(s.cardRef, tabularNumbers)}>{q.quoteRef}</span>
-              <StatusBadge tone={QUOTE_TONE[q.status]}>{QUOTE_STATUS[q.status]}</StatusBadge>
-            </div>
-            <dl className={s.dl}>
-              <div><dt>Sent</dt><dd><DateVal v={q.sentAt} /></dd></div>
-              <div><dt>Valid until</dt><dd><DateVal v={q.validUntil} /></dd></div>
-              <div className={s.dlSpan}><dt>Your PO</dt><dd className={s.po}><Val v={q.customerPo} /></dd></div>
-              <div className={s.dlTotal}><dt>Total</dt><dd className={s.total}><MoneyVal v={q.totalValue} /></dd></div>
-            </dl>
-          </li>
-        ))}
-      </ul>
+      <StackedRows
+        className={s.onlyNarrow}
+        label="Your quotes"
+        data-testid="portal-quotes"
+        rows={quotes.map((q) => ({
+          id: q.quoteRef,
+          title: <span className={tabularNumbers}>{q.quoteRef}</span>,
+          status: <StatusBadge tone={QUOTE_TONE[q.status]}>{QUOTE_STATUS[q.status]}</StatusBadge>,
+          fields: [
+            { label: "Sent", value: <DateVal v={q.sentAt} /> },
+            { label: "Valid until", value: <DateVal v={q.validUntil} /> },
+            { label: "Your PO", value: <span className={s.po}><Val v={q.customerPo} /></span> },
+            { label: "Total", value: <MoneyVal v={q.totalValue} /> },
+          ],
+        }))}
+      />
     </>
   );
 }
@@ -283,21 +309,80 @@ function Jobs({ jobs }: { jobs: PortalJob[] }) {
           ))}
         </tbody>
       </ScrollTable>
-      <ul className={cx(s.cards, s.onlyNarrow)} aria-label="Your jobs" data-testid="portal-jobs">
-        {jobs.map((j) => (
-          <li key={j.jobNo} className={s.card}>
-            <div className={s.cardHead}>
-              <span className={cx(s.cardRef, tabularNumbers)}>{j.jobNo}</span>
-              <StatusBadge tone={JOB_TONE[j.stage]}>{JOB_STAGE[j.stage]}</StatusBadge>
-            </div>
-            <dl className={s.dl}>
-              <div><dt>Your PO</dt><dd className={s.po}><Val v={j.customerPo} /></dd></div>
-              <div><dt>Due</dt><dd><DateVal v={j.dueDate} /></dd></div>
-            </dl>
+      <StackedRows
+        className={s.onlyNarrow}
+        label="Your jobs"
+        data-testid="portal-jobs"
+        rows={jobs.map((j) => ({
+          id: j.jobNo,
+          title: <span className={tabularNumbers}>{j.jobNo}</span>,
+          status: <StatusBadge tone={JOB_TONE[j.stage]}>{JOB_STAGE[j.stage]}</StatusBadge>,
+          fields: [
+            { label: "Your PO", value: <span className={s.po}><Val v={j.customerPo} /></span> },
+            { label: "Due", value: <DateVal v={j.dueDate} /> },
+          ],
+        }))}
+      />
+    </>
+  );
+}
+
+function LatestList({ title, label, rows, onAll, allLabel, testId }: { title: string; label: string; rows: Array<{ id: string; ref: string; word: string; tone: StatusTone; date: string | null; dateLabel: string }>; onAll: () => void; allLabel: string; testId: string }) {
+  if (rows.length === 0) return null;
+  return (
+    <section className={s.latest} aria-labelledby={`${testId}-h`} data-testid={testId}>
+      <div className={s.latestHead}>
+        <h2 id={`${testId}-h`} className={cx(typeScale.section, s.h2)}>{title}</h2>
+        <Link onClick={onAll} className={s.allLink}>{allLabel}</Link>
+      </div>
+      <ul className={s.latestList} aria-label={label}>
+        {rows.map((r) => (
+          <li key={r.id} className={s.latestRow}>
+            <span className={cx(typeScale.name, tabularNumbers, s.latestRef)}>{r.ref}</span>
+            <StatusBadge tone={r.tone} mode="text">{r.word}</StatusBadge>
+            <span className={cx(typeScale.secondary, tabularNumbers, s.latestDate)}>{r.dateLabel} <DateVal v={r.date} /></span>
           </li>
         ))}
       </ul>
-    </>
+    </section>
+  );
+}
+
+function Home({ data, permissions, go }: { data: Sample; permissions: PortalPermission[]; go: (next: Screen) => void }) {
+  const sum = homeSummary(data, permissions);
+  const hasQuotes = permissions.includes("quotes");
+  const hasJobs = permissions.includes("jobs");
+  const columns = hasQuotes && hasJobs ? 2 : 1;
+  return (
+    <div className={s.homeWrap} data-testid="portal-home">
+      <p className={s.home}>
+        <strong>{data.session.customerName}</strong> at <strong>{data.session.companyName}</strong>. {COPY.homeText}
+      </p>
+      {hasQuotes || hasJobs ? (
+        <StatTiles label="At a glance" columns={columns} className={s.tiles}>
+          {hasQuotes ? (
+            <StatTile label="Quotes to look at" value={sum.quotesToLookAt} hint={`${QUOTE_STATUS.sent} (${sum.quotesTotal} quotes in all)`} href="#preview" onClick={(e) => { e.preventDefault(); go("quotes"); }} data-testid="portal-tile-quotes" />
+          ) : null}
+          {hasJobs ? (
+            <StatTile label="Jobs in progress" value={sum.jobsInProgress} hint={`${sum.jobsTotal} jobs in all`} href="#preview" onClick={(e) => { e.preventDefault(); go("jobs"); }} data-testid="portal-tile-jobs" />
+          ) : null}
+        </StatTiles>
+      ) : null}
+      <div className={cx(s.latestGrid, columns === 1 && s.latestOne)}>
+        {hasQuotes ? (
+          <LatestList
+            title="Latest quotes" label="Latest quotes" testId="portal-latest-quotes" allLabel="All quotes" onAll={() => go("quotes")}
+            rows={sum.latestQuotes.map((q) => ({ id: q.quoteRef, ref: q.quoteRef, word: QUOTE_STATUS[q.status], tone: QUOTE_TONE[q.status], date: q.sentAt, dateLabel: "Sent" }))}
+          />
+        ) : null}
+        {hasJobs ? (
+          <LatestList
+            title="Latest jobs" label="Latest jobs" testId="portal-latest-jobs" allLabel="All jobs" onAll={() => go("jobs")}
+            rows={sum.latestJobs.map((j) => ({ id: j.jobNo, ref: j.jobNo, word: JOB_STAGE[j.stage], tone: JOB_TONE[j.stage], date: j.dueDate, dateLabel: "Due" }))}
+          />
+        ) : null}
+      </div>
+    </div>
   );
 }
 
@@ -308,7 +393,7 @@ function Stage() {
   const [tabs, setTabs] = useState<TabsKind>("both");
   const [kind, setKind] = useState<SampleKind>("typical");
   const [controlsOpen, setControlsOpen] = useState(false);
-  const heading = useRef<HTMLHeadingElement>(null);
+  const heading = useRef<HTMLDivElement>(null);
   const moveFocus = useRef(false);
 
   const permissions = tabsFor(tabs);
@@ -319,7 +404,11 @@ function Stage() {
 
   // A link click is a page load in the real portal, so focus returns to the heading; the preview selects never steal focus.
   useEffect(() => {
-    if (moveFocus.current) { moveFocus.current = false; heading.current?.focus(); }
+    if (moveFocus.current) {
+      moveFocus.current = false;
+      const h = heading.current?.querySelector("h1");
+      if (h) { h.tabIndex = -1; h.focus(); }
+    }
   }, [shown]);
   const go = (next: Screen) => { moveFocus.current = true; setScreen(next); };
   const choose = (next: Screen) => { toast.clear(); setScreen(next); };
@@ -354,13 +443,7 @@ function Stage() {
     case "refused":
       body = (<><p className={s.notice} data-testid="portal-refusal">{COPY.refusalMessage}</p><SigninForm /></>);
       break;
-    case "home":
-      body = (
-        <p className={s.home} data-testid="portal-home">
-          <strong>{data.session.customerName}</strong> at <strong>{data.session.companyName}</strong>. {COPY.homeText}
-        </p>
-      );
-      break;
+    case "home": body = <Home data={data} permissions={permissions} go={go} />; break;
     case "quotes": body = <Quotes quotes={data.quotes} />; break;
     case "quotes-empty": body = <Quotes quotes={[]} />; break;
     case "jobs": body = <Jobs jobs={data.jobs} />; break;
@@ -375,66 +458,73 @@ function Stage() {
   const current = shown === "quotes-empty" || shown === "loading" ? "quotes" : shown === "jobs-empty" ? "jobs" : shown;
 
   return (
-    <div className={cx(premiumTokens, s.root)} data-testid="portal-preview" data-screen={shown}>
-      <section className={s.bar} aria-label="Preview controls">
-        <div className={s.barIn}>
-          <span className={s.previewTag}>Preview only</span>
-          <p className={s.barNote}>Sample data. Nothing is sent or saved, and this is not a real sign-in.</p>
-          <Button className={s.barBtn} aria-expanded={controlsOpen} aria-controls="portal-preview-controls" onClick={() => setControlsOpen((v) => !v)} data-testid="dock-toggle">
-            Preview screens
-          </Button>
-        </div>
-        {controlsOpen ? (
-          <div className={s.panel} id="portal-preview-controls">
-            <div className={s.panelIn}>
-              <Field label="Screen" hint="Signed in screens are only drawn here. No one is signed in.">
-                <Select value={screen} onChange={(e) => choose(e.target.value as Screen)} data-testid="dock-screen">
-                  <optgroup label="Signed out">
-                    {SIGNED_OUT.map((v) => <option key={v} value={v}>{SCREEN_LABEL[v]}</option>)}
-                  </optgroup>
-                  <optgroup label="Signed in (preview switch, no real session)">
-                    {SIGNED_IN.map((v) => <option key={v} value={v}>{SCREEN_LABEL[v]}</option>)}
-                  </optgroup>
-                  <optgroup label="Other">
-                    <option value="off">{SCREEN_LABEL.off}</option>
-                  </optgroup>
-                </Select>
-              </Field>
-              <Field label="Tabs this contact may see" hint="A page without its permission is the 404.">
-                <Select value={tabs} onChange={(e) => { toast.clear(); setTabs(e.target.value as TabsKind); }} data-testid="dock-tabs">
-                  <option value="both">Quotes and Jobs</option>
-                  <option value="quotes">Quotes only</option>
-                  <option value="jobs">Jobs only</option>
-                </Select>
-              </Field>
-              <Field label="Sample data" hint="Long names show how text wraps.">
-                <Select value={kind} onChange={(e) => { toast.clear(); setKind(e.target.value as SampleKind); }} data-testid="dock-sample">
-                  <option value="typical">Typical</option>
-                  <option value="long">Long names</option>
-                </Select>
-              </Field>
-            </div>
+    <div className={cx(premiumTokens, s.root)} data-testid="portal-preview" data-screen={shown} data-auth={signedIn ? "false" : "true"}>
+      <aside aria-label="Preview">
+        <PreviewBar
+          label="Preview only, sample data, nothing sent"
+          controls={<Button aria-expanded={controlsOpen} aria-controls="portal-preview-controls" onClick={() => setControlsOpen((v) => !v)} data-testid="dock-toggle">Preview screens</Button>}
+        />
+      {controlsOpen ? (
+        <section className={s.panel} id="portal-preview-controls" aria-label="Preview screens">
+          <div className={s.panelIn}>
+            <Field label="Screen" hint="Signed in screens are only drawn here. No one is signed in. This is not a real sign-in.">
+              <Select value={screen} onChange={(e) => choose(e.target.value as Screen)} data-testid="dock-screen">
+                <optgroup label="Signed out">
+                  {SIGNED_OUT.map((v) => <option key={v} value={v}>{SCREEN_LABEL[v]}</option>)}
+                </optgroup>
+                <optgroup label="Signed in (preview switch, no real session)">
+                  {SIGNED_IN.map((v) => <option key={v} value={v}>{SCREEN_LABEL[v]}</option>)}
+                </optgroup>
+                <optgroup label="Other">
+                  <option value="off">{SCREEN_LABEL.off}</option>
+                </optgroup>
+              </Select>
+            </Field>
+            <Field label="Tabs this contact may see" hint="A page without its permission is the 404.">
+              <Select value={tabs} onChange={(e) => { toast.clear(); setTabs(e.target.value as TabsKind); }} data-testid="dock-tabs">
+                <option value="both">Quotes and Jobs</option>
+                <option value="quotes">Quotes only</option>
+                <option value="jobs">Jobs only</option>
+              </Select>
+            </Field>
+            <Field label="Sample data" hint="Long names show how text wraps.">
+              <Select value={kind} onChange={(e) => { toast.clear(); setKind(e.target.value as SampleKind); }} data-testid="dock-sample">
+                <option value="typical">Typical</option>
+                <option value="long">Long names</option>
+              </Select>
+            </Field>
           </div>
-        ) : null}
-      </section>
-
-      {signedIn ? (
-        <header className={s.top} data-testid="portal-header">
-          <div className={s.topIn}>
-            <nav aria-label="Portal" className={s.nav}>
-              <Link className={s.tab} current={current === "home"} onClick={() => go("home")} testId="portal-tab-home">{COPY.home}</Link>
-              {tabButtons.map((t) => (
-                <Link key={t.screen} className={s.tab} current={current === t.screen} onClick={() => go(t.screen)} testId={`portal-tab-${t.permission}`}>{t.label}</Link>
-              ))}
-            </nav>
-            <Button variant="quiet" onClick={() => toast.show(PREVIEW_ANSWERS.signOut)} data-testid="portal-signout">{COPY.signOut}</Button>
-          </div>
-        </header>
+        </section>
       ) : null}
+      </aside>
+
+      <header className={s.top} data-testid="portal-header">
+        <div className={s.topIn}>
+          {signedIn ? (
+            <>
+              <div className={s.brandRow}>
+                <span className={s.brand} data-testid="portal-brand">
+                  <span className={s.monogram} aria-hidden="true">{monogram(data.session.companyName)}</span>
+                  <span className={cx(typeScale.card, s.brandName)}>{data.session.companyName}</span>
+                </span>
+                <Button variant="quiet" onClick={() => toast.show(PREVIEW_ANSWERS.signOut)} data-testid="portal-signout">{COPY.signOut}</Button>
+              </div>
+              <nav aria-label="Portal" className={s.nav}>
+                <Link className={s.tab} current={current === "home"} onClick={() => go("home")} testId="portal-tab-home">{COPY.home}</Link>
+                {tabButtons.map((t) => (
+                  <Link key={t.screen} className={s.tab} current={current === t.screen} onClick={() => go(t.screen)} testId={`portal-tab-${t.permission}`}>{t.label}</Link>
+                ))}
+              </nav>
+            </>
+          ) : (
+            <p className={cx(typeScale.card, s.wordmark)}>Customer portal</p>
+          )}
+        </div>
+      </header>
 
       <main className={signedIn ? s.content : s.auth}>
         <div key={shown} className={cx(s.screen, !signedIn && s.card1)}>
-          <h1 className={s.h1} ref={heading} tabIndex={-1}>{title}</h1>
+          <div ref={heading}><PageHeader title={title} className={s.ph} /></div>
           {body}
         </div>
       </main>

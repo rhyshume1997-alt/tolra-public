@@ -2,6 +2,7 @@
 
 /**
  * BOUNDARY (Admin > Integrations, PREVIEW ONLY: nothing here is wired to anything, and nothing here can connect, sign in, send, transfer or call an integration).
+ * v2 (claude/portal-admin-v2, owner approved STRUCTURAL-CHANGES-BRIEF items 4, 7, 9, 10, 11): shared PreviewBar and PageHeader replace the local preview pill and h1, text uses the v4 type scale, a row with several actions shows one primary and a More menu, narrow records use the shared StackedRows. Presentation only: wording, controls, states, roles and rules are unchanged.
  * OWNERSHIP ASSUMPTION FOR THE OWNER TO CONFIRM: docs/MODULES.md gives Module 6 (Integrations) components/integrations/** and settings cards, but does not name the route
  * app/(dashboard)/admin/integrations/**. By the coordinator's decision the route is treated as Module 6's. If it belongs elsewhere, move these files; nothing else depends on them.
  * Inputs: none from the server. Everything shown is fictional (one made-up company and two made-up Xero or mailbox names, as of 23/11/2026) held in this file, plus the person's clicks.
@@ -21,8 +22,7 @@
 
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import {
-  Button, Callout, Dialog, Field, Input, LoadingState, Panel, Popover, ScrollTable, SegmentedControl, StatusBadge, Switch, ToastProvider, cx, premiumTokens, useToast,
-} from "@/components/ui/premium";
+  Button, Callout, Dialog, Field, Input, LoadingState, Panel, Popover, ScrollTable, SegmentedControl, StatusBadge, Switch, ToastProvider, cx, premiumTokens, useToast, PageHeader, PreviewBar } from "@/components/ui/premium";
 import { EMAIL_CHOICE_APPROVAL, EMAIL_CHOICE_OTHER, EMAIL_CHOICE_OUTLOOK } from "@/components/email-choice-guide";
 import { accountingStatuses } from "@/lib/integrations/accounting-status";
 import { cardStatusLabel, connectCardView, type IntegrationOverview } from "@/lib/integrations/overview";
@@ -250,27 +250,27 @@ function Inner() {
 
   return (
     <div className={cx(premiumTokens, s.root)} data-testid="integrations-preview" data-role={role} data-overall={overall}>
-      <header className={s.head}>
-        <div>
-          <div className={s.titleLine}>
-            <h1 className={s.title}>{denied ? "Access Denied" : PAGE_TITLE}</h1>
-            <span className={s.previewTag} title="Everything on this screen is fictional sample data. Nothing is read from or saved to your account.">Preview, sample data, nothing is saved</span>
-            <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
-              <div className={s.dock}>
-                <p className={s.dockNote}>Not part of Tolra. Sample data; states are simulated, nothing is granted, nothing is connected and no request is made.</p>
-                <p className={s.dockLabel}>Who is looking (changes the drawing only)</p>
-                <SegmentedControl label="Role" value={role} options={ROLE_OPTIONS} size="sm" onChange={(v) => { setRole(v); toast.clear(); }} />
-                <p className={s.dockLabel}>What each card reports</p>
-                <div className={s.dockStates} role="group" aria-label="What each card reports">
-                  {OVERALLS.map((x) => <button key={x.v} type="button" aria-pressed={overall === x.v} className={s.dockBtn} onClick={() => pick(x.v)}>{x.label}</button>)}
-                </div>
-                <Button size="sm" variant="secondary" data-testid="dock-reset" onClick={reset}>Reset preview</Button>
+      <PreviewBar
+        data-testid="preview-bar"
+        controls={
+          <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
+            <div className={s.dock}>
+              <p className={s.dockNote}>Not part of Tolra. Sample data; states are simulated, nothing is granted, nothing is connected and no request is made.</p>
+              <p className={s.dockLabel}>Who is looking (changes the drawing only)</p>
+              <SegmentedControl label="Role" value={role} options={ROLE_OPTIONS} size="sm" onChange={(v) => { setRole(v); toast.clear(); }} />
+              <p className={s.dockLabel}>What each card reports</p>
+              <div className={s.dockStates} role="group" aria-label="What each card reports">
+                {OVERALLS.map((x) => <button key={x.v} type="button" aria-pressed={overall === x.v} className={s.dockBtn} onClick={() => pick(x.v)}>{x.label}</button>)}
               </div>
-            </Popover>
-          </div>
-          <p className={s.subtitle}>{denied ? "Redirecting you back to the dashboard." : SUBTITLE}</p>
-        </div>
-      </header>
+              <Button size="sm" variant="secondary" data-testid="dock-reset" onClick={reset}>Reset preview</Button>
+            </div>
+          </Popover>
+        }
+      />
+      <PageHeader
+        title={denied ? "Access Denied" : PAGE_TITLE}
+        description={denied ? "Redirecting you back to the dashboard." : SUBTITLE}
+      />
 
       {denied ? (
         <section className={s.denied} data-testid="access-denied" aria-label="Access denied">

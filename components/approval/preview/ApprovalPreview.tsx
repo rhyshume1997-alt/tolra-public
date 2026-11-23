@@ -2,6 +2,7 @@
 
 /**
  * BOUNDARY (Approval Queue, Module 4 by the coordinator's decision: ASSUMPTION for the project owner to confirm, docs/MODULES.md does not list app/(dashboard)/approval; PREVIEW ONLY).
+ * v2 (claude/portal-admin-v2, owner approved STRUCTURAL-CHANGES-BRIEF items 4, 7, 9, 10, 11): shared PreviewBar and PageHeader replace the local preview pill and h1, text uses the v4 type scale, a row with several actions shows one primary and a More menu, narrow records use the shared StackedRows. Presentation only: wording, controls, states, roles and rules are unchanged.
  * Inputs: none from the server. Everything shown is fictional sample data (made-up companies and people on reserved ".example" addresses, as of 23/11/2026) held in this file, plus the person's clicks.
  * Message text is plain placeholder text, not real correspondence. Outputs: a look-and-feel prototype of the real Approval Queue (app/(dashboard)/approval/page.tsx): the info notice with the waiting count,
  * the Columns picker, the draft cards (Copy to Clipboard, Mark as Sent Manually, Open in email app, Edit, Full preview, Send via Resend instead, Skip), the chase reminder card (Edit, Approve and send,
@@ -18,8 +19,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Button, Callout, Dialog, EmptyState, Field, Input, LoadingState, Popover, SegmentedControl, Sheet, StatusBadge, Switch, Textarea, ToastProvider,
-  cx, premiumTokens, tabularNumbers, useToast,
+  Menu, Button, Callout, Dialog, EmptyState, Field, Input, LoadingState, Popover, SegmentedControl, Sheet, StatusBadge, Switch, Textarea, ToastProvider, cx, premiumTokens, tabularNumbers, useToast, PageHeader, PreviewBar, StackedRows,
 } from "@/components/ui/premium";
 import type { StatusTone } from "@/components/ui/premium";
 import { fmtDate, fmtDateTime } from "@/lib/dates";
@@ -85,7 +85,7 @@ export const NOTHING_SENT = "Nothing has been sent yet.";
 /* 2. Sample data (fictional)                                          */
 /* ================================================================== */
 
-const msg = (greeting: string, line: string) => `${greeting},\n\n${line}\n\nThis is sample text for the preview, not a real message.\n\nExample Engineering Ltd (sample)`;
+const msg = (greeting: string, line: string) => `${greeting},\n\n${line}\n\nThis is sample text for the preview, not a real message.\n\nFernhill Engineering Ltd`;
 export const SEED_ITEMS: ApprovalItem[] = [
   { id: "d1", badge: TYPE_LABEL.invoice, tone: "amber", customer: "Halden Precision", detail: "Invoice INV-1190 for November", drafted: fmtDate("2026-11-23"), to: "accounts@halden-precision.example", subject: "Invoice INV-1190 for November", body: msg("Hello", "Sample draft sending an invoice created by the system."), chase: false, canApprove: true, failedBefore: false, related: "inv-1190" },
   { id: "d2", badge: TYPE_LABEL.general, tone: "blue", customer: "Brightwell Valves", detail: "Statement of account, November", drafted: fmtDate("2026-11-22"), to: "buying@brightwell.example", subject: "Statement of account, November", body: msg("Hello", "Sample draft of a customer statement.\nA second line of sample text.\nA third line.\nA fourth line.\nA fifth line.\nA sixth line that the preview box hides."), chase: false, canApprove: true, failedBefore: true, related: "customer_statement:c-brightwell" },
@@ -204,13 +204,9 @@ function Inner() {
 
   return (
     <div className={cx(premiumTokens, s.root)} data-testid="approval-preview" data-role={role}>
-      <header className={s.head}>
-        <div className={s.headText}>
-          {denied ? null : <h1 className={s.title}>{PAGE_TITLE}</h1>}
-          {denied ? null : <p className={s.subtitle}>{PAGE_SUBTITLE}</p>}
-        </div>
-        <div className={s.previewBar}>
-          <span className={s.previewTag} title="Everything on this screen is fictional sample data. Nothing is read from or saved to your account.">Preview, sample data, nothing is saved</span>
+      <PreviewBar
+        data-testid="preview-bar"
+        controls={
           <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
             <div className={s.dock}>
               <p className={s.dockNote}>Not part of Tolra. Sample data; states are simulated and no request is made and nothing is sent.</p>
@@ -229,9 +225,9 @@ function Inner() {
               <Button size="sm" variant="secondary" onClick={resetAll}>Reset preview</Button>
             </div>
           </Popover>
-          {denied ? null : columnsPopover}
-        </div>
-      </header>
+        }
+      />
+      {denied ? null : <PageHeader title={PAGE_TITLE} description={PAGE_SUBTITLE} actions={columnsPopover} />}
 
       {denied ? (
         <section className={s.denied} data-testid="access-denied">
@@ -256,7 +252,7 @@ function Inner() {
               <article key={item.id} className={s.card} data-approval={item.id}>
                 <div className={s.cardHead}>
                   <div className={s.cardTitle}>
-                    {isVisible("type") ? <StatusBadge tone={TONE[item.tone]}>{item.badge}</StatusBadge> : null}
+                    {isVisible("type") ? <StatusBadge mode="text" tone={TONE[item.tone]}>{item.badge}</StatusBadge> : null}
                     <h2 className={s.customer}>{item.customer}</h2>
                     <p className={s.detail}>{item.detail}</p>
                   </div>
@@ -269,12 +265,14 @@ function Inner() {
                 {isVisible("preview") ? <div className={s.previewBox}>{previewLines(item.body).map((line, i) => <p key={`${item.id}-${i}`}>{line || " "}</p>)}</div> : null}
                 <div className={s.actions}>
                   <Button variant="primary" onClick={() => actions.copy(item)}>Copy to Clipboard</Button>
-                  <Button variant="secondary" onClick={() => actions.markSent(item)}>Mark as Sent Manually</Button>
-                  <Button variant="secondary" onClick={() => actions.mail(item)}>Open in email app</Button>
-                  <Button variant="secondary" onClick={() => setDlg({ k: "edit", id: item.id })}>Edit</Button>
-                  <Button variant="secondary" onClick={() => setDlg({ k: "full", id: item.id })}>Full preview</Button>
-                  {cardShowsResend(item, resend) ? <Button variant="secondary" onClick={() => actions.resend(item)}>{RESEND_LABEL}</Button> : null}
-                  <Button variant="quiet" className={s.skip} onClick={() => actions.skip(item)}>Skip</Button>
+                  <Menu label="More" aria-label={`More actions for ${item.customer}`} data-testid="row-more" items={[
+                    { id: "sent", label: "Mark as Sent Manually", onSelect: () => actions.markSent(item) },
+                    { id: "mail", label: "Open in email app", onSelect: () => actions.mail(item) },
+                    { id: "edit", label: "Edit", onSelect: () => setDlg({ k: "edit", id: item.id }) },
+                    { id: "full", label: "Full preview", onSelect: () => setDlg({ k: "full", id: item.id }) },
+                    ...(cardShowsResend(item, resend) ? [{ id: "resend", label: RESEND_LABEL, onSelect: () => actions.resend(item) }] : []),
+                    { id: "skip", label: "Skip", separatorBefore: true, onSelect: () => actions.skip(item) },
+                  ]} />
                 </div>
               </article>
             )))}
@@ -388,16 +386,16 @@ function ChaseCard({ item, role, resend, sending, preview, actions, onApprove }:
       ) : <div className={s.chaseText}><p className={s.chaseSubject}>{item.subject}</p><p className={s.chaseBody}>{item.body}</p></div>}
       {error ? <p role="alert" className={s.err}>{error}</p> : null}
       <div className={s.actions}>
-        <Button variant="secondary" disabled={editing} onClick={() => setEditing(true)}>Edit</Button>
         <Button variant="primary" disabled={editing} onClick={onApprove}>Approve and send</Button>
-        <Button variant="secondary" disabled={editing} onClick={() => preview(`The reminder for ${item.customer} was not skipped.`)}>Skip</Button>
-        <Button variant="secondary" disabled={editing} onClick={() => preview(`Chasing was not paused for ${item.customer}.`)}>Pause chasing for this customer</Button>
-      </div>
-      <div className={cx(s.actions, s.manual)}>
-        <Button variant="secondary" onClick={() => actions.copy(item)}>Copy draft</Button>
-        <Button variant="secondary" onClick={() => actions.mail(item)}>Open in email app</Button>
-        <Button variant="secondary" onClick={() => actions.markSent(item)}>Mark as Sent Manually</Button>
-        {showsResend(resend, item.failedBefore) ? <Button variant="secondary" onClick={() => actions.resend(item)}>{RESEND_LABEL}</Button> : null}
+        <Menu label="More" aria-label={`More actions for the reminder to ${item.customer}`} data-testid="row-more" items={[
+          { id: "edit", label: "Edit", disabled: editing, onSelect: () => setEditing(true) },
+          { id: "skip", label: "Skip", disabled: editing, onSelect: () => preview(`The reminder for ${item.customer} was not skipped.`) },
+          { id: "pause", label: "Pause chasing for this customer", disabled: editing, onSelect: () => preview(`Chasing was not paused for ${item.customer}.`) },
+          { id: "copy", label: "Copy draft", separatorBefore: true, onSelect: () => actions.copy(item) },
+          { id: "mail", label: "Open in email app", onSelect: () => actions.mail(item) },
+          { id: "sent", label: "Mark as Sent Manually", onSelect: () => actions.markSent(item) },
+          ...(showsResend(resend, item.failedBefore) ? [{ id: "resend", label: RESEND_LABEL, onSelect: () => actions.resend(item) }] : []),
+        ]} />
       </div>
     </article>
   );

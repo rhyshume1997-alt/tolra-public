@@ -2,6 +2,7 @@
 
 /**
  * BOUNDARY (AI section, Integrations module 6 by the coordinator's decision: ASSUMPTION for the project owner to confirm, docs/MODULES.md does not list app/(dashboard)/ai-helper; PREVIEW ONLY).
+ * v2 (claude/portal-admin-v2, owner approved STRUCTURAL-CHANGES-BRIEF items 4, 7, 9, 10, 11): shared PreviewBar and PageHeader replace the local preview pill and h1, text uses the v4 type scale, a row with several actions shows one primary and a More menu, narrow records use the shared StackedRows. Presentation only: wording, controls, states, roles and rules are unchanged.
  * Inputs: none from the server. Everything shown is fictional sample data held in this file, plus the person's clicks. Outputs: a look-and-feel prototype of the real AI page
  * (app/(dashboard)/ai-helper/page.tsx and components/ai-helper/*): the header, the "What this shows" card, the manage notice, the Round-up, RFQ email to draft quote and Tooly assistant panels, and
  * every state the real page has (loading, not switched on for this server, could not be loaded, AI off for this company as admin and as office, Access Denied). The only state is LOCAL UI state.
@@ -15,7 +16,9 @@
  */
 
 import { useCallback, useMemo, useState } from "react";
-import { Button, Callout, Field, Input, Panel, Popover, SegmentedControl, Select, Switch, Textarea, ToastProvider, cx, premiumTokens, tabularNumbers, useToast } from "@/components/ui/premium";
+import {
+  Button, Callout, Field, Input, Panel, Popover, SegmentedControl, Select, Switch, Textarea, ToastProvider, cx, premiumTokens, tabularNumbers, useToast, PageHeader, PreviewBar, StackedRows,
+} from "@/components/ui/premium";
 import { RFQ_MAX_CHARS } from "@/lib/ai-helper/limits";
 import { ATTACHMENTS_REFUSED } from "@/lib/ai-helper/rfq";
 import { TOOLY_POSES } from "@/components/tooly/poses";
@@ -122,13 +125,9 @@ function Inner() {
 
   return (
     <div className={cx(premiumTokens, s.root)} data-testid="ai-preview" data-role={role}>
-      <header className={s.head}>
-        <div className={s.headText}>
-          {denied ? null : <h1 className={s.title}>{PAGE_TITLE}</h1>}
-          {denied ? null : <p className={s.subtitle}>{PAGE_SUBTITLE}</p>}
-        </div>
-        <div className={s.previewBar}>
-          <span className={s.previewTag} title="Everything on this screen is fictional. Nothing is read from or saved to your account, and no AI is called.">Preview, sample data, nothing is saved</span>
+      <PreviewBar
+        data-testid="preview-bar"
+        controls={
           <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
             <div className={s.dock}>
               <p className={s.dockNote}>Not part of Tolra. No AI, model or server is called. States are simulated; result areas hold placeholder text only.</p>
@@ -148,8 +147,9 @@ function Inner() {
               <Button size="sm" variant="secondary" onClick={resetAll}>Reset preview</Button>
             </div>
           </Popover>
-        </div>
-      </header>
+        }
+      />
+      {denied ? null : <PageHeader title={PAGE_TITLE} description={PAGE_SUBTITLE} />}
 
       {denied ? (
         <section className={s.denied} data-testid="access-denied">

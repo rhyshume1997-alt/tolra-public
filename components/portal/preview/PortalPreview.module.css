@@ -1,7 +1,7 @@
 /*
  * BOUNDARY (Customer portal, Module 10, PREVIEW ONLY). Inputs: the class names used by components/portal/preview/PortalPreview.tsx, and the --ui-* tokens that
  * components/ui/premium defines on its token class (applied to the page root, so no value is repeated here). Output: the look of the customer portal preview only
- * (preview bar, sign-in card, signed-in header, quote and job cards and tables, notices, empty state). Must not change: no global selectors, nothing outside this
+ * (branded header, sign-in card, Home summary cards and latest lists, quote and job tables, notices, empty state; the preview strip, title and phone record lists come from the shared set). Must not change: no global selectors, nothing outside this
  * module, no business rules, nothing that touches portal authentication or data. Phone first (390 px), then wider. Control heights stay on the 32 / 40 / 48 px scale and the
  * portal's own controls are 48 px or more. Motion is 160 ms, opacity and transform only, all of it off under prefers-reduced-motion.
  * Forbidden: gradients, blur or glass, decorative icons, oversized cards.
@@ -12,49 +12,66 @@
 .right, .root th.right, .root td.right { text-align: right; }
 .dash { color: var(--ui-muted); }
 
-/* ---------- preview bar: always visible, never part of the portal itself ---------- */
-.bar { background: #fff; box-shadow: inset 0 -1px 0 var(--ui-line); }
-.barIn { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; max-width: 960px; margin: 0 auto; padding: 8px 16px; }
-.previewTag { order: 1; display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 6px; background: #fff8e1; color: #6b4300; box-shadow: inset 0 0 0 1px #e6c25a; font-size: 12px; font-weight: 600; letter-spacing: 0.005em; white-space: nowrap; }
-.barBtn { order: 2; margin-left: auto; }
-.barNote { order: 3; flex: 1 1 100%; margin: 0; padding-bottom: 4px; color: var(--ui-ink-2); font-size: 13px; line-height: 18px; }
-.panel { background: var(--ui-surface-2); box-shadow: inset 0 1px 0 var(--ui-line); }
-.panelIn { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px 16px; max-width: 960px; margin: 0 auto; padding: 12px 16px 16px; }
-@media (min-width: 720px) {
-  .barIn { flex-wrap: nowrap; padding-block: 6px; }
-  .barNote { order: 2; flex: 1 1 auto; padding-bottom: 0; }
-  .barBtn { order: 3; margin-left: 0; }
-  .panelIn { grid-template-columns: 1.5fr 1fr 1fr; align-items: start; }
-}
+@media (max-width: 479px) { .root[data-auth="true"] { background: #fff; } }
 
-/* ---------- signed-in header: the same three links and Sign out the real frame has ---------- */
+/* ---------- preview screens panel (the trigger lives in the shared PreviewBar strip) ---------- */
+.panel { background: #fff; box-shadow: inset 0 -1px 0 var(--ui-line); }
+.panelIn { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px 16px; max-width: 1040px; margin: 0 auto; padding: 12px 16px 16px; }
+@media (min-width: 720px) { .panelIn { grid-template-columns: 1.5fr 1fr 1fr; align-items: start; } }
+
+/* ---------- header: the shop's name on a navy monogram, then the same Home / Quotes / Jobs links and Sign out the real frame has ---------- */
 .top { background: #fff; box-shadow: inset 0 -1px 0 var(--ui-line), 0 1px 2px rgba(14, 23, 38, 0.04); }
-.topIn { display: flex; align-items: center; justify-content: space-between; gap: 8px; max-width: 960px; margin: 0 auto; padding: 0 12px 0 4px; }
-.nav { display: flex; flex-wrap: wrap; align-items: stretch; }
-.tab { position: relative; display: inline-flex; align-items: center; min-height: 56px; padding: 0 14px; color: var(--ui-ink-2); font-size: 15px; font-weight: 550; text-decoration: none; transition: color var(--ui-t-base) var(--ui-ease); }
-.tab::after { content: ""; position: absolute; left: 14px; right: 14px; bottom: 0; height: 3px; border-radius: 3px 3px 0 0; background: transparent; transition: background-color var(--ui-t-base) var(--ui-ease); }
+.topIn { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+.brandRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 64px; }
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.monogram { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; background: var(--ui-brand); color: var(--ui-on-brand); box-shadow: var(--ui-inset-light); font-size: 14px; line-height: 1; font-weight: 600; letter-spacing: 0.02em; }
+.brandName { min-width: 0; overflow-wrap: anywhere; }
+.wordmark { display: flex; align-items: center; min-height: 56px; margin: 0; color: var(--ui-brand); }
+.nav { display: flex; flex-wrap: wrap; align-items: stretch; margin: 0 -14px; }
+.tab { position: relative; display: inline-flex; align-items: center; min-height: 48px; padding: 0 14px; color: var(--ui-ink-2); font-size: 15px; font-weight: 500; text-decoration: none; transition: color var(--ui-t-base) var(--ui-ease); }
+.tab::after { content: ""; position: absolute; left: 14px; right: 14px; bottom: 0; height: 2px; border-radius: 2px 2px 0 0; background: transparent; transition: background-color var(--ui-t-base) var(--ui-ease); }
 .tab:hover { color: var(--ui-ink); }
-.tab[aria-current="page"] { color: var(--ui-ink); font-weight: 650; }
+.tab[aria-current="page"] { color: var(--ui-ink); font-weight: 600; }
 .tab[aria-current="page"]::after { background: var(--ui-brand); }
 .tab:focus-visible { outline-offset: -4px; border-radius: 8px; }
 
 /* ---------- page frames ---------- */
-.content { max-width: 960px; margin: 0 auto; padding: 24px 16px 56px; }
-.auth { max-width: 440px; margin: 0 auto; padding: 20px 16px 48px; }
+.content { max-width: 1040px; margin: 0 auto; padding: 24px 16px 56px; }
+.auth { max-width: 440px; margin: 0 auto; padding: 0 0 48px; }
 .screen { animation: screenIn var(--ui-t-base) var(--ui-ease); }
 @keyframes screenIn { from { opacity: 0; transform: translateY(4px); } }
-.card1 { padding: 24px 20px; border-radius: var(--ui-radius-lg); background: #fff; box-shadow: 0 0 0 1px var(--ui-line), var(--ui-shadow-1); }
-.h1 { margin: 0 0 12px; font-size: 24px; line-height: 30px; font-weight: 650; letter-spacing: -0.02em; color: var(--ui-ink); overflow-wrap: anywhere; }
-.h1:focus { outline: none; }
+/* a phone: the sign-in card is the whole white page under the header (no lone card floating on grey); from 480 px it is a card again */
+.card1 { padding: 24px 16px 32px; background: #fff; }
+.ph { margin-bottom: 16px; }
+.ph h1 { overflow-wrap: anywhere; }
+.ph h1:focus { outline: none; }
 .lede { margin: 0 0 20px; color: var(--ui-ink-2); font-size: 16px; line-height: 24px; }
-.home { margin: 4px 0 0; max-width: 60ch; color: var(--ui-ink-2); font-size: 17px; line-height: 26px; overflow-wrap: anywhere; }
-.home strong { color: var(--ui-ink); font-weight: 650; }
-@media (min-width: 480px) { .card1 { padding: 32px 28px; } .auth { padding-top: 32px; } }
-@media (min-width: 720px) {
-  .content { padding: 40px 24px 72px; }
-  .auth { padding-top: 56px; }
-  .h1 { font-size: 30px; line-height: 36px; margin-bottom: 16px; }
+.home { margin: 0; max-width: 60ch; color: var(--ui-ink-2); font-size: 16px; line-height: 24px; overflow-wrap: anywhere; }
+.home strong { color: var(--ui-ink); font-weight: 600; }
+@media (min-width: 480px) {
+  .auth { padding: 32px 16px 48px; }
+  .card1 { padding: 32px 28px; border-radius: var(--ui-radius-lg); box-shadow: 0 0 0 1px var(--ui-line), var(--ui-shadow-1); }
 }
+@media (min-width: 720px) { .topIn { padding: 0 24px; } .content { padding: 32px 24px 72px; } .auth { padding-top: 56px; } .ph { margin-bottom: 20px; } }
+
+/* ---------- Home: two summary tiles and the latest rows of the same lists ---------- */
+.homeWrap { display: flex; flex-direction: column; gap: 24px; }
+.tiles { gap: 16px; }
+.tiles.tiles { grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); }
+@media (max-width: 520px) { .tiles.tiles { grid-template-columns: minmax(0, 1fr); } }
+.latestGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 20px; align-items: start; }
+.latestOne { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 760px) { .latestGrid { grid-template-columns: minmax(0, 1fr); } }
+.latest { min-width: 0; }
+.latestHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+.h2 { margin: 0; }
+.allLink { min-height: 48px; }
+.latestList { margin: 0; padding: 0; list-style: none; border-radius: var(--ui-radius-lg); background: #fff; box-shadow: var(--ui-elev-raised); }
+.latestRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; padding: 12px 16px; box-shadow: inset 0 -1px 0 var(--ui-line); }
+.latestRow:last-child { box-shadow: none; }
+.latestRef { overflow-wrap: anywhere; }
+.latestDate { grid-column: 1 / -1; }
+@media (min-width: 1100px) { .latestRow { grid-template-columns: minmax(0, 1fr) auto auto; } .latestDate { grid-column: auto; min-width: 8.5rem; text-align: right; } }
 
 /* ---------- forms: 16 px text (no zoom on a phone), a 48 px control inside a 56 px box, a 48 px button ---------- */
 .form { display: flex; flex-direction: column; gap: 16px; }
@@ -68,34 +85,18 @@
 
 /* ---------- notices and links ---------- */
 .notice { margin: 0 0 20px; padding: 12px 14px; border-radius: var(--ui-radius-md); background: var(--ui-danger-soft); color: var(--ui-ink); box-shadow: inset 3px 0 0 var(--ui-danger), inset 0 0 0 1px rgba(179, 45, 45, 0.2); font-size: 15px; line-height: 22px; }
-.link { display: inline-flex; align-items: center; min-height: 48px; color: var(--ui-accent); font-size: 15px; font-weight: 550; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; transition: color var(--ui-t-base) var(--ui-ease); }
+.link { display: inline-flex; align-items: center; min-height: 48px; color: var(--ui-accent); font-size: 15px; font-weight: 500; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; transition: color var(--ui-t-base) var(--ui-ease); }
 .link:hover { color: var(--ui-brand); text-decoration-thickness: 2px; }
 .noticeLink { display: flex; width: fit-content; margin-top: 2px; }
-.tab.link { color: var(--ui-ink-2); text-decoration: none; min-height: 56px; font-weight: 550; }
+.tab.link { color: var(--ui-ink-2); text-decoration: none; min-height: 48px; font-weight: 500; }
 .tab.link:hover { color: var(--ui-ink); text-decoration: none; }
-.tab.link[aria-current="page"] { color: var(--ui-ink); font-weight: 650; }
+.tab.link[aria-current="page"] { color: var(--ui-ink); font-weight: 600; }
 
-/* ---------- lists: cards on a phone, a table from 880 px ---------- */
+/* ---------- lists: the shared StackedRows on a phone, a table from 880 px ---------- */
 .onlyWide { display: none; }
 @media (min-width: 880px) { .root .onlyWide { display: block; } .root .onlyNarrow { display: none; } }
-.cards { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; list-style: none; }
-.card { padding: 16px; border-radius: var(--ui-radius-md); background: #fff; box-shadow: 0 0 0 1px var(--ui-line), var(--ui-shadow-1); }
-.cardHead { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px 12px; }
-.cardRef { flex: 1 1 9rem; min-width: 0; font-size: 17px; line-height: 24px; font-weight: 650; overflow-wrap: anywhere; }
-.dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; margin: 14px 0 0; padding-top: 14px; box-shadow: inset 0 1px 0 var(--ui-line); }
-.dl > div { min-width: 0; }
-.dl dt { color: var(--ui-muted); font-size: 13px; line-height: 18px; font-weight: 600; }
-.dl dd { margin: 2px 0 0; font-size: 15px; line-height: 22px; overflow-wrap: anywhere; }
-.dlSpan { grid-column: 1 / -1; }
-@media (min-width: 520px) { .dl { grid-template-columns: repeat(3, minmax(0, 1fr)); } .dlSpan { grid-column: auto; } .dlTotal { grid-column: 1 / -1; } }
-.dlTotal { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-top: 12px; box-shadow: inset 0 1px 0 var(--ui-line); }
-.dlTotal dd { margin: 0; }
-.total { font-size: 18px; line-height: 24px; font-weight: 650; }
-
-.root .tbl table { font-size: 15px; }
-.root .tbl td { height: 60px; padding: 8px 12px; }
-.root .tbl th { padding: 0 12px; }
-.ref { max-width: 15rem; font-weight: 650; overflow-wrap: anywhere; }
+.root .tbl td { height: 56px; padding: 8px 12px; }
+.ref { max-width: 15rem; font-weight: 600; overflow-wrap: anywhere; }
 .po { max-width: 14rem; overflow-wrap: anywhere; }
 
 .empty { margin: 0; padding: 32px 20px; border-radius: var(--ui-radius-lg); background: #fff; box-shadow: 0 0 0 1px var(--ui-line), var(--ui-shadow-1); color: var(--ui-ink-2); font-size: 16px; line-height: 24px; text-align: center; }

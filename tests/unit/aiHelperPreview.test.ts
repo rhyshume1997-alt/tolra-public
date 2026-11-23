@@ -7,6 +7,8 @@
  * only "Sample answer, not generated".
  * Must not change: never loosen these to make a change pass. No network, no Supabase, no model. Written with createElement (no JSX) so it runs under the existing vitest.config.ts include pattern.
  */
+import * as v2fs from "node:fs";
+import * as v2path from "node:path";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { act, createElement } from "react";
@@ -266,5 +268,22 @@ describe("ai preview: rendered behaviour", () => {
     radio("Role", "Workshop");
     expect(h.querySelector('[data-testid="access-denied"]')?.textContent).toContain("Access Denied");
     expect(h.querySelector('[data-testid="ai-roundup-panel"]')).toBeNull();
+  });
+});
+
+describe("v2 structure (owner approved items 4, 7, 10, 11): shared PreviewBar and PageHeader, v4 type scale, no local preview pill", () => {
+  const SRC2 = v2fs.readFileSync(v2path.join(process.cwd(), "components/integrations/preview/AiHelperPreview.tsx"), "utf8");
+  const CSS2 = v2fs.readFileSync(v2path.join(process.cwd(), "components/integrations/preview/AiHelperPreview.module.css"), "utf8");
+  it("uses the shared strip and heading, and keeps the Preview controls trigger", () => {
+    expect(SRC2).toContain("<PreviewBar");
+    expect(SRC2).toContain("PageHeader");
+    expect(SRC2).toContain('label="Preview controls"');
+    expect(SRC2).not.toContain("s.previewTag");
+    expect(SRC2).not.toContain("<h1 className={s.title}");
+  });
+  it("sizes text from the v4 scale tokens, not loose pixel sizes", () => {
+    expect(CSS2).toContain("var(--ui-fs-");
+    expect(CSS2).not.toMatch(/font-size:\s*(12\.5|13\.5)px/);
+    expect(CSS2).not.toMatch(/font-weight:\s*(650|550)/);
   });
 });

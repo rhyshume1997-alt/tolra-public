@@ -6,6 +6,8 @@
  * the real source, and checks by rendering that no import, undo, discard or export ever happens, no import is drawn as succeeding, no file is read and the preview imports no network,
  * file or database code. Must not change: never loosen these. No network. Written with createElement (no JSX).
  */
+import * as v2fs from "node:fs";
+import * as v2path from "node:path";
 import fs from "node:fs";
 import path from "node:path";
 import { act, createElement } from "react";
@@ -112,5 +114,22 @@ describe("rendering", () => {
   it("no control exports or downloads", async () => {
     await mount();
     for (const b of host.querySelectorAll("button")) expect(b.textContent ?? "").not.toMatch(/export|download/i);
+  });
+});
+
+describe("v2 structure (owner approved items 4, 7, 10, 11): shared PreviewBar and PageHeader, v4 type scale, no local preview pill", () => {
+  const SRC2 = v2fs.readFileSync(v2path.join(process.cwd(), "components/admin/data/preview/DataPreview.tsx"), "utf8");
+  const CSS2 = v2fs.readFileSync(v2path.join(process.cwd(), "components/admin/data/preview/DataPreview.module.css"), "utf8");
+  it("uses the shared strip and heading, and keeps the Preview controls trigger", () => {
+    expect(SRC2).toContain("<PreviewBar");
+    expect(SRC2).toContain("PageHeader");
+    expect(SRC2).toContain('label="Preview controls"');
+    expect(SRC2).not.toContain("s.previewTag");
+    expect(SRC2).not.toContain("<h1 className={s.title}");
+  });
+  it("sizes text from the v4 scale tokens, not loose pixel sizes", () => {
+    expect(CSS2).toContain("var(--ui-fs-");
+    expect(CSS2).not.toMatch(/font-size:\s*(12\.5|13\.5)px/);
+    expect(CSS2).not.toMatch(/font-weight:\s*(650|550)/);
   });
 });
