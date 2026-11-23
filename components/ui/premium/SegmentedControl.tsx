@@ -7,12 +7,16 @@
  * give each option controls="panel id"). Roving tabindex: Tab enters on the selected segment, Left/Up and Right/Down move AND select, Home/End jump,
  * disabled segments stay in view (aria-disabled, with disabledReason as a tooltip) but are skipped by the arrows. 48 px hit area by pseudo element.
  * v3: the track wraps instead of scrolling (visible overflow, so the 48 px hit area is never clipped under 640 px); a wrapped second row sits 16 px lower so hit areas do not overlap.
+ * v5: every segment is at least 48 px wide AND tall (min-width 48 px, so "All", "List", "3" are real targets; the 48 px height is the pseudo element; neighbours touch but never overlap, the wrapped row gap stays 16 px). Under 640 px the track is ONE row that scrolls
+ * inside itself (no lone "All" on a second row); the selected segment is scrolled into view, a focused one scrolls into view by itself, and the scroll box is 48 px tall so the hit area is not clipped. Above 640 px the track still wraps. The segments sit in an inner div
+ * (display: contents above 640 px) that carries the scrolling; the group role, aria-label, data-testid and className stay on the outer track.
  * Must not change: it is controlled (the caller owns value); it never fetches or saves anything; no icons; names stay words (never colour alone).
  */
-import { useRef, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import styles from "./premium.module.css";
 import { cx, premiumTokens } from "./tokens";
 import { nextMenuIndex } from "./Menu";
+import { revealInRow } from "./revealInRow";
 
 export interface SegmentedOption<T extends string> {
   value: T;
@@ -59,6 +63,12 @@ export function SegmentedControl<T extends string>({ label, value, options, onCh
   const selected = options.findIndex((o) => o.value === value);
   const stop = tabStopIndex(selected, off);
 
+  // v5: under 640 px the track scrolls; keep the selected segment in view (horizontal only, the page never moves).
+  useEffect(() => {
+    const scroller = group.current?.firstElementChild as HTMLElement | null | undefined;
+    revealInRow(scroller, scroller?.querySelectorAll<HTMLElement>("button")[selected], 4);
+  }, [selected]);
+
   const move = (to: number) => {
     if (to < 0) return;
     group.current?.querySelectorAll<HTMLButtonElement>("button")[to]?.focus();
@@ -80,6 +90,7 @@ export function SegmentedControl<T extends string>({ label, value, options, onCh
         move(nextSegmentIndex(idx < 0 ? selected : idx, off, e.key));
       }}
     >
+      <div className={styles.segScroll} onFocusCapture={(e) => revealInRow(e.currentTarget, e.target as HTMLElement, 4)}>
       {options.map((o, i) => (
         <button
           key={o.value}
@@ -98,6 +109,7 @@ export function SegmentedControl<T extends string>({ label, value, options, onCh
           {o.label}
         </button>
       ))}
+      </div>
     </div>
   );
 }
