@@ -48,6 +48,13 @@ describe("off, loading and error", () => {
     await mount();
     expect(host.innerHTML).toBe("");
   });
+  it("when off, its only request is one GET of the companies list (answered 404 before any release 164 call): no POST, no other URL, no retry loop", async () => {
+    route(() => ({ status: 404, body: { error: "Not found" } }));
+    await mount();
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 50)); });
+    expect(calls.map((call) => [call.url, call.init?.method ?? "GET"])).toEqual([["/api/platform/companies", "GET"]]);
+    expect(host.innerHTML).toBe("");
+  });
   it("shows Retry when the list cannot be loaded, and loads on Retry", async () => {
     let n = 0;
     route(() => (++n === 1 ? { status: 500, body: {} } : { status: 200, body: { companies: [ALPHA] } }));
