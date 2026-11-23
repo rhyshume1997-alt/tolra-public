@@ -5,8 +5,8 @@
  * name because the shell mounts <AdminTour envOn />, which is not changed here). Mounted by the shell.
  * Inputs: `envOn` (the server flag as a boolean), the signed-in person (lib/use-user), the company's hidden_nav (lib/org-settings), the
  * saved "done" flag (lib/auth/tour-flag). Outputs: a small card and a ring around the thing being pointed at; on Skip or Finish it saves
- * the done flag. It renders nothing unless the env flag and the company marker for the person's view (admin, office or workshop) both
- * agree; a viewer never sees one. It opens by itself until the person has seen it once (the done flag, saved per person), and each step has
+ * the done flag. It is on by default for every company (tour-switch.ts: only TOOLY_TOUR_DISABLED="true" turns it off; no company marker is
+ * read); it shows the tour for the person's view (admin, office or workshop); a viewer never sees one. It opens by itself until the person has seen it once (the done flag, saved per person), and each step has
  * a note the person can open ("What happens here and how it gets produced", tour-notes.ts). "Skip tour" closes it and saves the same
  * flag. Once seen, a small "Replay tour" button shows on the Dashboard only; replaying starts at step 1 and saves the flag again.
  * It POINTS only: the ring ignores the mouse, no app button is ever pressed, no dialog is opened, no form is touched. Moving to the

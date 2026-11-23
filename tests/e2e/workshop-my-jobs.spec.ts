@@ -15,7 +15,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 
 import { generatePassword } from "@/lib/password";
 
-import { adminClient, createSoloTenant, EMAIL_DOMAIN, type SyntheticUser } from "../support/fixtures";
+import { adminClient, createSoloTenant, EMAIL_DOMAIN, type SyntheticUser, SEEN_TOUR_METADATA } from "../support/fixtures";
 import { VIEWPORTS, deviceContext, type ViewportSpec } from "../support/ui-pr1-screenshots";
 import { signIn, world } from "./helpers";
 
@@ -40,7 +40,7 @@ test.beforeAll(async () => {
   const solo = await createSoloTenant(w.runId, `myjobs-${randomUUID().slice(0, 6)}`);
   const email = `operator.myjobs.${randomUUID().slice(0, 6)}.${w.runId}@${EMAIL_DOMAIN}`;
   const password = generatePassword(16);
-  const created = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name: "Lee Operator" } });
+  const created = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { ...SEEN_TOUR_METADATA, full_name: "Lee Operator" } });
   expect(created.error).toBeNull();
   operator = { id: created.data.user!.id, email, password, role: "workshop" };
   const { data: added, error: addError } = await admin.rpc("add_member", { p_org: solo.id, p_email: email, p_role: "workshop" });

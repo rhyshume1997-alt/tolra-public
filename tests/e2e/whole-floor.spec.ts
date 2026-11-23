@@ -15,7 +15,7 @@ import path from "node:path";
 
 import { expect, test, type Browser, type Locator, type Page } from "@playwright/test";
 
-import { EMAIL_DOMAIN, adminClient, createSoloTenant, type SyntheticUser } from "../support/fixtures";
+import { EMAIL_DOMAIN, adminClient, createSoloTenant, type SyntheticUser, SEEN_TOUR_METADATA } from "../support/fixtures";
 import { VIEWPORTS, deviceContext, type ViewportSpec } from "../support/ui-pr1-screenshots";
 import { signIn, world } from "./helpers";
 
@@ -43,7 +43,7 @@ test.beforeAll(async () => {
   const db = adminClient();
   const email = `workshop.floor${Date.now().toString(36)}.${w.runId}@${EMAIL_DOMAIN}`;
   const password = `Fl-${randomUUID()}`;
-  const created = await db.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name: "Lee Barker" } });
+  const created = await db.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { ...SEEN_TOUR_METADATA, full_name: "Lee Barker" } });
   expect(created.error).toBeNull();
   workshop = { id: created.data.user!.id, email, password, role: "workshop" };
   const added = await db.rpc("add_member", { p_org: org, p_email: email, p_role: "workshop" });

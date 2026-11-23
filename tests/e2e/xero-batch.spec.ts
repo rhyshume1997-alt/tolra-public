@@ -20,7 +20,7 @@ import { readFileSync } from "node:fs";
 
 import { type APIResponse, type Page, expect, test } from "@playwright/test";
 
-import { type SyntheticUser, adminClient, createSoloTenant } from "../support/fixtures";
+import { type SyntheticUser, adminClient, createSoloTenant, SEEN_TOUR_METADATA } from "../support/fixtures";
 import { signIn, world } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
@@ -47,7 +47,7 @@ test.beforeAll(async () => {
 
   const email = `office.xbatch.${w.runId}@example.test`;
   const password = `${randomBytes(12).toString("base64url")}aA1!`;
-  const created = await db.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name: "Office xbatch" } });
+  const created = await db.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { ...SEEN_TOUR_METADATA, full_name: "Office xbatch" } });
   if (created.error || !created.data.user) throw new Error(`createUser ${email}: ${created.error?.message}`);
   const added = await db.rpc("add_member", { p_org: org, p_email: email, p_role: "office" });
   expect(added.error).toBeNull();

@@ -34,7 +34,7 @@ import { expect, test, type Browser, type BrowserContext, type Page } from "@pla
 import { fmtDateTime } from "@/lib/dates";
 import { generatePassword } from "@/lib/password";
 import { UNKNOWN } from "@/lib/people";
-import { EMAIL_DOMAIN, adminClient, createSoloTenant, headAsGet, type SyntheticUser, withDb } from "../support/fixtures";
+import { EMAIL_DOMAIN, adminClient, createSoloTenant, headAsGet, type SyntheticUser, withDb, SEEN_TOUR_METADATA } from "../support/fixtures";
 import { isolatedBackend } from "../support/isolation";
 import { signIn, world } from "./helpers";
 
@@ -168,7 +168,7 @@ test.beforeAll(async () => {
   const person = async (role: "office" | "workshop", label: string, fullName: string): Promise<SyntheticUser> => {
     const email = `${label}.iplock.${w.runId}@${EMAIL_DOMAIN}`;
     const password = generatePassword(16);
-    const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name: fullName } });
+    const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { ...SEEN_TOUR_METADATA, full_name: fullName } });
     if (error || !data.user) throw new Error(`createUser ${email}: ${error?.message}`);
     const added = await admin.rpc("add_member", { p_org: solo.id, p_email: email, p_role: role });
     if (added.error || added.data !== "member") throw new Error(`add_member ${email}: ${added.error?.message ?? added.data}`);

@@ -19,7 +19,7 @@ import path from "node:path";
 
 import { expect, test, type Browser, type BrowserContext, type Locator, type Page } from "@playwright/test";
 
-import { adminClient, EMAIL_DOMAIN, type SyntheticUser } from "../support/fixtures";
+import { adminClient, EMAIL_DOMAIN, type SyntheticUser, SEEN_TOUR_METADATA } from "../support/fixtures";
 import { generatePassword } from "@/lib/password";
 import { SCREENSHOT_DIR, VIEWPORTS, deviceContext, saveScreenshot, type ViewportSpec } from "../support/ui-pr1-screenshots";
 import { confirmFinish, pauseControl, pickMachines, playControl, playJob, signIn, world } from "./helpers";
@@ -60,7 +60,7 @@ async function addMember(label: string, role: "office" | "workshop", columns: Re
   const admin = adminClient();
   const email = `${label}.alpha.${w.runId}@${EMAIL_DOMAIN}`;
   const password = generatePassword(16);
-  const created = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name: `${label} alpha` } });
+  const created = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { ...SEEN_TOUR_METADATA, full_name: `${label} alpha` } });
   if (created.error || !created.data.user) throw new Error(`createUser ${email}: ${created.error?.message}`);
   const { data, error } = await admin.rpc("add_member", { p_org: alpha().id, p_email: email, p_role: role });
   if (error || data !== "member") throw new Error(`add_member ${email}: ${error?.message ?? data}`);

@@ -1,5 +1,5 @@
 /**
- * The first-login admin tour (components/tooly/tour): both switches off by default, admin only, 23 fixed steps, plain words,
+ * The first-login admin tour (components/tooly/tour): on by default (off only with the emergency switch), admin tour for admin, 23 fixed steps, plain words,
  * and a plan that never walks to a page the person cannot open.
  */
 import { readFileSync } from "node:fs";
@@ -8,17 +8,20 @@ import { describe, expect, it } from "vitest";
 
 import { planAdminTour } from "@/components/tooly/tour/tour-plan";
 import { ADMIN_TOUR_STEPS } from "@/components/tooly/tour/tour-steps";
-import { TOOLY_TOUR_ENV_FLAG, TOOLY_TOUR_ON_MARKER, toolyTourEnabled, toolyTourEnvEnabled, toolyTourMarkerOn, toolyTourSwitchChange } from "@/components/tooly/tour/tour-switch";
+import { TOOLY_TOUR_DISABLE_ENV_FLAG, TOOLY_TOUR_ENV_FLAG, TOOLY_TOUR_ON_MARKER, toolyTourEnabled, toolyTourEnvEnabled, toolyTourMarkerOn, toolyTourSwitchChange } from "@/components/tooly/tour/tour-switch";
 
 const ROOT = path.resolve(__dirname, "../..");
 const ALL_ON = ["sales-orders:on"];
 
 describe("tour switches", () => {
-  it("env flag is on only for exactly \"true\"", () => {
+  it("the tour is ON by default and off only for exactly TOOLY_TOUR_DISABLED=\"true\"", () => {
+    expect(TOOLY_TOUR_DISABLE_ENV_FLAG).toBe("TOOLY_TOUR_DISABLED");
+    expect(toolyTourEnvEnabled({})).toBe(true);
+    expect(toolyTourEnvEnabled({ TOOLY_TOUR_DISABLED: "true" })).toBe(false);
+    for (const v of [undefined, "", "TRUE", "1", "yes", "false", " true"]) expect(toolyTourEnvEnabled({ TOOLY_TOUR_DISABLED: v })).toBe(true);
+    // The old env flag decides nothing any more.
     expect(TOOLY_TOUR_ENV_FLAG).toBe("TOOLY_ADMIN_TOUR_ENABLED");
-    expect(toolyTourEnvEnabled({ TOOLY_ADMIN_TOUR_ENABLED: "true" })).toBe(true);
-    for (const v of [undefined, "", "TRUE", "1", "yes", "false", " true"]) expect(toolyTourEnvEnabled({ TOOLY_ADMIN_TOUR_ENABLED: v })).toBe(false);
-    expect(toolyTourEnvEnabled({})).toBe(false);
+    expect(toolyTourEnvEnabled({ TOOLY_ADMIN_TOUR_ENABLED: "false" })).toBe(true);
   });
   it("company marker is off unless present", () => {
     expect(TOOLY_TOUR_ON_MARKER).toBe("tooly-admin-tour:on");
