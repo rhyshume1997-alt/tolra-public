@@ -11,7 +11,7 @@
 /* ---------- filter toolbar: Show inline, everything else under Filters (n) ---------- */
 .fbar { display: flex; flex-direction: column; gap: 12px; }
 .fRow { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 20px; }
-.fGroup { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.fGroup { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; min-width: 0; max-width: 100%; } /* DO NOT MERGE hub-only: stops the scrolling segmented row widening the page at 390 px */
 .chipRow { display: flex; flex-wrap: wrap; gap: 16px 8px; margin: 0; padding: 0; list-style: none; }
 .filterBody { display: grid; gap: 14px; width: min(340px, 76vw); padding: 4px 0 8px; }
 .colsBody { display: grid; gap: 2px; width: min(300px, 76vw); padding-bottom: 6px; }
