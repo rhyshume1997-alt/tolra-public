@@ -97,4 +97,11 @@ describe("numbers preview: rendered", () => {
     expect(host.querySelectorAll("table tbody tr")).toHaveLength(6);
     expect(t).not.toMatch(/\b(saved successfully|has been saved|success)\b/i);
   });
+  it("v2: one PreviewBar and one h1; the rule line is the page description; the Months choice is reachable in the header actions", () => {
+    host = document.createElement("div"); document.body.append(host); root = createRoot(host); act(() => root.render(createElement(NumbersPreview)));
+    expect(host.querySelectorAll('[role="group"][aria-label="Preview information"]')).toHaveLength(1);
+    expect(host.querySelectorAll("h1")).toHaveLength(1);
+    expect(host.querySelector("header")?.textContent).toContain("Months follow the UK calendar.");
+    expect([...host.querySelectorAll('[role="radiogroup"][aria-label="Months to show"] [role="radio"]')].map((r) => r.textContent)).toEqual(["3", "6", "12"]);
+  });
 });

@@ -14,6 +14,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import CustomersPreview, {
+  CUSTOMERS_TITLE_TIP, rowActionPlan,
   COLUMNS, DOCUMENT_NAMES_TRUNCATED, NAME_REQUIRED, NOT_SAVED_LABEL, SEED_CUSTOMERS, TODAY, canManageArchive, canUseCustomers, chasePaused, draftFor, exportable, phaseCounts, phaseFor,
   toneOf, validateCustomer, validatePause, visibleCustomers, withFeatures,
 } from "@/components/customers/preview/CustomersPreview";
@@ -139,7 +140,7 @@ describe("customers preview: logic over the sample", () => {
   it("privacy: every address is on a reserved .example domain and every number is in an Ofcom drama range", () => {
     for (const c of SEED_CUSTOMERS) {
       if (c.email) expect(c.email, c.name).toMatch(/@[a-z0-9-]+(\.[a-z0-9-]+)*\.example$/);
-      if (c.phone) expect(c.phone, c.name).toMatch(/^01632 960\d{3}$/);
+      if (c.phone) expect(c.phone, c.name).toMatch(/^(01632 960\d{3}|0(131|141) 496 0\d{3})$/);
       if (c.mobile) expect(c.mobile, c.name).toMatch(/^07700 900\d{3}$/);
     }
   });
@@ -164,6 +165,8 @@ const type = (el: HTMLInputElement | HTMLTextAreaElement, value: string) => {
   const set = Object.getOwnPropertyDescriptor(proto, "value")!.set!;
   act(() => { set.call(el, value); el.dispatchEvent(new Event("input", { bubbles: true })); });
 };
+const moreItem = (h: HTMLElement, customer: string, label: string) => { click(h.querySelector(`tr[data-customer="${customer}"] [data-testid="more-trigger"]`)); click(byText(document, '[role="menuitem"]', label)); };
+const settle = () => act(async () => { await new Promise((r) => setTimeout(r, 250)); });
 const flush = () => act(async () => { await new Promise((r) => setTimeout(r, 5)); });
 const openDock = () => click(byText(document.body, "button", /Preview controls/));
 const pickRole = (name: string) => click(byText(document.body, '[role="radiogroup"][aria-label="Role"] [role="radio"]', name));
@@ -179,12 +182,14 @@ describe("customers preview: rendered behaviour", () => {
     expect(h.querySelector('tr[data-customer="Riverside Fabrications"] [data-action="Add customer"]')).not.toBeNull();
     expect(h.querySelector('tr[data-customer="Riverside Fabrications"] [data-action="Edit"]')).toBeNull();
   });
-  it("Draft statement, Archive and the exports only ever answer with the neutral Preview-only toast, never a success", () => {
+  it("Draft statement, Archive and the exports only ever answer with the neutral Preview-only toast, never a success", async () => {
     const h = mount();
-    click(h.querySelector('tr[data-customer="Marlow Hydraulics"] [data-action="Draft statement"]'));
+    moreItem(h, "Marlow Hydraulics", "Draft statement");
     let t = document.body.textContent ?? "";
     expect(t).toContain("Preview only"); expect(t).toContain("Nothing was saved."); expect(t).not.toMatch(/Statement saved in Approvals|archived \(nothing is deleted|moved out of the archive\b(?! would)/i);
-    click(h.querySelector('tr[data-customer="Marlow Hydraulics"] [data-action="Archive"]'));
+    await settle();
+    moreItem(h, "Marlow Hydraulics", "Archive");
+    await settle();
     t = document.body.textContent ?? ""; expect(t).toContain("would be archived"); expect(t).toContain("Nothing was saved.");
     click(h.querySelector('[data-testid="export-trigger"]'));
     expect(Array.from(document.querySelectorAll('[role="menuitem"]')).map((e) => e.textContent)).toEqual(["CSV, all 12 customers", "Excel, all 12 customers"]);
@@ -195,7 +200,9 @@ describe("customers preview: rendered behaviour", () => {
     const h = mount();
     click(h.querySelector('[data-testid="show-archived"]'));
     expect(Array.from(h.querySelectorAll("tbody tr[data-customer]")).map((r) => r.getAttribute("data-customer"))).toEqual(["Old Mill Castings", "Dunmore Gearworks"]);
-    expect(h.querySelector('tr[data-customer="Old Mill Castings"] [data-action="Archive"]')?.textContent).toBe("Unarchive");
+    click(h.querySelector('tr[data-customer="Old Mill Castings"] [data-testid="more-trigger"]'));
+    expect(Array.from(document.querySelectorAll('[role="menuitem"]')).map((e) => e.textContent)).toEqual(["Draft statement", "Unarchive"]);
+    act(() => { document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); });
     click(h.querySelector('[data-testid="show-all"]'));
     expect(h.querySelectorAll("tbody tr[data-customer]")).toHaveLength(14);
   });
@@ -267,5 +274,43 @@ describe("customers preview: rendered behaviour", () => {
     click(h.querySelector('[data-testid="new-customer"]'));
     expect(h.querySelector('input[name="mobile"]')).toBeNull();
     expect(h.querySelector('input[name="traceable_default"]')).toBeNull();
+  });
+
+});
+
+describe("customers preview v2: structural items (PreviewBar, one toolbar row, one action plus More, type scale, plausible data)", () => {
+  it("rowActionPlan: one primary action per row, every other real control in More", () => {
+    expect(rowActionPlan({ id: "c1", manual: undefined }, true)).toEqual({ primary: { id: "edit", label: "Edit" }, more: [{ id: "statement", label: "Draft statement" }, { id: "archive", label: "Archive" }] });
+    expect(rowActionPlan({ id: "c1", manual: "archived" }, true).more.map((m) => m.label)).toEqual(["Draft statement", "Unarchive"]);
+    expect(rowActionPlan({ id: "c1" }, false).more.map((m) => m.label)).toEqual(["Draft statement"]);
+    expect(rowActionPlan({ notSaved: true }, true)).toEqual({ primary: { id: "add", label: "Add customer" }, more: [] });
+  });
+  it("one PreviewBar, no yellow pill beside the title; the explainer is a title tooltip and an aria description, not a line under the title", () => {
+    const h = mount();
+    expect(h.querySelectorAll('[role="group"][aria-label="Preview information"]')).toHaveLength(1);
+    expect(h.querySelector("h1")?.textContent).toBe("Customers");
+    expect(h.querySelector("header")?.textContent).not.toContain("The companies we sell to");
+    const tip = h.querySelector("h1 span[title]")!;
+    expect(tip.getAttribute("title")).toBe(CUSTOMERS_TITLE_TIP);
+    expect(document.getElementById(tip.getAttribute("aria-describedby")!)?.textContent).toBe(CUSTOMERS_TITLE_TIP);
+  });
+  it("a single toolbar row holds Show, Export, Columns and View; every row has Edit plus More and a fixed-width actions column; no bulk bar exists", () => {
+    const h = mount();
+    const bar = h.querySelector('[role="group"][aria-label="List controls"]')!;
+    for (const sel of ['[data-testid="show-open"]', '[data-testid="export-trigger"]', '[data-testid="columns-trigger"]', '[data-testid="view-table-btn"]']) expect(bar.querySelector(sel), sel).not.toBeNull();
+    expect(h.querySelectorAll('tbody tr[data-customer]:not([data-customer^="Riverside"]):not([data-customer^="Cobalt"]) [data-testid="more-trigger"]')).toHaveLength(10);
+    expect(h.querySelectorAll('tbody [data-action="Edit"]')).toHaveLength(10);
+    expect(h.querySelectorAll('tbody [data-action="Add customer"]')).toHaveLength(2);
+    expect(h.querySelector('[data-selection]')).toBeNull();
+  });
+  it("Edit still opens the real form from the primary button", () => {
+    const h = mount();
+    click(h.querySelector('tr[data-customer="Marlow Hydraulics"] [data-action="Edit"]'));
+    expect(h.querySelector('input[name="name"]')).not.toBeNull();
+  });
+  it("sample data is plausible Scottish and UK, with no placeholder-sounding names", () => {
+    const text = JSON.stringify(SEED_CUSTOMERS);
+    for (const bad of ["Placeholder", "Testfield", "Mockridge", "Sampleford", "Dummerby", "Exampleton", "Testford", "Testwell", "Alex Sample"]) expect(text).not.toContain(bad);
+    expect(SEED_CUSTOMERS.some((c) => /MacLeod|Drummond|Campbell/.test(c.contactName))).toBe(true);
   });
 });

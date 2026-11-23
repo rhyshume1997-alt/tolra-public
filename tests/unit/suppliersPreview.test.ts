@@ -13,7 +13,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import SuppliersPreview, {
-  COLUMNS, EMAIL_INVALID, NAME_REQUIRED, SEED_SUPPLIERS, STATUS_HINT, canSetStatus, canUseSuppliers, statusAvailable, statusField, toneOf, validateSupplier, withoutStatus,
+  COLUMNS, EMAIL_INVALID, NAME_REQUIRED, SEED_SUPPLIERS, STATUS_HINT, SUPPLIERS_TITLE_TIP, rowActionPlan, canSetStatus, canUseSuppliers, statusAvailable, statusField, toneOf, validateSupplier, withoutStatus,
 } from "@/components/suppliers/preview/SuppliersPreview";
 import { suppliersEmptyHint } from "@/lib/empty-hints";
 import { COLUMN_TABLES } from "@/lib/org-settings";
@@ -86,7 +86,7 @@ describe("suppliers preview: logic", () => {
   it("privacy: every address is on a reserved .example domain and every number is in an Ofcom drama range", () => {
     for (const x of SEED_SUPPLIERS) {
       if (x.email) expect(x.email, x.name).toMatch(/@[a-z0-9-]+(\.[a-z0-9-]+)*\.example$/);
-      if (x.phone) expect(x.phone, x.name).toMatch(/^01632 960\d{3}$/);
+      if (x.phone) expect(x.phone, x.name).toMatch(/^(01632 960\d{3}|0(131|141) 496 0\d{3})$/);
     }
   });
 });
@@ -120,11 +120,12 @@ describe("suppliers preview: rendered behaviour", () => {
     expect(h.querySelectorAll("tbody tr[data-supplier]")).toHaveLength(10);
     expect(Array.from(h.querySelectorAll('tbody [data-testid="supplier-status"]')).map((e) => e.textContent)).toContain(SUPPLIER_STATUS_LABELS.blocked);
     expect(h.querySelectorAll('tbody tr [data-action="Edit"]')).toHaveLength(10);
-    expect(h.querySelectorAll('tbody tr [data-action="Delete"]')).toHaveLength(10);
+    expect(h.querySelectorAll('tbody tr [data-testid="more-trigger"]')).toHaveLength(10);
   });
   it("Delete asks the real question, then answers only with the neutral Preview-only toast, never a success", () => {
     const h = mount();
-    click(h.querySelector('tr[data-supplier="Fenwick Fasteners"] [data-action="Delete"]'));
+    click(h.querySelector('tr[data-supplier="Fenwick Fasteners"] [data-testid="more-trigger"]'));
+    click(byText(document, '[role="menuitem"]', "Delete"));
     const d = h.ownerDocument.querySelector('[data-testid="dlg-delete"]');
     expect(d?.textContent).toContain('Delete supplier "Fenwick Fasteners"?');
     expect(d?.textContent).toContain("This can't be undone.");
@@ -191,5 +192,28 @@ describe("suppliers preview: rendered behaviour", () => {
     expect(Array.from(h.querySelectorAll("thead th")).map((e) => e.textContent)).not.toContain("Status");
     click(h.querySelector('[data-testid="new-supplier"]'));
     expect(h.querySelector('select[name="supplier_status"]')).toBeNull();
+  });
+});
+
+describe("suppliers preview v2: structural items", () => {
+  it("one primary action (Edit) per row, Delete in More", () => {
+    expect(rowActionPlan()).toEqual({ primary: "Edit", more: ["Delete"] });
+    const h = mount();
+    click(h.querySelector('tr[data-supplier="Fenwick Fasteners"] [data-testid="more-trigger"]'));
+    expect(Array.from(document.querySelectorAll('[role="menuitem"]')).map((e) => e.textContent)).toEqual(["Delete"]);
+  });
+  it("one PreviewBar and a clean title row; the explainer is the title tooltip and aria description; one toolbar row holds Export, Columns and View", () => {
+    const h = mount();
+    expect(h.querySelectorAll('[role="group"][aria-label="Preview information"]')).toHaveLength(1);
+    expect(h.querySelector("header")?.textContent).not.toContain("The companies we buy from");
+    const tip = h.querySelector("h1 span[title]")!;
+    expect(tip.getAttribute("title")).toBe(SUPPLIERS_TITLE_TIP);
+    expect(document.getElementById(tip.getAttribute("aria-describedby")!)?.textContent).toBe(SUPPLIERS_TITLE_TIP);
+    const bar = h.querySelector('[role="group"][aria-label="List controls"]')!;
+    for (const sel of ['[data-testid="export-trigger"]', '[data-testid="columns-trigger"]', '[data-testid="view-table-btn"]']) expect(bar.querySelector(sel), sel).not.toBeNull();
+  });
+  it("sample data has no placeholder-sounding names", () => {
+    const text = JSON.stringify(SEED_SUPPLIERS);
+    for (const bad of ["Placeholder", "Testfield", "Mockridge", "Dummerby", "Exampleton", "Testwell", "Alex Sample"]) expect(text).not.toContain(bad);
   });
 });

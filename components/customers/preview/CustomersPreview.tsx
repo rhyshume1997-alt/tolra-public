@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * BOUNDARY (Customers, Module 5, PREVIEW ONLY). Inputs: none from the server. Everything shown is fictional sample data (14 customer names, as of 20/11/2026,
+ * BOUNDARY (Customers, Module 5, PREVIEW ONLY, v2 = shared UI v4 plus the owner-approved structural items 4, 7, 9, 10, 11; items 1 and 2 do not apply because the real page has no filter beyond Show and no bulk action). Inputs: none from the server. Everything shown is fictional sample data (14 customer names, as of 20/11/2026,
  * on reserved ".example" addresses and Ofcom drama phone numbers) held in this file, plus the person's clicks. Outputs: a Customers list look-and-feel
  * prototype (Show Active / Archived / All, Export, Columns, Cards / List / Table, row actions, the real Add / Edit form with delivery notes and the chase
  * pause) whose only state is LOCAL UI state. It never reads or writes Supabase, calls no server action, API route, e-mail, statement, accounting or AI
@@ -10,17 +10,18 @@
  * status-colours, email/chase/steps pauseActive). The form's checks are the REAL ones: customerSchema through the same call saveCustomer makes, plus the
  * page's own "Enter a customer name." rule. The chase-pause form's three checks live inline in components/chase/chase-pause.tsx and are mirrored here,
  * pinned to that source by tests/unit/customersPreview.test.ts.
+ * v2 layout: the shared PreviewBar and PageHeader (the one-line explainer moved to the title tooltip and an aria description), ONE toolbar row (Show inline, Export, Columns, View), one primary action per row (Edit; Add customer on a name found only on documents) plus a More menu (Draft statement, Archive / Unarchive) in a fixed-width actions column.
  * MUST NOT CHANGE: wording, defaults, column order, form fields and the role gate mirror today's page (app/(dashboard)/customers/page.tsx: Admin and Office
  * only, Workshop and Viewer see "Access Denied"; Archive is admin and office; Mobile and Traceable only when the database has them). Do not wire this to
  * real data or actions, add no control the real page lacks, keep row controls at a 48 px hit area. Delete the four preview files (this component and its
  * .module.css, app/(dashboard)/customers/preview/page.tsx, tests/unit/customersPreview.test.ts) to remove it completely.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { FormEvent } from "react";
 import {
-  Button, Checkbox, EmptyState, FailedState, Field, Input, LoadingState, Menu, Popover, ScrollTable, SegmentedControl, Sheet, StatusBadge, Switch, Textarea,
-  ToastProvider, cx, premiumTokens, tabularNumbers, useToast,
+  Button, Callout, Checkbox, Disclosure, EmptyState, FailedState, Field, Input, LoadingState, Menu, PageHeader, Popover, PreviewBar, ScrollTable, SegmentedControl, Sheet, StatusBadge, Switch, Textarea,
+  ToastProvider, cx, premiumTokens, srOnly, tabularNumbers, typeScale, useToast,
 } from "@/components/ui/premium";
 import type { MenuItem, StatusTone } from "@/components/ui/premium";
 import { fmtDate } from "@/lib/dates";
@@ -61,18 +62,18 @@ export type SeedCustomer = {
 };
 const C = (id: string, name: string, contactName: string, email: string, phone: string, address: string, extra: Partial<SeedCustomer> = {}): SeedCustomer => ({ id, name, contactName, email, phone, address, notes: "", mobile: "", traceableDefault: false, ...extra });
 export const SEED_CUSTOMERS: SeedCustomer[] = [
-  C("c01", "Marlow Hydraulics", "Alex Sample", "purchasing@marlow-hydraulics.example", "01632 960101", "Unit 4, Foundry Yard\nSampleford\nSF1 2AB", { mobile: "07700 900101", traceableDefault: true, notes: "Prefers delivery notes by e-mail.", deliveryNotes: [{ ref: "DLN-0212", status: "despatched", date: "2026-11-19" }, { ref: "DLN-0188", status: "signed", date: "2026-10-02" }] }),
-  C("c02", "Tern Marine Engineering", "Jamie Testfield", "orders@tern-marine.example", "01632 960102", "Quay House, Harbour Road\nExampleton\nEX2 4TM", { credit: 1250, deliveryNotes: [{ ref: "DLN-0211", status: "despatched", date: "2026-11-16" }] }),
-  C("c03", "Coldharbour Automation", "Morgan Placeholder", "buyer@coldharbour.example", "01632 960103", "Plot 12, Mockridge Park\nDummerby\nDB3 7QR", { mobile: "07700 900103", deliveryNotes: [{ ref: "DLN-0213", status: "awaiting", date: "2026-11-20" }] }),
-  C("c04", "Ashby Rail Services", "Sasha Dummerby", "supply@ashby-rail.example", "01632 960104", "Depot Lane\nTestford\nTF4 1XX", { pause: { reason: "Query on delivery DLN-0206", until: "2026-12-04" }, deliveryNotes: [{ ref: "DLN-0206", status: "signed", date: "2026-11-16" }] }),
+  C("c01", "Marlow Hydraulics", "Fiona MacLeod", "f.macleod@marlow-hydraulics.example", "0141 496 0101", "Unit 4, Foundry Yard\nEast Kilbride\nG74 5PB", { mobile: "07700 900101", traceableDefault: true, notes: "Prefers delivery notes by e-mail.", deliveryNotes: [{ ref: "DLN-0212", status: "despatched", date: "2026-11-19" }, { ref: "DLN-0188", status: "signed", date: "2026-10-02" }] }),
+  C("c02", "Tern Marine Engineering", "Callum Reid", "c.reid@tern-marine.example", "0131 496 0102", "Quay House, Harbour Road\nDumfries\nDG1 2RS", { credit: 1250, deliveryNotes: [{ ref: "DLN-0211", status: "despatched", date: "2026-11-16" }] }),
+  C("c03", "Coldharbour Automation", "Isla Drummond", "i.drummond@coldharbour.example", "0141 496 0103", "Plot 12, Carron Park\nFalkirk\nFK2 7XQ", { mobile: "07700 900103", deliveryNotes: [{ ref: "DLN-0213", status: "awaiting", date: "2026-11-20" }] }),
+  C("c04", "Ashby Rail Services", "Euan Campbell", "e.campbell@ashby-rail.example", "0131 496 0104", "Depot Lane\nAshby-de-la-Zouch\nLE65 2UB", { pause: { reason: "Query on delivery DLN-0206", until: "2026-12-04" }, deliveryNotes: [{ ref: "DLN-0206", status: "signed", date: "2026-11-16" }] }),
   C("c05", "Kestrel Components", "", "procurement@kestrel.example", "", "", { deliveryNotes: [{ ref: "DLN-0209", status: "delivered", date: "2026-11-18" }] }),
-  C("c06", "Pemberton Packaging", "Robin Exampleton", "", "01632 960106", "Mill Road\nSampleford\nSF2 9LP", { mobile: "07700 900106" }),
-  C("c07", "Halden Precision", "Kit Mockridge", "accounts@halden-precision.example", "01632 960107", "Unit 9, Precision Court\nTestford\nTF1 3BN", { deliveryNotes: [{ ref: "DLN-0208", status: "awaiting", date: "2026-11-18" }] }),
-  C("c08", "Wren & Calder", "Dana Testwell", "projects@wren-calder.example", "01632 960108", "Calder House, Bridge Street\nExampleton\nEX1 8HG", { credit: 340.5, pause: { reason: "Awaiting remittance advice", until: null }, traceableDefault: true }),
-  C("c09", "Brightwell Valves", "Lee Placeholder", "buying@brightwell.example", "01632 960109", "Valve Works, Station Approach\nDummerby\nDB1 2ZZ", { deliveryNotes: [{ ref: "DLN-0205", status: "delivered", date: "2026-11-06" }] }),
-  C("c10", "Northgate Fabrication & Structural Engineering (Holdings) Limited", "Pat Sample-Testfield", "orders@northgate-fab.example", "01632 960110", "Northgate Works, Unit 21, Long Row Industrial Estate, Off Mockridge Bypass\nTestford\nTF9 6RT", { mobile: "07700 900110", notes: "Two delivery addresses: ask which one before despatch.", deliveryNotes: [{ ref: "DLN-0207", status: "signed", date: "2026-11-12" }, { ref: "DLN-0198", status: "signed", date: "2026-11-09" }] }),
-  C("c11", "Old Mill Castings", "Sam Dummerby", "office@oldmill-castings.example", "01632 960111", "The Old Mill\nSampleford\nSF3 5DD", { manual: "archived" }),
-  C("c12", "Dunmore Gearworks", "", "", "01632 960112", "", { manual: "archived" }),
+  C("c06", "Pemberton Packaging", "Morag Henderson", "", "0131 496 0106", "Mill Road\nWigan\nWN3 4HT", { mobile: "07700 900106" }),
+  C("c07", "Halden Precision", "Rory Gillespie", "r.gillespie@halden-precision.example", "0141 496 0107", "Unit 9, Precision Court\nGlenrothes\nKY6 2NQ", { deliveryNotes: [{ ref: "DLN-0208", status: "awaiting", date: "2026-11-18" }] }),
+  C("c08", "Wren & Calder", "Kirsty Anderson", "k.anderson@wren-calder.example", "0131 496 0108", "Calder House, Bridge Street\nHalifax\nHX1 5PQ", { credit: 340.5, pause: { reason: "Awaiting remittance advice", until: null }, traceableDefault: true }),
+  C("c09", "Brightwell Valves", "Alasdair Buchanan", "a.buchanan@brightwell.example", "0141 496 0109", "Valve Works, Station Approach\nSwindon\nSN2 8QA", { deliveryNotes: [{ ref: "DLN-0205", status: "delivered", date: "2026-11-06" }] }),
+  C("c10", "Northgate Fabrication & Structural Engineering (Holdings) Limited", "Hamish Fraser-Munro", "h.fraser@northgate-fab.example", "0131 496 0110", "Northgate Works, Unit 21, Long Row Industrial Estate, Off Newport Bypass\nLincoln\nLN1 3DE", { mobile: "07700 900110", notes: "Two delivery addresses: ask which one before despatch.", deliveryNotes: [{ ref: "DLN-0207", status: "signed", date: "2026-11-12" }, { ref: "DLN-0198", status: "signed", date: "2026-11-09" }] }),
+  C("c11", "Old Mill Castings", "Niamh Docherty", "n.docherty@oldmill-castings.example", "0141 496 0111", "The Old Mill\nMotherwell\nML1 3DD", { manual: "archived" }),
+  C("c12", "Dunmore Gearworks", "", "", "0131 496 0112", "", { manual: "archived" }),
   { name: "Riverside Fabrications", contactName: "", email: "", phone: "", address: "", notes: "", notSaved: true },
   { name: "Cobalt Tooling Ltd", contactName: "", email: "", phone: "", address: "", notes: "", notSaved: true },
 ];
@@ -138,6 +139,8 @@ const lines = (address: string) => address.split(/\r?\n/).filter(Boolean).join("
 /** An address may break after its "@" (never in the middle of a word). */
 const mail = (email: string) => { const at = email.indexOf("@"); return at < 0 ? email : <>{email.slice(0, at + 1)}<wbr />{email.slice(at + 1)}</>; };
 
+export const CUSTOMERS_TITLE_TIP = "The companies we sell to. Used on quotes, sales orders and invoices.";
+
 type Editing = { id?: string; values: CustomerValues; source?: SeedCustomer };
 
 export default function CustomersPreview() { return <ToastProvider placement="bottom-right"><Inner /></ToastProvider>; }
@@ -152,6 +155,7 @@ function Inner() {
   const [features, setFeatures] = useState(true);
   const [editing, setEditingState] = useState<Editing | null>(null);
   const [timer, setTimer] = useState<number | null>(null);
+  const tipId = useId();
   const setEditing = useCallback((e: Editing | null) => { setEditingState(e); if (e) toast.clear(); }, [toast]);
   const wide = useMedia(DESK_QUERY, true);
   const notPhone = useMedia("(min-width: 768px)", true);
@@ -187,59 +191,56 @@ function Inner() {
 
   return (
     <div className={cx(premiumTokens, s.root)} data-testid="customers-preview" data-role={role} data-pview={shownView}>
-      <header className={s.head}>
-        <div className={s.titleBlock}>
-          <div className={s.titleLine}>
-            <h1 className={s.title}>Customers</h1>
-            <span className={s.previewTag} title="Everything on this screen is fictional sample data. Nothing is read from or saved to your account.">Preview, sample data, nothing is saved</span>
-            <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
-              <div className={s.dock}>
-                <p className={s.dockNote}>Not part of Tolra. Sample data; states are simulated and no request is made.</p>
-                <p className={s.dockLabel}>Role</p>
-                <SegmentedControl label="Role" value={role} options={ROLES} size="sm" onChange={(v) => { setRole(v); toast.clear(); }} />
-                <p className={s.dockLabel}>Screen state</p>
-                <div className={s.dockStates} role="group" aria-label="Screen state">
-                  {SCREENS.map((x) => <button key={x.v} type="button" aria-pressed={screen === x.v} className={s.dockBtn} onClick={() => pickScreen(x.v)}>{x.label}</button>)}
-                </div>
-                <Switch label="Mobile and Traceable" hint="On when the database has them (migrations 073 and 082)." checked={features} onChange={(on) => { setFeatures(on); setEditingState(null); }} data-testid="dock-features" />
-                <Button size="sm" variant="secondary" onClick={resetAll}>Reset preview</Button>
-              </div>
-            </Popover>
+      <PreviewBar controls={
+        <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
+          <div className={s.dock}>
+            <p className={typeScale.caption}>Not part of Tolra. Sample data; states are simulated and no request is made.</p>
+            <p className={typeScale.label}>Role</p>
+            <SegmentedControl label="Role" value={role} options={ROLES} size="sm" onChange={(v) => { setRole(v); toast.clear(); }} />
+            <p className={typeScale.label}>Screen state</p>
+            <div className={s.dockStates} role="group" aria-label="Screen state">
+              {SCREENS.map((x) => <Button key={x.v} size="sm" variant="secondary" fullWidth aria-pressed={screen === x.v} onClick={() => pickScreen(x.v)}>{x.label}</Button>)}
+            </div>
+            <Switch label="Mobile and Traceable" hint="On when the database has them (migrations 073 and 082)." checked={features} onChange={(on) => { setFeatures(on); setEditingState(null); }} data-testid="dock-features" />
+            <Button size="sm" variant="secondary" onClick={resetAll}>Reset preview</Button>
           </div>
-          <p className={s.subtitle}>The companies we sell to. Used on quotes, sales orders and invoices.</p>
-        </div>
-        {denied ? null : <div className={s.headControls}><Button variant="primary" data-testid="new-customer" onClick={() => add("")}>New customer</Button></div>}
-      </header>
+        </Popover>
+      } />
+      <PageHeader title={<span title={CUSTOMERS_TITLE_TIP} aria-describedby={tipId}>Customers</span>}
+        actions={denied ? null : <Button variant="primary" data-testid="new-customer" onClick={() => add("")}>New customer</Button>} />
+      <p id={tipId} className={srOnly}>{CUSTOMERS_TITLE_TIP}</p>
 
       {denied ? (
         <section className={s.denied} data-testid="access-denied">
-          <h2 className={s.deniedTitle}>Access Denied</h2><p className={s.deniedText}>Redirecting you back to the dashboard.</p>
-          <p className={s.deniedNote}>Preview only: no redirect happens here. Customers are for Admin and Office; Workshop and Viewer cannot open them.</p>
+          <h2 className={typeScale.section}>Access Denied</h2><p className={typeScale.body}>Redirecting you back to the dashboard.</p>
+          <p className={cx(typeScale.caption, s.deniedNote)}>Preview only: no redirect happens here. Customers are for Admin and Office; Workshop and Viewer cannot open them.</p>
         </section>
       ) : (
         <>
-          <section className={s.panel} aria-label="Show, export and view" aria-busy={screen === "loading" || undefined}>
-            <div className={s.panelRow}>
-              <span className={s.panelLabel}>Show</span>
-              <SegmentedControl label="Show" value={phase} size="sm" disabled={screen === "loading"} onChange={setPhase} options={[
-                { value: "open", label: `Active (${counts.open})`, testId: "show-open" }, { value: "archived", label: `Archived (${counts.archived})`, testId: "show-archived" }, { value: "all", label: "All", testId: "show-all" }]} />
+          <div className={s.toolbar} role="group" aria-label="List controls" aria-busy={screen === "loading" || undefined}>
+            <div className={s.tbGroup}>
+              <span className={s.showGroup}>
+                <span className={typeScale.label}>Show</span>
+                <SegmentedControl label="Show" value={phase} size="sm" disabled={screen === "loading"} onChange={setPhase} options={[
+                  { value: "open", label: `Active (${counts.open})`, testId: "show-open" }, { value: "archived", label: `Archived (${counts.archived})`, testId: "show-archived" }, { value: "all", label: "All", testId: "show-all" }]} />
+              </span>
             </div>
-            <div className={cx(s.panelRow, s.viewRow)}>
+            <div className={s.tbGroup}>
               <Menu label="Export" size="sm" variant="secondary" items={exportItems} data-testid="export-trigger" />
               <Popover label="Columns" title="Customers columns" size="sm" variant="secondary" data-testid="columns-trigger">
-                <p className={s.colScope}>Changes apply to everyone in this company. In this preview they change this screen only.</p>
-                {COLUMNS.map((c) => (c.locked ? <p key={c.key} className={s.colLocked} data-testid={`col-${c.key}`}><span>{c.label}</span><span>Always shown</span></p>
+                <p className={cx(typeScale.caption, s.colScope)}>Changes apply to everyone in this company. In this preview they change this screen only.</p>
+                {COLUMNS.map((c) => (c.locked ? <p key={c.key} className={cx(typeScale.name, s.colLocked)} data-testid={`col-${c.key}`}><span>{c.label}</span><span className={typeScale.caption}>Always shown</span></p>
                   : <Switch key={c.key} label={c.label} checked={inView(c.key)} onChange={(on) => setHidden((h) => (on ? h.filter((k) => k !== c.key) : [...h, c.key]))} data-testid={`col-${c.key}`} />))}
                 <div className={s.colReset}><Button size="sm" variant="secondary" disabled={!hidden.length} onClick={() => setHidden([])}>Reset to default (show all columns)</Button></div>
               </Popover>
               {notPhone ? <SegmentedControl label="View" value={shownView} onChange={setView} size="sm" options={[
                 { value: "cards", label: "Cards", testId: "view-cards-btn" }, { value: "list", label: "List", disabled: !wide, disabledReason: "Needs a screen wider than 1024px", testId: "view-list-btn" }, { value: "table", label: "Table", disabled: !wide, disabledReason: "Needs a screen wider than 1024px", testId: "view-table-btn" }]} /> : null}
             </div>
-          </section>
+          </div>
 
-          {screen === "truncated" ? <p className={s.truncated} role="status" data-testid="customer-names-truncated">{DOCUMENT_NAMES_TRUNCATED}</p> : null}
-          <p className={s.srOnly} role="status">{loaded ? `${visible.length} ${visible.length === 1 ? "customer" : "customers"} shown` : ""}</p>
-          <h2 className={s.srOnly}>Customer list</h2>
+          {screen === "truncated" ? <Callout tone="warn" lead="" role="status" data-testid="customer-names-truncated">{DOCUMENT_NAMES_TRUNCATED}</Callout> : null}
+          <p className={srOnly} role="status">{loaded ? `${visible.length} ${visible.length === 1 ? "customer" : "customers"} shown` : ""}</p>
+          <h2 className={srOnly}>Customer list</h2>
           {screen === "loading" ? <LoadingState label="Loading customers" rows={6} />
             : screen === "error" ? <FailedState title="Couldn’t load customers." detail="The list could not be fetched. This is a simulated failure: no request was made and nothing was lost." onRetry={retry} retryLabel="Retry" />
             : data.length === 0 ? <EmptyState title="No customers yet" detail={customersEmptyHint()} action={<Button variant="primary" onClick={() => add("")}>New customer</Button>} />
@@ -249,31 +250,31 @@ function Inner() {
               <div className={s.cards} data-testid="view-cards">
                 {visible.map((c) => (
                   <article key={c.id ?? c.name} className={s.card} data-customer={c.name} aria-label={c.name}>
-                    <div className={s.cardHead}><h3 className={s.cardName}>{c.name}</h3><NameNotes c={c} /></div>
-                    <dl className={s.dl}>
-                      {inView("contact") ? <div><dt>Contact</dt><dd>{c.contactName || dash}</dd></div> : null}
-                      {inView("phone") ? <div><dt>Phone</dt><dd className={tabularNumbers}>{c.phone || dash}{c.mobile ? <span className={s.cellNote}>Mobile {c.mobile}</span> : null}</dd></div> : null}
-                      {inView("email") ? <div className={s.dlWide}><dt>Email</dt><dd>{c.email ? mail(c.email) : dash}</dd></div> : null}
-                      {inView("address") ? <div className={s.dlWide}><dt>Address</dt><dd>{c.address ? lines(c.address) : dash}</dd></div> : null}
+                    <div className={s.cardHead}><h3 className={typeScale.card}>{c.name}</h3><NameNotes c={c} /></div>
+                    <dl className={cx(s.dl, typeScale.body)}>
+                      {inView("contact") ? <div><dt className={typeScale.secondary}>Contact</dt><dd>{c.contactName || dash}</dd></div> : null}
+                      {inView("phone") ? <div><dt className={typeScale.secondary}>Phone</dt><dd className={tabularNumbers}>{c.phone || dash}{c.mobile ? <span className={cx(typeScale.caption, s.cellNote)}>Mobile {c.mobile}</span> : null}</dd></div> : null}
+                      {inView("email") ? <div className={s.dlWide}><dt className={typeScale.secondary}>Email</dt><dd>{c.email ? mail(c.email) : dash}</dd></div> : null}
+                      {inView("address") ? <div className={s.dlWide}><dt className={typeScale.secondary}>Address</dt><dd>{c.address ? lines(c.address) : dash}</dd></div> : null}
                     </dl>
                     <div className={s.cardActions}><Actions c={c} mayArchive={mayArchive} open={open} add={add} preview={preview} archive={archive} /></div>
                   </article>
                 ))}
               </div>
             ) : (
-              <ScrollTable label="Customers" className={shownView === "list" ? s.dense : undefined}>
+              <ScrollTable label="Customers" dense={shownView === "list"} pinLast>
                 <thead><tr>
-                  <th className={s.thFirst}>Name</th>
-                  {inView("contact") ? <th>Contact</th> : null}{inView("email") ? <th>Email</th> : null}{inView("phone") ? <th>Phone</th> : null}{inView("address") ? <th>Address</th> : null}<th className={s.right}>Actions</th>
+                  <th>Name</th>
+                  {inView("contact") ? <th>Contact</th> : null}{inView("email") ? <th>Email</th> : null}{inView("phone") ? <th>Phone</th> : null}{inView("address") ? <th>Address</th> : null}<th className={s.actionsHead}>Actions</th>
                 </tr></thead>
                 <tbody>{visible.map((c) => (
                   <tr key={c.id ?? c.name} data-customer={c.name}>
-                    <td className={s.tdFirst}><span className={s.nameCell}><span className={s.name}>{c.name}</span><NameNotes c={c} /></span></td>
+                    <td><span className={s.nameCell}><span className={typeScale.name}>{c.name}</span><NameNotes c={c} /></span></td>
                     {inView("contact") ? <td className={s.contactCell}>{c.contactName || dash}</td> : null}
                     {inView("email") ? <td className={s.emailCell}>{c.email ? mail(c.email) : dash}</td> : null}
-                    {inView("phone") ? <td className={cx(s.nowrap, tabularNumbers)}>{c.phone || dash}{c.mobile ? <span className={s.cellNote}>Mobile {c.mobile}</span> : null}</td> : null}
+                    {inView("phone") ? <td className={cx(s.nowrap, tabularNumbers)}>{c.phone || dash}{c.mobile ? <span className={cx(typeScale.caption, s.cellNote)}>Mobile {c.mobile}</span> : null}</td> : null}
                     {inView("address") ? <td>{c.address ? <span className={s.clamp} title={lines(c.address)}>{lines(c.address)}</span> : dash}</td> : null}
-                    <td className={s.right}><div className={s.rowActions}><Actions c={c} mayArchive={mayArchive} open={open} add={add} preview={preview} archive={archive} /></div></td>
+                    <td className={s.actionsCell}><div className={s.rowActions}><Actions c={c} mayArchive={mayArchive} open={open} add={add} preview={preview} archive={archive} /></div></td>
                   </tr>))}
                 </tbody>
               </ScrollTable>
@@ -294,21 +295,33 @@ function valuesOf(c: SeedCustomer): CustomerValues {
 function NameNotes({ c }: { c: SeedCustomer }) {
   return (
     <>
-      {c.notSaved ? <span className={s.cellNote} data-testid="customer-not-saved">{NOT_SAVED_LABEL}</span> : null}
-      {c.credit ? <span className={cx(s.cellNote, s.attention)} data-testid="customer-credit">Customer credit {gbp(c.credit, 2)}</span> : null}
+      {c.notSaved ? <span className={cx(typeScale.caption, s.cellNote)} data-testid="customer-not-saved">{NOT_SAVED_LABEL}</span> : null}
+      {c.credit ? <span className={cx(typeScale.caption, s.cellNote, s.attention)} data-testid="customer-credit">Customer credit {gbp(c.credit, 2)}</span> : null}
       {chasePaused(c) ? <span className={s.cellNote}><span data-testid="chase-paused-badge"><StatusBadge tone="warn">Chasing paused</StatusBadge></span></span> : null}
     </>
   );
 }
 
-function Actions({ c, mayArchive, open, add, preview, archive }: { c: SeedCustomer; mayArchive: boolean; open: (c: SeedCustomer) => void; add: (name: string) => void; preview: (d: string) => void; archive: (c: SeedCustomer) => void }) {
-  if (c.notSaved) return <Button size="sm" variant="secondary" data-action="Add customer" aria-label={`Add ${c.name} as a customer`} onClick={() => add(c.name)}>Add customer</Button>;
+/** Row actions plan (item 7): ONE visible action; every other real control is in the More menu. Exported for the test. */
+export type RowActionId = "edit" | "statement" | "archive" | "add";
+export function rowActionPlan(c: Pick<SeedCustomer, "notSaved" | "id" | "manual">, mayArchive: boolean): { primary: { id: RowActionId; label: string }; more: Array<{ id: RowActionId; label: string }> } {
+  if (c.notSaved) return { primary: { id: "add", label: "Add customer" }, more: [] };
   const archived = phaseFor(c) === "archived";
+  return { primary: { id: "edit", label: "Edit" }, more: [{ id: "statement", label: "Draft statement" }, ...(mayArchive ? [{ id: "archive" as const, label: archived ? "Unarchive" : "Archive" }] : [])] };
+}
+
+function Actions({ c, mayArchive, open, add, preview, archive }: { c: SeedCustomer; mayArchive: boolean; open: (c: SeedCustomer) => void; add: (name: string) => void; preview: (d: string) => void; archive: (c: SeedCustomer) => void }) {
+  const plan = rowActionPlan(c, mayArchive);
+  const run = (id: RowActionId) => {
+    if (id === "add") add(c.name); else if (id === "edit") open(c);
+    else if (id === "statement") preview(`A statement for ${c.name} would be drafted and saved in Approvals for checking. Nothing would be sent.`);
+    else archive(c);
+  };
+  const aria = (id: RowActionId, label: string) => (id === "add" ? `Add customer, ${c.name}` : `${label} ${c.name}`);
   return (
     <>
-      <Button size="sm" variant="secondary" data-action="Draft statement" aria-label={`Draft statement for ${c.name}`} onClick={() => preview(`A statement for ${c.name} would be drafted and saved in Approvals for checking. Nothing would be sent.`)}>Draft statement</Button>
-      <Button size="sm" variant="secondary" data-action="Edit" aria-label={`Edit ${c.name}`} onClick={() => open(c)}>Edit</Button>
-      {mayArchive ? <Button size="sm" variant="quiet" data-action="Archive" aria-label={`${archived ? "Unarchive" : "Archive"} ${c.name}`} onClick={() => archive(c)}>{archived ? "Unarchive" : "Archive"}</Button> : null}
+      <Button size="sm" variant="secondary" data-action={plan.primary.label} aria-label={aria(plan.primary.id, plan.primary.label)} onClick={() => run(plan.primary.id)}>{plan.primary.label}</Button>
+      {plan.more.length ? <Menu label="More" size="sm" variant="quiet" aria-label={`More actions for ${c.name}`} data-testid="more-trigger" items={plan.more.map((m) => ({ id: m.id, label: m.label, separatorBefore: m.id === "archive", onSelect: () => run(m.id) }))} /> : null}
     </>
   );
 }
@@ -339,14 +352,14 @@ function CustomerSheet({ editing, features, onClose, preview }: { editing: Editi
     <Sheet open size="md" title={existing ? "Edit customer" : "Add customer"} description="Customer contact details." onClose={onClose} testId="dlg-customer" closeButton={false}
       footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button variant="primary" type="submit" form="customer-form" data-testid="save-customer">Save Customer</Button></>}>
       <form id="customer-form" ref={form} onSubmit={submit} noValidate className={s.form} aria-label={existing ? "Edit customer" : "Add customer"}>
-        {failing.length ? <p className={s.summary} role="alert" data-testid="form-summary">{failing.length === 1 ? "1 field needs attention" : `${failing.length} fields need attention`}: {failing.map((k) => LABEL[k]).join(", ")}.</p> : null}
+        {failing.length ? <p className={cx(typeScale.label, s.summary)} role="alert" data-testid="form-summary">{failing.length === 1 ? "1 field needs attention" : `${failing.length} fields need attention`}: {failing.map((k) => LABEL[k]).join(", ")}.</p> : null}
         <div role="group" aria-labelledby="g-customer" className={s.group}>
-          <h3 id="g-customer" className={s.legend}>Customer</h3>
+          <h3 id="g-customer" className={typeScale.label}>Customer</h3>
           <Field label="Customer name" required error={shown("name")}><Input name="name" autoComplete="off" value={v.name} onChange={(e) => set("name", e.target.value)} onBlur={blur("name")} /></Field>
           <Field label="Contact name" optional><Input name="contact_name" autoComplete="off" value={v.contactName} onChange={(e) => set("contactName", e.target.value)} /></Field>
         </div>
         <div role="group" aria-labelledby="g-contact-details" className={s.group}>
-          <h3 id="g-contact-details" className={s.legend}>Contact details</h3>
+          <h3 id="g-contact-details" className={typeScale.label}>Contact details</h3>
           <Field label="Email" optional hint="Where documents for this customer are e-mailed." error={shown("email")}><Input name="email" type="email" value={v.email} onChange={(e) => set("email", e.target.value)} onBlur={blur("email")} /></Field>
           <div className={cx(s.pair, v.mobile === undefined && s.pairOne)}>
             <Field label="Phone" optional error={shown("phone")}><Input name="phone" type="tel" inputMode="tel" autoComplete="tel" value={v.phone} onChange={(e) => set("phone", e.target.value)} onBlur={blur("phone")} /></Field>
@@ -354,16 +367,16 @@ function CustomerSheet({ editing, features, onClose, preview }: { editing: Editi
           </div>
         </div>
         <div role="group" aria-labelledby="g-address-and-notes" className={s.group}>
-          <h3 id="g-address-and-notes" className={s.legend}>Address and notes</h3>
+          <h3 id="g-address-and-notes" className={typeScale.label}>Address and notes</h3>
           <Field label="Address" optional hint="Shown on documents. Put each line on its own row, or separate the lines with commas."><Textarea name="address" rows={3} autoComplete="off" value={v.address} onChange={(e) => set("address", e.target.value)} /></Field>
           <Field label="Notes" optional><Textarea name="notes" rows={3} value={v.notes} onChange={(e) => set("notes", e.target.value)} /></Field>
         </div>
         {v.traceableDefault !== undefined ? (
           <div role="group" aria-labelledby="g-jobs" className={s.group}>
-          <h3 id="g-jobs" className={s.legend}>Jobs</h3>
+          <h3 id="g-jobs" className={typeScale.label}>Jobs</h3>
             <label className={s.checkRow}>
               <Checkbox name="traceable_default" checked={v.traceableDefault} onChange={(e) => set("traceableDefault", e.target.checked)} />
-              <span><span className={s.checkTitle}>Traceable material</span><span className={s.checkHint}>New jobs for this customer need the material cert no. and heat/cast no. before the inspection can pass.</span></span>
+              <span><span className={cx(typeScale.name, s.checkTitle)}>Traceable material</span><span className={cx(typeScale.secondary, s.checkHint)}>New jobs for this customer need the material cert no. and heat/cast no. before the inspection can pass.</span></span>
             </label>
           </div>
         ) : null}
@@ -374,7 +387,7 @@ function CustomerSheet({ editing, features, onClose, preview }: { editing: Editi
           <ChasePanel source={editing.source} name={v.name} preview={preview} />
         </div>
       ) : null}
-      <p className={s.sheetNote}>Preview only. Nothing is read from or saved to your account.</p>
+      <p className={cx(typeScale.caption, s.sheetNote)}>Preview only. Nothing is read from or saved to your account.</p>
     </Sheet>
   );
 }
@@ -382,20 +395,19 @@ function CustomerSheet({ editing, features, onClose, preview }: { editing: Editi
 /** components/delivery-notes-for.tsx: a closed disclosure; each note's reference opens its print page (here: a Preview-only answer). */
 function DeliveryNotesFor({ notes, preview }: { notes: SeedNote[]; preview: (d: string) => void }) {
   return (
-    <details className={s.disclosure} data-testid="delivery-notes-for">
-      <summary>Delivery notes</summary>
-      {notes.length === 0 ? <p className={s.disclosureEmpty} data-testid="delivery-notes-none">No delivery notes yet.</p> : (
+    <Disclosure summary="Delivery notes" className={s.disclosure} data-testid="delivery-notes-for">
+      {notes.length === 0 ? <p className={cx(typeScale.secondary, s.disclosureEmpty)} data-testid="delivery-notes-none">No delivery notes yet.</p> : (
         <ul className={s.dnList} data-testid="delivery-notes-list">
           {notes.map((n) => (
             <li key={n.ref}>
-              <button type="button" className={cx(s.linkBtn, tabularNumbers)} onClick={() => preview(`${n.ref} would open on the print page.`)}>{n.ref}</button>
+              <button type="button" className={cx(typeScale.name, s.linkBtn, tabularNumbers)} onClick={() => preview(`${n.ref} would open on the print page.`)}>{n.ref}</button>
               <StatusBadge tone={toneOf(n.status)}><span className={s.cap}>{n.status}</span></StatusBadge>
-              <span className={cx(s.dnDate, tabularNumbers)}>{fmtDate(n.date)}</span>
+              <span className={cx(typeScale.secondary, s.dnDate, tabularNumbers)}>{fmtDate(n.date)}</span>
             </li>
           ))}
         </ul>
       )}
-    </details>
+    </Disclosure>
   );
 }
 
@@ -420,9 +432,9 @@ function ChasePanel({ source, name, preview }: { source?: SeedCustomer; name: st
       {pause ? (
         <div className={s.chaseRow}>
           <div>
-            <p className={s.chaseTitle} data-testid="chase-pause-status">{active ? "Chasing paused" : "Chasing pause ended"}{pause.until ? ` until ${fmtDate(pause.until)}` : ""}</p>
-            <p className={s.chaseText}>Reason: {pause.reason}</p>
-            <p className={s.hint}>No chase e-mails are drafted for this customer while it is paused.</p>
+            <p className={cx(typeScale.name, s.chaseTitle)} data-testid="chase-pause-status">{active ? "Chasing paused" : "Chasing pause ended"}{pause.until ? ` until ${fmtDate(pause.until)}` : ""}</p>
+            <p className={cx(typeScale.secondary, s.chaseText)}>Reason: {pause.reason}</p>
+            <p className={typeScale.caption}>No chase e-mails are drafted for this customer while it is paused.</p>
           </div>
           <Button size="sm" variant="secondary" onClick={() => preview(`Chasing would resume for ${name}.`)}>Resume chasing</Button>
         </div>
@@ -434,7 +446,7 @@ function ChasePanel({ source, name, preview }: { source?: SeedCustomer; name: st
         </div>
       ) : (
         <div className={s.chaseRow}>
-          <p className={s.chaseText}>Chase steps run for this customer.</p>
+          <p className={cx(typeScale.secondary, s.chaseText)}>Chase steps run for this customer.</p>
           <Button ref={trigger} size="sm" variant="secondary" onClick={() => setEditing(true)}>Pause chasing</Button>
         </div>
       )}
