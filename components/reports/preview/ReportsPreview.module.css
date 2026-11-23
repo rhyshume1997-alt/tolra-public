@@ -1,0 +1,57 @@
+/*
+ * BOUNDARY (Reports, Module 7, PREVIEW ONLY). Inputs: the class names used by components/reports/preview/ReportsPreview.tsx and the --ui-* tokens of components/ui/premium (on the page
+ * root). Output: the look of the Reports preview only (operations reports and the Revenue report: frames, tables, filters, notices). Must not change: no global selectors, nothing outside this
+ * module, no business rules; control hit areas stay 48 px. Motion is colour only and off under prefers-reduced-motion. Forbidden here: gradients, blur or glass, decorative icons. The real pages
+ * have no charts, so there are none: tables with tabular figures, right-aligned numbers and a quiet total row.
+ */
+.root { display: flex; flex-direction: column; gap: 20px; max-width: 1120px; padding-bottom: 32px; container-type: inline-size; container-name: rep; }
+.right { text-align: right; }
+.muted { margin: 0; color: var(--ui-muted); font-size: 14px; }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.dock { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding-bottom: 8px; max-height: min(70vh, 640px); overflow-y: auto; }
+.dockStates { display: flex; flex-direction: column; gap: 8px; width: 100%; margin-bottom: 6px; }
+.body { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.intro { margin: -8px 0 0; max-width: 64ch; color: var(--ui-ink-2); font-size: var(--ui-fs-body); line-height: var(--ui-lh-body); }
+.linkRow { margin: 0; }
+.link { display: inline-flex; align-items: center; min-height: 48px; color: var(--ui-accent); font-size: 14px; font-weight: 650; text-decoration: underline; text-underline-offset: 3px; }
+.periodRow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; }
+.periodGroup { display: flex; align-items: center; gap: 10px; }
+.periodLabel { color: var(--ui-ink-2); font-size: var(--ui-fs-label); font-weight: var(--ui-fw-label); }
+.calc { color: var(--ui-muted); font-size: 13px; }
+/* the shared segmented control draws a 40 px hit box: lifted to 48 px by a transparent pseudo element, with room around it so neighbours cannot cover it */
+.periodGroup [role="radio"], .filters [role="radio"] { position: relative; }
+.periodGroup [role="radio"]::after { content: ""; position: absolute; inset: -8px -2px; }
+.periodRow { padding: 8px 0; }
+.frame { display: flex; flex-direction: column; min-width: 0; border-radius: var(--ui-radius-lg); background: var(--ui-surface); box-shadow: var(--ui-elev-raised); }
+.frameHead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 2px 12px; min-height: 52px; padding: 8px 18px; border-bottom: 1px solid var(--ui-line); }
+.frameTitle { margin: 0; font-size: var(--ui-fs-card); line-height: var(--ui-lh-card); font-weight: var(--ui-fw-card); color: var(--ui-ink); }
+.frameMeta { color: var(--ui-muted); font-size: var(--ui-fs-secondary); text-align: right; }
+.frameBody { display: flex; flex-direction: column; gap: 12px; padding: 14px 18px 16px; min-width: 0; }
+.lead { margin: 0; font-size: 15px; line-height: 22px; color: var(--ui-ink); }
+.lead strong { font-size: 20px; font-weight: 650; letter-spacing: -0.01em; margin-right: 2px; }
+.note { margin: 0; color: var(--ui-muted); font-size: var(--ui-fs-secondary); line-height: var(--ui-lh-secondary); }
+.incomplete { color: var(--ui-warn); font-weight: 550; }
+.notice { margin: 0; padding: 10px 14px; border-radius: var(--ui-radius-sm); background: var(--ui-surface-2); box-shadow: inset 3px 0 0 #d99a06, inset 0 0 0 1px var(--ui-line); color: var(--ui-ink); font-size: 13.5px; }
+.errorLine { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin: 0; color: var(--ui-ink-2); font-size: 14px; }
+.alert { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin: 0; padding: 10px 16px; border-radius: var(--ui-radius-md); background: #fff; box-shadow: inset 3px 0 0 var(--ui-danger), 0 0 0 1px var(--ui-line); color: var(--ui-ink); font-size: 14px; }
+.downloads { display: flex; flex-wrap: wrap; gap: 8px 12px; }
+.skeleton { display: flex; flex-direction: column; gap: 10px; padding: 6px 0; }
+.skeleton i { display: block; height: 14px; border-radius: 3px; background: var(--ui-surface-3); }
+.skeleton i:nth-child(1) { width: 62%; } .skeleton i:nth-child(2) { width: 90%; } .skeleton i:nth-child(3) { width: 76%; }
+.tableWrap { overflow-x: auto; border-radius: var(--ui-radius-sm); box-shadow: inset 0 0 0 1px var(--ui-line); }
+.tableWrap:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
+.table { width: 100%; min-width: 360px; border-collapse: collapse; font-size: var(--ui-fs-body); line-height: var(--ui-lh-body); }
+.table th, .table td { padding: 9px 14px; border-bottom: 1px solid var(--ui-line); text-align: left; font-weight: 450; white-space: nowrap; }
+.table thead th { background: var(--ui-surface-2); color: var(--ui-muted); font-size: var(--ui-fs-thead); line-height: var(--ui-lh-thead); font-weight: var(--ui-fw-thead); letter-spacing: var(--ui-ls-thead); text-transform: uppercase; }
+.table tbody th { color: var(--ui-ink); font-weight: 500; white-space: nowrap; }
+.table tbody tr:last-child th, .table tbody tr:last-child td { border-bottom: 0; }
+.table .right { text-align: right; }
+.totalRow th, .totalRow td { background: var(--ui-surface-2); font-weight: 650 !important; color: var(--ui-ink); }
+.filters { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+@container rep (min-width: 640px) { .filters { grid-template-columns: repeat(3, minmax(0, 14rem)); } }
+.denied { padding: 28px; border-radius: var(--ui-radius-lg); background: #fff; box-shadow: 0 0 0 1px var(--ui-line); text-align: center; }
+.deniedTitle { margin: 0 0 6px; font-size: var(--ui-fs-section); line-height: var(--ui-lh-section); font-weight: var(--ui-fw-section); }
+@media (prefers-reduced-motion: reduce) { .link { transition: none; } }
+
+/* the shared control scrolls sideways under 640 px, which clips its transparent hit area: it stays visible here (the control is short enough to fit) */
+.periodGroup [role="radiogroup"] { overflow: visible; }
