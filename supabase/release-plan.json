@@ -201,6 +201,15 @@
       "rollback": "supabase/release/164_platform_companies.rollback.sql",
       "verify": "supabase/verify/platform_companies_164.sql",
       "marker": "post-144 marker 164 platform_companies"
+    },
+    {
+      "number": 165,
+      "after": "164",
+      "source": "supabase/proposals/p165_owner_issues.sql",
+      "release": "supabase/release/165_owner_issues.release.sql",
+      "rollback": "supabase/release/165_owner_issues.rollback.sql",
+      "verify": "supabase/verify/owner_issues_165.sql",
+      "marker": "post-144 marker 165 owner_issues"
     }
   ],
   "other_proposals": [
