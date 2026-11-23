@@ -44,8 +44,8 @@ describe("home page content", () => {
     const screenshots = figures.filter((figure) => /<img\b/.test(figure));
     expect(screenshots).toHaveLength(marketing.SCREENSHOTS.length + marketing.FEATURES.filter((feature) => feature.shot).length);
     for (const figure of figures) expect(text(figure)).toMatch(screenshots.includes(figure) ? /Screenshot\s*$/ : /Illustration\s*$/);
-    // + the traveller, its short copy for phones (hidden from assistive tech) and the "How Tolra handles it" drawings
-    expect(text(html).match(/Illustration/g)!.length).toBe(marketing.FEATURES.length + 3);
+    // + the traveller, its short copy for phones (hidden from assistive tech), the "How Tolra handles it" drawings and the Meet Tooly demo
+    expect(text(html).match(/Illustration/g)!.length).toBe(marketing.FEATURES.length + 4);
     const shots = marketing.FEATURES.filter((feature) => feature.shot).length;
     expect(text(html).match(/Screenshot/g)?.length ?? 0).toBe(marketing.SCREENSHOTS.length + shots);
     expect(text(html)).not.toContain("Demo data");

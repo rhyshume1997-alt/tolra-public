@@ -30,6 +30,54 @@ export const HERO_TITLE = "Quotes, jobs and invoices for small CNC and fabricati
 export const HERO_SUBHEAD = "Every enquiry, quote, job and invoice in one place, so nothing gets lost between the office and the shop floor.";
 export const SEE_HOW_LABEL = "See how it works";
 
+/**
+ * "One place": the owner's positioning line and four things the dashboard and Job Board show today. Every item restates what the two real
+ * screens (SCREENSHOTS below) and the traveller's captions already say; no new feature, number or promise.
+ */
+export const ONE_PLACE_TITLE = "Everything in one place";
+export const POSITIONING_LINE = "Tolra keeps quotes, jobs, what is late and what is waiting to be checked in one place for small CNC and fabrication shops.";
+export const ONE_PLACE_ITEMS = [
+  { title: "Quotes", detail: "Quotes with no reply and enquiries not yet quoted are listed on the dashboard, so none sits unanswered in an inbox." },
+  { title: "Jobs", detail: "Open, not started, running, waiting for inspection and complete, on the Job Board, with filters for status, type, due date and stage." },
+  { title: "What is late", detail: "Jobs running late and money late each have a tile on the dashboard, with a Needs your attention list beneath." },
+  { title: "Waiting to be checked", detail: "Finished work shows as waiting for inspection until it passes. A draft invoice waits for your check before it is issued." },
+] as const;
+export const ONE_PLACE_NOTE = "Real screens from the app. Names, companies and quote numbers in them are example values.";
+
+/**
+ * "Meet Tooly": the face of the optional AI helper. Everything here restates what the app's own AI pages say it does today (round-up,
+ * RFQ e-mail to draft quote, finance check, assistant) and its status: off until an admin switches it on, in pilot, suggestions only.
+ * The demo's enquiry and draft use the same example values as the traveller and the drawn quote; it calls nothing and saves nothing.
+ */
+export const TOOLY_TITLE = "Meet Tooly";
+export const TOOLY_INTRO = "Tooly is the face of Tolra's optional AI helper. It is in pilot, and it only suggests: a person checks and approves everything.";
+export const TOOLY_POINTS = [
+  { title: "Enquiry to draft quote", detail: "Paste a customer's enquiry email and it prepares a draft quote. Prices come from your own fixed calculation, never from the AI, and anything it is unsure of is marked Needs human review." },
+  { title: "Round-up", detail: "A summary, in plain words, of work that is late, waiting or unbilled. It only reads; it changes nothing." },
+  { title: "Finance check", detail: "Before you issue an invoice, purchase order or credit note, it lists suggestions on the draft. You accept or dismiss each one, and you can always issue without it." },
+  { title: "Ask Tooly", detail: "Ask about your recent quotes or jobs, or ask for a draft such as a chaser email or a note. Drafts are text for you to copy: it never sends, saves or changes anything." },
+] as const;
+export const TOOLY_DEMO = {
+  label: "Try it with an example enquiry",
+  note: "Nothing is sent or saved here: the demo only moves between example screens.",
+  enquiryTitle: "Enquiry email",
+  enquiry: "Hi, can you quote 20 off mounting brackets, laser cut and folded, S355 plate 6 mm? Drawing BR-114 rev B attached. Thanks, Example Plant Co",
+  start: "Draft a quote from this enquiry",
+  approve: "Approve as a draft",
+  again: "Start again",
+  status: {
+    idle: "Waiting for an enquiry.",
+    reading: "Tooly is reading the enquiry...",
+    review: "Draft ready. It is marked Needs human review, and nothing is saved until you approve it.",
+    done: "Approved. Saved as a draft quote only; nothing was sent to the customer.",
+  },
+} as const;
+/** Small appearances on the traveller: only for the stages where the optional helper has something to offer. */
+export const TOOLY_FLOW_NOTES: Readonly<Record<string, string>> = {
+  enquiry: "Optional: paste the enquiry email into the AI helper and Tooly prepares a draft quote for you to check.",
+  invoice: "Optional: Tooly's finance check lists suggestions on the draft before you issue it. You can always issue without it.",
+};
+
 /** "Sound familiar?": the problems a small shop lives with. Plain descriptions, no numbers. */
 export const PAIN_TITLE = "Sound familiar?";
 export const PAIN_CARDS = [
