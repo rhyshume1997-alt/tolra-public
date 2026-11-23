@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type MutableRefObject, type Ref } from "react";
 
-import { sheetRoot, useToolyGuide } from "@/components/marketing/tooly-guide-state";
+import { useToolyGuide } from "@/components/marketing/tooly-guide-state";
 import { FLOW_JOB, ILLUSTRATION_LABEL } from "@/lib/marketing";
 import { TOOLY_POSES, type ToolyPose } from "@/components/tooly/poses";
 import {
@@ -38,7 +38,6 @@ const POSES: readonly ToolyPose[] = ["idle", "blink", "wave", "think", "celebrat
 const DEFAULT_FRAMES: ReadonlySet<FrameKey> = new Set<FrameKey>(["pointUpLeft"]);
 
 type Look = ToolyPose | FrameKey;
-const isFrame = (look: Look): look is FrameKey => look in FRAME_SRC;
 
 /** One cropped Tooly: every still and every mounted frame stacked in the same box, so a look change is only an opacity swap. */
 function Figure({ look, size, frames, walkRefs, eager }: { look: Look; size: number; frames: ReadonlySet<FrameKey>; walkRefs?: MutableRefObject<Array<HTMLImageElement | null>>; eager?: boolean }) {
