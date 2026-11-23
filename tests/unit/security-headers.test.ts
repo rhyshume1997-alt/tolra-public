@@ -130,6 +130,35 @@ describe("next.config.mjs security headers (production)", () => {
     expect(without).toEqual(csp);
     expect(settings.get("frame-ancestors")).toEqual(["'none'"]);
     expect(settings.get("connect-src")).toEqual(csp.get("connect-src"));
+    // Nothing weaker than the global policy: the same script and style sources (so no 'unsafe-inline' or 'unsafe-eval' is added), and the only
+    // scheme source the Settings policy has beyond img-src and font-src is the blob: of frame-src. No wildcard anywhere.
+    expect([...(settings.get("script-src") ?? [])].sort()).toEqual(["'self'", "'unsafe-inline'", "'wasm-unsafe-eval'"]);
+    expect([...(settings.get("style-src") ?? [])].sort()).toEqual(["'self'", "'unsafe-inline'"]);
+    for (const [name, sources] of settings) {
+      for (const source of sources) {
+        expect(source, `${name} has a wildcard or scheme-wide source`).not.toMatch(/^(\*|https?:|http:\/\/\*|https:\/\/\*$)$/);
+        if (name !== "img-src" && name !== "font-src" && name !== "frame-src") expect(source, `${name} allows data:/blob:`).not.toMatch(/^(data|blob):$/);
+      }
+    }
+  });
+
+  it("the Document designs preview adds no endpoint: it builds the PDF in the browser from sample data and the company's own settings row", () => {
+    const read = (file: string) => readFileSync(path.resolve(__dirname, "../..", file), "utf8");
+    const card = read("components/document-templates/document-designs-card.tsx");
+    const samples = read("lib/document-templates/sample-documents.ts");
+    const store = read("lib/document-templates/document-template-store.ts");
+    for (const [name, code] of [["card", card], ["samples", samples], ["store", store]] as const) {
+      expect(code, `${name} must not call fetch`).not.toMatch(/\bfetch\(/);
+      expect(code, `${name} must not name an API route`).not.toMatch(/\/api\//);
+    }
+    // The preview's iframe points only at the blob made from that PDF.
+    expect(card.match(/<iframe[^>]*src=\{(\w+)\}/)?.[1]).toBe("previewUrl");
+    expect(card).toMatch(/setPreviewUrl\(url\)/);
+    expect(card).toMatch(/URL\.createObjectURL\(blob\)/);
+    // The only database read is the signed-in company's own organization_settings row, through the existing client (row security decides).
+    expect([...store.matchAll(/\.from\("([a-z_]+)"\)/g)].map((m) => m[1])).toEqual(expect.arrayContaining(["organization_settings"]));
+    expect([...new Set([...store.matchAll(/\.from\("([a-z_]+)"\)/g)].map((m) => m[1]))]).toEqual(["organization_settings"]);
+    expect(store).not.toMatch(/service_role|createSupabaseAdminClient/);
   });
 
   it("CSP: the Settings policy is the same in development except for the dev-only unsafe-eval", async () => {
