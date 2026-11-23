@@ -7,6 +7,8 @@
  * that could read, write or send (and none of the chase, approval-recovery or reopen modules it reproduces), and that nothing reports success or changes the queue.
  * Must not change: never loosen these to make a change pass. No network, no Supabase, no mail. Written with createElement (no JSX) so it runs under the existing vitest.config.ts include pattern.
  */
+import * as v2fs from "node:fs";
+import * as v2path from "node:path";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { act, createElement } from "react";
@@ -175,7 +177,22 @@ const radio = (g: string, l: string) => { dock(); click(byText(document.body, `[
 const pickScreen = (l: string) => { dock(); click(byText(document.body, '[role="group"][aria-label="Screen state"] button', l)); };
 const sw = (label: string) => { dock(); click(byText(document.body, "label", new RegExp(label))?.querySelector('[role="switch"]')); };
 const cards = (h: HTMLElement) => h.querySelectorAll("[data-approval]").length;
-const inCard = (h: HTMLElement, id: string, text: string) => byText(h.querySelector(`[data-approval="${id}"]`)!, "button", text);
+/** A card shows ONE primary button and a "More" menu (structural item 7): a label that is not a visible button is looked up in that card's own More menu. */
+const inCard = (h: HTMLElement, id: string, text: string) => {
+  const card = h.querySelector(`[data-approval="${id}"]`)!;
+  const direct = byText(card, "button", text);
+  if (direct) return direct;
+  const more = byText(card, "button", "More");
+  if (!more) return undefined;
+  if (more.getAttribute("aria-expanded") !== "true") click(more);
+  const layer = document.getElementById(more.getAttribute("aria-controls") ?? "");
+  return layer ? byText(layer, "[role=menuitem]", text) : undefined;
+};
+const menuLabels = (h: HTMLElement, id: string) => {
+  const more = byText(h.querySelector(`[data-approval="${id}"]`)!, "button", "More")!;
+  if (more.getAttribute("aria-expanded") !== "true") click(more);
+  return Array.from(document.getElementById(more.getAttribute("aria-controls") ?? "")!.querySelectorAll("[role=menuitem]")).map((e) => e.textContent);
+};
 
 describe("approval preview: rendered behaviour", () => {
   it("labels itself, shows the title, the notice with the count, 6 drafts (one chase), and calls nothing", () => {
@@ -195,7 +212,8 @@ describe("approval preview: rendered behaviour", () => {
   it("a plain card has the five buttons and Skip; Resend only on the failed customer statement", () => {
     const h = mount();
     const labels = Array.from(h.querySelector('[data-approval="d1"]')!.querySelectorAll("button")).map((b) => b.textContent);
-    expect(labels).toEqual([...P.CARD_BUTTONS, "Skip"]);
+    expect(labels).toEqual(["Copy to Clipboard", "More"]);
+    expect(menuLabels(h, "d1")).toEqual(["Mark as Sent Manually", "Open in email app", "Edit", "Full preview", "Skip"]);
     expect(inCard(h, "d2", "Send via Resend instead")).toBeTruthy();
     expect(inCard(h, "d1", "Send via Resend instead")).toBeUndefined();
     sw("Resend offered");
@@ -301,5 +319,25 @@ describe("approval preview: rendered behaviour", () => {
     radio("Role", "Workshop");
     expect(h.querySelector('[data-testid="access-denied"]')?.textContent).toContain("Access Denied");
     expect(cards(h)).toBe(0);
+  });
+});
+
+describe("v2 structure (owner approved items 4, 7, 10, 11): shared PreviewBar and PageHeader, v4 type scale, no local preview pill", () => {
+  const SRC2 = v2fs.readFileSync(v2path.join(process.cwd(), "components/approval/preview/ApprovalPreview.tsx"), "utf8");
+  const CSS2 = v2fs.readFileSync(v2path.join(process.cwd(), "components/approval/preview/ApprovalPreview.module.css"), "utf8");
+  it("uses the shared strip and heading, and keeps the Preview controls trigger", () => {
+    expect(SRC2).toContain("<PreviewBar");
+    expect(SRC2).toContain("PageHeader");
+    expect(SRC2).toContain('label="Preview controls"');
+    expect(SRC2).not.toContain("s.previewTag");
+    expect(SRC2).not.toContain("<h1 className={s.title}");
+  });
+  it("sizes text from the v4 scale tokens, not loose pixel sizes", () => {
+    expect(CSS2).toContain("var(--ui-fs-");
+    expect(CSS2).not.toMatch(/font-size:\s*(12\.5|13\.5)px/);
+    expect(CSS2).not.toMatch(/font-weight:\s*(650|550)/);
+  });
+  it("builds narrow records from the shared primitive: <Menu label=\"More\"", () => {
+    expect(SRC2).toContain("<Menu label=\"More\"");
   });
 });

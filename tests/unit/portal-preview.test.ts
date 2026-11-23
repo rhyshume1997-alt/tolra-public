@@ -14,7 +14,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import PortalPreview, {
   COPY, JOB_COLUMNS, JOB_STAGE, JOB_TONE, PREVIEW_ANSWERS, QUOTE_COLUMNS, QUOTE_STATUS, QUOTE_TONE, SCREEN_LABEL, SIGNED_IN, SIGNED_OUT, TABS,
-  effectiveScreen, homeLine, isSignedIn, orDash, sampleFor, tabsFor, titleFor, welcome,
+  effectiveScreen, homeLine, homeSummary, isSignedIn, monogram, orDash, sampleFor, tabsFor, titleFor, welcome,
 } from "@/components/portal/preview/PortalPreview";
 import { portalEnabled } from "@/lib/portal/flag";
 
@@ -256,5 +256,52 @@ describe("portal preview: no auth, session, network or secret code", () => {
   it("css has no gradient, blur or global selector", () => {
     const body = CSS.replace(/\/\*[\s\S]*?\*\//, "");
     expect(body).not.toMatch(/gradient|backdrop-filter|blur\(|:root|:global|^body|^html/m);
+  });
+});
+
+describe("portal preview v2 (owner approved item 5, 10, 11): branded header, Home summary that only counts what the portal already shows", () => {
+  it("the monogram is the first letters of the shop's first two words", () => {
+    expect(monogram("Fernhill Engineering Ltd")).toBe("FE");
+    expect(monogram("")).toBe("");
+  });
+  it("Home counts only rows the Quotes and Jobs screens list, with their own status and stage words, and respects the tabs rule", () => {
+    const d = sampleFor("typical");
+    const all = homeSummary(d, ["quotes", "jobs"]);
+    expect(all.quotesToLookAt).toBe(d.quotes.filter((q) => QUOTE_STATUS[q.status] === "Awaiting your answer").length);
+    expect(all.jobsInProgress).toBe(d.jobs.filter((j) => JOB_STAGE[j.stage] === "In progress").length);
+    expect(all.quotesTotal).toBe(d.quotes.length);
+    expect(all.latestQuotes).toEqual(d.quotes.slice(0, 3));
+    expect(all.latestJobs).toEqual(d.jobs.slice(0, 3));
+    const jobsOnly = homeSummary(d, ["jobs"]);
+    expect(jobsOnly.quotesTotal).toBe(0);
+    expect(jobsOnly.latestQuotes).toEqual([]);
+    expect(homeSummary(d, []).jobsInProgress).toBe(0);
+  });
+  it("renders the shop name with a monogram, two tiles that link to the existing screens, and the latest lists; no e-mail, sends, id or token", () => {
+    const host = mount();
+    screens(host, "home");
+    expect(host.querySelector("[data-testid=portal-brand]")!.textContent).toContain("Fernhill Engineering Ltd");
+    expect(host.querySelector("[data-testid=portal-brand]")!.textContent).toContain("FE");
+    expect(host.querySelector("[data-testid=portal-tile-quotes]")!.textContent).toContain("Quotes to look at");
+    expect(host.querySelector("[data-testid=portal-tile-jobs]")!.textContent).toContain("Jobs in progress");
+    expect(host.querySelector("[data-testid=portal-latest-quotes]")).not.toBeNull();
+    expect(host.querySelector("[data-testid=portal-latest-jobs]")).not.toBeNull();
+    expect(host.textContent).not.toMatch(/@|sends|token|contact_id|correlation/i);
+    act(() => host.querySelector<HTMLElement>("[data-testid=portal-tile-quotes]")!.click());
+    expect(host.querySelector("[data-testid=portal-preview]")!.getAttribute("data-screen")).toBe("quotes");
+  });
+  it("a contact without the Quotes permission gets no quotes tile and no latest quotes", () => {
+    const host = mount();
+    screens(host, "home");
+    choose(host, "[data-testid=dock-tabs]", "jobs");
+    expect(host.querySelector("[data-testid=portal-tile-quotes]")).toBeNull();
+    expect(host.querySelector("[data-testid=portal-latest-quotes]")).toBeNull();
+    expect(host.querySelector("[data-testid=portal-tile-jobs]")).not.toBeNull();
+  });
+  it("uses the shared strip, heading and phone records", () => {
+    expect(SRC).toContain("<PreviewBar");
+    expect(SRC).toContain("<PageHeader");
+    expect(SRC).toContain("<StackedRows");
+    expect(SRC).not.toContain("previewTag");
   });
 });

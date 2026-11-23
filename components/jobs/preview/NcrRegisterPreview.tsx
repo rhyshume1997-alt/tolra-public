@@ -2,6 +2,7 @@
 
 /**
  * BOUNDARY (NCR register, Jobs / Schedule / Time / Workshop module 2, PREVIEW ONLY). Inputs: none from the server. Everything shown is fictional sample data (made-up companies and
+ * v2 (claude/portal-admin-v2, owner approved STRUCTURAL-CHANGES-BRIEF items 4, 7, 9, 10, 11): shared PreviewBar and PageHeader replace the local preview pill and h1, text uses the v4 type scale, a row with several actions shows one primary and a More menu, narrow records use the shared StackedRows. Presentation only: wording, controls, states, roles and rules are unchanged.
  * people, as of 23/11/2026) held in this file, plus the person's clicks. Outputs: a look-and-feel prototype of the NCR register (components/jobs/ncr-register.tsx): the From / To / Type /
  * Status filters, Download CSV, the summary tiles, the rework hours and material cost line, the register table with its 13 columns, the legacy list, and every state the real page has
  * (company switch off, not available in this mode, loading, cannot be read, no records match, some records not listed, Access Denied). The only state is LOCAL UI state. It reads and
@@ -16,7 +17,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Button, EmptyState, Field, Input, LoadingState, Popover, SegmentedControl, Select, StatTile, StatTiles, StatusBadge, ScrollTable, ToastProvider,
+  Button, EmptyState, Field, Input, LoadingState, PageHeader, Popover, PreviewBar, SegmentedControl, Select, StackedRows, StatTile, StatTiles, StatusBadge, ScrollTable, ToastProvider,
   cx, premiumTokens, tabularNumbers, useToast,
 } from "@/components/ui/premium";
 import type { StatusTone } from "@/components/ui/premium";
@@ -250,18 +251,13 @@ function Inner() {
     </Popover>
   );
 
-  const bar = (
-    <div className={s.previewBar}>
-      <span className={s.previewTag} title="Everything on this screen is fictional sample data. Nothing is read from or saved to your account.">Preview, sample data, nothing is saved</span>
-      {dock}
-    </div>
-  );
+  const bar = <PreviewBar data-testid="preview-bar" controls={dock} />;
   const mainView = !denied && on && screen !== "unavailable";
 
   return (
     <div className={cx(premiumTokens, s.root)} data-testid="ncr-preview" data-role={role}>
 
-      {mainView ? null : bar}
+      {bar}
       {denied ? (
         <section className={s.denied} data-testid="access-denied">
           <h1 className={s.deniedTitle}>Access Denied</h1>
@@ -274,13 +270,7 @@ function Inner() {
         <p className={s.statement} data-testid="unavailable">{NOT_AVAILABLE}</p>
       ) : (
         <>
-          <header className={s.head}>
-            <div className={s.headText}>
-              <h1 className={s.title}>{PAGE_TITLE}</h1>
-              <p className={s.subtitle}>{PAGE_SUBTITLE}</p>
-            </div>
-            {bar}
-          </header>
+          <PageHeader title={PAGE_TITLE} description={PAGE_SUBTITLE} />
 
           <section className={s.filters} aria-label="Filters" data-testid="filters">
             <Field label="From"><Input type="date" name="from" value={filters.from} onChange={(e) => set("from", e.target.value)} /></Field>
@@ -316,7 +306,22 @@ function Inner() {
               {!rows.length ? (
                 <EmptyState title={NO_MATCH} headingLevel={2} compact />
               ) : (
-                <ScrollTable label="NCR register" dense>
+                <>
+                <StackedRows
+                  narrowOnly
+                  label="NCR register records"
+                  data-testid="ncr-stacked"
+                  rows={rows.map((r) => ({
+                    id: r.key,
+                    title: <Record text={r.record} />,
+                    status: <StatusBadge tone={statusTone(r)}>{cell(r, "Status")}</StatusBadge>,
+                    fields: NCR_COLUMNS.filter((c) => c !== "Record" && c !== "Status").map((c) => ({
+                      label: c,
+                      value: c === "Reason / description" ? <>{cell(r, c)}{r.action ? <span className={s.action}>{r.action}</span> : null}</> : NUMERIC.has(c) ? <span className={tabularNumbers}>{cell(r, c) || "—"}</span> : cell(r, c) || "—",
+                    })),
+                  }))}
+                />
+                <ScrollTable label="NCR register" dense narrowHidden>
                   <thead>
                     <tr>{NCR_COLUMNS.map((h) => <th key={h} scope="col" className={cx(NUMERIC.has(h) && s.right, NUMERIC.has(h) && s.numHead, h === "Reason / description" && s.reasonHead)}>{h}</th>)}</tr>
                   </thead>
@@ -327,7 +332,7 @@ function Inner() {
                           const text = cell(r, col);
                           if (col === "Record") return <td key={col}><Record text={text} /></td>;
                           if (col === "Reason / description") return <td key={col} className={s.reason}>{text}{r.action ? <span className={s.action}>{r.action}</span> : null}</td>;
-                          if (col === "Status") return <td key={col}><StatusBadge tone={statusTone(r)}>{text}</StatusBadge></td>;
+                          if (col === "Status") return <td key={col}><StatusBadge mode="text" tone={statusTone(r)}>{text}</StatusBadge></td>;
                           if (NUMERIC.has(col)) return <td key={col} className={cx(s.right, tabularNumbers)}>{text}</td>;
                           return <td key={col} className={col === "Raised" || col === "Closed" ? s.nowrap : undefined}>{text}</td>;
                         })}
@@ -335,6 +340,7 @@ function Inner() {
                     ))}
                   </tbody>
                 </ScrollTable>
+                </>
               )}
               {legacy.length ? (
                 <section className={s.legacy} aria-labelledby="ncr-legacy-title" data-testid="legacy">

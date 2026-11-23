@@ -2,6 +2,7 @@
 
 /**
  * BOUNDARY (ISO templates, Module 9, PM-approved 6a, PREVIEW ONLY: nothing here is wired to anything).
+ * v2 (claude/portal-admin-v2, owner approved STRUCTURAL-CHANGES-BRIEF items 4, 7, 9, 10, 11): shared PreviewBar and PageHeader replace the local preview pill and h1, text uses the v4 type scale, a row with several actions shows one primary and a More menu, narrow records use the shared StackedRows. Presentation only: wording, controls, states, roles and rules are unchanged.
  * Inputs: none from the server. Everything shown is fictional sample data (one made-up company, the nine real document titles and clauses, sample record counts and four sample
  * nonconformance records, as of 23/11/2026) held in this file, plus the person's clicks. Outputs: the Admin > ISO templates look-and-feel prototype (switch panel, pack button,
  * Documents table, Gap checklist table, NCR review reminder) whose only state is LOCAL UI state. It makes NO PDF and NO zip, writes NO file, reads NO company settings, and calls NO
@@ -20,7 +21,7 @@
 
 import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import {
-  Button, Field, Input, LoadingState, Panel, Popover, ScrollTable, SegmentedControl, StatusBadge, Switch, ToastProvider, cx, premiumTokens, srOnly, tabularNumbers, useToast,
+  Button, Field, Input, LoadingState, PageHeader, Panel, Popover, PreviewBar, ScrollTable, SegmentedControl, StackedRows, StatusBadge, Switch, ToastProvider, cx, premiumTokens, srOnly, tabularNumbers, typeScale, useToast,
 } from "@/components/ui/premium";
 import type { StatusTone } from "@/components/ui/premium";
 import { fmtDate } from "@/lib/dates";
@@ -176,31 +177,29 @@ function Inner() {
 
   return (
     <div className={cx(premiumTokens, s.root)} data-testid="iso-preview" data-role={role} data-screen={screen}>
-      <header className={s.head}>
-        <div className={s.titleBlock}>
-          <div className={s.titleLine}>
-            <h1 className={s.title}>{denied ? "Access Denied" : PAGE_TITLE}</h1>
-            <span className={s.previewTag} title="Everything on this screen is fictional sample data. Nothing is read from or saved to your account.">Preview, sample data, nothing is saved</span>
-            <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
-              <div className={s.dock}>
-                <p className={s.dockNote}>Not part of Tolra. Sample data; states are simulated, nothing is granted and no request is made.</p>
-                <p className={s.dockLabel}>Who is looking (changes the drawing only)</p>
-                <SegmentedControl label="Role" value={role} options={ROLE_OPTIONS} size="sm" onChange={(v) => { setRole(v); toast.clear(); }} />
-                <p className={s.dockLabel}>Screen state</p>
-                <div className={s.dockStates} role="group" aria-label="Screen state">
-                  {SCREENS.map((x) => <button key={x.v} type="button" aria-pressed={screen === x.v} className={s.dockBtn} onClick={() => pickScreen(x.v)}>{x.label}</button>)}
-                </div>
-                <p className={s.dockLabel}>Sample message</p>
-                <Button size="sm" variant="secondary" data-testid="dock-error" onClick={() => toast.show({ title: PDF_ERROR, tone: "error" })}>Show the PDF error message</Button>
-                <Button size="sm" variant="secondary" data-testid="dock-reset" onClick={reset}>Reset preview</Button>
-              </div>
-            </Popover>
+      <PreviewBar
+        data-testid="preview-bar"
+        controls={
+        <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
+          <div className={s.dock}>
+            <p className={s.dockNote}>Not part of Tolra. Sample data; states are simulated, nothing is granted and no request is made.</p>
+            <p className={s.dockLabel}>Who is looking (changes the drawing only)</p>
+            <SegmentedControl label="Role" value={role} options={ROLE_OPTIONS} size="sm" onChange={(v) => { setRole(v); toast.clear(); }} />
+            <p className={s.dockLabel}>Screen state</p>
+            <div className={s.dockStates} role="group" aria-label="Screen state">
+              {SCREENS.map((x) => <button key={x.v} type="button" aria-pressed={screen === x.v} className={s.dockBtn} onClick={() => pickScreen(x.v)}>{x.label}</button>)}
+            </div>
+            <p className={s.dockLabel}>Sample message</p>
+            <Button size="sm" variant="secondary" data-testid="dock-error" onClick={() => toast.show({ title: PDF_ERROR, tone: "error" })}>Show the PDF error message</Button>
+            <Button size="sm" variant="secondary" data-testid="dock-reset" onClick={reset}>Reset preview</Button>
           </div>
-          <p className={s.subtitle}>
-            {denied ? "Redirecting you back to the dashboard." : showSubtitle ? subtitleFor(COMPANY_NAME) : null}
-          </p>
-        </div>
-      </header>
+        </Popover>
+        }
+      />
+      <PageHeader
+        title={denied ? "Access Denied" : PAGE_TITLE}
+        description={denied ? "Redirecting you back to the dashboard." : showSubtitle ? subtitleFor(COMPANY_NAME) : undefined}
+      />
 
       {denied ? (
         <section className={s.denied} data-testid="access-denied" aria-label="Access denied">
@@ -222,7 +221,7 @@ function Inner() {
               {view.unread.length ? <p className={cx(s.hint, s.unread)} data-testid="unread-note">{unreadNote(view.unread)}</p> : null}
               <div className={s.packBar}>
                 <Button variant="primary" disabled={view.busy} data-testid="download-pack" onClick={() => preview("The pack (a zip of all nine documents and the gap checklist) would download.")}>Download pack (zip)</Button>
-                <span className={s.hint}>{PACK_HINT}</span>
+                <span className={typeScale.secondary}>{PACK_HINT}</span>
               </div>
               <Panel title="Documents" bare data-testid="documents-panel">
                 <ScrollTable label="Documents table" dense>
@@ -252,15 +251,16 @@ function Inner() {
                 }
               >
                 {narrow ? (
-                  <ul className={s.records} aria-label="Gap checklist">
-                    {gapRows.map((r) => (
-                      <li key={r.clause} className={s.record}>
-                        <div className={s.recordTop}><span className={cx(s.cellStrong, tabularNumbers)}>Clause {r.clause}</span><StatusBadge tone={STATUS_TONE[r.status]}>{gapStatusLabel(r.status)}</StatusBadge></div>
-                        <p className={s.recordTitle}>{r.requirement}</p>
-                        <p className={s.recordBasis}>{r.basis}</p>
-                      </li>
-                    ))}
-                  </ul>
+                  <StackedRows
+                    className={s.flatStack}
+                    label="Gap checklist"
+                    rows={gapRows.map((r) => ({
+                      id: r.clause,
+                      title: <span className={tabularNumbers}>Clause {r.clause}</span>,
+                      status: <StatusBadge tone={STATUS_TONE[r.status]}>{gapStatusLabel(r.status)}</StatusBadge>,
+                      fields: [{ label: "Requirement", value: r.requirement }, { label: "Basis", value: r.basis }],
+                    }))}
+                  />
                 ) : (
                 <ScrollTable label="Gap checklist table" dense>
                   <thead><tr><th scope="col">Clause</th><th scope="col">Requirement</th><th scope="col">Status</th><th scope="col">Basis</th></tr></thead>
@@ -269,7 +269,7 @@ function Inner() {
                       <tr key={r.clause}>
                         <td className={cx(s.clause, s.cellStrong, tabularNumbers)}>{r.clause}</td>
                         <td className={s.requirement}>{r.requirement}</td>
-                        <td className={s.status}><StatusBadge tone={STATUS_TONE[r.status]}>{gapStatusLabel(r.status)}</StatusBadge></td>
+                        <td className={s.status}><StatusBadge mode="text" tone={STATUS_TONE[r.status]}>{gapStatusLabel(r.status)}</StatusBadge></td>
                         <td className={s.basis}>{r.basis}</td>
                       </tr>
                     ))}
@@ -279,22 +279,26 @@ function Inner() {
               </Panel>
               <Panel title="NCR review reminder" data-testid="reminder-panel">
                 <div className={s.reminderBody}>
-                  <p className={s.hint}>{REMINDER_NOTE}</p>
+                  <p className={typeScale.secondary}>{REMINDER_NOTE}</p>
                   <Field label={DAYS_LABEL} className={s.daysField}>
                     <Input inputMode="numeric" value={daysText} onChange={(e) => setDaysText(e.target.value)} data-testid="days-input" />
                   </Field>
                   {!view.ncrRows ? <p className={s.reminderEmpty} data-testid="ncr-unread">{NCR_UNREAD}</p>
                     : !overdue.length ? <p className={s.reminderEmpty} data-testid="ncr-none">{noOverdueText(days)}</p> : (
                       narrow ? (
-                        <ul className={s.records} aria-label="NCRs open for too long">
-                          {overdue.map((o) => (
-                            <li key={o.row.key} className={s.record}>
-                              <div className={s.recordTop}><span className={s.cellStrong}>{o.row.record}</span></div>
-                              <p className={s.recordBasis}>Raised {fmtDate(o.row.raisedAt)}, <span className={tabularNumbers}>{o.daysOpen}</span> days open</p>
-                              <p className={s.recordBasis}>{o.row.reason}</p>
-                            </li>
-                          ))}
-                        </ul>
+                        <StackedRows
+                          className={s.flatStack}
+                          label="NCRs open for too long"
+                          rows={overdue.map((o) => ({
+                            id: o.row.key,
+                            title: o.row.record,
+                            fields: [
+                              { label: "Raised", value: <span className={tabularNumbers}>{fmtDate(o.row.raisedAt)}</span> },
+                              { label: "Days open", value: <span className={tabularNumbers}>{o.daysOpen}</span> },
+                              { label: "Reason", value: o.row.reason },
+                            ],
+                          }))}
+                        />
                       ) : (
                       <ScrollTable label="NCRs open for too long" dense>
                         <thead><tr><th scope="col">Record</th><th scope="col">Raised</th><th scope="col" className={s.right}>Days open</th><th scope="col">Reason</th></tr></thead>

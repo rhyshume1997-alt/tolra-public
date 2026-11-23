@@ -2,6 +2,7 @@
 
 /**
  * BOUNDARY (PREVIEW ONLY). OWNERSHIP ASSUMPTION, TO BE CONFIRMED BY THE OWNER: docs/MODULES.md assigns the Settings page (app/(dashboard)/settings/page.tsx) to no module. It is
+ * v2 (claude/portal-admin-v2, owner approved STRUCTURAL-CHANGES-BRIEF items 4, 7, 9, 10, 11): shared PreviewBar and PageHeader replace the local preview pill and h1, text uses the v4 type scale, a row with several actions shows one primary and a More menu, narrow records use the shared StackedRows. Presentation only: wording, controls, states, roles and rules are unchanged.
  * the company-wide settings hub, so for this preview ONLY it is treated as Module 1 (Auth / Company / Users / Admin). Several cards on the real page belong to other modules (Job reports,
  * ISO, Costing rates, Email templates and schedules, Hours and the workshop network, AI): none of their components or internals are imported here. Their visible controls, wording and states
  * are reproduced locally from the real source (read only) and pinned to it by tests/unit/settingsPreview.test.ts.
@@ -23,7 +24,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
-  Button, Callout, Checkbox, Dialog, Disclosure, Field, FormGroup, Input, LoadingState, Panel, Popover, SegmentedControl, Select, Switch, Textarea, ToastProvider, cx, premiumTokens, useToast,
+  Button, Callout, Checkbox, Dialog, Disclosure, Field, FormGroup, Input, LoadingState, Menu, PageHeader, Panel, Popover, PreviewBar, SegmentedControl, Select, Switch, Textarea, ToastProvider, cx, premiumTokens, useToast,
 } from "@/components/ui/premium";
 import { EMPTY_BANK_DETAILS, validateBankDetails } from "@/lib/bank-details";
 import { hexOr, isHexColour, PRODUCT_BRANDING, textOn } from "@/lib/branding";
@@ -76,7 +77,7 @@ export const SEED_COMPANY: CompanyForm = {
   ...EMPTY_COMPANY,
   name: "Fernhill Engineering",
   documentName: COMPANY_NAME,
-  addressLines: "Unit 4, Brookside Works\nFernhill Industrial Estate\nExampleton\nEX1 1AA",
+  addressLines: "Unit 4, Brookside Works\nFernhill Industrial Estate\nHamilton\nML3 6AB",
   phone: "01632 960123",
   fax: "",
   email: "office@fernhill.example",
@@ -592,7 +593,11 @@ function NetworkCard({ flags, preview }: { flags: Flags; preview: Preview }) {
                         <Button size="sm" variant="secondary" onClick={() => setRenaming(null)}>Cancel</Button>
                       </>
                     ) : flags.canRename ? <Button size="sm" variant="secondary" aria-label={`Rename ${n.label}`} data-testid="site-network-rename" onClick={() => setRenaming({ id: n.id, label: n.label })}>Rename</Button> : null}
-                    <Button size="sm" variant="dangerQuiet" aria-label={`Remove ${n.label}`} onClick={() => preview(`${n.label} would be removed.`)}>Remove</Button>
+                    {renaming?.id !== n.id && flags.canRename ? (
+                      <Menu label="More" size="sm" aria-label={`More actions for ${n.label}`} data-testid="site-network-more" items={[{ id: "remove", label: "Remove", onSelect: () => preview(`${n.label} would be removed.`) }]} />
+                    ) : (
+                      <Button size="sm" variant="dangerQuiet" aria-label={`Remove ${n.label}`} onClick={() => preview(`${n.label} would be removed.`)}>Remove</Button>
+                    )}
                   </span>
                 </li>
               ))}
@@ -1236,7 +1241,7 @@ function DisplayCard({ hidden, preview }: { hidden: Record<string, string[]>; pr
                     }
                   >
                     <div className={s.screenTools}>
-                      <Button variant="secondary" size="sm" disabled={current.length === 0} aria-label={`Reset ${table.label} to default`} onClick={() => reset([table.key], table.label)}>Reset to default</Button>
+                      <Button variant="secondary" size="sm" disabled={current.length === 0} aria-label={`Reset to default: ${table.label}`} onClick={() => reset([table.key], table.label)}>Reset to default</Button>
                     </div>
                     <div className={s.colGrid}>
                       {table.columns.map((column) => {
@@ -1322,16 +1327,14 @@ function SettingsScreen() {
 
   return (
     <div className={cx(premiumTokens, s.root)} data-testid="settings-preview" data-role={role}>
-      <header className={s.head}>
-        <div className={s.titleBlock}>
-          <div className={s.titleLine}>
-            <h1 className={s.title}>{denied ? "Access Denied" : "Settings"}</h1>
-            <span className={s.previewTag} title="Everything on this screen is fictional sample data. Nothing is read from or saved to your account.">{PREVIEW_TAG}</span>
-            <Dock role={role} setRole={(r) => { toast.clear(); setRole(r); }} states={states} setStates={setStates} flags={flags} setFlags={(f) => { toast.clear(); setFlags(f); }} reset={() => { toast.clear(); setRole("admin"); setStatesRaw(INITIAL_STATES); setFlags(INITIAL_FLAGS); }} />
-          </div>
-          <p className={s.subtitle}>{denied ? "Redirecting you back to the dashboard." : `Company-wide settings for ${PRODUCT.name}. Only admins can change them.`}</p>
-        </div>
-      </header>
+      <PreviewBar
+        data-testid="preview-bar"
+        label={PREVIEW_TAG}
+        controls={
+          <Dock role={role} setRole={(r) => { toast.clear(); setRole(r); }} states={states} setStates={setStates} flags={flags} setFlags={(f) => { toast.clear(); setFlags(f); }} reset={() => { toast.clear(); setRole("admin"); setStatesRaw(INITIAL_STATES); setFlags(INITIAL_FLAGS); }} />
+        }
+      />
+      <PageHeader title={denied ? "Access Denied" : "Settings"} description={denied ? "Redirecting you back to the dashboard." : `Company-wide settings for ${PRODUCT.name}. Only admins can change them.`} />
 
       {denied ? (
         <section className={s.denied} data-testid="access-denied">

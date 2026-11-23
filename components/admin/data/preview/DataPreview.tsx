@@ -2,6 +2,7 @@
 
 /**
  * BOUNDARY (Admin > Data, PREVIEW ONLY: nothing here is wired to anything, and nothing here can import, undo, discard or export anything).
+ * v2 (claude/portal-admin-v2, owner approved STRUCTURAL-CHANGES-BRIEF items 4, 7, 9, 10, 11): shared PreviewBar and PageHeader replace the local preview pill and h1, text uses the v4 type scale, a row with several actions shows one primary and a More menu, narrow records use the shared StackedRows. Presentation only: wording, controls, states, roles and rules are unchanged.
  * OWNERSHIP ASSUMPTION FOR THE OWNER TO CONFIRM: docs/MODULES.md gives /admin/data no module. By the coordinator's decision it is treated as a company-admin screen under
  * Module 1 (Auth / Company / Users / Admin). If it belongs elsewhere, move these four files; nothing else depends on them.
  * Inputs: none from the server and NO file is ever read: the file button only draws a sample file. Everything shown is fictional (a made-up company, made-up sheets, rows and import
@@ -21,8 +22,7 @@
 import { useCallback, useState } from "react";
 import {
   Button, Callout, Checkbox, Dialog, Disclosure, EmptyState, FailedState, Field, LoadingState, Panel, Popover, ScrollTable, SegmentedControl, Select, StatusBadge, ToastProvider, cx,
-  premiumTokens, tabularNumbers, useToast,
-} from "@/components/ui/premium";
+  premiumTokens, tabularNumbers, useToast, PageHeader, PreviewBar } from "@/components/ui/premium";
 import { fmtDateTime } from "@/lib/dates";
 import { describeMessage, isClean, totalCreated } from "@/lib/import-preview";
 import type { PreviewRow } from "@/lib/import-preview";
@@ -163,31 +163,31 @@ function Inner() {
 
   return (
     <div className={cx(premiumTokens, s.root)} data-testid="data-preview" data-role={role} data-phase={phase}>
-      <header className={s.head}>
-        <div>
-          <div className={s.titleLine}>
-            <h1 className={s.title}>{denied ? "Access Denied" : PAGE_TITLE}</h1>
-            <span className={s.previewTag} title="Everything on this screen is fictional sample data. Nothing is read from or saved to your account.">Preview, sample data, nothing is saved</span>
-            <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
-              <div className={s.dock}>
-                <p className={s.dockNote}>Not part of Tolra. Sample data; states are simulated, nothing is granted, no file is read and no request is made.</p>
-                <p className={s.dockLabel}>Who is looking (changes the drawing only)</p>
-                <SegmentedControl label="Role" value={role} options={ROLE_OPTIONS} size="sm" onChange={(v) => { setRole(v); toast.clear(); }} />
-                <p className={s.dockLabel}>Import stage</p>
-                <div className={s.dockStates} role="group" aria-label="Import stage">
-                  {PHASES.map((x) => <button key={x.v} type="button" aria-pressed={phase === x.v} className={s.dockBtn} onClick={() => pickPhase(x.v)}>{x.label}</button>)}
-                </div>
-                <p className={s.dockLabel}>Import history</p>
-                <div className={s.dockStates} role="group" aria-label="Import history state">
-                  {HISTORIES.map((x) => <button key={x.v} type="button" aria-pressed={history === x.v} className={s.dockBtn} onClick={() => setHistory(x.v)}>{x.label}</button>)}
-                </div>
-                <Button size="sm" variant="secondary" data-testid="dock-reset" onClick={reset}>Reset preview</Button>
+      <PreviewBar
+        data-testid="preview-bar"
+        controls={
+          <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
+            <div className={s.dock}>
+              <p className={s.dockNote}>Not part of Tolra. Sample data; states are simulated, nothing is granted, no file is read and no request is made.</p>
+              <p className={s.dockLabel}>Who is looking (changes the drawing only)</p>
+              <SegmentedControl label="Role" value={role} options={ROLE_OPTIONS} size="sm" onChange={(v) => { setRole(v); toast.clear(); }} />
+              <p className={s.dockLabel}>Import stage</p>
+              <div className={s.dockStates} role="group" aria-label="Import stage">
+                {PHASES.map((x) => <button key={x.v} type="button" aria-pressed={phase === x.v} className={s.dockBtn} onClick={() => pickPhase(x.v)}>{x.label}</button>)}
               </div>
-            </Popover>
-          </div>
-          <p className={s.subtitle}>{denied ? "Redirecting you back to the dashboard." : SUBTITLE}</p>
-        </div>
-      </header>
+              <p className={s.dockLabel}>Import history</p>
+              <div className={s.dockStates} role="group" aria-label="Import history state">
+                {HISTORIES.map((x) => <button key={x.v} type="button" aria-pressed={history === x.v} className={s.dockBtn} onClick={() => setHistory(x.v)}>{x.label}</button>)}
+              </div>
+              <Button size="sm" variant="secondary" data-testid="dock-reset" onClick={reset}>Reset preview</Button>
+            </div>
+          </Popover>
+        }
+      />
+      <PageHeader
+        title={denied ? "Access Denied" : PAGE_TITLE}
+        description={denied ? "Redirecting you back to the dashboard." : SUBTITLE}
+      />
 
       {denied ? (
         <section className={s.denied} data-testid="access-denied" aria-label="Access denied">
@@ -302,7 +302,7 @@ function Inner() {
             <div className={s.section}>
               <p className={s.body}>{SLIQ_TEXT}</p>
               <Field label={SLIQ_FILES_LABEL} hint={SLIQ_FILES_HINT}>
-                <div><Button variant="secondary" aria-label={SLIQ_FILES_LABEL} data-testid="sliq-files-input" onClick={() => preview("No file was read.")}>Choose files</Button></div>
+                <div><Button variant="secondary" aria-label={`Choose files: ${SLIQ_FILES_LABEL}`} data-testid="sliq-files-input" onClick={() => preview("No file was read.")}>Choose files</Button></div>
               </Field>
               <p className={s.small} data-testid="sliq-files">{SLIQ_STATUS}</p>
               <label className={s.checkRow}>

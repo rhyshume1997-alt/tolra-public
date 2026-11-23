@@ -2,6 +2,7 @@
 
 /**
  * BOUNDARY (Admin > Security, route /admin/compliance, PREVIEW ONLY: nothing here is wired to anything).
+ * v2 (claude/portal-admin-v2, owner approved STRUCTURAL-CHANGES-BRIEF items 4, 7, 9, 10, 11): shared PreviewBar and PageHeader replace the local preview pill and h1, text uses the v4 type scale, a row with several actions shows one primary and a More menu, narrow records use the shared StackedRows. Presentation only: wording, controls, states, roles and rules are unchanged.
  * OWNERSHIP ASSUMPTION FOR THE OWNER TO CONFIRM: docs/MODULES.md gives /admin/compliance no module. By the coordinator's decision it is treated as a company-admin screen under
  * Module 1 (Auth / Company / Users / Admin). If it belongs elsewhere, move these four files; nothing else depends on them.
  * Inputs: none from the server. Everything shown is fictional sample data (made-up people on reserved ".example" addresses, made-up integrity codes, as of 23/11/2026) held in this
@@ -18,8 +19,7 @@
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
-  Button, Callout, EmptyState, Field, Input, LoadingState, Panel, Popover, ScrollTable, SegmentedControl, StatusBadge, ToastProvider, cx, premiumTokens, tabularNumbers, useToast,
-} from "@/components/ui/premium";
+  Button, Callout, EmptyState, Field, Input, LoadingState, Panel, Popover, ScrollTable, SegmentedControl, StatusBadge, ToastProvider, cx, premiumTokens, tabularNumbers, useToast, StackedRows, PageHeader, PreviewBar, srOnly } from "@/components/ui/premium";
 import { auditActionLabel, recordTypeLabel } from "@/lib/activity";
 import { ALERT_TEST_NETWORK_ERROR, describeAlertTest, type AlertTestOutcome } from "@/lib/alert-test-message";
 import { fmtDateTime } from "@/lib/dates";
@@ -129,32 +129,32 @@ function Inner() {
 
   return (
     <div className={cx(premiumTokens, s.root)} data-testid="compliance-preview" data-role={role} data-screen={screen}>
-      <header className={s.headRow}>
-        <div>
-          <div className={s.titleLine}>
-            <h1 className={s.title}>{denied ? "Access Denied" : PAGE_TITLE}</h1>
-            <span className={s.previewTag} title="Everything on this screen is fictional sample data. Nothing is read from or saved to your account.">Preview, sample data, nothing is saved</span>
-            <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
-              <div className={s.dock}>
-                <p className={s.dockNote}>Not part of Tolra. Sample data; states are simulated, nothing is granted, no request is made and no e-mail is sent.</p>
-                <p className={s.dockLabel}>Who is looking (changes the drawing only)</p>
-                <SegmentedControl label="Role" value={role} options={ROLE_OPTIONS} size="sm" onChange={(v) => { setRole(v); toast.clear(); }} />
-                <p className={s.dockLabel}>Audit log state</p>
-                <div className={s.dockStates} role="group" aria-label="Audit log state">
-                  {SCREENS.map((x) => <button key={x.v} type="button" aria-pressed={screen === x.v} className={s.dockBtn} onClick={() => pick(x.v)}>{x.label}</button>)}
-                </div>
-                <p className={s.dockLabel}>Alert test result (real wording)</p>
-                <div className={s.dockStates} role="group" aria-label="Alert test result">
-                  {ALERTS.map((x) => <button key={x.v} type="button" aria-pressed={alertSample === x.v} className={s.dockBtn} onClick={() => setAlertSample(x.v)}>{x.label}</button>)}
-                </div>
-                <Button size="sm" variant="secondary" data-testid="dock-reset" onClick={reset}>Reset preview</Button>
+      <PreviewBar
+        data-testid="preview-bar"
+        controls={
+          <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
+            <div className={s.dock}>
+              <p className={s.dockNote}>Not part of Tolra. Sample data; states are simulated, nothing is granted, no request is made and no e-mail is sent.</p>
+              <p className={s.dockLabel}>Who is looking (changes the drawing only)</p>
+              <SegmentedControl label="Role" value={role} options={ROLE_OPTIONS} size="sm" onChange={(v) => { setRole(v); toast.clear(); }} />
+              <p className={s.dockLabel}>Audit log state</p>
+              <div className={s.dockStates} role="group" aria-label="Audit log state">
+                {SCREENS.map((x) => <button key={x.v} type="button" aria-pressed={screen === x.v} className={s.dockBtn} onClick={() => pick(x.v)}>{x.label}</button>)}
               </div>
-            </Popover>
-          </div>
-          <p className={s.subtitle}>{denied ? "Redirecting you back to the dashboard." : subtitleFor(PRODUCT.name)}</p>
-        </div>
-        {denied ? null : <Button variant="primary" disabled={loading} data-testid="refresh" onClick={refresh}>Refresh activity log</Button>}
-      </header>
+              <p className={s.dockLabel}>Alert test result (real wording)</p>
+              <div className={s.dockStates} role="group" aria-label="Alert test result">
+                {ALERTS.map((x) => <button key={x.v} type="button" aria-pressed={alertSample === x.v} className={s.dockBtn} onClick={() => setAlertSample(x.v)}>{x.label}</button>)}
+              </div>
+              <Button size="sm" variant="secondary" data-testid="dock-reset" onClick={reset}>Reset preview</Button>
+            </div>
+          </Popover>
+        }
+      />
+      <PageHeader
+        title={<span title={subtitleFor(PRODUCT.name)}>{denied ? "Access Denied" : PAGE_TITLE}</span>}
+        description={denied ? "Redirecting you back to the dashboard." : <span className={srOnly}>{subtitleFor(PRODUCT.name)}</span>}
+        actions={denied ? null : <Button variant="primary" disabled={loading} data-testid="refresh" onClick={refresh}>Refresh activity log</Button>}
+      />
 
       {denied ? (
         <section className={s.denied} data-testid="access-denied" aria-label="Access denied">
@@ -192,16 +192,20 @@ function Inner() {
             </div>
             {loading ? <LoadingState label="Loading the audit log" rows={5} /> : narrow ? (
               shown.length ? (
-                <ul className={s.records} aria-label="Audit entries">
-                  {shown.map((e) => (
-                    <li key={e.id} className={s.record}>
-                      <div className={s.recordTop}><span className={cx(s.cellStrong, tabularNumbers)}>{fmtDateTime(e.created_at)}</span><StatusBadge tone="neutral">{auditActionLabel(e.action)}</StatusBadge></div>
-                      <span>{e.actor_email || "System"}</span>
-                      <span>{recordTypeLabel(e.entity_table)}</span>
-                      <span className={e.hash ? s.mono : s.pending}>{e.hash || PENDING}</span>
-                    </li>
-                  ))}
-                </ul>
+                <StackedRows
+                  className={s.flatStack}
+                  label="Audit entries"
+                  rows={shown.map((e) => ({
+                    id: String(e.id),
+                    title: <span className={tabularNumbers}>{fmtDateTime(e.created_at)}</span>,
+                    status: <StatusBadge tone="neutral">{auditActionLabel(e.action)}</StatusBadge>,
+                    fields: [
+                      { label: "Who", value: e.actor_email || "System" },
+                      { label: "Record", value: recordTypeLabel(e.entity_table) },
+                      { label: "Entry hash", value: <span className={e.hash ? s.mono : s.pending}>{e.hash || PENDING}</span> },
+                    ],
+                  }))}
+                />
               ) : screen === "error" ? null : <p className={s.emptyCell}>{entries.length ? NO_MATCH_TEXT : EMPTY_TEXT}</p>
             ) : shown.length ? (
               <ScrollTable label="Audit entries table" dense>
@@ -211,7 +215,7 @@ function Inner() {
                     <tr key={e.id}>
                       <td className={cx(s.when, tabularNumbers)}>{fmtDateTime(e.created_at)}</td>
                       <td>{e.actor_email || "System"}</td>
-                      <td><StatusBadge tone="neutral">{auditActionLabel(e.action)}</StatusBadge></td>
+                      <td><StatusBadge mode="text" tone="neutral">{auditActionLabel(e.action)}</StatusBadge></td>
                       <td>{recordTypeLabel(e.entity_table)}</td>
                       <td className={e.hash ? s.mono : s.pending}>{e.hash || PENDING}</td>
                     </tr>

@@ -2,6 +2,7 @@
 
 /**
  * BOUNDARY (Admin > Integrations > confirm the Xero organisation, PREVIEW ONLY: nothing here is wired to anything, and nothing here can connect anything).
+ * v2 (claude/portal-admin-v2, owner approved STRUCTURAL-CHANGES-BRIEF items 4, 7, 9, 10, 11): shared PreviewBar and PageHeader replace the local preview pill and h1, text uses the v4 type scale, a row with several actions shows one primary and a More menu, narrow records use the shared StackedRows. Presentation only: wording, controls, states, roles and rules are unchanged.
  * OWNERSHIP ASSUMPTION FOR THE OWNER TO CONFIRM: docs/MODULES.md gives Module 6 (Integrations) components/integrations/** but does not name the route
  * app/(dashboard)/admin/integrations/**. By the coordinator's decision the route is treated as Module 6's.
  * Inputs: none from the server. The "organisations" are two made-up names with made-up ids ("sample-org-1"), no real Xero tenant id, token, code or CSRF value exists here.
@@ -16,7 +17,7 @@
  */
 
 import { useCallback, useState } from "react";
-import { Button, Callout, LoadingState, Popover, SegmentedControl, ToastProvider, cx, premiumTokens, useToast } from "@/components/ui/premium";
+import { Button, Callout, LoadingState, Popover, SegmentedControl, ToastProvider, cx, premiumTokens, useToast, PageHeader, PreviewBar } from "@/components/ui/premium";
 import { connectOutcomeMessage } from "@/lib/integrations/overview";
 import type { UserRole } from "@/types";
 
@@ -66,27 +67,27 @@ function Inner() {
 
   return (
     <div className={cx(premiumTokens, s.root)} data-testid="xero-organisation-preview" data-role={role} data-screen={screen}>
-      <header className={s.head}>
-        <div>
-          <div className={s.titleLine}>
-            <h1 className={s.title}>{denied ? "Access Denied" : PAGE_TITLE}</h1>
-            <span className={s.previewTag} title="Everything on this screen is fictional sample data. Nothing is read from or saved to your account.">Preview, sample data, nothing is saved</span>
-            <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
-              <div className={s.dock}>
-                <p className={s.dockNote}>Not part of Tolra. Sample data; states are simulated, nothing is granted, nothing is connected and no request is made.</p>
-                <p className={s.dockLabel}>Who is looking (changes the drawing only)</p>
-                <SegmentedControl label="Role" value={role} options={ROLE_OPTIONS} size="sm" onChange={(v) => { setRole(v); toast.clear(); }} />
-                <p className={s.dockLabel}>Screen state</p>
-                <div className={s.dockStates} role="group" aria-label="Screen state">
-                  {SCREENS.map((x) => <button key={x.v} type="button" aria-pressed={screen === x.v} className={s.dockBtn} onClick={() => pick(x.v)}>{x.label}</button>)}
-                </div>
-                <Button size="sm" variant="secondary" data-testid="dock-reset" onClick={reset}>Reset preview</Button>
+      <PreviewBar
+        data-testid="preview-bar"
+        controls={
+          <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
+            <div className={s.dock}>
+              <p className={s.dockNote}>Not part of Tolra. Sample data; states are simulated, nothing is granted, nothing is connected and no request is made.</p>
+              <p className={s.dockLabel}>Who is looking (changes the drawing only)</p>
+              <SegmentedControl label="Role" value={role} options={ROLE_OPTIONS} size="sm" onChange={(v) => { setRole(v); toast.clear(); }} />
+              <p className={s.dockLabel}>Screen state</p>
+              <div className={s.dockStates} role="group" aria-label="Screen state">
+                {SCREENS.map((x) => <button key={x.v} type="button" aria-pressed={screen === x.v} className={s.dockBtn} onClick={() => pick(x.v)}>{x.label}</button>)}
               </div>
-            </Popover>
-          </div>
-          <p className={s.subtitle}>{denied ? "Redirecting you back to the dashboard." : sentenceFor(orgs)}</p>
-        </div>
-      </header>
+              <Button size="sm" variant="secondary" data-testid="dock-reset" onClick={reset}>Reset preview</Button>
+            </div>
+          </Popover>
+        }
+      />
+      <PageHeader
+        title={denied ? "Access Denied" : PAGE_TITLE}
+        description={denied ? "Redirecting you back to the dashboard." : sentenceFor(orgs)}
+      />
 
       {denied ? (
         <section className={s.denied} data-testid="access-denied" aria-label="Access denied">

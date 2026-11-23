@@ -2,6 +2,7 @@
 
 /**
  * BOUNDARY (Admin > Activity, PREVIEW ONLY: nothing here is wired to anything).
+ * v2 (claude/portal-admin-v2, owner approved STRUCTURAL-CHANGES-BRIEF items 4, 7, 9, 10, 11): shared PreviewBar and PageHeader replace the local preview pill and h1, text uses the v4 type scale, a row with several actions shows one primary and a More menu, narrow records use the shared StackedRows. Presentation only: wording, controls, states, roles and rules are unchanged.
  * OWNERSHIP ASSUMPTION FOR THE OWNER TO CONFIRM: docs/MODULES.md gives /admin/activity no module. By the coordinator's decision it is treated as a company-admin screen under
  * Module 1 (Auth / Company / Users / Admin). If it belongs elsewhere, move these four files; nothing else depends on them.
  * Inputs: none from the server. Everything shown is fictional sample data (one made-up company, people with no e-mail addresses, as of 23/11/2026) held in this file, plus the
@@ -17,8 +18,7 @@
 
 import { useCallback, useMemo, useState, useEffect } from "react";
 import {
-  Button, EmptyState, FailedState, Field, Input, LoadingState, Panel, Popover, SegmentedControl, Select, ToastProvider, cx, premiumTokens, tabularNumbers, useToast,
-} from "@/components/ui/premium";
+  Button, EmptyState, FailedState, Field, Input, LoadingState, Panel, Popover, SegmentedControl, Select, ToastProvider, cx, premiumTokens, tabularNumbers, useToast, PageHeader, PreviewBar } from "@/components/ui/premium";
 import { actorLabel, describeEntry, RECORD_TYPES, recordLabel, recordTypeLabel, type ActivityEntry } from "@/lib/activity";
 import { fmtDateTime } from "@/lib/dates";
 import { memberLabel, withUsernames, type PeopleMap } from "@/lib/people";
@@ -123,27 +123,27 @@ function Inner() {
 
   return (
     <div className={cx(premiumTokens, s.root)} data-testid="activity-preview" data-role={role} data-screen={screen}>
-      <header className={s.head}>
-        <div>
-          <div className={s.titleLine}>
-            <h1 className={s.title}>{denied ? "Access Denied" : PAGE_TITLE}</h1>
-            <span className={s.previewTag} title="Everything on this screen is fictional sample data. Nothing is read from or saved to your account.">Preview, sample data, nothing is saved</span>
-            <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
-              <div className={s.dock}>
-                <p className={s.dockNote}>Not part of Tolra. Sample data; states are simulated, nothing is granted and no request is made.</p>
-                <p className={s.dockLabel}>Who is looking (changes the drawing only)</p>
-                <SegmentedControl label="Role" value={role} options={ROLE_OPTIONS} size="sm" onChange={(v) => { setRole(v); toast.clear(); }} />
-                <p className={s.dockLabel}>Screen state</p>
-                <div className={s.dockStates} role="group" aria-label="Screen state">
-                  {SCREENS.map((x) => <button key={x.v} type="button" aria-pressed={screen === x.v} className={s.dockBtn} onClick={() => pick(x.v)}>{x.label}</button>)}
-                </div>
-                <Button size="sm" variant="secondary" data-testid="dock-reset" onClick={reset}>Reset preview</Button>
+      <PreviewBar
+        data-testid="preview-bar"
+        controls={
+          <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
+            <div className={s.dock}>
+              <p className={s.dockNote}>Not part of Tolra. Sample data; states are simulated, nothing is granted and no request is made.</p>
+              <p className={s.dockLabel}>Who is looking (changes the drawing only)</p>
+              <SegmentedControl label="Role" value={role} options={ROLE_OPTIONS} size="sm" onChange={(v) => { setRole(v); toast.clear(); }} />
+              <p className={s.dockLabel}>Screen state</p>
+              <div className={s.dockStates} role="group" aria-label="Screen state">
+                {SCREENS.map((x) => <button key={x.v} type="button" aria-pressed={screen === x.v} className={s.dockBtn} onClick={() => pick(x.v)}>{x.label}</button>)}
               </div>
-            </Popover>
-          </div>
-          <p className={s.subtitle}>{denied ? "Redirecting you back to the dashboard." : SUBTITLE}</p>
-        </div>
-      </header>
+              <Button size="sm" variant="secondary" data-testid="dock-reset" onClick={reset}>Reset preview</Button>
+            </div>
+          </Popover>
+        }
+      />
+      <PageHeader
+        title={denied ? "Access Denied" : PAGE_TITLE}
+        description={denied ? "Redirecting you back to the dashboard." : SUBTITLE}
+      />
 
       {denied ? (
         <section className={s.denied} data-testid="access-denied" aria-label="Access denied">
