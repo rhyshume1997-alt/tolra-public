@@ -1,5 +1,5 @@
 /**
- * The first-login admin tour (components/tooly/tour): both switches off by default, admin only, 23 fixed steps, plain words,
+ * The first-login admin tour (components/tooly/tour): on by default (off only with the emergency switch), admin tour for admin, 23 fixed steps, plain words,
  * and a plan that never walks to a page the person cannot open.
  */
 import { readFileSync } from "node:fs";

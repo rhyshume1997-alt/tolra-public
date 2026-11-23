@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * The tour card (components/tooly/tour/admin-tour.tsx) for the three views. Proves, with the real card and faked sign-in, company settings,
- * route and done flag: nothing shows unless the server flag AND the marker for the person's view are on; admin, office and workshop each
+ * route and done flag: the tour shows by default and nothing shows only when the server's emergency switch is off (company markers are not read); admin, office and workshop each
  * get their own first step and step count; a viewer and a person who has already finished see nothing; the card only offers Back, Next, the note
  * toggle and Skip tour; the note opens on request; a person who has seen it gets only a Replay button, on the Dashboard; and it never presses anything on the page behind it (a button on the page is not clicked while the tour moves through its steps).
  * Must not change: this file proves; the plan and switch rules are proved in tooly-role-tours.test.ts and tooly-tour.test.ts.
@@ -212,9 +212,13 @@ describe("the game look", () => {
     expect(card()?.getAttribute("data-mode")).toBeNull();
     expect(host.querySelector('[data-testid="tooly-tour-bubble"]')).toBeNull();
   });
-  it("does not make a tour appear by itself: the game marker alone shows nothing", async () => {
+  it("the game marker only changes the look: with it alone the tour still shows by default (as the game look), and the emergency switch still turns it off", async () => {
     state.hiddenNav = [TOOLY_GAME_TOUR_ON_MARKER];
     await show(true);
+    expect(card()).not.toBeNull();
+    expect(card()?.getAttribute("data-mode")).toBe("game");
+    expect(count()).toBe("Step 1 of 17");
+    await show(false);
     expect(card()).toBeNull();
     state.hiddenNav = [TOOLY_OFFICE_TOUR_ON_MARKER, TOOLY_GAME_TOUR_ON_MARKER];
     await show(false);

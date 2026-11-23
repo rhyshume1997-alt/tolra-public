@@ -19,7 +19,8 @@ let n = 0;
 /** A new admin of alpha. `seen` sets the same flag the app saves when the tour is skipped or finished. */
 async function newAdmin(seen: boolean): Promise<SyntheticUser> {
   n += 1;
-  const email = `tour${n}.${w.runId}@example.test`;
+  // The worker index keeps e-mails unique when a failed test restarts the worker and the count starts again at 0.
+  const email = `tour${n}-${test.info().workerIndex}.${w.runId}@example.test`;
   const password = generatePassword(14);
   const admin = adminClient();
   const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true, ...(seen ? { user_metadata: SEEN_TOUR_METADATA } : {}) });
@@ -30,12 +31,14 @@ async function newAdmin(seen: boolean): Promise<SyntheticUser> {
 }
 
 const tour = (page: Page) => page.getByTestId("tooly-tour");
+// The wrapper has no size of its own (its card is fixed-position), so Playwright reports it hidden: "shown" means the card itself is visible.
+const card = (page: Page) => page.getByRole("region", { name: "Tooly tour" });
 
 test("a new person gets the tour, can finish it, and is not redirected afterwards", async ({ page }) => {
   const user = await newAdmin(false);
   await signIn(page, user);
 
-  await expect(tour(page)).toBeVisible();
+  await expect(card(page)).toBeVisible();
   await expect(page.getByTestId("tooly-tour-count")).toHaveText(/^Step 1 of \d+$/);
   const total = Number(/of (\d+)$/.exec((await page.getByTestId("tooly-tour-count").textContent()) ?? "")?.[1]);
   expect(total).toBeGreaterThan(1);
