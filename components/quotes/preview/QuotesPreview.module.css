@@ -1,40 +1,30 @@
 /*
- * BOUNDARY (Quotes module 3, PREVIEW ONLY). Inputs: the class names used by components/quotes/preview/QuotesPreview.tsx, and the --ui-* tokens
- * that components/ui/premium defines on its token class (applied to the page root and to the local Sheet, so no value is repeated here).
- * Output: the look of the Quote Generator preview only: page layout, the label dot on a tile, the status legend, the filter row layout, cards, table
- * cell finish and the quote sheet's own pieces (facts, lines, totals, ticks). v2: everything the shared set now draws (segmented control, sheet, form
- * fields, stat tiles, panel, callout, pressed buttons, reduced motion) is gone from here, and no style override needs a forced priority. Must not change: no global
- * selectors, nothing outside this module, no business rules. Control heights stay on the 32 / 40 / 48 px scale and every row control keeps a 48 px hit
- * area (the shared Button, Checkbox and fields draw it). Forbidden: gradients, blur or glass, decorative icons.
+ * BOUNDARY (Quotes module 3, PREVIEW ONLY, v3). Inputs: the class names used by components/quotes/preview/QuotesPreview.tsx, and the --ui-* tokens that components/ui/premium defines on its token class
+ * (applied to the page root and to the shared layers, so no value is repeated here). Output: layout only: the page flow, the totals' label dot, the status legend, the one-row filter toolbar with its
+ * active chips, cards, the table finish (one primary action plus More, a fixed-width Actions column) and the quote sheet's own pieces. Type sizes and weights come from the v4 scale
+ * (typeScale classes and the --ui-fs-* tokens), surfaces and motion from the shared set. Must not change: no global selectors, nothing outside this module, no business rules. Control heights
+ * stay on the 32 / 40 / 48 px scale and every row control keeps a 48 px hit area (the shared Button, Checkbox and fields draw it). Forbidden: gradients, blur or glass, decorative icons.
  */
 
-.root {
-  display: flex; flex-direction: column; gap: 16px; max-width: 1720px; padding-bottom: 24px;
-  font-feature-settings: "kern", "liga";
-}
+.root { display: flex; flex-direction: column; gap: 16px; max-width: 1720px; padding-bottom: 24px; color: var(--ui-ink); }
+/* the shared SelectionBar is a direct child so it can stick; its quiet count line and its active bar keep one height so ticking a row never moves the table */
+.root > [data-selection] { min-height: 48px; margin-block: -6px; }
 .root .right { text-align: right; }
 .root th.right, .root td.right { text-align: right; }
 .nowrap { white-space: nowrap; }
 
-/* ---------- header ---------- */
-.head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 16px; }
-.titleBlock { min-width: 0; }
-.titleLine { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
-.title { margin: 0; font-size: 28px; line-height: 34px; font-weight: 650; letter-spacing: -0.022em; color: var(--ui-ink); }
-.previewTag { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 6px; background: #fff8e1; color: #6b4300; box-shadow: inset 0 0 0 1px #e6c25a; font-size: 12px; font-weight: 600; letter-spacing: 0.005em; }
-.subtitle { margin: 2px 0 0; color: var(--ui-ink-2); font-size: 14px; }
-.headControls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-
-/* ---------- preview dock (inside the shared popover) ---------- */
-.dock { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding-bottom: 8px; }
-.dockNote { margin: 0 0 4px; color: var(--ui-muted); font-size: 12.5px; line-height: 17px; max-width: 280px; }
-.dockLabel { margin: 6px 0 0; color: var(--ui-ink-2); font-size: 12px; font-weight: 650; }
-.dockStates { display: flex; flex-direction: column; gap: 4px; width: 100%; margin-bottom: 6px; }
-.dock .dockBtn { justify-content: flex-start; }
-.colScope { margin: 0 0 4px; color: var(--ui-muted); font-size: 12.5px; line-height: 17px; max-width: 260px; }
-.colLocked { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; margin: 0; color: var(--ui-ink); font-size: 13.5px; font-weight: 550; }
-.colLocked span:last-child { color: var(--ui-muted); font-size: 12.5px; font-weight: 500; }
-.colReset { padding: 6px 0 4px; }
+/* ---------- filter toolbar: Show inline, everything else under Filters (n) ---------- */
+.fbar { display: flex; flex-direction: column; gap: 12px; }
+.fRow { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 20px; }
+.fGroup { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.chipRow { display: flex; flex-wrap: wrap; gap: 16px 8px; margin: 0; padding: 0; list-style: none; }
+.filterBody { display: grid; gap: 14px; width: min(340px, 76vw); padding: 4px 0 8px; }
+.colsBody { display: grid; gap: 2px; width: min(300px, 76vw); padding-bottom: 6px; }
+.colsBody p { margin: 6px 0 0; }
+.colLocked { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; margin: 0; color: var(--ui-ink); font-size: var(--ui-fs-body); font-weight: 500; }
+.colLocked span:last-child { color: var(--ui-muted); font-size: var(--ui-fs-caption); font-weight: 500; }
+.dock { display: grid; gap: 12px; width: min(340px, 76vw); padding: 4px 0 8px; }
+.dock p { margin: 0; }
 
 /* ---------- stat tile label dot (the tile itself is the shared StatTile) ---------- */
 .tileLabelRow { display: inline-flex; align-items: center; gap: 7px; }
@@ -52,90 +42,85 @@
 .seg_rejected { background: #c13a3a; }
 .seg_expired { background: #d99a06; }
 .seg_superseded { background: #a3abba; }
-.legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; margin: 0; color: var(--ui-ink-2); font-size: 12.5px; }
-.legend b { font-weight: 650; color: var(--ui-ink); }
+.legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; margin: 0; color: var(--ui-ink-2); }
+.legend b { font-weight: 600; color: var(--ui-ink); }
 .legendItem { display: inline-flex; align-items: center; gap: 6px; }
 .legendDot { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; }
 
-/* ---------- filter panel ---------- */
-.panelInner { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 32px; padding: 10px 16px; }
-.panelRow { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.panelLabel { color: var(--ui-ink-2); font-size: 12.5px; font-weight: 650; }
-.noticeFull { flex: 1 0 100%; }
-
 /* ---------- cards ---------- */
 .groups { display: flex; flex-direction: column; gap: 24px; }
-.groupHead { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 13.5px; font-weight: 650; color: var(--ui-ink); letter-spacing: 0.002em; }
+.groupHead { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; color: var(--ui-ink); }
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
 .card {
-  display: flex; flex-direction: column; gap: 10px; padding: 8px 16px 14px 8px; border-radius: var(--ui-radius-lg); background: #fff;
-  box-shadow: 0 0 0 1px var(--ui-line), var(--ui-shadow-1);
-  transition: box-shadow var(--ui-t-base) var(--ui-ease), background-color var(--ui-t-base) var(--ui-ease);
+  display: flex; flex-direction: column; gap: 10px; padding: 8px 16px 14px 8px; border-radius: var(--ui-radius-lg); background: var(--ui-surface);
+  box-shadow: var(--ui-elev-raised);
+  transition: box-shadow var(--ui-t-base) var(--ui-ease-out), background-color var(--ui-t-base) var(--ui-ease-out);
 }
-.card:hover { box-shadow: 0 0 0 1px var(--ui-line-strong), 0 2px 4px rgba(14, 23, 38, 0.06), 0 10px 22px -12px rgba(14, 23, 38, 0.22); }
-.card[data-selected="true"] { background: #f4f7fd; box-shadow: 0 0 0 1.5px var(--ui-brand), var(--ui-shadow-1); }
+@media (hover: hover) and (pointer: fine) { .card:hover { box-shadow: var(--ui-elev-overlay); } }
+.card[data-selected="true"] { background: var(--ui-soft); box-shadow: 0 0 0 1.5px var(--ui-brand), var(--ui-shadow-1); }
 .cardTop { display: flex; align-items: center; gap: 4px; }
 .cardRef { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .cardTop > :last-child { flex: none; }
-.ref { white-space: nowrap; font-size: 14.5px; font-weight: 650; letter-spacing: 0.002em; color: var(--ui-ink); overflow-wrap: anywhere; }
-.po { color: var(--ui-muted); font-size: 12.5px; line-height: 16px; }
+.ref { white-space: nowrap; overflow-wrap: anywhere; }
 .dl { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 10px 20px; margin: 0; padding-left: 8px; }
 .dl div { min-width: 0; }
-.dl dt { margin: 0 0 1px; color: var(--ui-muted); font-size: 12px; font-weight: 600; letter-spacing: 0.01em; }
-.dl dd { margin: 0; font-size: 13.5px; color: var(--ui-ink); overflow-wrap: anywhere; }
+.dl dt { margin: 0 0 1px; color: var(--ui-muted); font-size: var(--ui-fs-caption); line-height: var(--ui-lh-caption); font-weight: 600; letter-spacing: var(--ui-ls-caption); }
+.dl dd { margin: 0; font-size: var(--ui-fs-body); line-height: var(--ui-lh-body); color: var(--ui-ink); overflow-wrap: anywhere; }
 .dlWide { grid-column: 1 / -1; }
 .dlValue { text-align: right; }
-.dlStrong { font-weight: 600; }
-.dl dd.cardValue { font-size: 22px; line-height: 28px; font-weight: 650; letter-spacing: -0.012em; color: var(--ui-brand); }
+.dl dd.cardValue { font-size: var(--ui-fs-section); line-height: var(--ui-lh-section); font-weight: 600; letter-spacing: var(--ui-ls-section); color: var(--ui-brand); }
 .desc { color: var(--ui-ink-2); }
-.passed { margin: 0 0 0 8px; color: var(--ui-danger); font-size: 13px; font-weight: 600; }
-.cardActions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 6px; padding-left: 8px; margin-top: 2px; }
-.cardQuiet { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; }
+.passed { margin: 0 0 0 8px; color: var(--ui-danger); font-size: var(--ui-fs-secondary); font-weight: 600; }
+.cardActions { display: flex; padding-left: 8px; margin-top: 2px; }
+.cardActions .actions { justify-content: flex-start; }
 
 /* ---------- table finish (on top of the shared ScrollTable) ---------- */
 .root .thFirst, .root .tdFirst { padding-left: 4px; }
 .firstCell { display: inline-flex; align-items: center; gap: 2px; }
 .refCell { display: flex; flex-direction: column; min-width: 0; }
-.rowActions { display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; }
+/* ONE primary and More, a fixed width, never wrapping */
+.actions { display: flex; flex-wrap: nowrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.primarySlot { display: inline-block; min-width: 76px; }
+.primarySlot > button { width: 100%; }
+.root th.cActions, .root td.cActions { width: 176px; min-width: 176px; white-space: nowrap; }
 .money { font-weight: 600; white-space: nowrap; }
 .clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; max-width: 30ch; line-height: 20px; }
 .clamp3 { -webkit-line-clamp: 3; max-width: none; }
 .root .superseded { color: var(--ui-muted); --dot: #a3abba; }
 
 /* ---------- denied ---------- */
-.denied { padding: 32px; border-radius: var(--ui-radius-lg); background: #fff; text-align: center; box-shadow: 0 0 0 1px var(--ui-line), var(--ui-shadow-1); }
-.deniedTitle { margin: 0; font-size: 24px; line-height: 30px; font-weight: 650; letter-spacing: -0.015em; }
-.deniedText { margin: 8px 0 0; color: var(--ui-ink-2); }
-.deniedNote { margin: 14px auto 0; max-width: 520px; color: var(--ui-muted); font-size: 12.5px; }
+.denied { display: grid; gap: 8px; padding: 32px; border-radius: var(--ui-radius-lg); background: var(--ui-surface); text-align: center; box-shadow: var(--ui-elev-raised); }
+.denied h2, .denied p { margin: 0; }
+.deniedNote { max-width: 520px; margin: 6px auto 0; }
 
 /* ---------- the quote sheet's own pieces (the sheet itself is the shared Sheet) ---------- */
 .sheetStatus:empty { display: none; }
-.sheetNote { margin: 0; color: var(--ui-muted); font-size: 12.5px; line-height: 17px; }
+.sheetNote { margin: 0; color: var(--ui-muted); font-size: var(--ui-fs-secondary); line-height: var(--ui-lh-secondary); }
 .viewFoot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; width: 100%; }
 .footGroup { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 
 .facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 24px; padding: 16px; border-radius: var(--ui-radius-md); background: var(--ui-surface-2); box-shadow: inset 0 0 0 1px var(--ui-line); }
 .facts p { margin: 2px 0 0; }
-.factLabel { color: var(--ui-muted); font-size: 12px; font-weight: 600; letter-spacing: 0.01em; }
+.factLabel { color: var(--ui-muted); font-size: var(--ui-fs-caption); font-weight: 600; letter-spacing: 0.01em; }
 .factStrong { font-weight: 600; }
 .factWide { grid-column: 1 / -1; }
 .factPo { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .versions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .lines { overflow: hidden; border-radius: var(--ui-radius-md); box-shadow: 0 0 0 1px var(--ui-line); }
-.lineRow { display: grid; grid-template-columns: minmax(0, 1fr) 4.5rem 7rem 7rem; gap: 12px; padding: 10px 16px; font-size: 13.5px; box-shadow: inset 0 -1px 0 var(--ui-line); }
+.lineRow { display: grid; grid-template-columns: minmax(0, 1fr) 4.5rem 7rem 7rem; gap: 12px; padding: 10px 16px; font-size: var(--ui-fs-body); box-shadow: inset 0 -1px 0 var(--ui-line); }
 .lineRow:last-child { box-shadow: none; }
-.lineHead { background: #f7f8fb; color: var(--ui-ink-2); font-size: 12.5px; font-weight: 650; }
-.lineRef { display: block; color: var(--ui-muted); font-size: 12.5px; }
+.lineHead { background: var(--ui-surface-2); color: var(--ui-ink-2); font-size: var(--ui-fs-secondary); font-weight: 600; }
+.lineRef { display: block; color: var(--ui-muted); font-size: var(--ui-fs-secondary); }
 .lineOff { color: var(--ui-muted); }
 .struck { text-decoration: line-through; }
 .notOrdered { display: inline-block; margin-top: 2px; padding: 1px 6px; border-radius: 5px; background: var(--ui-neutral-soft); color: var(--ui-neutral); font-size: 11.5px; font-style: normal; font-weight: 600; }
-.totals { align-self: flex-end; width: min(320px, 100%); margin: 0; padding: 12px 16px; border-radius: var(--ui-radius-md); background: var(--ui-surface-2); box-shadow: inset 0 0 0 1px var(--ui-line); font-size: 13.5px; }
+.totals { align-self: flex-end; width: min(320px, 100%); margin: 0; padding: 12px 16px; border-radius: var(--ui-radius-md); background: var(--ui-surface-2); box-shadow: inset 0 0 0 1px var(--ui-line); font-size: var(--ui-fs-body); }
 .totals div { display: flex; justify-content: space-between; gap: 16px; padding: 2px 0; }
 .totals dt { color: var(--ui-ink-2); }
-.totals dd { margin: 0; font-weight: 550; }
-.totals .totalRow { margin-top: 4px; padding-top: 8px; box-shadow: inset 0 1px 0 var(--ui-line-strong); font-weight: 650; }
-.totalRow dt { color: var(--ui-ink); font-weight: 650; }
-.totalRow dd { font-weight: 700; }
+.totals dd { margin: 0; font-weight: 500; }
+.totals .totalRow { margin-top: 4px; padding-top: 8px; box-shadow: inset 0 1px 0 var(--ui-line-strong); font-weight: 600; }
+.totalRow dt { color: var(--ui-ink); font-weight: 600; }
+.totalRow dd { font-weight: 600; }
 
 /* ---------- form fields ---------- */
 .form { display: flex; flex-direction: column; gap: 10px; } /* shared fields carry a 4 px transparent hit border above and below, so the gaps are 8 px smaller than the old ones */
@@ -143,20 +128,18 @@
 .root .internal { background: var(--ui-warn-soft); box-shadow: inset 3px 0 0 #d99a06, inset 0 0 0 1px rgba(217, 154, 6, 0.4); }
 .bLines { display: flex; flex-direction: column; gap: 0; }
 .bRow { display: grid; grid-template-columns: minmax(0, 1fr) 84px 108px 92px 100px 76px; align-items: center; gap: 8px; }
-.bHead { color: var(--ui-muted); font-size: 12px; font-weight: 600; }
+.bHead { color: var(--ui-muted); font-size: var(--ui-fs-caption); font-weight: 600; }
 .bHead span:nth-child(5) { text-align: right; }
-.bTotal { text-align: right; font-size: 13.5px; font-weight: 550; }
+.bTotal { text-align: right; font-size: var(--ui-fs-body); font-weight: 500; }
 .bFoot { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px 24px; }
 .ticks { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; border: 0; min-width: 0; }
-.ticks legend { margin-bottom: 4px; padding: 0; color: var(--ui-ink-2); font-size: 12.5px; line-height: 17px; }
-.tick { display: flex; align-items: center; gap: 4px; font-size: 13.5px; }
+.ticks legend { margin-bottom: 4px; padding: 0; color: var(--ui-ink-2); font-size: var(--ui-fs-secondary); line-height: var(--ui-lh-secondary); }
+.tick { display: flex; align-items: center; gap: 4px; font-size: var(--ui-fs-body); }
 .tickText { display: flex; flex: 1; flex-direction: column; min-width: 0; }
-.tickText small { color: var(--ui-muted); font-size: 12.5px; }
-.tickTotal { margin: 4px 0 0; text-align: right; color: var(--ui-ink-2); font-size: 12.5px; }
+.tickText small { color: var(--ui-muted); font-size: var(--ui-fs-secondary); }
+.tickTotal { margin: 4px 0 0; text-align: right; color: var(--ui-ink-2); font-size: var(--ui-fs-secondary); }
 /* ---------- responsive ---------- */
 @media (max-width: 767px) {
-  .title { font-size: 24px; line-height: 30px; }
-  .panelRow { flex-wrap: wrap; gap: 6px; }
   .cards { grid-template-columns: 1fr; }
   .facts, .formGrid { grid-template-columns: 1fr; }
   .bRow { grid-template-columns: 1fr 1fr; }

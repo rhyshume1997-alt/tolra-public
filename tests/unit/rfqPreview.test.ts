@@ -6,6 +6,8 @@
  * RFQ, the list filter, which main button a card shows, who sees Reply / Forward / Check inbox, the clarification texts, the form's choices and the form checks.
  * Also checks that the sample holds no live record, that the preview imports nothing that could read or write, and a few interaction rules (nothing reports
  * success, role gate, Columns) by rendering the preview.
+ * v3 (owner-approved structure): also pins the Filters popover with its count and removable chips, the one-primary-plus-More row split (View, Reply and Forward live in More, and stay role gated),
+ * the title tooltip that replaced the generic sentence, the plausible sample company and drama-range phone numbers, and that there is no selection bar here (the real page has no selection or export).
  * Must not change: never loosen these to make a change pass. No network, no Supabase. Written with createElement (no JSX) so it is a .test.ts file and runs under the
  * existing vitest.config.ts include pattern.
  */
@@ -258,7 +260,8 @@ describe("rfq preview: rendered behaviour", () => {
     click(h.querySelector('[data-testid="tile-clarification"]'));
     expect(h.querySelectorAll("li[data-rfq]")).toHaveLength(2);
     expect(h.querySelector('[data-testid="tile-clarification"]')?.getAttribute("aria-pressed")).toBe("true");
-    click(h.querySelector('[data-testid="chip-all"]'));
+    click(h.querySelector('[data-testid="filters-trigger"]'));
+    click(document.querySelector('[data-testid="chip-all"]'));
     click(h.querySelector('[data-testid="show-all"]'));
     expect(h.querySelectorAll("li[data-rfq]")).toHaveLength(14);
   });
@@ -266,12 +269,17 @@ describe("rfq preview: rendered behaviour", () => {
     const h = mount();
     expect(h.querySelector('li[data-rfq="Pemberton Packaging"] [data-action="Clarify"]')).not.toBeNull();
     expect(h.querySelector('li[data-rfq="Kestrel Components"] [data-action="Quote"]')).not.toBeNull();
-    expect(h.querySelector('li[data-rfq="Halden Precision"] [data-action="Reply"]')).not.toBeNull();
+    click(h.querySelector('li[data-rfq="Halden Precision"] [data-testid="row-more"]'));
+    expect(Array.from(document.querySelectorAll('[role="menu"][aria-label="More actions for Halden Precision"] [role="menuitem"]')).map((e) => e.textContent)).toEqual(["View", "Reply", "Forward"]);
+    click(byText(document.body, '[role="menuitem"]', "Reply"));
+    expect(document.querySelector('[data-testid="dlg-mail"]')?.textContent).toContain("Reply to email");
+    click(byText(document.body, "dialog button", "Cancel"));
     click(h.querySelector('[data-testid="show-quoted"]'));
     expect(h.querySelector('li[data-rfq="Marlow Hydraulics"] [data-action="Open"]')?.textContent).toBe("Open QUO-0438");
     pickRole("Office");
-    expect(h.querySelector('[data-action="Reply"]')).toBeNull();
-    expect(h.querySelector('[data-action="Forward"]')).toBeNull();
+    click(h.querySelector('[data-testid="show-outstanding"]'));
+    click(h.querySelector('li[data-rfq="Halden Precision"] [data-testid="row-more"]'));
+    expect(Array.from(document.querySelectorAll('[role="menu"][aria-label="More actions for Halden Precision"] [role="menuitem"]')).map((e) => e.textContent)).toEqual(["View"]);
     expect(h.querySelector('[data-testid="check-inbox"]')).not.toBeNull();
   });
   it("Quote, Open, Link and Check inbox answer with the neutral Preview-only toast and never a success", () => {
@@ -295,7 +303,7 @@ describe("rfq preview: rendered behaviour", () => {
     const h = mount();
     click(h.querySelector('li[data-rfq="Pemberton Packaging"] [data-action="Clarify"]'));
     expect(document.querySelector('[data-testid="dlg-clarify"]')?.textContent).toContain("Clarification Email");
-    expect(document.querySelector<HTMLTextAreaElement>('[data-testid="dlg-clarify"] textarea')?.value).toContain("Best regards,\nExample Engineering Ltd");
+    expect(document.querySelector<HTMLTextAreaElement>('[data-testid="dlg-clarify"] textarea')?.value).toContain("Best regards,\nFernhill Engineering Ltd");
     click(document.querySelector('[data-testid="open-mail"]'));
     expect(document.querySelector('[data-testid="dlg-clarify"] [role="alert"]')?.textContent).toBe("This RFQ has no email address. Add one before sending.");
     expect(document.querySelector('[data-testid="sent-it"]')).toBeNull();
@@ -336,5 +344,83 @@ describe("rfq preview: rendered behaviour", () => {
     expect(h.querySelector("[data-rfq-field=value]")).toBeNull();
     expect(h.querySelector("[data-rfq-field=customer]")).not.toBeNull();
     expect(h.querySelector("[data-rfq-field=actions]")).not.toBeNull();
+  });
+});
+
+/* ---------------- v3 structure (owner-approved items 1, 4, 7, 9, 10, 11) ---------------- */
+
+describe("rfq preview v3: pure structure rules", () => {
+  it("Filters (n) counts only the status chips; Show is not a chip; Clear filters shows only off the default", () => {
+    expect(P.activeChips(P.DEFAULT_FILTERS)).toEqual([]);
+    expect(P.popoverFilterCount({ ...P.DEFAULT_FILTERS, statuses: new Set(["new", "ready"]) })).toBe(2);
+    expect(P.activeChips({ ...P.DEFAULT_FILTERS, statuses: new Set(["ready", "clarification"]) }).map((c) => c.label)).toEqual(["Status: Clarification", "Status: Ready"]);
+    expect(P.popoverFilterCount({ ...P.DEFAULT_FILTERS, stage: "won" })).toBe(0);
+    expect(P.isFiltered(P.DEFAULT_FILTERS)).toBe(false);
+    expect(P.isFiltered({ ...P.DEFAULT_FILTERS, stage: "all" })).toBe(true);
+    expect(P.isFiltered({ ...P.DEFAULT_FILTERS, statuses: new Set(["new"]) })).toBe(true);
+    expect(P.isFiltered({ ...P.DEFAULT_FILTERS, listFilter: "clarification" })).toBe(true);
+    expect([...P.toggleStatusIn(new Set(["all"]), "new")]).toEqual(["new"]);
+    expect([...P.toggleStatusIn(new Set(["new"]), "new")]).toEqual(["all"]);
+  });
+  it("one primary (the card's main button) and More holds View, then Reply and Forward only for an admin on an e-mailed RFQ", () => {
+    expect(P.rfqRowPlan("admin", true).more).toEqual(["view", "reply", "forward"]);
+    expect(P.rfqRowPlan("admin", false).more).toEqual(["view"]);
+    expect(P.rfqRowPlan("office", true).more).toEqual(["view"]);
+  });
+  it("the generic sentence is kept as the title tooltip; the sample company and phone numbers are plausible and on the Ofcom drama range", () => {
+    expect(P.RFQ_INTRO).toBe("RFQ means request for quote: a customer asking us for a price.");
+    expect(P.COMPANY_NAME).toBe("Fernhill Engineering Ltd");
+    for (const r of P.SEED_RFQS) if (r.phone) expect(r.phone, r.customer).toMatch(/^0141 496 0\d{3}$/);
+    expect(JSON.stringify(P.SEED_RFQS) + P.COMPANY_NAME).not.toMatch(/placeholder|testfield|mockridge|sampleford|dummerby|exampleton|Example Engineering/i);
+  });
+});
+
+describe("rfq preview v3: rendered structure", () => {
+  it("one PreviewBar, the title tooltip, no bulk bar and no export (the real page has neither)", () => {
+    const h = mount();
+    expect(h.querySelector('[data-testid="preview-bar"]')?.textContent).toContain("Preview, sample data, nothing is saved");
+    expect(h.querySelector('[data-testid="rfq-title"]')?.getAttribute("title")).toBe(P.RFQ_INTRO);
+    expect(h.querySelectorAll("h1")).toHaveLength(1);
+    expect(h.querySelector("[data-selection]")).toBeNull();
+    expect(h.querySelector('[data-testid="export-trigger"]')).toBeNull();
+  });
+  it("the filter toolbar is one row with a Filters popover, a count, removable chips and one Clear filters", () => {
+    const h = mount();
+    const trigger = h.querySelector<HTMLElement>('[data-testid="filters-trigger"]')!;
+    expect(trigger.textContent?.trim()).toBe("Filters");
+    expect(h.querySelector('[data-testid="clear-filters"]')).toBeNull();
+    expect(h.querySelector('[data-testid="chip-new"]')).toBeNull();
+    click(trigger);
+    expect(Array.from(document.querySelectorAll('[role="dialog"][aria-label="Filters"] [aria-pressed]')).map((b) => b.textContent)).toEqual(["All", "New", "Clarification", "Ready"]);
+    click(document.querySelector('[data-testid="chip-new"]'));
+    expect(trigger.textContent?.trim()).toBe("Filters (1)");
+    expect(h.querySelectorAll("li[data-rfq]")).toHaveLength(4);
+    expect(h.querySelector('[data-testid="active-chips"] button')?.getAttribute("aria-label")).toBe("Remove filter Status: New");
+    click(h.querySelector('[data-chip="new"]'));
+    expect(trigger.textContent?.trim()).toBe("Filters");
+    expect(h.querySelectorAll("li[data-rfq]")).toHaveLength(7);
+    click(h.querySelector('[data-testid="show-won"]'));
+    expect(h.querySelector('[data-testid="clear-filters"]')).not.toBeNull();
+    click(h.querySelector('[data-testid="clear-filters"]'));
+    expect(h.querySelectorAll("li[data-rfq]")).toHaveLength(7);
+  });
+  it("every row has exactly one primary action and a More menu naming its customer", () => {
+    const h = mount();
+    const rows = Array.from(h.querySelectorAll("li[data-rfq]"));
+    expect(rows).toHaveLength(7);
+    for (const r of rows) {
+      expect(r.querySelectorAll('[data-testid="row-primary"]')).toHaveLength(1);
+      expect(r.querySelectorAll('[data-testid="row-more"]')).toHaveLength(1);
+      expect(r.querySelector('[data-testid="row-more"]')?.getAttribute("aria-label")).toBe(`More actions for ${r.getAttribute("data-rfq")}`);
+    }
+    click(h.querySelector('li[data-rfq="Kestrel Components"] [data-testid="row-more"]'));
+    click(byText(document.body, '[role="menuitem"]', "View"));
+    expect(document.querySelector('[data-testid="dlg-view"]')?.textContent).toContain("Kestrel Components");
+  });
+  it("a Show count is an em dash while the list loads, never a stale number", () => {
+    const h = mount();
+    click(byText(document.body, "button", /Preview controls/));
+    click(byText(document.body, '[role="dialog"][aria-label="Preview controls"] [aria-pressed]', "Loading"));
+    expect(h.querySelector('[data-testid="show-outstanding"]')?.textContent).toMatch(/\(—\)$/);
   });
 });

@@ -7,6 +7,8 @@
  * real phaseOf), the tile and Show counts, the list filter, the toolbar's disabled reasons, which row buttons an order gets, the order-from-quote terms, the machine plan
  * sums, the form's checks and the words. Also checks the sample holds no live record, that the preview imports nothing that could read or write, and a few interaction
  * rules (nothing reports success, role gate, the row menu, the Machines sheet) by rendering the preview.
+ * v3 (owner-approved structure): also pins the Filters popover with its count and removable chips, the bulk bar that exists only with a selection (Print, Export, Convert and Despatch Selected, each
+ * with its real reason), Export in the toolbar, the one-primary-plus-shared-More row split (every real row action still reachable), and the title tooltip that replaced the generic sentence.
  * Must not change: never loosen these to make a change pass. No network, no Supabase. Written with createElement (no JSX) so it is a .test.ts file and runs under the
  * existing vitest.config.ts include pattern.
  */
@@ -241,7 +243,7 @@ describe("sales orders preview: it is only a picture", () => {
     const imports = PREVIEW_SRC.match(/from "[^"]+"/g) ?? [];
     expect([...new Set(imports)].sort()).toEqual([
       'from "./SalesOrdersPreview.module.css"', 'from "@/components/ui/premium"', 'from "@/lib/accept-quote"', 'from "@/lib/dates"', 'from "@/lib/empty-hints"', 'from "@/lib/list-card-counts"', 'from "@/lib/money"', 'from "@/lib/order-from-quote"',
-      'from "@/lib/quote-status"', 'from "@/lib/sales-order-convert"', 'from "@/lib/shell-status"', 'from "@/lib/so-machines"', 'from "@/lib/spreadsheet"', 'from "@/lib/status-colours"', 'from "@/lib/vat"', 'from "react"', 'from "react-dom"',
+      'from "@/lib/quote-status"', 'from "@/lib/sales-order-convert"', 'from "@/lib/shell-status"', 'from "@/lib/so-machines"', 'from "@/lib/spreadsheet"', 'from "@/lib/status-colours"', 'from "@/lib/vat"', 'from "react"',
     ].sort());
     expect(PREVIEW_SRC).not.toMatch(/supabase|fetch\(|XMLHttpRequest|window\.open|window\.location|downloadPdf|openPrintPack|exportSpreadsheet|next\/navigation|useRouter|\.rpc\(/);
   });
@@ -272,6 +274,7 @@ function mount() {
 }
 const byText = (scope: ParentNode, sel: string, text: string | RegExp) => Array.from(scope.querySelectorAll<HTMLElement>(sel)).find((e) => (typeof text === "string" ? e.textContent?.trim() === text : text.test(e.textContent ?? "")));
 const click = (el: Element | undefined | null) => { if (!el) throw new Error("element not found"); act(() => { (el as HTMLElement).click(); }); };
+const menuItem = (ref: string, label: string | RegExp) => byText(document.querySelector(`[role="menu"][aria-label="More actions for ${ref}"]`)!, '[role="menuitem"]', label);
 const pickRole = (label: string) => { click(byText(document.body, "button", /Preview controls/)); click(byText(document.body, '[role="radiogroup"][aria-label="Role"] [role="radio"]', label)); };
 
 describe("sales orders preview: rendered behaviour", () => {
@@ -296,13 +299,15 @@ describe("sales orders preview: rendered behaviour", () => {
     click(h.querySelector('[data-testid="tile-despatched"]'));
     expect(h.querySelector("section[aria-label='No sales orders match this filter']")).not.toBeNull();
   });
-  it("selecting rows enables the bulk buttons with the page's rules, and every one answers with the neutral Preview-only toast", () => {
+  it("the bulk buttons exist only while a row is ticked; then they follow the page's rules and every one answers with the neutral Preview-only toast", () => {
     const h = mount();
-    expect(h.querySelector<HTMLButtonElement>('[data-testid="convert-selected"]')?.disabled).toBe(true);
-    expect(h.querySelector<HTMLButtonElement>('[data-testid="convert-selected"]')?.title).toBe("Select at least one sales order");
+    expect(h.querySelector('[data-testid="convert-selected"]')).toBeNull();
+    expect(h.querySelector("[data-selection]")?.getAttribute("data-selection")).toBe("idle");
     click(h.querySelector('tr[data-order="SO-0149"] [data-testid="select-row"]'));
+    expect(h.querySelector<HTMLButtonElement>('[data-testid="convert-selected"]')?.disabled).toBe(true);
     expect(h.querySelector<HTMLButtonElement>('[data-testid="convert-selected"]')?.title).toBe("The selected orders already have jobs");
     expect(h.querySelector<HTMLButtonElement>('[data-testid="despatch-selected"]')?.disabled).toBe(true);
+    expect(h.querySelector<HTMLButtonElement>('[data-testid="print-selected"]')?.disabled).toBe(false);
     click(h.querySelector('tr[data-order="NF-88213"] [data-testid="select-row"]'));
     expect(h.querySelector("[data-selection]")?.textContent).toContain("2 selected of 7 filtered records");
     const convert = h.querySelector<HTMLButtonElement>('[data-testid="convert-selected"]')!;
@@ -313,10 +318,15 @@ describe("sales orders preview: rendered behaviour", () => {
     expect(text).toContain("A job would be created from sales order NF-88213; carried 1 machine (2 h).");
     expect(text).toContain("Nothing was saved.");
     expect(text).not.toMatch(/saved successfully|job .* created\b(?! from)|moved to Despatched\./i);
+    click(byText(h, "button", "Select all 7 filtered"));
+    expect(h.querySelector("[data-selection]")?.textContent).toContain("7 selected of 7 filtered records");
+    click(byText(h, "button", "Clear selection"));
+    expect(h.querySelector("[data-selection]")?.getAttribute("data-selection")).toBe("idle");
   });
   it("Despatch, Archive, Print and Export are previews too", () => {
     const h = mount();
-    click(h.querySelector('tr[data-order="HP-7710"] [data-action="Despatch"]'));
+    click(h.querySelector('tr[data-order="HP-7710"] [data-testid="row-more"]'));
+    click(menuItem("HP-7710", "Despatch"));
     expect(document.body.textContent).toContain("1 sales order(s) would move to Despatched. Nothing was saved.");
     click(h.querySelector('[data-testid="export-trigger"]'));
     click(byText(document.body, '[role="menuitem"]', "CSV"));
@@ -324,9 +334,10 @@ describe("sales orders preview: rendered behaviour", () => {
   });
   it("the row menu is named for its order; Edit is disabled with its reason shown as text for a converted order", () => {
     const h = mount();
-    click(h.querySelector('tr[data-order="SO-0149"] [data-action="More"]'));
+    click(h.querySelector('tr[data-order="SO-0149"] [data-testid="row-more"]'));
     const menu = document.querySelector('[role="menu"]');
     expect(menu?.getAttribute("aria-label")).toBe("More actions for SO-0149");
+    expect(Array.from(menu!.querySelectorAll('[role="menuitem"]')).map((e) => e.firstElementChild?.firstElementChild?.textContent ?? e.textContent)).toEqual(["Edit", "Add customer PO", "Machines", "Archive"]);
     const edit = byText(menu!, '[role="menuitem"]', /^Edit/);
     expect(edit?.getAttribute("aria-disabled")).toBe("true");
     expect(edit?.textContent).toContain("Converted to J-1041: change the job, not the order.");
@@ -336,8 +347,8 @@ describe("sales orders preview: rendered behaviour", () => {
   });
   it("Add customer PO is disabled until something is typed, then answers with a toast", () => {
     const h = mount();
-    click(h.querySelector('tr[data-order="SO-0158"] [data-action="More"]'));
-    click(byText(document.body, '[role="menuitem"]', "Add customer PO"));
+    click(h.querySelector('tr[data-order="SO-0158"] [data-testid="row-more"]'));
+    click(menuItem("SO-0158", "Add customer PO"));
     const save = byText(document.body, "dialog button", "Save customer PO") as HTMLButtonElement;
     expect(save.disabled).toBe(true);
     const input = document.querySelector<HTMLInputElement>('[data-testid="dlg-po"] input')!;
@@ -348,14 +359,14 @@ describe("sales orders preview: rendered behaviour", () => {
   });
   it("the Machines sheet is read only for a converted order and editable for an open one, with the real sums", () => {
     const h = mount();
-    click(h.querySelector('tr[data-order="SO-0149"] [data-action="More"]'));
-    click(byText(document.body, '[role="menuitem"]', "Machines"));
+    click(h.querySelector('tr[data-order="SO-0149"] [data-testid="row-more"]'));
+    click(menuItem("SO-0149", "Machines"));
     expect(document.querySelector('[data-testid="dlg-machines"]')?.textContent).toContain("As ordered. This order has been converted");
     expect(document.querySelector('[data-testid="dlg-machines"] select[disabled]')).not.toBeNull();
     expect(document.querySelector('[data-testid="so-machines-summary"]')?.textContent).toBe("On the job: Doosan Lynx lathe 5 h (5 h in all)");
     click(byText(document.body, "dialog button", "Close"));
-    click(h.querySelector('tr[data-order="NF-88213"] [data-action="More"]'));
-    click(byText(document.body, '[role="menuitem"]', "Machines"));
+    click(h.querySelector('tr[data-order="NF-88213"] [data-testid="row-more"]'));
+    click(menuItem("NF-88213", "Machines"));
     expect((byText(document.body, "dialog button", "Save machines") as HTMLButtonElement).disabled).toBe(true);
     click(byText(document.body, "dialog button", "Add machine"));
     expect(document.querySelector('[data-testid="so-machines-summary"]')?.textContent).toContain("Bandsaw 1 2 h");
@@ -382,5 +393,100 @@ describe("sales orders preview: rendered behaviour", () => {
     expect(h.querySelector('[data-testid="access-denied"]')?.textContent).toContain("Access Denied");
     expect(h.querySelector('[role="group"][aria-label="Sales order figures"]')).toBeNull();
     expect(h.querySelector('[data-testid="new-order"]')).toBeNull();
+  });
+});
+
+/* ---------------- v3 structure (owner-approved items 1, 2, 4, 7, 10, 11) ---------------- */
+
+describe("sales orders preview v3: pure structure rules", () => {
+  it("Filters (n) counts only the status chips; Show is not a chip; Clear filters shows only off the default", () => {
+    expect(P.activeChips(P.DEFAULT_FILTERS)).toEqual([]);
+    expect(P.popoverFilterCount({ ...P.DEFAULT_FILTERS, statuses: new Set(["open", "in_production"]) })).toBe(2);
+    expect(P.activeChips({ ...P.DEFAULT_FILTERS, statuses: new Set(["in_production"]) }).map((c) => c.label)).toEqual(["Status: In Production"]);
+    expect(P.popoverFilterCount({ ...P.DEFAULT_FILTERS, phase: "done" })).toBe(0);
+    expect(P.isFiltered(P.DEFAULT_FILTERS)).toBe(false);
+    expect(P.isFiltered({ ...P.DEFAULT_FILTERS, phase: "all" })).toBe(true);
+    expect(P.isFiltered({ ...P.DEFAULT_FILTERS, statuses: new Set(["open"]) })).toBe(true);
+    expect([...P.toggleStatusIn(new Set(["all"]), "open")]).toEqual(["open"]);
+    expect([...P.toggleStatusIn(new Set(["open"]), "open")]).toEqual(["all"]);
+  });
+  it("one primary per row (Convert to Job while there is no job, else View) and every real action still reachable in More, in the real order", () => {
+    expect(P.rowActionPlan(order("so18"), "admin")).toEqual({ primary: "convert", more: ["view", "despatch", "edit", "machines", "archive"] });
+    expect(P.rowActionPlan(order("so20"), "admin")).toEqual({ primary: "convert", more: ["view", "despatch", "edit", "po", "machines", "archive"] });
+    expect(P.rowActionPlan(order("so16"), "office")).toEqual({ primary: "view", more: ["edit", "po", "machines", "archive"] });
+    for (const o of P.SEED_ORDERS) {
+      const plan = P.rowActionPlan(o, "admin");
+      const expected = ["view", ...(P.isConverted(o) ? [] : ["convert"]), ...(P.canDespatch(o) ? ["despatch"] : []), "edit", ...(o.id && !o.customerPo ? ["po"] : []), ...(o.id ? ["machines"] : []), "archive"];
+      expect([plan.primary, ...plan.more].sort(), o.ref).toEqual(expected.sort());
+    }
+    expect(P.rowActionPlan(order("so18"), "workshop").more).not.toContain("archive");
+  });
+  it("the generic sentence is kept as the title tooltip", () => {
+    expect(P.SO_INTRO).toBe("A sales order is a customer's confirmed order. Turn it into a job when work starts.");
+  });
+});
+
+describe("sales orders preview v3: rendered structure", () => {
+  it("one PreviewBar, the title tooltip, and no placeholder-sounding names", () => {
+    const h = mount();
+    expect(h.querySelector('[data-testid="preview-bar"]')?.textContent).toContain("Preview, sample data, nothing is saved");
+    expect(h.querySelector('[data-testid="so-title"]')?.getAttribute("title")).toBe(P.SO_INTRO);
+    expect(h.querySelectorAll("h1")).toHaveLength(1);
+    expect(JSON.stringify(P.SEED_ORDERS) + P.CUSTOMERS.join()).not.toMatch(/placeholder|testfield|mockridge|sampleford|dummerby|exampleton/i);
+  });
+  it("the filter toolbar is one row with a Filters popover holding the real status chips, a count, removable chips and one Clear filters", () => {
+    const h = mount();
+    const trigger = h.querySelector<HTMLElement>('[data-testid="filters-trigger"]')!;
+    expect(trigger.textContent?.trim()).toBe("Filters");
+    expect(h.querySelector('[data-testid="clear-filters"]')).toBeNull();
+    click(trigger);
+    expect(Array.from(document.querySelectorAll('[role="dialog"][aria-label="Filters"] [aria-pressed]')).map((b) => b.textContent)).toEqual(["All", "Open", "Confirmed", "In Production", "Despatched", "Converted", "Closed"]);
+    click(document.querySelector('[data-testid="chip-confirmed"]'));
+    click(document.querySelector('[data-testid="chip-open"]'));
+    expect(trigger.textContent?.trim()).toBe("Filters (2)");
+    expect(Array.from(h.querySelectorAll('[data-testid="active-chips"] button')).map((b) => b.getAttribute("aria-label"))).toEqual(["Remove filter Status: Open", "Remove filter Status: Confirmed"]);
+    click(h.querySelector('[data-chip="open"]'));
+    expect(trigger.textContent?.trim()).toBe("Filters (1)");
+    expect(h.querySelectorAll("tbody tr[data-order]")).toHaveLength(2);
+    click(h.querySelector('[data-testid="clear-filters"]'));
+    expect(trigger.textContent?.trim()).toBe("Filters");
+    expect(h.querySelectorAll("tbody tr[data-order]")).toHaveLength(7);
+  });
+  it("Export of all rows is a toolbar menu that names its scope; the selection's Export sits in the bar once a row is ticked", () => {
+    const h = mount();
+    expect(h.querySelector('[data-testid="export-trigger"]')?.getAttribute("aria-label")).toBe("Export. Exports all 7 sales orders in the current filter (nothing is selected)");
+    expect(h.querySelector('[data-testid="export-selected-trigger"]')).toBeNull();
+    click(h.querySelector('tr[data-order="NF-88213"] [data-testid="select-row"]'));
+    expect(h.querySelector('[data-testid="export-selected-trigger"]')?.getAttribute("aria-label")).toBe("Export. Exports the 1 sales order selected");
+    expect(h.querySelector('[data-testid="print-selected"]')).not.toBeNull();
+  });
+  it("each row has exactly one primary action and a More menu naming its order; the header checkbox selects all", () => {
+    const h = mount();
+    const rows = Array.from(h.querySelectorAll("tbody tr[data-order]"));
+    for (const r of rows) {
+      expect(r.querySelectorAll('[data-testid="row-primary"]')).toHaveLength(1);
+      expect(r.querySelector('[data-testid="row-more"]')?.getAttribute("aria-label")).toBe(`More actions for ${r.getAttribute("data-order")}`);
+    }
+    expect(h.querySelector('tr[data-order="HP-7710"] [data-testid="row-primary"]')?.textContent).toBe("Convert to Job");
+    expect(h.querySelector('tr[data-order="SO-0149"] [data-testid="row-primary"]')?.textContent).toBe("View");
+    click(h.querySelector('tr[data-order="SO-0149"] [data-testid="row-primary"]'));
+    expect(document.querySelector('[data-testid="dlg-view"]')?.textContent).toContain("SO-0149");
+    click(byText(document.body, "dialog button", "Close"));
+    click(h.querySelector<HTMLInputElement>('thead input[type="checkbox"]'));
+    expect(h.querySelector("[data-selection]")?.textContent).toContain("7 selected of 7 filtered records");
+  });
+  it("Cards view keeps the same split, and the primary Convert to Job is still a Preview-only toast", () => {
+    const h = mount();
+    click(h.querySelector('[data-testid="view-cards-btn"]'));
+    const card = h.querySelector('article[data-order="HP-7710"]')!;
+    expect(card.querySelectorAll('[data-testid="row-primary"]')).toHaveLength(1);
+    click(card.querySelector('[data-testid="row-primary"]'));
+    expect(document.body.textContent).toContain("A job would be created from sales order HP-7710; carried 2 machines (10.5 h). Nothing was saved.");
+  });
+  it("a Show count is an em dash while the list loads, never a stale number", () => {
+    const h = mount();
+    click(byText(document.body, "button", /Preview controls/));
+    click(byText(document.body, '[role="dialog"][aria-label="Preview controls"] [aria-pressed]', "Loading"));
+    expect(h.querySelector('[data-testid="show-open"]')?.textContent).toMatch(/\(—\)$/);
   });
 });
