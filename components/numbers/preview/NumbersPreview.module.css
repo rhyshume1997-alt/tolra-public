@@ -71,3 +71,6 @@
 
 .headControls [role="radio"] { position: relative; }
 .headControls [role="radio"]::after { content: ""; position: absolute; inset: -8px -2px; }
+
+/* the shared control scrolls sideways under 640 px, which clips its transparent hit area: it stays visible here (the control is short enough to fit) */
+.headControls [role="radiogroup"] { overflow: visible; }

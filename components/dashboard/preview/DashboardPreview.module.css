@@ -282,3 +282,6 @@ a.floorLink:hover { background: var(--ui-surface-2); }
 /* the shared segmented control draws a 40 px hit box; here it is lifted to 48 px by a transparent pseudo element (no visual change) */
 .metaGroup [role="radio"] { position: relative; }
 .metaGroup [role="radio"]::after { content: ""; position: absolute; inset: -8px -2px; }
+
+/* the shared control scrolls sideways under 640 px, which clips its transparent hit area: it stays visible here (the control is short enough to fit) */
+.metaGroup [role="radiogroup"] { overflow: visible; }
