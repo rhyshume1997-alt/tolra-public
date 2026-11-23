@@ -587,3 +587,4 @@ export function useUser(): UserContextValue {
   return ctx;
 }
 
+export { UserContext as __UserContext };

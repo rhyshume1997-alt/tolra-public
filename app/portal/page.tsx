@@ -1,17 +1,3 @@
-import { PortalFrame } from "@/components/portal/portal-frame";
-import { portalSession } from "@/components/portal/portal-data";
-import { RefusalView } from "@/components/portal/refusal-view";
-
-/** BOUNDARY: /portal. Flag first, then the cookie session. Any refusal shows the generic refusal and the sign-in form. No other data. */
-export const dynamic = "force-dynamic";
-
-export default async function PortalHomePage() {
-  const got = await portalSession();
-  if (!got) return <RefusalView />;
-  const { session } = got;
-  return (
-    <PortalFrame title={`Welcome, ${session.displayName}`} signedIn={session}>
-      <p data-testid="portal-home">{session.customerName} at {session.companyName}. Use the tabs above to see your documents.</p>
-    </PortalFrame>
-  );
-}
+// DO NOT MERGE: preview hub. Scratch route: renders one preview inside the real Sidebar/Topbar with a stubbed admin. No auth, no Supabase.
+import P from "@/components/portal/preview/PortalPreview";
+export default function Page() { return <div className="min-h-screen bg-slate-50 text-slate-900"><P /></div>; }

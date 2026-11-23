@@ -37,6 +37,7 @@
     "**/*.mts"
   ],
   "exclude": [
+    "tests", "scripts", "supabase",
     "node_modules"
   ]
 }

@@ -1,22 +1,10 @@
-import Link from "next/link";
-
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
+// DO NOT MERGE: preview hub. A link in the real sidebar or a preview that has no preview screen lands here.
 export default function NotFoundPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
-      <Card className="w-full max-w-lg">
-        <CardHeader>
-          <CardTitle>Page not found</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-slate-600">We can&apos;t find this page, or you don&apos;t have access to it.</p>
-          <Button asChild className="min-h-11 bg-brand text-brand-ink hover:bg-brand-hover">
-            <Link href="/dashboard">Back to dashboard</Link>
-          </Button>
-        </CardContent>
-      </Card>
+    <main style={{ maxWidth: 480, margin: "15vh auto", padding: 24, fontFamily: "system-ui, sans-serif" }}>
+      <h1 style={{ fontSize: 20, margin: "0 0 8px" }}>No preview screen for this link</h1>
+      <p style={{ color: "#566074", margin: "0 0 16px" }}>UI preview, sample data, nothing is saved. This part of the product has no preview yet.</p>
+      <a href="/preview-hub" style={{ textDecoration: "underline" }}>Back to all previews</a>
     </main>
   );
 }

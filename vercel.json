@@ -1,7 +1,0 @@
-{
-  "regions": ["lhr1"],
-  "crons": [
-    { "path": "/api/cron/daily", "schedule": "0 5 * * *" },
-    { "path": "/api/cron/nightly", "schedule": "0 22 * * *" }
-  ]
-}
