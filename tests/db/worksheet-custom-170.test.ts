@@ -128,7 +128,10 @@ async function job(over: { stage?: string; started_at?: string | null; finished_
 }
 const complete = () => job({ stage: "complete", started_at: T0, finished_at: T1, inspected_at: T1 });
 const row = async (id: string) => (await q("select * from jobs where id = $1", [id]))[0];
-const withoutCustom = (r: Row) => Object.fromEntries(Object.entries(r).filter(([k]) => k !== "worksheet_custom").map(([k, v]) => [k, v instanceof Date ? v.toISOString() : v]));
+/** The columns whose value differs between two rows, as ISO-normalised values. */
+const changedKeys = (a: Row, b: Row) => Object.keys({ ...a, ...b }).filter((k) => JSON.stringify(a[k] instanceof Date ? (a[k] as Date).toISOString() : a[k]) !== JSON.stringify(b[k] instanceof Date ? (b[k] as Date).toISOString() : b[k]));
+/** Filling in a custom field changes the new column and the who-did-what stamp (035: updated_by, updated_at) and nothing else. */
+const onlyCustomAndStamps = (a: Row, b: Row) => changedKeys(a, b).filter((k) => k !== "worksheet_custom" && !/^updated_/.test(k));
 /** A primary sign-off on the job's CURRENT revision (written by the owner: nobody signs through the API except sign_off_job). */
 async function signOff(id: string, over: { version?: number; org?: string } = {}) {
   const j = await row(id);
@@ -175,11 +178,11 @@ describe("release 170: jobs.worksheet_custom and its sign-off guard", () => {
     const id = await job();
     expect((await row(id)).worksheet_custom).toEqual({});
     for (const p of people()) {
-      const before = withoutCustom(await row(id));
+      const before = await row(id);
       expect(allowed(await setCustom(p.id, id, VALUES))).toBe("allowed");
       const after = await row(id);
       expect(after.worksheet_custom).toEqual(JSON.parse(VALUES));
-      expect(withoutCustom(after)).toEqual(before);
+      expect(onlyCustomAndStamps(before, after)).toEqual([]);
       expect(allowed(await setCustom("service", id, "{}"))).toBe("allowed");
     }
   });
@@ -296,6 +299,8 @@ describe("release 170: jobs.worksheet_custom and its sign-off guard", () => {
 
   it("9. a drifted function or column makes the release refuse and change nothing", async () => {
     await rolledBack(async (db) => {
+      // The rollback's "a job holds a custom value" refusal comes first, so clear the values the other cases left (rolled back with the rest).
+      await db.query("update jobs set worksheet_custom = '{}'::jsonb where worksheet_custom <> '{}'::jsonb");
       await db.query(`create or replace function ${FN} returns trigger language plpgsql as $$ begin return new; end $$`);
       await db.query("savepoint s");
       await expect(db.query(body(RELEASE))).rejects.toMatchObject({ message: expect.stringMatching(/not exactly 170's/) });
