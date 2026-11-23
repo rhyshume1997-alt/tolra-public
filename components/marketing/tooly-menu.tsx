@@ -7,7 +7,8 @@ import { FLOW_JOB, FLOW_TITLE, ILLUSTRATION_LABEL, SEE_HOW_LABEL } from "@/lib/m
 import { GUIDE_LABELS, MENU_STAGES } from "@/lib/marketing/tooly-guide";
 
 // Inputs: the shared guide state (tooly-guide-state.tsx) and the stage list in lib/marketing/tooly-guide.ts (MENU_STAGES = FLOW_STEPS).
-// Output: in the header, the "Job stages" button and the panel it opens at the top right (the real stages with their stamps, as plain text), and,
+// Output: in the header, the "Job stages" button and the panel it opens at the top right (the real stages with their stamps, as plain text; opening
+// it also plays the spanner scene in the caption strip, where the same stages are stamped in order), and,
 // while Tooly is hidden, the "Show Tooly" button (so nothing floats over the page to bring him back).
 // Must not change: the panel opens only when the person presses the button (an owner-opened menu may lie over the page like any menu), and
 // closes with Escape or a click outside; nothing traps focus; the button is a real disclosure (aria-expanded); the example carries its
@@ -46,7 +47,7 @@ export function ToolyMenu() {
         className="tm-launch mk-link"
         aria-expanded={open}
         aria-controls="tm-panel"
-        onClick={() => { g?.skip(); g?.setMenuOpen(!open); }}
+        onClick={() => { g?.setMenuOpen(!open); if (!open) g?.replay(); }}
       >
         {GUIDE_LABELS.menu}
       </button>

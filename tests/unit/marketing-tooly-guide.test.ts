@@ -1,5 +1,5 @@
 /**
- * Tooly as a living guide on the public home page. Pinned here: the menu's stages are the job traveller's stages (FLOW_STEPS); every caption is
+ * Tooly as a living guide on the public home page (the WINDOW scrolls natively; the strip is a fixed bar with end padding). Pinned here: the menu's stages are the job traveller's stages (FLOW_STEPS); every caption is
  * an existing string from lib/marketing.ts; the caption lives ONLY in a fixed strip that owns its space (the page's scroll area ends above it),
  * never in a bubble beside him; he floats only in a measured, empty gutter; the intro never reaches over the content; the reduced-motion path
  * shows the same captions with nothing moving; Hide Tooly leaves a Show Tooly button in the header; the frame files are light and registered.
@@ -20,7 +20,7 @@ import * as marketing from "@/lib/marketing";
 import { FLOW_STEPS } from "@/lib/marketing";
 import {
   type FrameKey, FIGURE_MARGIN, FIGURE_SIZE, FRAME_FILE, FRAME_SET, FRAME_SRC, GUTTER_NEEDED, WALK_FRAMES, frameLayout, gutterWidth, gutterX, guideMode, lookForPose,
-  walkFrameIndex, GUIDE_COPY_SOURCES, GUIDE_LABELS, GUIDE_STOPS, INTRO_DONE, INTRO_PHASES, INTRO_START, MENU_STAGES, activeStopId, idealY, introSchedule, landSchedule,
+  walkFrameIndex, GUIDE_COPY_SOURCES, GUIDE_LABELS, GUIDE_STOPS, INTRO_DONE, INTRO_PHASES, INTRO_START, MENU_STAGES, STRIP_RESERVE, activeStopId, deferStrip, idealY, introSchedule, sceneSchedule,
 } from "@/lib/marketing/tooly-guide";
 
 const allCopy = (value: unknown, out: Set<string> = new Set()): Set<string> => {
@@ -32,7 +32,7 @@ const allCopy = (value: unknown, out: Set<string> = new Set()): Set<string> => {
 const ALLOWED = allCopy(marketing);
 
 const ctx = (over: Partial<GuideCtx> = {}): GuideCtx => ({
-  ready: true, motion: false, hidden: false, setHidden: () => {}, intro: INTRO_DONE, mode: "strip", stage: false, menuOpen: false, setMenuOpen: () => {}, skip: () => {}, ...over,
+  ready: true, motion: false, hidden: false, setHidden: () => {}, intro: INTRO_DONE, mode: "strip", stripOn: true, stage: false, menuOpen: false, setMenuOpen: () => {}, skip: () => {}, replay: () => {}, ...over,
 });
 const withCtx = (value: GuideCtx, child: ReturnType<typeof createElement>) => renderToStaticMarkup(createElement(GuideContext.Provider, { value }, child));
 
@@ -60,19 +60,22 @@ describe("menu stages", () => {
     expect(open).not.toContain('data-on="false"'); // still panel: every stamp shown
   });
 
-  it("the intro never has a menu deck over the page: no deck phases, a short show, and it ends with Tooly placed", () => {
-    expect(INTRO_PHASES).toEqual(["drop", "land", "pull", "cheer"]);
-    const events = introSchedule();
-    let st = INTRO_START;
-    const phases = new Set<string>();
-    for (const ev of events) { st = ev.patch(st); phases.add(st.phase); }
-    expect([...phases].filter((p) => !["drop", "land", "pull", "cheer", "done"].includes(p))).toEqual([]);
-    expect(st).toEqual(INTRO_DONE);
-    expect(events[0].at).toBe(0);
-    expect(events.at(-1)!.at).toBeLessThan(5000);
-    expect(landSchedule().at(-1)!.patch(INTRO_START)).toEqual(INTRO_DONE);
-    // Nothing of the intro draws the stage list over the page: the stages appear only in the panel the person opens.
-    expect(readFileSync(path.join(process.cwd(), "components/marketing/tooly-guide.tsx"), "utf8")).not.toMatch(/tm-deck|tm-floor|data-scene/);
+  it("the intro and the replayed scene stamp every real stage once, in order, and end with Tooly placed; nothing is a deck over the page", () => {
+    expect(INTRO_PHASES).toEqual(["drop", "land", "pull", "stamp"]);
+    for (const events of [introSchedule(), sceneSchedule()]) {
+      let st = INTRO_START;
+      const rows: number[] = [];
+      const phases = new Set<string>();
+      for (const ev of events) { st = ev.patch(st); phases.add(st.phase); if (st.phase === "stamp" && !rows.includes(st.row)) rows.push(st.row); }
+      expect(rows).toEqual(FLOW_STEPS.map((_, i) => i));
+      expect(st.stamped).toBe(0); // INTRO_DONE resets
+      expect(st).toEqual(INTRO_DONE);
+      expect([...phases].filter((p) => !["drop", "land", "pull", "stamp", "done"].includes(p))).toEqual([]);
+      expect(events[0].at).toBe(0);
+      expect(events.at(-1)!.at).toBeLessThan(8000);
+    }
+    expect(sceneSchedule()[0].patch(INTRO_START).phase).toBe("pull"); // a replay starts at the bolt, with no drop
+    expect(readFileSync(path.join(process.cwd(), "components/marketing/tooly-guide.tsx"), "utf8")).not.toMatch(/tm-deck|tm-floor|data-scene="true"\s*\}?\s*>\s*<div className="tm-/);
   });
 });
 
@@ -155,7 +158,33 @@ describe("the caption strip", () => {
     expect(html).toContain(apos(GUIDE_STOPS[2].caption!));
   });
 
-  it("never mounts anything before the page has mounted, nor while he is hidden", () => {
+  it("the spanner scene is in the strip: the seven real stages as chips, stamped in order, with the caption kept for assistive tech", () => {
+    const stop = GUIDE_STOPS[0];
+    const html = renderToStaticMarkup(createElement(ToolyGuideView, { stop, pose: "stampDown", mode: "strip", motion: true, phase: "stamp", row: 2, stamped: 3, onHide: () => {} }));
+    expect(html).toContain('data-scene="true"');
+    const chips = html.match(/<li class="tg-chip"[^>]*>/g) ?? [];
+    expect(chips).toHaveLength(FLOW_STEPS.length);
+    expect(chips.filter((c) => c.includes('data-state="done"'))).toHaveLength(3);
+    for (const step of FLOW_STEPS) expect(html).toContain(`>${step.label}<`);
+    expect(html).toContain("tg-now");
+    expect(html).toContain(marketing.ILLUSTRATION_LABEL); // the example carries its label
+    expect(html).toContain(`>${FLOW_STEPS[2].stamp}<`);
+    const live = html.slice(html.indexOf('class="tg-live"'), html.indexOf('class="tg-scene"'));
+    expect(live).toContain('data-hidden="true"'); // the caption is only hidden to the eye while the scene plays
+    expect(live).toContain(apos(stop.caption!));
+    expect(html.slice(html.indexOf('class="tg-scene"'))).toContain('aria-hidden="true"');
+    expect(view(stop)).not.toContain("tg-scene"); // not in the ordinary strip
+  });
+
+  it("where the strip would cover the hero's call to action (a phone at the top) it waits for a first scroll; never in the gutter", () => {
+    expect(deferStrip("strip", 760, 844)).toBe(true); // 390 x 844: the button's foot is under a 112 px strip
+    expect(deferStrip("strip", 430, 768)).toBe(false); // a tablet: clear
+    expect(deferStrip("strip", 844 - STRIP_RESERVE, 844)).toBe(false);
+    expect(deferStrip("gutter", 2000, 900)).toBe(false);
+  });
+
+  it("never mounts anything before the page has mounted, nor while he is hidden, nor before the strip is up", () => {
+    expect(withCtx(ctx({ stripOn: false }), createElement(ToolyGuide))).toBe("");
     expect(withCtx(ctx({ ready: false }), createElement(ToolyGuide))).toBe("");
     expect(renderToStaticMarkup(createElement(ToolyGuide))).toBe("");
     expect(withCtx(ctx({ hidden: true }), createElement(ToolyGuide))).toBe("");
@@ -205,16 +234,23 @@ describe("where he may be (the no-overlap rule)", () => {
     }
   });
 
-  it("the caption has no bubble anywhere: not in the source, not in the styles; the strip is fixed and the page scroll area ends above it", () => {
+  it("the window scrolls natively: no scroll container, no overflow, height or transform on an ancestor; the strip is a fixed bar with safe-area padding and the page keeps end padding", () => {
     const root = process.cwd();
     const css = readFileSync(path.join(root, "components/marketing/marketing.css"), "utf8");
     const guide = readFileSync(path.join(root, "components/marketing/tooly-guide.tsx"), "utf8");
+    const state = readFileSync(path.join(root, "components/marketing/tooly-guide-state.tsx"), "utf8");
     const lib = readFileSync(path.join(root, "lib/marketing/tooly-guide.ts"), "utf8");
-    for (const text of [css, guide, lib]) expect(text).not.toMatch(/tg-bubble|choosePlacement|leastCovered|tg-controls|Tooly says/);
-    expect(css).toMatch(/\.tg-strip \{[^}]*position: fixed;[^}]*bottom: 0;/);
-    expect(css).toMatch(/\.mk-sheet\.tg-docked \{[^}]*height: calc\(100dvh - var\(--tg-strip-h/);
-    expect(css).toMatch(/html\.tg-docked \{ overflow: hidden; \}/);
+    for (const text of [css, guide, lib, state]) expect(text).not.toMatch(/tg-bubble|choosePlacement|leastCovered|tg-controls|Tooly says|tg-docked/);
+    for (const text of [guide, state]) expect(text).not.toMatch(/\.scrollTop|scrollTo\(|overflow\s*=|style\.overflow/);
+    const tooly = css.slice(css.indexOf("Tooly as a living guide"));
+    expect(tooly).not.toMatch(/html[^{}]*\{[^}]*overflow/);
+    expect(tooly).not.toMatch(/\.mk-sheet[^{}]*\{[^}]*(overflow|height:|transform)/);
+    expect(tooly).toMatch(/\.tg-strip \{[^}]*position: fixed;[^}]*bottom: 0;[^}]*padding-bottom: env\(safe-area-inset-bottom/);
+    expect(tooly).toMatch(/\.mk-sheet\.tg-on \{ padding-bottom: var\(--tg-strip-h/);
+    expect(tooly).toMatch(/html\.tg-on \{ scroll-padding-bottom: var\(--tg-strip-h/);
+    expect(tooly).toMatch(/\.mk-sheet\.tg-on \[id\] \{ scroll-margin-bottom: var\(--tg-strip-h/);
     expect(guide).toContain("--tg-strip-h");
+    expect(guide).toContain("ResizeObserver");
   });
 
   it("follows the scroll down the gutter from the top of the page to the foot, staying in range", () => {
@@ -298,7 +334,7 @@ describe("the on-model frames", () => {
     expect(html).toContain("/tooly/point-upleft.webp");
   });
 
-  it("the intro uses the frames in order: air, land, spanner reach and heave (three times), rest, stamp up and down once, then the wave", () => {
+  it("the intro uses the frames in order: air, land, spanner reach and heave (three times), rest, stamp up and down once per stage, then the wave", () => {
     let st = INTRO_START;
     const seen: string[] = [];
     let notch = 0;
@@ -307,7 +343,7 @@ describe("the on-model frames", () => {
     expect(seen.filter((l) => l === "heave")).toHaveLength(3);
     expect(notch).toBe(3);
     expect(seen.indexOf("rest")).toBeGreaterThan(seen.lastIndexOf("heave"));
-    expect(seen.filter((l) => l === "stampDown")).toHaveLength(1);
+    expect(seen.filter((l) => l === "stampDown")).toHaveLength(FLOW_STEPS.length);
     expect(seen.indexOf("stampUp")).toBeGreaterThan(seen.indexOf("rest"));
     expect(seen.at(-1)).toBe("wave");
   });

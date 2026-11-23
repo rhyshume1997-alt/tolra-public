@@ -59,54 +59,56 @@ export const GUIDE_COPY_SOURCES: readonly string[] = GUIDE_STOPS.flatMap((s) => 
 // The intro: Tooly drops in, pulls the menu down with his spanner in three notches, then the document goes down the real stages.
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-export type IntroPhase = "off" | "wait" | "drop" | "land" | "pull" | "cheer" | "done";
+export type IntroPhase = "off" | "wait" | "drop" | "land" | "pull" | "stamp" | "done";
 /** What he looks like: one of the on-model frames (air, land, reach, heave, rest, stamp up, stamp down) or one of the original stills. */
 export type IntroLook = "air" | "land" | "reach" | "heave" | "rest" | "stampUp" | "stampDown" | ToolyPose;
-export type IntroState = { phase: IntroPhase; notch: 0 | 1 | 2 | 3; swing: number; look: IntroLook };
-export const INTRO_START: IntroState = { phase: "off", notch: 0, swing: 0, look: "idle" };
+/** `row`: the stage being stamped (-1 before), `stamped`: how many stages carry their stamp, `notch`: heaves so far (0 to 3). */
+export type IntroState = { phase: IntroPhase; notch: 0 | 1 | 2 | 3; row: number; stamped: number; swing: number; look: IntroLook };
+export const INTRO_START: IntroState = { phase: "off", notch: 0, row: -1, stamped: 0, swing: 0, look: "idle" };
 export const INTRO_WAIT: IntroState = { ...INTRO_START, phase: "wait" };
 export const INTRO_DONE: IntroState = { ...INTRO_START, phase: "done", look: "wave" };
-/** The phases in which the intro is running (nothing else moves him). */
-export const INTRO_PHASES: readonly IntroPhase[] = ["drop", "land", "pull", "cheer"];
+/** The phases in which the scene is running (nothing else moves him). */
+export const INTRO_PHASES: readonly IntroPhase[] = ["drop", "land", "pull", "stamp"];
 
 export const FALL_MS = 420; // the weighted fall, then the landing frame (inside the 120 to 700 ms range for a one-off hero moment)
 export const LAND_MS = 380;
 export const DROP_MS = FALL_MS + LAND_MS;
-const PULL_AT = [1000, 1500, 2000] as const; // three heaves, each a hold of "heave" then back to "reach"
+const PULL_AT = [200, 700, 1200] as const; // after the landing: three heaves, each a hold of "heave" then back to "reach"
 const HEAVE_MS = 380;
-/** How far the ledge he stands on is let down the cable at each heave (px), and where he first lands (px from the top of the window). */
+export const STAMP_MS = 460; // per stage
+/** How far the ledge he stands on is let down the cable at each heave (px), and where he first lands (px from the top of the window). Gutter only. */
 export const LEDGE_STEP = 34;
 export const INTRO_TOP = 84;
 
 export type IntroEvent = { at: number; patch: (s: IntroState) => IntroState };
+
 /**
- * Only where the right-hand gutter is clear (see guideMode): he drops into the gutter onto a ledge that hangs from the header on a cable, takes
- * hold of the bolt, lowers the ledge in three heaves, rests the spanner on his shoulder, stamps the paper once and walks off down the gutter.
- * Nothing in it passes over the page's content: the ledge, the cable and he are all inside the empty gutter. About 4 s.
+ * The "spanner works the Job stages menu" scene. It plays INSIDE the caption strip, beside a compact row of the seven real stages (FLOW_STEPS),
+ * so nothing of it is ever over the page: he takes hold of the bolt (reach), heaves three times, rests the spanner on his shoulder, then stamps
+ * each stage in turn (stamp up, stamp down; the stage's chip takes its stamp), then waves. Times are from the start of the scene.
  */
-export function introSchedule(): IntroEvent[] {
-  const ev: IntroEvent[] = [
-    { at: 0, patch: (s) => ({ ...s, phase: "drop", look: "air" }) },
-    { at: FALL_MS, patch: (s) => ({ ...s, phase: "land", look: "land" }) },
-    { at: DROP_MS, patch: (s) => ({ ...s, phase: "pull", look: "reach" }) },
-  ];
+export function sceneSchedule(): IntroEvent[] {
+  const ev: IntroEvent[] = [{ at: 0, patch: (s) => ({ ...s, phase: "pull", look: "reach" }) }];
   PULL_AT.forEach((at, i) => {
     ev.push({ at, patch: (s) => ({ ...s, notch: (i + 1) as 1 | 2 | 3, swing: s.swing + 1, look: "heave" }) });
     ev.push({ at: at + HEAVE_MS, patch: (s) => ({ ...s, look: "reach" }) });
   });
-  const end = PULL_AT[2] + HEAVE_MS;
-  ev.push({ at: end + 150, patch: (s) => ({ ...s, look: "rest" }) });
-  ev.push({ at: end + 700, patch: (s) => ({ ...s, phase: "cheer", look: "stampUp" }) });
-  ev.push({ at: end + 950, patch: (s) => ({ ...s, look: "stampDown" }) });
-  ev.push({ at: end + 1600, patch: () => INTRO_DONE });
+  const afterPull = PULL_AT[2] + HEAVE_MS + 150;
+  ev.push({ at: afterPull, patch: (s) => ({ ...s, look: "rest" }) });
+  const stampAt = afterPull + 550;
+  FLOW_STEPS.forEach((_, i) => {
+    ev.push({ at: stampAt + i * STAMP_MS, patch: (s) => ({ ...s, phase: "stamp", row: i, swing: s.swing + 1, look: "stampUp" }) });
+    ev.push({ at: stampAt + i * STAMP_MS + 240, patch: (s) => ({ ...s, look: "stampDown", stamped: i + 1 }) });
+  });
+  ev.push({ at: stampAt + FLOW_STEPS.length * STAMP_MS + 500, patch: () => INTRO_DONE });
   return ev.sort((a, b) => a.at - b.at);
 }
-/** Where there is no clear gutter (tablets, phones, narrow windows): he drops into the caption strip (air, then the landing frame) and settles. */
-export function landSchedule(): IntroEvent[] {
+/** The one-time intro: the drop (air, then the landing frame) and straight into the scene. */
+export function introSchedule(): IntroEvent[] {
   return [
     { at: 0, patch: (s) => ({ ...s, phase: "drop", look: "air" }) },
     { at: FALL_MS, patch: (s) => ({ ...s, phase: "land", look: "land" }) },
-    { at: DROP_MS + 60, patch: () => INTRO_DONE },
+    ...sceneSchedule().map((e) => ({ at: e.at + DROP_MS, patch: e.patch })),
   ];
 }
 export const INTRO_TOTAL_MS = introSchedule().at(-1)!.at;
@@ -121,12 +123,21 @@ export const INTRO_TOTAL_MS = introSchedule().at(-1)!.at;
 export const FIGURE_SIZE = 104; // his width in the gutter (css px)
 export const FIGURE_MARGIN = 18; // between him and the window's right edge
 export const GUTTER_NEEDED = FIGURE_SIZE + FIGURE_MARGIN + 4; // he must clear the content column by at least 4 px
-export const STRIP_FIGURE = 44; // his width inside the strip
+export const STRIP_FIGURE = 46; // his width inside the strip
 
 export type GuideMode = "gutter" | "strip";
 /** The gutter, from the measured right edge of the content column (the widest container's content box) and the width of the scroll area. */
 export const gutterWidth = (clientWidth: number, contentRight: number) => Math.max(0, clientWidth - contentRight);
 export const guideMode = (gutter: number): GuideMode => (gutter >= GUTTER_NEEDED ? "gutter" : "strip");
+/**
+ * The strip may cover the first screen's call to action (and the link under it) where it would: on a phone at the top of the page. Then the strip
+ * waits until the person has scrolled a little (STRIP_RELEASE_PX), so the hero's call to action is never under it at rest. `heroBottom` is the lowest
+ * edge of the hero's call to action and its link, `viewportH` the window height; STRIP_RESERVE is the tallest the strip gets (about 100 px, plus the
+ * home-bar inset).
+ */
+export const STRIP_RESERVE = 112;
+export const STRIP_RELEASE_PX = 40;
+export const deferStrip = (mode: GuideMode, heroBottom: number, viewportH: number) => mode === "strip" && heroBottom > viewportH - STRIP_RESERVE;
 /** His left edge in the gutter, and the trail's centre. */
 export const gutterX = (clientWidth: number) => clientWidth - FIGURE_SIZE - FIGURE_MARGIN;
 

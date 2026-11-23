@@ -1149,9 +1149,10 @@ details[open] > summary .mk-plus {
 /*
  * Tooly as a living guide (components/marketing/tooly-menu.tsx, tooly-guide.tsx, tooly-guide-state.tsx; data in lib/marketing/tooly-guide.ts).
  * .tm-*  the header's "Job stages" button and the panel it opens when pressed (a menu: it may lie over the page like any menu).
- * .tg-strip  the caption strip: a fixed bar at the foot of the window that OWNS its space. While Tooly is shown the marketing root becomes the
- *        page's scroll area and ends exactly above the strip (.mk-sheet.tg-docked), so the strip is never over the content, footer or call to
- *        action. It is as tall as the tallest caption (every caption is laid out invisibly in one grid cell), so it never changes height.
+ * .tg-strip  the caption strip: a distinct, opaque bar fixed to the foot of the window (safe-area padding under it). The window scrolls as it
+ *        always did; the page keeps end padding and scroll-padding as tall as the strip (.mk-sheet.tg-on, --tg-strip-h), so the footer, the call
+ *        to action at the end and a jumped-to heading are never under it. It is as tall as the tallest caption (every caption is laid out
+ *        invisibly in one grid cell), so it never changes height. The spanner scene plays inside it (.tg-scene), never over the page.
  * .tg    Tooly himself, only in the empty right-hand gutter beside the content column (the component measures it at run time and mounts him
  *        only when it is wide enough), with his trail and, in the first seconds, a ledge on a cable. Never over content.
  * Ink and white, 1px rules, square corners, no shadow, no gradient. Motion is transform and opacity only, inside the no-preference query and
@@ -1184,27 +1185,25 @@ details[open] > summary .mk-plus {
 .tm-foot { margin: 0; padding: 0.25rem 0.75rem; border-top: 1px solid var(--mk-ink); }
 .tm-foot a { display: inline-flex; min-height: 2.75rem; align-items: center; font-weight: 600; }
 
-/* Docked: the marketing root is the scroll area, and ends above the caption strip. The window itself does not scroll (hiding Tooly undoes this). */
-html.tg-docked { overflow: hidden; }
-.mk-sheet.tg-docked {
-  position: relative;
-  flex: none;
-  height: calc(100vh - var(--tg-strip-h, 4.5rem));
-  height: calc(100dvh - var(--tg-strip-h, 4.5rem));
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
+/* While the strip is up (class tg-on, set by tooly-guide-state.tsx) the page keeps room for it, and the window scrolls as it always did: the root
+   gets end padding as tall as the strip (so the footer and the call to action at the page end are never under it) and the page gets matching
+   scroll-padding (so a jumped-to heading is never under it). --tg-strip-h is the strip's measured height, set once fonts are in. No overflow,
+   height or transform is changed on any ancestor, so position: fixed and the window's scrolling behave natively on iOS. */
+.mk-sheet.tg-on { padding-bottom: var(--tg-strip-h, 0px); }
+html.tg-on { scroll-padding-bottom: var(--tg-strip-h, 0px); }
+.mk-sheet.tg-on [id] { scroll-margin-bottom: var(--tg-strip-h, 0px); }
 
 /* The caption strip. */
+.tg-strip[data-shown="false"] { visibility: hidden; }
 .tg-strip {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
   z-index: 60;
-  background: #fff;
+  background: #fff; /* opaque: a distinct bar, like a cookie bar */
   border-top: 1px solid var(--mk-ink);
+  padding-bottom: env(safe-area-inset-bottom, 0px); /* clear of the iPhone home bar */
 }
 .tg-strip-in {
   display: flex;
@@ -1216,12 +1215,14 @@ html.tg-docked { overflow: hidden; }
 }
 @media (min-width: 640px) { .tg-strip-in { padding-inline: 1.5rem; } }
 @media (min-width: 1024px) { .tg-strip-in { padding-inline: 2.5rem; } }
-.tg-strip-fig { position: relative; flex: none; width: 44px; height: 54px; clip-path: inset(0 -24px 0 -24px); }
+.tg-strip-fig { position: relative; flex: none; clip-path: inset(0 -24px 0 -24px); } /* width and height from the figure size */
 .tg-strip-text { position: relative; flex: 1 1 auto; min-width: 0; }
-.tg-sizers { display: grid; }
+.tg-sizers { display: grid; min-height: 3.5rem; align-content: center; }
 .tg-sizers .tg-line { grid-area: 1 / 1; visibility: hidden; }
-.tg-live { position: absolute; inset: 0; }
+.tg-live { position: absolute; inset: 0; display: flex; align-items: center; }
+.tg-live[data-hidden="true"] { opacity: 0; }
 .tg-line { margin: 0; font-size: 0.9375rem; line-height: 1.4; max-width: none; }
+.tg-live .tg-line { width: 100%; }
 .tg-label { margin-right: 0.35em; }
 .tg-btn {
   flex: none;
@@ -1241,12 +1242,25 @@ html.tg-docked { overflow: hidden; }
 .tg-btn:hover { background: var(--mk-signal-wash); }
 /* Phones: the figure and the button stack in one narrow column so the caption gets the width, and the strip stays slim. */
 @media (max-width: 480px) {
-  .tg-strip-in { display: grid; grid-template-columns: auto 1fr; grid-template-areas: "fig text" "btn text"; align-items: center; column-gap: 0.75rem; row-gap: 0.25rem; padding-block: 0.375rem; }
+  .tg-strip-in { display: grid; grid-template-columns: auto 1fr; grid-template-areas: "fig text" "btn text"; align-items: center; column-gap: 0.75rem; row-gap: 0.25rem; padding-block: 0.25rem; }
   .tg-strip-fig { grid-area: fig; justify-self: center; }
   .tg-strip-text { grid-area: text; }
-  .tg-btn { grid-area: btn; padding: 0 0.5rem; }
-  .tg-line { font-size: 0.8125rem; line-height: 1.35; }
+  .tg-btn { grid-area: btn; padding: 0 0.5rem; min-height: 40px; }
+  .tg-line { font-size: 0.78125rem; line-height: 1.3; }
 }
+
+/* The spanner scene, in the strip: the seven real stages as a compact row of chips (the number always, the name where there is room), each taking its stamp in turn. */
+.tg-scene { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
+.tg-sceneline { margin: 0; height: 18px; line-height: 18px; white-space: nowrap; overflow: hidden; max-width: none; font-size: 0.8125rem; }
+.tg-chips { display: flex; flex-wrap: nowrap; gap: 4px; margin: 0; padding: 0; height: 26px; list-style: none; }
+.tg-chip { display: flex; align-items: center; gap: 0.35em; min-height: 26px; padding: 0 6px; border: 1px solid var(--mk-rule-soft); background: #fff; color: var(--mk-ink-2); font-size: 0.75rem; line-height: 1; white-space: nowrap; }
+.tg-chip .tg-nm { display: none; font-family: var(--mk-font-display), "Barlow Condensed", "Arial Narrow", sans-serif; font-size: 0.9375rem; font-weight: 600; }
+@media (min-width: 1100px) { .tg-chip .tg-nm { display: inline; } }
+.tg-chip[data-state="now"] { border-color: var(--mk-signal); background: var(--mk-signal-wash); color: var(--mk-ink); }
+.tg-chip[data-state="done"] { border: 2px double var(--mk-ink); color: var(--mk-ink); background: #fff; }
+.tg-now { margin: 0; display: flex; align-items: center; flex-wrap: nowrap; gap: 0.5em; height: 24px; overflow: hidden; white-space: nowrap; max-width: none; font-size: 0.8125rem; line-height: 1.2; }
+.tg-nowname { font-size: 1.0625rem; font-weight: 600; }
+.tg-stamp { padding: 0 6px; border: 2px double var(--mk-ink); font-size: 0.75rem; text-transform: uppercase; transform: rotate(-4deg); }
 
 /* Tooly himself, in the gutter. His box is a crop of the 768 px stills (he fills x 195..625, y 212..742), so --fw is his width. */
 .tg {
@@ -1292,7 +1306,10 @@ html.tg-docked { overflow: hidden; }
   .tg[data-quiet="false"][data-phase="done"][data-arrive="b"] .tg-fig { animation: tg-arrive-b 440ms both; }
   .tg[data-phase="drop"] .tg-fig { animation: tg-fall 420ms cubic-bezier(0.55, 0, 1, 0.45) both; }
   .tg[data-phase="land"] .tg-fig { animation: tg-settle 380ms ease-out both; }
+  .tg-strip[data-shown="true"] { animation: tg-slide 260ms ease-out both; }
   .tg-strip[data-phase="drop"] .tg-strip-fig .tg-fig { animation: tg-fall-strip 420ms cubic-bezier(0.55, 0, 1, 0.45) both; }
+  .tg-chip[data-state="done"] { animation: tg-chip-hit 300ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .tg-stamp { animation: tg-chip-hit 300ms cubic-bezier(0.16, 1, 0.3, 1) both; }
   .tg-strip[data-phase="land"] .tg-strip-fig .tg-fig { animation: tg-settle 380ms ease-out both; }
   .tg-ledge, .tg-cable { animation: tg-appear 200ms ease-out both; }
   .tg-body { transition: opacity 90ms linear; }
@@ -1301,6 +1318,8 @@ html.tg-docked { overflow: hidden; }
 /* The drop: the "air" frame falls from above the window; the "land" frame (already squashed) lands and settles. */
 @keyframes tg-fall { 0% { transform: translateY(-320px); } 100% { transform: translateY(0); } }
 @keyframes tg-fall-strip { 0% { transform: translateY(-64px); } 100% { transform: translateY(0); } }
+@keyframes tg-slide { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes tg-chip-hit { 0% { transform: scale(1.5); opacity: 0.2; } 100% { transform: none; opacity: 1; } }
 @keyframes tg-appear { from { opacity: 0; } to { opacity: 1; } }
 @keyframes tg-settle { 0% { transform: translateY(-10px); animation-timing-function: ease-in; } 45% { transform: translateY(0) scale(1.02, 0.98); animation-timing-function: ease-out; } 100% { transform: none; } }
 @keyframes tg-arrive-a { 0% { transform: translateY(-9px) scale(0.97, 1.04); animation-timing-function: ease-in; } 45% { transform: scale(1.06, 0.92); animation-timing-function: ease-out; } 100% { transform: none; } }

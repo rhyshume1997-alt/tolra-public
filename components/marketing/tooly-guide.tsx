@@ -3,26 +3,30 @@
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type MutableRefObject, type Ref } from "react";
 
-import { scrollTopNow, sheetRoot, useToolyGuide } from "@/components/marketing/tooly-guide-state";
+import { sheetRoot, useToolyGuide } from "@/components/marketing/tooly-guide-state";
+import { FLOW_JOB, ILLUSTRATION_LABEL } from "@/lib/marketing";
 import { TOOLY_POSES, type ToolyPose } from "@/components/tooly/poses";
 import {
-  FIGURE_SIZE, FRAME_FILE, FRAME_SET, FRAME_SRC, GUIDE_LABELS, GUIDE_STOPS, INTRO_PHASES, INTRO_TOP, LEDGE_STEP, STRIP_FIGURE, WALK_FRAMES, activeStopId, boltX, frameLayout,
+  FIGURE_SIZE, FRAME_FILE, MENU_STAGES, FRAME_SET, FRAME_SRC, GUIDE_LABELS, GUIDE_STOPS, INTRO_PHASES, INTRO_TOP, LEDGE_STEP, STRIP_FIGURE, WALK_FRAMES, activeStopId, boltX, frameLayout,
   gutterX, idealY, lookForPose, walkFrameIndex, FIGURE_MARGIN,
   type FrameKey, type GuideMode, type GuideStop, type IntroLook,
 } from "@/lib/marketing/tooly-guide";
 
 // Inputs: the guide state (tooly-guide-state.tsx), the stops in lib/marketing/tooly-guide.ts and the page's own sections (found by id).
-// Output, two parts that never touch the page's content:
-//  1. the CAPTION STRIP: a fixed bar at the foot of the window that owns its space (the page's scroll area ends above it, see marketing.css
-//     .mk-sheet.tg-docked): his caption (an existing string from lib/marketing.ts) as real text in a polite live region, the "Hide Tooly" button
-//     and, where there is no clear gutter, a small Tooly figure at its left;
+// Output, two parts:
+//  1. the CAPTION STRIP: a distinct, opaque bar fixed to the foot of the window (safe-area padding under it; the window scrolls natively and the
+//     page keeps end padding as tall as the strip, see marketing.css .mk-sheet.tg-on): his caption (an existing string from lib/marketing.ts) as
+//     real text in a polite live region, the "Hide Tooly" button and, where there is no clear gutter, a small Tooly figure at its left. The
+//     spanner scene (reach, three heaves, rest, then a stamp for each of the seven real stages) plays inside it, beside a compact row of stage chips;
 //  2. only where the right-hand gutter beside the content column is wide enough (measured at run time): a floating Tooly who walks down the
-//     gutter with the scroll, changing pose per section, with a dotted trail behind him and, in the first seconds, a ledge on a cable.
-// Must not change: nothing of his is ever placed over a content box, heading, text, card, link or form field (the figure, trail and ledge exist
-// only in the measured gutter; the caption only in the strip); he is decorative (every image aria-hidden, no pointer events) and the caption is
-// real text, kept whether or not he moves; transform and opacity only; no per-frame React renders; frames pause with the tab; for reduced motion
-// there is no drop, walk, blink or trail animation (a still figure in the gutter or the strip, the same captions, a full trail); hiding him is
-// remembered in sessionStorage only and the Show button is in the header; nothing traps focus; no network call.
+//     gutter with the scroll, changing pose per section, with a dotted trail behind him and, in the scene, a ledge on a cable.
+// Must not change: nothing of his except the strip itself is ever over a content box, heading, text, card, link or form field (the figure, trail
+// and ledge exist only in the measured gutter; the caption and the scene only in the strip); the strip never covers the hero's call to action at
+// rest (it waits for a first scroll where it would) nor the footer at the page end; he is decorative (every image aria-hidden, no pointer events)
+// and the caption is real text, kept whether or not he moves; transform and opacity only; no per-frame React renders; frames pause with the tab;
+// for reduced motion there is no drop, walk, blink, scene or trail animation (a still figure in the gutter or the strip, the same captions, a full
+// trail); hiding him is remembered in sessionStorage only and the Show button is in the header; nothing traps focus; no network call. No overflow,
+// height or transform is ever set on an ancestor of the strip (iOS Safari keeps position: fixed and native scrolling).
 // Tooly is only ever drawn from the on-model art: the nine original stills and the supplied frames (air, land, spanner reach/heave/rest, stamp
 // up/down, clipboard, point up-left, a four-frame side-view walk), normalised to one crop, one scale and one foot baseline (lib/marketing/
 // tooly-guide.ts), so a swap never moves his feet. Frames load only when needed, lazily, decoded async, in a fixed-size box, so nothing shifts.
@@ -112,22 +116,36 @@ export type ToolyGuideViewProps = {
   /** Reduced motion: nothing animates. */
   motion: boolean;
   phase?: string;
+  /** False while the strip is laid out but not yet shown (its fonts are still arriving), so its final height is the only one anyone sees. */
+  shown?: boolean;
+  /** His width in the strip (css px): a little smaller on a phone so the strip stays about 100 px tall. */
+  figureSize?: number;
+  /** The scene's step: the stage being stamped (-1 before the stamping) and how many stages carry their stamp. */
+  row?: number;
+  stamped?: number;
   onHide: () => void;
   stripRef?: Ref<HTMLElement>;
 };
 
+const SCENE_PHASES = ["pull", "stamp"];
+
 /**
- * The caption strip. Every caption is laid out invisibly in one grid cell, so the strip is as tall as the tallest caption at this width and never
- * changes height from one stop to the next (the page's scroll area ends exactly above it); the visible caption is a separate live region on top.
- * Used by the live component and by the tests (which render it with motion off).
+ * The caption strip: a distinct opaque bar fixed to the foot of the window (safe-area padding underneath), never part of the page. Every caption is
+ * laid out invisibly in one grid cell, so the strip is as tall as the tallest caption at this width and never changes height from one stop to
+ * the next; the visible caption is a separate live region on top. While the spanner scene plays, a compact row of the seven real stages (FLOW_STEPS)
+ * takes the caption's place and each stage's chip takes its stamp in turn. Used by the live component and by the tests (which render it with motion off).
  */
 export function ToolyGuideView(p: ToolyGuideViewProps) {
+  const scene = SCENE_PHASES.includes(p.phase ?? "done");
+  const row = p.row ?? -1;
+  const stamped = p.stamped ?? 0;
+  const now = MENU_STAGES[Math.max(0, Math.min(row, MENU_STAGES.length - 1))];
   return (
-    <aside ref={p.stripRef} className="tg-strip" data-tg data-mode={p.mode} data-motion={p.motion} data-phase={p.phase ?? "done"} aria-label={GUIDE_LABELS.region}>
+    <aside ref={p.stripRef} className="tg-strip" data-tg data-mode={p.mode} data-motion={p.motion} data-phase={p.phase ?? "done"} data-scene={scene} data-shown={p.shown ?? true} aria-label={GUIDE_LABELS.region}>
       <div className="tg-strip-in">
         {p.mode === "strip" ? (
-          <div className="tg-strip-fig" aria-hidden="true">
-            <Figure look={p.pose} size={STRIP_FIGURE} frames={p.frames ?? DEFAULT_FRAMES} />
+          <div className="tg-strip-fig" aria-hidden="true" style={{ width: p.figureSize ?? STRIP_FIGURE, height: Math.round((p.figureSize ?? STRIP_FIGURE) * 1.2326) }}>
+            <Figure look={p.pose} size={p.figureSize ?? STRIP_FIGURE} frames={p.frames ?? DEFAULT_FRAMES} />
           </div>
         ) : null}
         <div className="tg-strip-text">
@@ -136,9 +154,25 @@ export function ToolyGuideView(p: ToolyGuideViewProps) {
               <p key={s.id} className="tg-line"><span className="tg-label mk-label">{s.label}</span> <span className="tg-text">{s.caption}</span></p>
             ))}
           </div>
-          <div id="tg-note" className="tg-live" role="status" aria-live="polite">
+          <div id="tg-note" className="tg-live" role="status" aria-live="polite" data-hidden={scene}>
             {p.stop.caption ? <p key={p.stop.id} className="tg-line"><span className="tg-label mk-label">{p.stop.label}</span> <span className="tg-text">{p.stop.caption}</span></p> : null}
           </div>
+          {scene ? (
+            <div className="tg-scene" aria-hidden="true">
+              <p className="tg-sceneline"><span className="mk-mono">{FLOW_JOB.number}</span> <span className="mk-label">{ILLUSTRATION_LABEL}</span></p>
+              <ol className="tg-chips">
+                {MENU_STAGES.map((stage, i) => (
+                  <li key={stage.id} className="tg-chip" data-state={stamped > i ? "done" : row === i ? "now" : "todo"} title={stage.label}>
+                    <span className="tg-op mk-mono">{stage.op}</span>
+                    <span className="tg-nm">{stage.label}</span>
+                  </li>
+                ))}
+              </ol>
+              <p className="tg-now">
+                {row >= 0 ? <><span className="tg-nowname mk-display">{now.label}</span>{stamped > row ? <span className="tg-stamp mk-mono">{now.stamp}</span> : null}</> : null}
+              </p>
+            </div>
+          ) : null}
         </div>
         <button type="button" className="tg-btn" onClick={p.onHide}>{GUIDE_LABELS.hide}</button>
       </div>
@@ -151,17 +185,16 @@ function resolve(stop: GuideStop): Element | null {
   return el && stop.up ? el.closest(stop.up) : el;
 }
 
-/** The window's scroll area: the marketing root while docked, else the window. */
-const area = () => {
-  const root = sheetRoot();
-  const docked = Boolean(root?.classList.contains("tg-docked"));
-  return {
-    w: docked && root ? root.clientWidth : document.documentElement.clientWidth,
-    h: docked && root ? root.clientHeight : window.innerHeight,
-    top: scrollTopNow(),
-    total: docked && root ? root.scrollHeight : document.documentElement.scrollHeight,
-  };
-};
+/** The strip's height as last measured (set on the root element by the strip's own observer). */
+const stripHeight = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--tg-strip-h")) || 0;
+
+/** The window, less the strip. */
+const area = () => ({
+  w: document.documentElement.clientWidth,
+  h: window.innerHeight - stripHeight(), // the part of the window above the strip
+  top: window.scrollY,
+  total: document.documentElement.scrollHeight,
+});
 
 export function ToolyGuide() {
   const g = useToolyGuide();
@@ -177,6 +210,7 @@ export function ToolyGuide() {
   const trailRect = useRef<SVGRectElement | null>(null);
   const walkRefs = useRef<Array<HTMLImageElement | null>>([]);
   const [walkReady, setWalkReady] = useState(false);
+  const [shown, setShown] = useState(false);
   const live = useRef({ settled, phase: "off", gutter: false, motion: true, vw: 1280, pos: { x: 0, y: -400, set: false }, maxDoc: 0, lastScroll: 0, raf: 0, last: 0, travel: 0, walkIdx: -1, notch: 0 });
   const stop = GUIDE_STOPS.find((s) => s.id === captionId) ?? GUIDE_STOPS[0];
 
@@ -195,10 +229,7 @@ export function ToolyGuide() {
 
   // Which frames are in the page: the point up-left always; the intro's frames once the page has loaded; the walk when he first has to walk.
   const frames = new Set<FrameKey>(["pointUpLeft"]);
-  if (motion && (inIntro || waiting)) {
-    frames.add("air"); frames.add("land");
-    if (gutter && g?.stage) (["reach", "heave", "rest", "stampUp", "stampDown"] as FrameKey[]).forEach((k) => frames.add(k));
-  }
+  if (motion && (inIntro || waiting)) (["air", "land", "reach", "heave", "rest", "stampUp", "stampDown"] as FrameKey[]).forEach((k) => frames.add(k));
   if (stop.pose === "clipboard") frames.add("clipboard");
   if (motion && gutter && walkReady) WALK_FRAMES.forEach((k) => frames.add(k));
 
@@ -218,7 +249,7 @@ export function ToolyGuide() {
     const x = gutterX(a.w);
     if (!s.motion) return { x, y: Math.max(8, a.h - figH - 12) }; // reduced motion: one fixed place at the foot of the gutter
     if (INTRO_PHASES.includes(s.phase as never)) return { x, y: INTRO_TOP + s.notch * LEDGE_STEP };
-    const progress = a.top / Math.max(1, a.total - a.h);
+    const progress = a.top / Math.max(1, a.total - window.innerHeight);
     return { x, y: idealY(progress, 80, a.h - figH - 12) };
   }, [figH]);
 
@@ -282,17 +313,29 @@ export function ToolyGuide() {
     return () => window.removeEventListener("resize", onResize);
   }, [g?.ready, kick]);
 
-  // The strip owns its space: the page's scroll area is as tall as the window minus the strip (marketing.css), so nothing is ever under it.
+  // The strip is laid out first (which is what asks for its fonts) and shown once they are in, so it never changes height after anyone sees it.
+  useEffect(() => {
+    if (!g?.ready || hidden || !g.stripOn) return;
+    let alive = true;
+    const show = () => { if (alive) requestAnimationFrame(() => { if (alive) setShown(true); }); };
+    const timer = window.setTimeout(show, 1200);
+    const fonts = (document as Document & { fonts?: { ready: Promise<unknown> } }).fonts;
+    requestAnimationFrame(() => { if (fonts?.ready) fonts.ready.then(() => { window.clearTimeout(timer); show(); }).catch(show); else show(); });
+    return () => { alive = false; window.clearTimeout(timer); };
+  }, [g?.ready, g?.stripOn, hidden]);
+
+  // The strip's height, measured once its fonts are in and again if it changes (a resize), is published as --tg-strip-h: the page's end padding
+  // and its scroll-padding use it, so the footer, the call to action at the end and any jumped-to heading are never under the strip.
   useEffect(() => {
     const el = strip.current;
-    const sheet = sheetRoot();
-    if (!g?.ready || hidden || !el || !sheet) return;
-    const set = () => { sheet.style.setProperty("--tg-strip-h", `${Math.ceil(el.getBoundingClientRect().height)}px`); setVw(area().w); kick(); };
+    if (!g?.ready || hidden || !g.stripOn || !el) return;
+    const html = document.documentElement;
+    const set = () => { html.style.setProperty("--tg-strip-h", `${Math.ceil(el.getBoundingClientRect().height)}px`); setVw(area().w); kick(); };
     set();
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(set);
     observer?.observe(el);
     return () => observer?.disconnect();
-  }, [g?.ready, hidden, mode, kick]);
+  }, [g?.ready, g?.stripOn, hidden, mode, kick]);
 
   // The reading line: the last stop whose section crosses it is the one Tooly speaks for.
   useEffect(() => {
@@ -323,9 +366,7 @@ export function ToolyGuide() {
   useEffect(() => {
     if (!g?.ready || hidden) return;
     let timer = 0;
-    const onScroll = (event: Event) => {
-      const target = event.target as Node | null;
-      if (target !== document && target !== sheetRoot()) return; // some other scrolling box on the page
+    const onScroll = () => {
       setWalkReady(true);
       if ((INTRO_PHASES as readonly string[]).includes(live.current.phase)) return;
       live.current.lastScroll = performance.now();
@@ -335,9 +376,9 @@ export function ToolyGuide() {
       timer = window.setTimeout(settle, 180);
     };
     const onHidden = () => { root.current?.setAttribute("data-paused", String(document.hidden)); };
-    window.addEventListener("scroll", onScroll, { passive: true, capture: true });
+    window.addEventListener("scroll", onScroll, { passive: true });
     document.addEventListener("visibilitychange", onHidden);
-    return () => { window.clearTimeout(timer); window.removeEventListener("scroll", onScroll, { capture: true }); document.removeEventListener("visibilitychange", onHidden); };
+    return () => { window.clearTimeout(timer); window.removeEventListener("scroll", onScroll); document.removeEventListener("visibilitychange", onHidden); };
   }, [g?.ready, hidden, kick, settle]);
 
   // Settle on arrival, when the stop changes while still, and when the intro hands him over.
@@ -366,7 +407,7 @@ export function ToolyGuide() {
   // The intro's frames are fetched while the page waits to start (wait phase), the walk's at the first scroll or a moment after the intro.
   useEffect(() => {
     if (phase !== "wait" || !motion) return;
-    const keys: FrameKey[] = gutter ? ["air", "land", "reach", "heave", "rest", "stampUp", "stampDown"] : ["air", "land"];
+    const keys: FrameKey[] = ["air", "land", "reach", "heave", "rest", "stampUp", "stampDown"];
     const held = keys.map((k) => { const img = new window.Image(); img.decoding = "async"; img.src = FRAME_SRC[k]; return img; });
     return () => { held.length = 0; };
   }, [phase, motion, gutter]);
@@ -376,7 +417,7 @@ export function ToolyGuide() {
     return () => window.clearTimeout(id);
   }, [phase, motion, gutter]);
 
-  if (!g || !g.ready || hidden) return null;
+  if (!g || !g.ready || hidden || !g.stripOn) return null;
   const centre = vw - FIGURE_SIZE / 2 - FIGURE_MARGIN;
   return (
     <>
@@ -403,15 +444,14 @@ export function ToolyGuide() {
           <Figure look={look} size={FIGURE_SIZE} frames={frames} walkRefs={walkRefs} />
         </div>
       ) : null}
-      <ToolyGuideView stop={stop} pose={waiting ? "idle" : look} frames={frames} mode={mode} motion={motion} phase={phase} onHide={() => g.setHidden(true)} stripRef={strip} />
+      <ToolyGuideView stop={stop} pose={waiting ? "idle" : look} frames={frames} mode={mode} motion={motion} phase={phase} shown={shown} row={g.intro.row} stamped={g.intro.stamped} figureSize={vw <= 480 ? 40 : STRIP_FIGURE} onHide={() => g.setHidden(true)} stripRef={strip} />
     </>
   );
 }
 
 /** The dotted trail down the right-hand gutter: drawn from the top of the page to wherever he has walked (clip scaled with transform). */
 function Trail({ rectRef, x, motion }: { rectRef: Ref<SVGRectElement>; x: number; motion: boolean }) {
-  const sheet = typeof document === "undefined" ? null : sheetRoot();
-  const h = sheet ? sheet.scrollHeight : 0;
+  const h = typeof document === "undefined" ? 0 : document.documentElement.scrollHeight;
   return (
     <svg className="tg-trail" data-tg aria-hidden="true" focusable="false" width="12" height={h} style={{ left: Math.round(x - 6) }}>
       <defs>
