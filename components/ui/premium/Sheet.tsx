@@ -6,12 +6,16 @@
  * the page behind is inert, Escape asks to close through onClose, and focus goes back to the element that opened it, even when the caller unmounts the sheet to close it.
  * Must not change: it is controlled (it closes only when the caller stops rendering it or sets open to false); it performs nothing itself, the footer buttons are the caller's real actions;
  * dismissible={false} (for an action in flight) blocks Escape and hides the Close button but never traps the person without the caller's own way out.
+ * v4: same entrance as Dialog (scale from 0.95 with a fade, 240 ms, centred) and a 120 ms exit; when the caller sets open to false the content stays rendered while it leaves (a caller that unmounts it simply removes it).
+ * v3 nesting: a Sheet or Dialog rendered INSIDE a Sheet is a nested modal. Its cancel (Escape) and Tab events travel up the React tree, so each handler first checks that the event came from its OWN dialog
+ * (target check) and the Tab wrap only counts controls that belong to its own dialog (nesting-aware trap): Escape closes only the inner one, Tab never escapes it, and the outer one is left alone.
  */
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import styles from "./premium.module.css";
 import { Button } from "./Button";
 import { cx, premiumTokens } from "./tokens";
 import { useRestoreFocus } from "./useRestoreFocus";
+import { useModalPresence } from "./usePresence";
 
 export interface SheetProps {
   open: boolean;
@@ -34,23 +38,24 @@ export function Sheet({ open, title, description, size = "md", children, footer,
   const body = useRef<HTMLDivElement>(null);
   const uid = useId();
   const [scrolls, setScrolls] = useState(false);
-  useRestoreFocus(open);
+  const { shown, state } = useModalPresence(open);
+  useRestoreFocus(shown);
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
-    if (open && !d.open) d.showModal();
-    if (!open && d.open) d.close();
-  }, [open]);
+    if (shown && !d.open) d.showModal();
+    if (!shown && d.open) d.close();
+  }, [shown]);
   // A body that overflows must be reachable by keyboard (so it can be scrolled with the arrow keys).
   useEffect(() => {
     const b = body.current;
-    if (!open || !b) return;
+    if (!shown || !b) return;
     const check = () => setScrolls(b.scrollHeight > b.clientHeight + 1);
     check();
     const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(check) : null;
     ro?.observe(b);
     return () => ro?.disconnect();
-  }, [open, children]);
+  }, [shown, children]);
   return (
     <dialog
       ref={ref}
@@ -58,16 +63,19 @@ export function Sheet({ open, title, description, size = "md", children, footer,
       aria-labelledby={`${uid}-t`}
       aria-describedby={description ? `${uid}-d` : undefined}
       data-testid={testId}
-      onCancel={(e) => { e.preventDefault(); if (dismissible) onClose(); }}
+      data-state={state}
+      onCancel={(e) => { if (e.target !== e.currentTarget) return; e.preventDefault(); if (dismissible) onClose(); }}
       onKeyDown={(e) => {
         if (e.key !== "Tab") return;
-        const f = Array.from(ref.current?.querySelectorAll<HTMLElement>(TABBABLE) ?? []);
+        const self = ref.current;
+        if (!self || (e.target as HTMLElement).closest("dialog") !== self) return;
+        const f = Array.from(self.querySelectorAll<HTMLElement>(TABBABLE)).filter((el) => el.closest("dialog") === self);
         if (!f.length) return;
         if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
         else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
       }}
     >
-      {open ? (
+      {shown ? (
         <div className={styles.sheetInner}>
           <header className={styles.sheetHead}>
             <div className={styles.sheetHeadText}>
