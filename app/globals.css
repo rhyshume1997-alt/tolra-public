@@ -424,37 +424,30 @@ td[data-label]::before {
 
 /*
  * FEEL: dialogs and sheets (crisp tone). Inputs: Radix's data-state on the shared Dialog and Sheet (data-slot, data-side).
- * Output: enter and exit animation. Dialog grows 0.96 to 1 with a few px of rise; a Sheet slides in from its own edge and
- * leaves the same way; backdrops fade. Exits are CSS animations, so Radix keeps the element mounted until they finish.
- * Exit takes 70% of the enter time and uses the accelerating curve. Menus and selects (dropdown-menu, select) keep their own
- * origin-aware animation. Must not change: only opacity and transform move; no handler, focus or close logic lives here.
+ * Output: ENTER animation only. Dialog fades in with a few px of rise (no scale: a scaled box reads smaller than it is while it
+ * opens); a Sheet slides in from its own edge; backdrops fade. There is deliberately NO exit animation: Radix keeps a closing
+ * dialog mounted until its exit animation ends, and while mounted it is still the top layer (it swallows Escape and clicks) and
+ * still hides the page from assistive technology and role queries. Closing therefore stays instant, as before FEEL.
+ * Menus and selects (dropdown-menu, select) keep their own animation. Must not change: only opacity and transform move; no
+ * handler, focus or close logic lives here; do not add [data-state="closed"] animations without re-proving the e2e suite.
  */
 @keyframes feel-fade-in { from { opacity: 0; } }
-@keyframes feel-fade-out { to { opacity: 0; } }
-@keyframes feel-dialog-in { from { opacity: 0; transform: translateY(8px) scale(0.96); } }
-@keyframes feel-dialog-out { to { opacity: 0; transform: scale(0.98); } }
+@keyframes feel-dialog-in { from { opacity: 0; transform: translateY(8px); } }
 @keyframes feel-slide-in { from { transform: translate(var(--feel-x, 0), var(--feel-y, 0)); } }
-@keyframes feel-slide-out { to { transform: translate(var(--feel-x, 0), var(--feel-y, 0)); } }
 
 [data-slot="dialog-overlay"][data-state="open"],
 [data-slot="sheet-overlay"][data-state="open"] { animation: feel-fade-in var(--feel-slow) var(--feel-out); }
-[data-slot="dialog-overlay"][data-state="closed"],
-[data-slot="sheet-overlay"][data-state="closed"] { animation: feel-fade-out calc(var(--feel-slow) * 0.7) var(--feel-in) forwards; }
 
 [data-slot="dialog-content"][data-state="open"] { animation: feel-dialog-in var(--feel-slow) var(--feel-out); }
-[data-slot="dialog-content"][data-state="closed"] { animation: feel-dialog-out calc(var(--feel-slow) * 0.7) var(--feel-in) forwards; }
 
 [data-slot="sheet-content"][data-side="right"] { --feel-x: 100%; }
 [data-slot="sheet-content"][data-side="left"] { --feel-x: -100%; }
 [data-slot="sheet-content"][data-side="bottom"] { --feel-y: 100%; }
 [data-slot="sheet-content"][data-side="top"] { --feel-y: -100%; }
 [data-slot="sheet-content"][data-state="open"] { animation: feel-slide-in var(--feel-slow) var(--feel-out); }
-[data-slot="sheet-content"][data-state="closed"] { animation: feel-slide-out calc(var(--feel-slow) * 0.7) var(--feel-in) forwards; }
 
-/* Reduce motion: they fade, they don't travel or grow. */
+/* Reduce motion: they fade, they don't travel. */
 @media (prefers-reduced-motion: reduce) {
   [data-slot="dialog-content"][data-state="open"],
   [data-slot="sheet-content"][data-state="open"] { animation: feel-fade-in var(--feel-base) var(--feel-out); }
-  [data-slot="dialog-content"][data-state="closed"],
-  [data-slot="sheet-content"][data-state="closed"] { animation: feel-fade-out calc(var(--feel-base) * 0.7) var(--feel-in) forwards; }
 }

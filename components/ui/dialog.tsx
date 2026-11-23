@@ -1,6 +1,6 @@
 "use client";
 
-// Shared Dialog (module 7). Inputs/outputs unchanged. FEEL: open/close motion comes from the FEEL block in app/globals.css (data-slot dialog-overlay / dialog-content); no classes here changed. Must not change: props, focus or close behaviour.
+// Shared Dialog (module 7). Inputs/outputs unchanged. FEEL: open motion (enter only, no exit) comes from the FEEL block in app/globals.css (data-slot dialog-overlay / dialog-content); no classes here changed. Must not change: props, focus or close behaviour.
 
 import * as React from "react";
 import { X } from "lucide-react";

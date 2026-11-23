@@ -1,6 +1,6 @@
 "use client"
 
-// Shared Sheet (module 7). Inputs/outputs unchanged. FEEL: enter/exit motion now comes from the FEEL block in app/globals.css (data-slot, data-side); the old animate-in/out classes were removed so two animations do not fight. Must not change: props, sides or close behaviour.
+// Shared Sheet (module 7). Inputs/outputs unchanged. FEEL: enter motion (no exit animation) now comes from the FEEL block in app/globals.css (data-slot, data-side); the old animate-in/out classes were removed so two animations do not fight. Must not change: props, sides or close behaviour.
 
 import * as React from "react"
 import { Dialog as SheetPrimitive } from "radix-ui"
