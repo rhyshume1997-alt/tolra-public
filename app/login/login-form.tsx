@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { useManifestLinkSync } from "@/components/company-look/manifest-link-sync";
 import { SignIn } from "@/components/ui/sign-in";
 import { discardedMessage, takeDiscardedNotice } from "@/lib/offline/store";
 import { EXPIRED_NOTICE_COOKIE, LOCK_NOTICE_KEY, accessEndedKeptMessage, forgetLastActive, idleMessage } from "@/lib/session-policy";
@@ -37,11 +38,13 @@ function useLoginBranding(initial: LoginBranding | null, hasOrgParam: boolean) {
   return branding;
 }
 
-export function LoginForm({ initialBranding }: { initialBranding: LoginBranding | null }) {
+export function LoginForm({ initialBranding, syncInstalledApp = false }: { initialBranding: LoginBranding | null; syncInstalledApp?: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const disabled = searchParams.get("disabled") === "1";
   const branding = useLoginBranding(initialBranding, Boolean(searchParams.get("org")?.trim()));
+  // Installed-app branding (module 13): the install manifest and icons follow the company this page shows. Off unless the server flag is on.
+  useManifestLinkSync(syncInstalledApp, branding?.slug ?? null);
   const [error, setError] = useState<string | null>(disabled ? "Your account has been disabled" : null);
   const [messageType, setMessageType] = useState<"error" | "success">("error");
   const [canRetry, setCanRetry] = useState(false);

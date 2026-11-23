@@ -1,4 +1,5 @@
-import { BaseDocumentPDF, type PdfDocumentData, type PdfKeyValue, type PdfLineItem } from "@/components/pdf/BaseDocumentPDF";
+import type { PdfDocumentData, PdfKeyValue, PdfLineItem } from "@/components/pdf/BaseDocumentPDF";
+import { DocumentPDF } from "@/components/pdf/templates/document-pdf";
 import { type CompanyProfile, getCompanyProfile } from "@/lib/company";
 import { customerPoKeyValue } from "@/lib/customer-po";
 
@@ -24,6 +25,10 @@ export type QuotePdfData = {
   scope?: string;
   /** The customer's own PO (migration 123): printed as "Customer PO" beside the quote number, only when there is one. */
   customerPo?: string;
+  /** When the quote was issued (ISO date or date-time), so it prints in the design in force then (module J). Omit for a draft: it prints in the current design. */
+  issuedAt?: string;
+  /** Forces a design (the Settings preview only). */
+  design?: string;
   company?: CompanyProfile;
   logoSrc?: string;
   /** Stored totals of the record: rendering refuses lines that don't add up to them (lib/document-integrity). */
@@ -53,7 +58,10 @@ export function quoteMessage(data: Pick<QuotePdfData, "scope" | "customerMessage
 export function QuotePDF({ data }: { data: QuotePdfData }) {
   const company = data.company ?? getCompanyProfile();
   return (
-    <BaseDocumentPDF
+    <DocumentPDF
+      type="quote"
+      issuedAt={data.issuedAt}
+      design={data.design}
       data={{
         title: "Quote",
         documentNumber: data.number,

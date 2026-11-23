@@ -139,10 +139,14 @@ test.describe("office records persist through the browser (admin, tenant alpha)"
     const download = page.waitForEvent("download");
     await details.getByRole("button", { name: "Send to Customer" }).click();
     await download;
-    await page.getByRole("dialog", { name: `Has ${issued!.invoice_ref} gone to the customer?` }).getByRole("button", { name: /sent it/ }).click();
+    const sentConfirm = page.getByRole("dialog", { name: `Has ${issued!.invoice_ref} gone to the customer?` });
+    await sentConfirm.getByRole("button", { name: /sent it/ }).click();
+    // Wait for this confirmation to close first: an Escape while it is still the top layer would close it, not the details dialog.
+    await expect(sentConfirm).toBeHidden();
     await expect.poll(async () => (await adminClient().from("invoices").select("sent_date, status").eq("id", draft!.id).single()).data).toMatchObject({ status: "issued" });
     await expect.poll(async () => Boolean((await adminClient().from("invoices").select("sent_date").eq("id", draft!.id).single()).data?.sent_date)).toBe(true);
     await page.keyboard.press("Escape");
+    await expect(details).toBeHidden();
 
     // Recording the payment (in full: the dialog starts with the balance) still works through the issue lock.
     await row.getByRole("button", { name: "Record payment" }).click();

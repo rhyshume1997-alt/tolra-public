@@ -247,10 +247,10 @@ export const styles = StyleSheet.create({
 
 const number = new Intl.NumberFormat("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const gbp = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
-const amount = (value: number) => number.format(value);
-const money = (value: number) => gbp.format(value);
+export const amount = (value: number) => number.format(value);
+export const money = (value: number) => gbp.format(value);
 
-function columnWidths(columns: PdfColumns, showVat: boolean) {
+export function columnWidths(columns: PdfColumns, showVat: boolean) {
   if (columns === "qtyOnly") return [385, 161];
   if (columns === "descriptionOnly") return [546];
   return showVat ? [285.5, 65.5, 66.5, 62.5, 66] : [351, 65.5, 66.5, 63];
@@ -265,13 +265,13 @@ export function columnStyle(widths: number[], index: number) {
   return index === 0 ? { flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 } : { width: widths[index] };
 }
 
-function headings(columns: PdfColumns, showVat: boolean) {
+export function headings(columns: PdfColumns, showVat: boolean) {
   if (columns === "qtyOnly") return ["Description", "Qty"];
   if (columns === "descriptionOnly") return ["Description"];
   return showVat ? ["Description", "Qty", "Each", "VAT%", "Total"] : ["Description", "Qty", "Each", "Total"];
 }
 
-function cells(item: PdfLineItem, columns: PdfColumns, showVat: boolean, standardRate: number) {
+export function cells(item: PdfLineItem, columns: PdfColumns, showVat: boolean, standardRate: number) {
   if (columns === "descriptionOnly") return [item.description];
   if (columns === "qtyOnly") return [item.description, amount(item.quantity)];
   // A £0 text-only invoice line (migration 073): its words only, nothing in the money columns.
@@ -286,7 +286,7 @@ const NUMERIC_PADDING: Record<string, number> = { Qty: 7, Each: 5, "VAT%": 8, To
 /** Height the customer sign-off block takes under the message box (heading, name, a two-line statement, signature, time), taken from the table. */
 const CUSTOMER_SIGNOFF_HEIGHT = 104;
 
-function CustomerSignOffBlock({ signOff }: { signOff: PdfCustomerSignOff }) {
+export function CustomerSignOffBlock({ signOff }: { signOff: PdfCustomerSignOff }) {
   const path = signOff.signature.kind === "drawn" ? parseSignaturePath(signOff.signature.data) : null;
   return (
     <View wrap={false}>

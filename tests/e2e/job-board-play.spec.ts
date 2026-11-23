@@ -15,7 +15,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 import { VIEWPORTS, deviceContext } from "../support/ui-pr1-screenshots";
-import { adminClient, EMAIL_DOMAIN, signedInClient, withDb } from "../support/fixtures";
+import { adminClient, EMAIL_DOMAIN, signedInClient, withDb, SEEN_TOUR_METADATA } from "../support/fixtures";
 import { generatePassword } from "@/lib/password";
 import { confirmPause, pauseControl, pickMachines, playControl, playJob, signIn, world } from "./helpers";
 
@@ -484,7 +484,7 @@ test.describe("Add machine with nothing to add", () => {
     const admin = adminClient();
     const email = `nosched.beta.${w.runId}@${EMAIL_DOMAIN}`;
     const password = generatePassword(16);
-    const created = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name: "nosched beta" } });
+    const created = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { ...SEEN_TOUR_METADATA, full_name: "nosched beta" } });
     if (created.error || !created.data.user) throw new Error(`createUser ${email}: ${created.error?.message}`);
     const userId = created.data.user.id;
     // The user exists only for this test: everything after it runs in try, and finally removes exactly this user (its beta membership

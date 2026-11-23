@@ -1,4 +1,5 @@
-import { BaseDocumentPDF, type PdfKeyValue, type PdfLineItem } from "@/components/pdf/BaseDocumentPDF";
+import type { PdfKeyValue, PdfLineItem } from "@/components/pdf/BaseDocumentPDF";
+import { DocumentPDF } from "@/components/pdf/templates/document-pdf";
 import { type CompanyProfile, getCompanyProfile } from "@/lib/company";
 
 export type PurchaseOrderPdfData = {
@@ -14,6 +15,10 @@ export type PurchaseOrderPdfData = {
   notes?: string[];
   /** "Add VAT" on this document. Defaults to off: sales orders and POs used to be ex VAT. */
   vatEnabled?: boolean;
+  /** When the order was issued (ISO date or date-time), so it prints in the design in force then (module J). Omit for a draft: it prints in the current design. */
+  issuedAt?: string;
+  /** Forces a design (the Settings preview only). */
+  design?: string;
   company?: CompanyProfile;
   logoSrc?: string;
 };
@@ -26,7 +31,10 @@ export function PurchaseOrderPDF({ data }: { data: PurchaseOrderPdfData }) {
     { label: "Required By", value: data.requiredBy ?? "" },
   ];
   return (
-    <BaseDocumentPDF
+    <DocumentPDF
+      type="purchase_order"
+      issuedAt={data.issuedAt}
+      design={data.design}
       data={{
         title: "Purchase Order",
         documentNumber: data.number,

@@ -1,0 +1,56 @@
+J N R Engineering Ltd
+DELIVERY NOTE
+Delivery No.
+DLN-1230
+Tax Date
+22/11/2026
+Ship Date
+22/11/2026
+Ship Via
+Own van
+Customer PO
+PO-778
+JNR Engineering 
+Ltd
+Invoice To:
+Acme Fabrications Ltd
+1 
+Example Road
+Sheffield
+S1 1AA
+Deliver To:
+Acme Fabrications Ltd
+1 
+Example Road
+Sheffield
+S1 1AA
+Description
+Qty
+CNC machined bracket, mild steel, as drawing JNR-1001 rev C
+25.00
+Powder coat, RAL 7016, per bracket
+25.00
+Export certificate (outside the scope of VAT)
+1.00
+Delivered in two lots; the second follows within the week.
+0.00
+Long description line that has to wrap across the width of the description column so that the row 
+grows and the table fills correctly on the page
+3.00
+Customer Message
+Goods checked on receipt.
+Goods out: the items listed above were despatched.
+Received by: A. Customer   Date: 23/11/2026   Signature: __________________
+J N R Engineering Ltd
+Unit 1
+Example Industrial Estate
+Northfield
+ML3 1AA
+Tel/ Fax:
+01698 000 0000/ 01698 000 0001
+Email:
+info@jnr.example
+Website:
+www.jnrengineering.co.uk
+VAT:
+GB000000000

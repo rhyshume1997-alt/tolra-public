@@ -18,7 +18,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { generatePassword } from "@/lib/password";
 
-import { adminClient } from "../support/fixtures";
+import { adminClient, SEEN_TOUR_METADATA } from "../support/fixtures";
 import { SYNTHETIC_SLUG_PREFIX } from "../support/isolation";
 import { asSeparateDevice, signIn, world } from "./helpers";
 
@@ -30,7 +30,7 @@ const short = () => randomUUID().slice(0, 8);
 async function makePerson(label: string, role: Person["role"]): Promise<Person> {
   const email = `${label}.${short()}.${world().runId}@example.test`;
   const password = generatePassword(14);
-  const { data, error } = await adminClient().auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name: `${label} Person` } });
+  const { data, error } = await adminClient().auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { ...SEEN_TOUR_METADATA, full_name: `${label} Person` } });
   if (error || !data.user) throw new Error(error?.message);
   return { id: data.user.id, email, password, role };
 }

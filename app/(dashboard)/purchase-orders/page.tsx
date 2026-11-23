@@ -516,6 +516,8 @@ export default function PurchaseOrdersPage() {
       <PurchaseOrderPDF
         data={{
           number: po.ref,
+          // Design in force when it was issued (module J); a draft prints in the current design.
+          issuedAt: po.status.toLowerCase() === "draft" ? undefined : po.date,
           date: fmtDate(po.date),
           requiredBy: fmtDate(po.delivery),
           supplier: [po.supplier],

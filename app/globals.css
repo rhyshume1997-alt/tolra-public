@@ -369,3 +369,85 @@ td[data-label]::before {
   [data-view="table"] td[data-label]::before, [data-tablet-cards] td[data-label]::before { display: block; }
   [data-view="table"] td[data-label], [data-tablet-cards] td[data-label], [data-tablet-cards] td[data-actions] { overflow-wrap: anywhere; }
 }
+
+/*
+ * FEEL: motion tokens and the press move (crisp tone: for a work tool used all day).
+ * Inputs: none. Output: the --feel-* tokens and a press response on every shared <Button> (data-slot="button").
+ * Tune the whole app's feel here and nowhere else; never type a raw duration or curve in a component.
+ * Must not change: this block stays OUTSIDE any @layer, so it wins over Tailwind utilities on the same element
+ * (that is how the button's transition list is replaced). Only transform-type properties move; nothing here
+ * changes layout, handlers or text.
+ */
+:root {
+  --feel-press: 0.97;
+  --feel-fast: 100ms;
+  --feel-base: 180ms;
+  --feel-slow: 260ms;
+  --feel-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --feel-in: cubic-bezier(0.4, 0, 1, 1);
+}
+
+/* Press: sinks the instant the pointer lands (fast, ease-out); lets go a little slower. Links in text and menu triggers don't sink. */
+[data-slot="button"]:not([data-variant="link"], [aria-haspopup]) {
+  transition:
+    scale var(--feel-base) var(--feel-out),
+    background-color var(--feel-fast) var(--feel-out),
+    border-color var(--feel-fast) var(--feel-out),
+    color var(--feel-fast) var(--feel-out),
+    box-shadow var(--feel-fast) var(--feel-out);
+}
+[data-slot="button"]:not([data-variant="link"], [aria-haspopup]):active:not(:disabled, [aria-disabled="true"]) {
+  scale: var(--feel-press);
+  transition:
+    scale var(--feel-fast) var(--feel-out),
+    background-color var(--feel-fast) var(--feel-out),
+    border-color var(--feel-fast) var(--feel-out),
+    color var(--feel-fast) var(--feel-out),
+    box-shadow var(--feel-fast) var(--feel-out);
+}
+
+/* Reduce motion: no sinking; the press dims instead, so the feedback stays. */
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="button"]:not([data-variant="link"], [aria-haspopup]) {
+    transition:
+      opacity var(--feel-fast) var(--feel-out),
+      background-color var(--feel-fast) var(--feel-out),
+      border-color var(--feel-fast) var(--feel-out),
+      color var(--feel-fast) var(--feel-out),
+      box-shadow var(--feel-fast) var(--feel-out);
+  }
+  [data-slot="button"]:not([data-variant="link"], [aria-haspopup]):active:not(:disabled, [aria-disabled="true"]) {
+    scale: none;
+    opacity: 0.7;
+  }
+}
+
+/*
+ * FEEL: dialogs and sheets (crisp tone). Inputs: Radix's data-state on the shared Dialog and Sheet (data-slot, data-side).
+ * Output: ENTER animation only. Dialog fades in with a few px of rise (no scale: a scaled box reads smaller than it is while it
+ * opens); a Sheet slides in from its own edge; backdrops fade. There is deliberately NO exit animation: Radix keeps a closing
+ * dialog mounted until its exit animation ends, and while mounted it is still the top layer (it swallows Escape and clicks) and
+ * still hides the page from assistive technology and role queries. Closing therefore stays instant, as before FEEL.
+ * Menus and selects (dropdown-menu, select) keep their own animation. Must not change: only opacity and transform move; no
+ * handler, focus or close logic lives here; do not add [data-state="closed"] animations without re-proving the e2e suite.
+ */
+@keyframes feel-fade-in { from { opacity: 0; } }
+@keyframes feel-dialog-in { from { opacity: 0; transform: translateY(8px); } }
+@keyframes feel-slide-in { from { transform: translate(var(--feel-x, 0), var(--feel-y, 0)); } }
+
+[data-slot="dialog-overlay"][data-state="open"],
+[data-slot="sheet-overlay"][data-state="open"] { animation: feel-fade-in var(--feel-slow) var(--feel-out); }
+
+[data-slot="dialog-content"][data-state="open"] { animation: feel-dialog-in var(--feel-slow) var(--feel-out); }
+
+[data-slot="sheet-content"][data-side="right"] { --feel-x: 100%; }
+[data-slot="sheet-content"][data-side="left"] { --feel-x: -100%; }
+[data-slot="sheet-content"][data-side="bottom"] { --feel-y: 100%; }
+[data-slot="sheet-content"][data-side="top"] { --feel-y: -100%; }
+[data-slot="sheet-content"][data-state="open"] { animation: feel-slide-in var(--feel-slow) var(--feel-out); }
+
+/* Reduce motion: they fade, they don't travel. */
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="dialog-content"][data-state="open"],
+  [data-slot="sheet-content"][data-state="open"] { animation: feel-fade-in var(--feel-base) var(--feel-out); }
+}

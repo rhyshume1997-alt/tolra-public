@@ -1,4 +1,4 @@
-import { BaseDocumentPDF } from "@/components/pdf/BaseDocumentPDF";
+import { DocumentPDF } from "@/components/pdf/templates/document-pdf";
 import { type CompanyProfile, getCompanyProfile } from "@/lib/company";
 import { customerPoKeyValue } from "@/lib/customer-po";
 import type { PdfCustomerSignOff } from "@/lib/customer-signoff-print";
@@ -23,13 +23,20 @@ export type DeliveryNotePdfData = {
   signedDate?: string | null;
   /** A company's own goods-out wording (not yet stored anywhere); the default in lib/delivery-note-print is used when it is blank. */
   goodsOutWording?: string | null;
+  /** When the note was issued (ISO date or date-time), so it prints in the design in force then (module J). Omit for a draft: it prints in the current design. */
+  issuedAt?: string;
+  /** Forces a design (the Settings preview only). */
+  design?: string;
   company?: CompanyProfile;
   logoSrc?: string;
 };
 
 export function DeliveryNotePDF({ data }: { data: DeliveryNotePdfData }) {
   return (
-    <BaseDocumentPDF
+    <DocumentPDF
+      type="delivery_note"
+      issuedAt={data.issuedAt}
+      design={data.design}
       data={{
         title: "Delivery Note",
         documentNumber: data.number,

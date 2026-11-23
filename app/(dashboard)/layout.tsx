@@ -37,8 +37,8 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // toolyTour: the first-login admin tour's server flag as a plain boolean (TOOLY_ADMIN_TOUR_ENABLED, off unless exactly "true"); the company
-    // marker and the admin role are also needed before anything shows (components/tooly/tour).
+    // toolyTour: whether the Tooly tour may show, as a plain boolean. ON by default; off only when TOOLY_TOUR_DISABLED is exactly "true"
+    // (components/tooly/tour/tour-switch.ts). The role (admin, office, workshop) still decides which tour, and a viewer gets none.
     // AI features this server has on: plain booleans only (the env var stays on the server). All off by default. Outside the shell, so
     // the sidebar (inside it) can show the AI item too.
     <AiFeaturesProvider value={{ financeCheck: aiFinanceCheckEnabled(), aiHelper: aiHelperEnabled() }}>

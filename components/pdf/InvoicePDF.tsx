@@ -1,4 +1,5 @@
-import { BaseDocumentPDF, type PdfDocumentData, type PdfKeyValue, type PdfLineItem } from "@/components/pdf/BaseDocumentPDF";
+import type { PdfDocumentData, PdfKeyValue, PdfLineItem } from "@/components/pdf/BaseDocumentPDF";
+import { DocumentPDF } from "@/components/pdf/templates/document-pdf";
 import { paymentDetailRows } from "@/lib/bank-details";
 import { type CompanyProfile, getCompanyProfile, invoiceMessage } from "@/lib/company";
 import { customerPoKeyValue } from "@/lib/customer-po";
@@ -41,6 +42,10 @@ export type InvoicePdfData = {
   customerMessage?: string[];
   /** The customer sign-off (072) of the job its delivery notes are on, when there is one: a small block under the message box. */
   customerSignOff?: PdfCustomerSignOff;
+  /** When the invoice was issued (ISO date or date-time), so it prints in the design in force then (module J). Omit for a draft: it prints in the current design. */
+  issuedAt?: string;
+  /** Forces a design (the Settings preview only). */
+  design?: string;
   company?: CompanyProfile;
   logoSrc?: string;
   /** Stored totals of the record: rendering refuses lines that don't add up to them (lib/document-integrity). */
@@ -67,7 +72,10 @@ export function InvoicePDF({ data }: { data: InvoicePdfData }) {
   // So the delivery notes row is printed only when there is a free row, and is dropped otherwise.
   if (data.deliveryNotes && keyValues.length < MAX_KEY_VALUE_ROWS) keyValues.push({ label: "Delivery Notes", value: data.deliveryNotes });
   return (
-    <BaseDocumentPDF
+    <DocumentPDF
+      type="invoice"
+      issuedAt={data.issuedAt}
+      design={data.design}
       data={{
         title: "Invoice",
         documentNumber: data.number,
