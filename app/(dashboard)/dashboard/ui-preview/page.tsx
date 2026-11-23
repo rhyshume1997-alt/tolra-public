@@ -4,13 +4,14 @@
  * components/ui/premium in every state, at /dashboard/ui-preview, behind the normal dashboard sign-in.
  * Must not change: it reads and writes nothing (no Supabase, no fetch, no storage). Nothing here saves, finishes or sends anything, and
  * no control reports success: a confirm just closes and says "Preview only". v2 adds SegmentedControl, Sheet, form fields, StatTile and the toast, dialog,
- * popover, state-panel and selection-bar options. Delete this route when a real module has adopted the set.
+ * popover, state-panel and selection-bar options. v3 adds the sections from "Button v3" down: danger and pressed buttons, menu hints, table variants, panel, callout, disclosure, list rows, form group, error
+ * summary, date range, link tiles, wrapped chips and segments, nested sheets and large fields. Delete this route when a real module has adopted the set.
  */
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import {
-  Button, Checkbox, ChipGroup, Dialog, EmptyState, FailedState, Field, FilterChip, Input, LoadingState, Menu, Popover, ScrollTable, SegmentedControl,
-  Select, SelectionBar, Sheet, StatTile, StatTiles, StatusBadge, Switch, Textarea, ToastProvider, useToast, premiumTokens, tabularNumbers, cx,
-  type ToastPlacement,
+  Button, Callout, Checkbox, ChipGroup, DateRangeGroup, Dialog, Disclosure, EmptyState, ErrorSummary, FailedState, Field, FilterChip, FormGroup, Input, List, ListRow, LoadingState, Menu, Panel, Popover,
+  ScrollTable, SegmentedControl, Select, SelectionBar, Sheet, StatTile, StatTiles, StatusBadge, Switch, Textarea, ToastProvider, rowClickIsForRow, useToast, premiumTokens, tabularNumbers, cx,
+  type ErrorSummaryItem, type ToastPlacement,
 } from "@/components/ui/premium";
 
 const sec: CSSProperties = { display: "grid", gap: 14, paddingTop: 24, borderTop: "1px solid rgba(14,23,38,0.1)" };
@@ -366,7 +367,220 @@ function Showcase({ setPlace }: { setPlace: (p: Place) => void }) {
           />
         </div>
       </Section>
+
+      <ShowcaseV3 previewOnly={previewOnly} />
     </div>
+  );
+}
+
+/* ---------------------------------------------------------------- v3 ---------------------------------------------------------------- */
+
+const MINI_COLS = ["Job", "Customer", "Description", "Qty", "Value", "Actions"] as const;
+
+function ShowcaseV3({ previewOnly }: { previewOnly: (what: string) => void }) {
+  const [pressed, setPressed] = useState({ a: false, b: true, c: false });
+  const [rowOpen, setRowOpen] = useState<string | null>(null);
+  const [recSel, setRecSel] = useState<string[]>([]);
+  const [outer, setOuter] = useState(false);
+  const [inner, setInner] = useState(false);
+  const [discard, setDiscard] = useState(false);
+  const [innerName, setInnerName] = useState("");
+  const [chips, setChips] = useState<string[]>(["Open"]);
+  const [segWrap, setSegWrap] = useState<"a" | "b" | "c">("a");
+  const [grp, setGrp] = useState({ name: "", qty: "0", due: "" });
+  const [attempts, setAttempts] = useState(0);
+  const [range, setRange] = useState({ from: "2026-11-01", to: "2026-11-23" });
+  const [applied, setApplied] = useState("Not applied yet");
+  const [disc, setDisc] = useState<boolean | null>(null);
+
+  const errors: ErrorSummaryItem[] = [
+    ...(grp.name.trim() === "" ? [{ fieldId: "g-name", label: "Job name", message: "Enter a job name." }] : []),
+    ...(!(Number(grp.qty) >= 1) ? [{ fieldId: "g-qty", label: "Quantity", message: "Quantity must be at least 1." }] : []),
+    ...(grp.due === "" ? [{ fieldId: "g-due", label: "Due date", message: "Choose a due date." }] : []),
+  ];
+  const show = attempts > 0;
+  const total = ROWS.slice(0, 3).reduce((n, r) => n + r.qty, 0);
+
+  return (
+    <>
+      <Section id="s-v3-btn" title="Button v3: danger, pressed, full width" note="danger = red outline (the first step of a destructive action), dangerSolid = red fill (the final confirm), dangerQuiet = red text (a row action). aria-pressed on secondary or quiet draws the navy pressed look with no override. fullWidth with size lg and primary is the full-width form action.">
+        {(["danger", "dangerSolid", "dangerQuiet"] as const).map((v) => (
+          <div key={v} style={row} data-testid={`btn-row-${v}`}>
+            <span style={{ ...cap, width: 90 }}>{v}</span>
+            {(["sm", "md", "lg"] as const).map((sz) => (<Button key={sz} variant={v} size={sz}>{sz === "sm" ? "Delete 32" : sz === "md" ? "Delete 40" : "Delete 48"}</Button>))}
+            <Button variant={v} disabled>Disabled</Button>
+            <Button variant={v} loading>Deleting</Button>
+            <Button variant={v} style={focusRing}>Focus ring</Button>
+          </div>
+        ))}
+        <div style={row} data-testid="btn-row-pressed">
+          <span style={{ ...cap, width: 90 }}>pressed</span>
+          <Button variant="secondary" aria-pressed={pressed.a} onClick={() => setPressed({ ...pressed, a: !pressed.a })} data-testid="press-secondary">Compact list</Button>
+          <Button variant="secondary" aria-pressed={pressed.b} onClick={() => setPressed({ ...pressed, b: !pressed.b })} data-testid="press-secondary-on">Cards (on)</Button>
+          <Button variant="quiet" aria-pressed={pressed.c} onClick={() => setPressed({ ...pressed, c: !pressed.c })} data-testid="press-quiet">Quiet toggle</Button>
+          <Button variant="secondary" aria-pressed disabled>Disabled on</Button>
+          <Button variant="secondary" size="sm" aria-pressed>Small on</Button>
+        </div>
+        <div style={{ maxWidth: 360 }} data-testid="btn-full"><Button variant="primary" size="lg" fullWidth onClick={() => previewOnly("Nothing was saved.")}>Save and continue</Button></div>
+      </Section>
+
+      <Section id="s-v3-menu" title="Menu v3: named trigger, full width, reasons" note="aria-label names the trigger for what it acts on (it keeps the visible word inside it). fullWidth fills a narrow column. An item hint is words under the label, read as its description: use it to say why an item is off. title is a tooltip.">
+        <div style={row}>
+          <Menu label="More" aria-label="More actions for Tomas Whitcombe" data-testid="menu-named" items={[
+            { id: "edit", label: "Edit", onSelect: () => previewOnly("Edit was not opened.") },
+            { id: "pw", label: "Set password", onSelect: () => previewOnly("No password was set."), title: "Sets a new sign-in password" },
+            { id: "del", label: "Remove", disabled: true, separatorBefore: true, hint: "You cannot remove your own account.", onSelect: () => {} },
+          ]} />
+          <div style={{ width: 260 }}>
+            <Menu label="Export" fullWidth data-testid="menu-full" items={[
+              { id: "csv", label: "CSV", onSelect: () => previewOnly("CSV export was not run.") },
+              { id: "x", label: "Email", disabled: true, hint: "Add the customer's email address first.", onSelect: () => {} },
+            ]} />
+          </div>
+        </div>
+      </Section>
+
+      <Section id="s-v3-chips" title="Chips, segments and selection bar when they wrap" note="Wrapped chips and segments keep 48 px hit areas with a 16 px row gap, so they never overlap. The frames below are 280 px wide to force wrapping.">
+        <div style={{ width: 280, display: "grid", gap: 18 }} data-testid="wrap-frame">
+          <ChipGroup label="Wrapped filters" className="">
+            {["Open", "Rework", "Late", "Waiting", "Finished", "Archived"].map((c) => (
+              <FilterChip key={c} selected={chips.includes(c)} count={c === "Open" ? 19 : undefined} onToggle={() => setChips(chips.includes(c) ? chips.filter((x) => x !== c) : [...chips, c])}>{c}</FilterChip>
+            ))}
+          </ChipGroup>
+          <SegmentedControl label="Wrapped period" value={segWrap} onChange={setSegWrap} data-testid="seg-wrap" options={[{ value: "a", label: "Last 3 months" }, { value: "b", label: "Last 6 months" }, { value: "c", label: "Last 12 months" }]} />
+          <SelectionBar count={2} filteredTotal={5} noun="job" onSelectAll={() => {}} onClear={() => {}} stickyTop="0px"><Button size="sm" variant="primary" onClick={() => previewOnly("No jobs were finished.")}>Finish selected (2)</Button></SelectionBar>
+        </div>
+      </Section>
+
+      <Section id="s-v3-table" title="Table v3: dense, totals, pinned Actions, clickable rows, record groups" note="The frames are 620 px wide so the tables scroll. Dense = 48 px rows. The totals row is a tfoot. pinLast keeps Actions in view with a shadow on its left edge only while columns are hidden. A colspan sub-row no longer leaks the first-column shadow.">
+        <div style={{ maxWidth: 620, display: "grid", gap: 20 }}>
+          <ScrollTable label="Dense jobs with totals and pinned Actions" dense pinLast>
+            <thead><tr>{MINI_COLS.map((c, i) => <th key={c} scope="col" style={i === 0 ? { minWidth: 120 } : i === 2 ? { minWidth: 220 } : undefined}>{c}</th>)}</tr></thead>
+            <tbody>
+              {ROWS.slice(0, 3).map((r) => (
+                <tr key={r.id}>
+                  <td style={{ whiteSpace: "nowrap" }}><strong className={tabularNumbers}>{r.id}</strong></td>
+                  <td style={{ whiteSpace: "nowrap" }}>{r.customer}</td>
+                  <td style={{ whiteSpace: "nowrap" }}>{r.desc}</td>
+                  <td className={tabularNumbers} style={{ textAlign: "right" }}>{r.qty}</td>
+                  <td className={tabularNumbers} style={{ textAlign: "right", whiteSpace: "nowrap" }}>{r.value}</td>
+                  <td><Button size="sm" variant="secondary" data-testid="dense-action" onClick={() => previewOnly(`${r.id} was not changed.`)}>Open</Button></td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot><tr><th scope="row">Total</th><td /><td /><td className={tabularNumbers} style={{ textAlign: "right" }} data-testid="tfoot-qty">{total}</td><td className={tabularNumbers} style={{ textAlign: "right", whiteSpace: "nowrap" }}>13,265.50</td><td /></tr></tfoot>
+          </ScrollTable>
+          <ScrollTable label="Clickable rows">
+            <thead><tr>{MINI_COLS.slice(0, 5).map((c) => <th key={c} scope="col" style={c === "Description" ? { minWidth: 220 } : undefined}>{c}</th>)}</tr></thead>
+            <tbody>
+              {ROWS.slice(0, 3).map((r) => (
+                <tr key={r.id} data-clickable="true" data-selected={rowOpen === r.id} data-testid="click-row" onClick={(e) => { if (rowClickIsForRow(e.target, e.currentTarget)) { setRowOpen(r.id); previewOnly(`${r.id} row opened.`); } }}>
+                  <td style={{ whiteSpace: "nowrap" }}><a href="#s-v3-table" onClick={(e) => { e.preventDefault(); setRowOpen(r.id); previewOnly(`${r.id} link opened.`); }}><strong className={tabularNumbers}>{r.id}</strong></a></td>
+                  <td style={{ whiteSpace: "nowrap" }}>{r.customer}</td>
+                  <td style={{ whiteSpace: "nowrap" }}>{r.desc}</td>
+                  <td className={tabularNumbers} style={{ textAlign: "right" }}>{r.qty}</td>
+                  <td className={tabularNumbers} style={{ textAlign: "right", whiteSpace: "nowrap" }}>{r.value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </ScrollTable>
+          <ScrollTable label="Records with sub-rows">
+            <thead><tr><th scope="col" style={{ minWidth: 200 }}>Person</th><th scope="col">Role</th><th scope="col">Last login</th><th scope="col" style={{ minWidth: 160 }}>Status</th></tr></thead>
+            {[["Callum Reeve", "Admin", "20 Nov"], ["Tomas Whitcombe", "Office", "18 Nov"]].map(([n, role, last]) => {
+              const on = recSel.includes(n);
+              return (
+                <tbody key={n} data-record="true" data-selected={on} data-testid="record">
+                  <tr>
+                    <td style={{ whiteSpace: "nowrap" }}><div style={{ display: "flex", alignItems: "center", gap: 4 }}><Checkbox aria-label={`Select ${n}`} checked={on} onChange={() => setRecSel(on ? recSel.filter((x) => x !== n) : [...recSel, n])} /><strong>{n}</strong></div></td>
+                    <td>{role}</td>
+                    <td className={tabularNumbers} style={{ whiteSpace: "nowrap" }}>{last}</td>
+                    <td><StatusBadge tone="ok">Active</StatusBadge></td>
+                  </tr>
+                  <tr data-sub="true"><td colSpan={4}><div style={{ color: "#566074", fontSize: 12.5 }} data-testid="subrow-note">Clock-in: on site only. A full-width note under the record: it stays at the left edge, is never wider than what you can see, and must not widen the table.</div></td></tr>
+                </tbody>
+              );
+            })}
+          </ScrollTable>
+        </div>
+      </Section>
+
+      <Section id="s-v3-panel" title="Panel, callout, disclosure and list rows" note="Panel takes a heading level so a page keeps its outline (this section is an h2, so panels are h3). Callout has a left bar and words, no icon. Disclosure is the native details element. List rows are 56 px (48 dense); a row with href is one big link.">
+        <div style={{ display: "grid", gap: 16, maxWidth: 760 }}>
+          <Panel title="Panel with actions" headingLevel={3} actions={<Button size="sm" variant="secondary" onClick={() => previewOnly("Nothing was added.")}>Add line</Button>}>
+            <p style={{ margin: 0, color: "#3b4559" }}>A white card with a heading you place in your outline, an actions slot, and a body.</p>
+          </Panel>
+          <Panel title="Bare panel for a list" headingLevel={3} bare data-testid="panel-bare">
+            <List label="Recent jobs" plain>
+              {ROWS.slice(0, 2).map((r) => <ListRow key={r.id} title={r.id} meta={`${r.customer}, ${r.desc}`} trailing={<StatusBadge tone={r.tone}>{r.status}</StatusBadge>} />)}
+            </List>
+          </Panel>
+          <Callout tone="neutral">Neutral: a quiet note with a grey bar.</Callout>
+          <Callout tone="info" action={<Button size="sm" variant="secondary" onClick={() => previewOnly("The filter was not cleared.")}>Show all</Button>}>Showing quotes past their valid-until date only.</Callout>
+          <Callout tone="warn">The job was paused, so booking it again needs a restart first.</Callout>
+          <Callout tone="error" lead="Could not save">Quantity must be at least 1.</Callout>
+          <Disclosure summary="Despatched but not invoiced (3)" onToggle={(o) => setDisc(o)} data-testid="disc">
+            <p style={{ margin: 0, color: "#3b4559" }}>Three delivery notes are waiting for an invoice. The same rows and words as the full list.</p>
+          </Disclosure>
+          <Disclosure summary="Open by default" defaultOpen><p style={{ margin: 0, color: "#3b4559" }}>Content shown from the start.</p></Disclosure>
+          <p style={cap}>Disclosure toggled: {disc === null ? "not yet" : disc ? "open" : "closed"}</p>
+          <List label="Customers" data-testid="list-rows">
+            <ListRow title="Hartley Engineering" meta="3 open jobs, last order 12 Nov" href="#s-v3-panel" onClick={(e) => { e.preventDefault(); previewOnly("Hartley Engineering was not opened."); }} trailing={<Button size="sm" variant="secondary" onClick={() => previewOnly("No statement was drafted.")}>Draft statement</Button>} />
+            <ListRow title="Northfield Fabrication" meta="1 open job" href="#s-v3-panel" onClick={(e) => { e.preventDefault(); previewOnly("Northfield was not opened."); }} />
+            <ListRow title="Calder Hydraulics (plain row)" meta="No link, no actions" />
+          </List>
+          <List label="Customers, dense" dense><ListRow title="Dense row" meta="48 px" trailing={<Button size="sm" variant="quiet">Edit</Button>} /><ListRow title="Dense row two" /></List>
+          <EmptyState compact headingLevel={3} title="No jobs for this customer" detail="Jobs you create for them appear here." />
+        </div>
+      </Section>
+
+      <Section id="s-v3-form" title="Form group, error summary, date range, large fields" note="FormGroup titles a set of fields (role=group + heading, or fieldset + legend). Press Save with errors: the summary lists each problem as a link and focus moves to the first invalid field. DateRangeGroup wires From after To to both inputs; Apply then focuses From.">
+        <div style={{ display: "grid", gap: 18, maxWidth: 720 }}>
+          <form noValidate onSubmit={(e) => { e.preventDefault(); setAttempts((n) => n + 1); if (errors.length === 0) previewOnly("Nothing was saved."); }} style={{ display: "grid", gap: 14 }} data-testid="group-form">
+            {show && errors.length > 0 ? <ErrorSummary errors={errors} focusSignal={attempts} headingLevel={3} data-testid="err-summary" /> : null}
+            <FormGroup title="Job details" headingLevel={3} hint="What is being made and for whom." columns={2} data-testid="group-a">
+              <Field id="g-name" label="Job name" required error={show && grp.name.trim() === "" ? "Enter a job name." : undefined}><Input value={grp.name} onChange={(e) => setGrp({ ...grp, name: e.target.value })} /></Field>
+              <Field id="g-qty" label="Quantity" required error={show && !(Number(grp.qty) >= 1) ? "Quantity must be at least 1." : undefined}><Input inputMode="numeric" value={grp.qty} onChange={(e) => setGrp({ ...grp, qty: e.target.value })} /></Field>
+            </FormGroup>
+            <FormGroup title="Dates" headingLevel={3} as="fieldset" columns={2} data-testid="group-b">
+              <Field id="g-due" label="Due date" required error={show && grp.due === "" ? "Choose a due date." : undefined}><Input type="date" value={grp.due} onChange={(e) => setGrp({ ...grp, due: e.target.value })} /></Field>
+            </FormGroup>
+            <div><Button variant="primary" type="submit" data-testid="group-save">Save job</Button></div>
+          </form>
+          <DateRangeGroup label="Report period" from={range.from} to={range.to} onFromChange={(v) => setRange({ ...range, from: v })} onToChange={(v) => setRange({ ...range, to: v })} onApply={() => setApplied(`Applied ${range.from} to ${range.to}`)} data-testid="range" />
+          <p style={cap} data-testid="range-applied">{applied}</p>
+          <div style={{ maxWidth: 360, display: "grid", gap: 12 }}>
+            <Field label="Large text (16 px, 48 px visible)" large hint="Stops iOS zooming on focus."><Input placeholder="Customer name" data-testid="f-large" /></Field>
+            <Field label="Large select" large><Select defaultValue="" data-testid="f-large-select"><option value="">Choose a machine</option><option>Laser 2</option></Select></Field>
+            <Field label="Large note" large><Textarea rows={2} data-testid="f-large-area" /></Field>
+            <Field label="Large with error" large error="Enter a name."><Input data-testid="f-large-error" /></Field>
+          </div>
+        </div>
+      </Section>
+
+      <Section id="s-v3-tile" title="Stat tile as a link" note="href makes the tile a link; status is a dot plus word; definition is the plain-words meaning, shown on hover and read by screen readers as the description.">
+        <StatTiles label="Linked figures" columns={4}>
+          <StatTile label="Needs attention" value="3" hint="Open the list" status="Act now" statusTone="danger" href="#s-v3-tile" definition="Jobs past their due date that are not finished." onClick={(e) => { e.preventDefault(); previewOnly("The attention list was not opened."); }} data-testid="tile-link-a" />
+          <StatTile label="Waiting" value="5" status="Watch" statusTone="warn" href="#s-v3-tile" onClick={(e) => e.preventDefault()} data-testid="tile-link-b" />
+          <StatTile label="Done today" value="12" status="Done" statusTone="ok" definition="Jobs finished since midnight." data-testid="tile-status-only" />
+          <StatTile label="Open quotes" value="7" href="#s-v3-tile" loading onClick={(e) => e.preventDefault()} data-testid="tile-link-loading" />
+        </StatTiles>
+      </Section>
+
+      <Section id="s-v3-nest" title="Nested sheet" note="A sheet opened from inside another sheet: Escape closes only the inner one, Tab stays inside the inner one, and the outer sheet is untouched. The inner sheet also opens a confirm dialog (three levels).">
+        <div style={row}><Button onClick={() => setOuter(true)} data-testid="open-outer">Open outer sheet</Button></div>
+        <Sheet open={outer} size="md" testId="sheet-outer" onClose={() => setOuter(false)} title="New sales order" description="The outer sheet."
+          footer={<><Button variant="secondary" onClick={() => setOuter(false)}>Cancel</Button><Button variant="primary" onClick={() => { setOuter(false); previewOnly("Nothing was saved."); }}>Save order</Button></>}>
+          <Field label="Customer"><Select defaultValue="Hartley Engineering"><option>Hartley Engineering</option><option>Northfield Fabrication</option></Select></Field>
+          <div><Button variant="secondary" size="sm" onClick={() => setInner(true)} data-testid="open-inner">Add new customer</Button></div>
+          <Field label="Note"><Textarea rows={2} /></Field>
+          <Sheet open={inner} size="sm" testId="sheet-inner" onClose={() => setInner(false)} title="Add new customer" description="The inner sheet."
+            footer={<><Button variant="secondary" onClick={() => setInner(false)}>Cancel</Button><Button variant="primary" onClick={() => setDiscard(true)} data-testid="open-discard">Discard?</Button></>}>
+            <Field label="Customer name"><Input value={innerName} onChange={(e) => setInnerName(e.target.value)} data-testid="inner-name" /></Field>
+            <Dialog open={discard} title="Discard this customer?" confirmLabel="Discard" onClose={() => setDiscard(false)} onConfirm={() => { setDiscard(false); setInner(false); }} />
+          </Sheet>
+        </Sheet>
+      </Section>
+    </>
   );
 }
 
