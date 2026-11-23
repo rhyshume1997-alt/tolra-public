@@ -1,15 +1,16 @@
 /*
  * BOUNDARY (module 7, shared UI, NEW). Inputs: none. Output: the class that carries the design tokens and the list of token names.
- * v4 (additive): font tokens (--ui-font, --ui-font-heading, --ui-font-numeric: one place to swap the family), typeScale (class names for the nine text styles: page, section, card, label, body, name, secondary, caption, tableHead, numeral), the new token names (type scale, elevation, motion) and pressScale.
+ * v4 (additive): ./fonts (IBM Plex Sans 400, 500, 600 from @fontsource, scoped to .tokens only), font tokens (--ui-font, --ui-font-heading, --ui-font-numeric: one place to swap the family), typeScale (class names for the nine text styles: page, section, card, label, body, name, secondary, caption, tableHead, numeral), the new token names (type scale, elevation, motion) and pressScale.
  * Must not change: token names (every later module reads them); values live in premium.module.css under .tokens. Apply
  * `premiumTokens` to a page root AND to any portal layer you create yourself, because a portal sits outside the root's DOM subtree.
  * No business rules, no data, no imports other than the one CSS module.
  */
+import "./fonts";
 import styles from "./premium.module.css";
 
-/** Class that defines every --ui-* custom property plus the Archivo base font. */
+/** Class that defines every --ui-* custom property plus the IBM Plex Sans base font. */
 export const premiumTokens: string = styles.tokens;
-/** Archivo tabular figures: put on any element that holds a figure in a column or counter. */
+/** Tabular figures: put on any element that holds a figure in a column or counter. */
 export const tabularNumbers: string = styles.num;
 /** Visually hidden but read by assistive technology. */
 export const srOnly: string = styles.srOnly;
@@ -20,7 +21,7 @@ export const srOnly: string = styles.srOnly;
  */
 export const typeScale = {
   page: styles.tPage, section: styles.tSection, card: styles.tCard, label: styles.tLabel, body: styles.tBody, name: styles.tName,
-  secondary: styles.tSecondary, caption: styles.tCaption, tableHead: styles.tTableHead, numeral: styles.tNumeral,
+  secondary: styles.tSecondary, mono: styles.tMono, caption: styles.tCaption, tableHead: styles.tTableHead, numeral: styles.tNumeral,
 } as const;
 
 /** The documented token names (see premium.module.css). */
@@ -41,7 +42,7 @@ export const TOKEN_NAMES = [
   "--ui-fs-caption", "--ui-lh-caption", "--ui-fw-caption", "--ui-ls-caption", "--ui-fs-thead", "--ui-lh-thead", "--ui-fw-thead", "--ui-ls-thead",
   "--ui-fs-numeral", "--ui-lh-numeral", "--ui-fw-numeral", "--ui-ls-numeral", "--ui-fw-name",
   // v4 font indirection: the family is defined once; the override variables are optional and unset by default.
-  "--ui-font-heading", "--ui-font-numeric", "--ui-numeric-features",
+  "--ui-font-heading", "--ui-font-numeric", "--ui-font-mono", "--ui-numeric-features",
 ] as const;
 
 /** Joins class names, skipping anything falsy. */

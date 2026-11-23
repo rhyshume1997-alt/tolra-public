@@ -28,6 +28,7 @@ export { PageHeader, type PageHeaderProps } from "./PageHeader";
 export { Tabs, TabPanel, isTabKey, type TabsProps, type TabItem } from "./Tabs";
 export { PreviewBar, PREVIEW_LABEL, type PreviewBarProps } from "./PreviewBar";
 export { StackedRows, type StackedRowsProps, type StackedRow, type StackedField } from "./StackedRows";
+export { UI_FONT_FAMILY, UI_FONT_WEIGHTS } from "./fonts";
 export { usePresence, useEntered, useModalPresence, EXIT_MS } from "./usePresence";
 /*
  * v4 default look changes (all visual, no prop, control or behaviour removed): table header cells are 12 px uppercase tracked (were 12.5 px sentence case); body text, hints, labels and meta lines sit on the new type scale

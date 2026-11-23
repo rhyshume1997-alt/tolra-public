@@ -87,10 +87,10 @@ function Showcase({ setPlace }: { setPlace: (p: Place) => void }) {
       } />
       <PageHeader title="Shared UI preview" description="Every component of the shared set in each state. Sample content for layout only: nothing on this page reads or saves any data." data-testid="page-header-main" />
 
-      <Section id="s-type" title="Type scale and figures" note="Archivo throughout. Weight carries the hierarchy: 600 for names and titles, 500 for labels and captions, 400 for body and secondary text. 13 px is the smallest running text; 12 px only for table headers, captions and badges. Figures that line up in columns use tabular figures.">
+      <Section id="s-type" title="Type scale and figures" note="IBM Plex Sans throughout (weights 400, 500, 600). Weight carries the hierarchy: 600 for names and titles, 500 for labels and captions, 400 for body and secondary text. 13 px is the smallest running text; 12 px only for table headers, captions and badges. Figures that line up in columns use tabular figures.">
         <div style={{ display: "grid", gap: 10 }} data-testid="type-scale">
           {([
-            ["page", "26 / 32, 650, tracked tight (22 / 28 under 640 px)", "Job board"],
+            ["page", "26 / 32, 600, tracked tight (22 / 28 under 640 px)", "Job board"],
             ["section", "18 / 24, 600", "Open jobs this week"],
             ["card", "15 / 22, 600", "Hartley Engineering"],
             ["label", "13 / 18, 600", "Customer reference"],
@@ -523,8 +523,8 @@ function ShowcaseV4({ previewOnly }: { previewOnly: (what: string) => void }) {
 
 /** Candidate UI fonts. `weights` says what a same-origin copy would offer; a font this build cannot load is omitted (never faked). */
 const CANDIDATES = [
-  { name: "Archivo", note: "current. Static 400 500 600 700 from @fontsource (650 snaps to 700)" },
-  { name: "IBM Plex Sans", note: "static 400 500 600 700 (@fontsource package is in the repo)" },
+  { name: "IBM Plex Sans", note: "the shared set's font now: static 400 500 600 from @fontsource (bundled, same origin)" },
+  { name: "Archivo", note: "the real app's current font (before): static 400 to 700, 650 snaps to 700" },
   { name: "Inter", note: "variable 100 to 900" },
   { name: "Geist", note: "variable 100 to 900" },
   { name: "Public Sans", note: "variable 100 to 900" },
