@@ -155,4 +155,24 @@ describe("rendering", () => {
     expect(t).not.toMatch(/\bsaved successfully|recorded successfully/i);
     await act(async () => { root.unmount(); });
   });
+  it("v2: the generic sentence is the title's description, a week row has ONE primary action and the rest is under More, nothing is lost", async () => {
+    expect(SRC).toContain('TIME_INTRO = "Clock in and out, and see the hours worked each day and week."');
+    expect(SRC).toContain("<PreviewBar"); expect(SRC).toContain("<PageHeader");
+    host = document.createElement("div"); document.body.append(host);
+    const root = createRoot(host);
+    await act(async () => { root.render(createElement(TimePreview)); });
+    expect(host.querySelector("[data-testid=time-title]")?.getAttribute("title")).toBe("Clock in and out, and see the hours worked each day and week.");
+    const tab = (name: string) => Array.from(host.querySelectorAll("[role=tab]")).find((b) => b.textContent === name) as HTMLElement;
+    await act(async () => { tab("This week").click(); });
+    await act(async () => { (host.querySelector('button[aria-label="Previous week"]') as HTMLButtonElement).click(); });
+    const row = host.querySelector("[data-testid=week-row-u-ngozi]")!;
+    expect(row.querySelectorAll("[data-testid=approve-week]").length).toBe(1);
+    expect(row.querySelector("[data-testid=save-suggested-ticks]")).toBeNull();
+    const more = row.querySelector("[data-testid=week-more]") as HTMLButtonElement;
+    expect(more).not.toBeNull();
+    await act(async () => { more.click(); });
+    const items = Array.from(document.querySelectorAll("[role=menuitem]")).map((b) => b.textContent);
+    expect(items).toEqual(["Save suggested ticks"]);
+    await act(async () => { root.unmount(); });
+  });
 });

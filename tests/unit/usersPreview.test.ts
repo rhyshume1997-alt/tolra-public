@@ -13,7 +13,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import UsersPreview, {
-  ADD_NEEDS_PERSON, COMPANY_NAME, ME, REASON_MAX, REASON_MIN, ROLE_HELP, ROLES, SCOPE_MAX, SEED_USERS, SELF_ADMIN_NOTE, canUseUsers, editChanges, eligibleForList, isLastAdminOf,
+  ADD_NEEDS_PERSON, COMPANY_NAME, ME, OFF_SITE_LABEL, OFF_SITE_RULE, ON_SITE_LABEL, ON_SITE_RULE, USERS_INTRO_GENERIC, USERS_INTRO_RULE, clockSwitchesFor, REASON_MAX, REASON_MIN, ROLE_HELP, ROLES, SCOPE_MAX, SEED_USERS, SELF_ADMIN_NOTE, canUseUsers, editChanges, eligibleForList, isLastAdminOf,
   nameOf, overviewOf, pagesOf, passwordForm, planRowActions, statusOf, validateAdd, validateEdit, validateInspector,
 } from "@/components/admin/users/preview/UsersPreview";
 import { usersEmptyHint } from "@/lib/empty-hints";
@@ -25,6 +25,8 @@ import { USERNAME_RULES } from "@/lib/username";
 
 const read = (rel: string) => fs.readFileSync(path.join(process.cwd(), rel), "utf8");
 const PAGE = read("app/(dashboard)/admin/users/page.tsx");
+const ON_SITE_SRC = read("components/time/on-site-only.tsx");
+const OFF_SITE_SRC = read("components/time/clock-in-off-site.tsx");
 const INSPECT_UI = read("components/authorised-inspectors.tsx");
 const INSPECT_LIB = read("lib/inspectors.ts");
 const SRC = read("components/admin/users/preview/UsersPreview.tsx");
@@ -154,6 +156,28 @@ describe("users preview: row controls follow the real rules", () => {
   });
 });
 
+describe("users preview v2: the structural changes keep every rule", () => {
+  it("clock-in switches: same labels and rules as the real components, same row rule, now in the Edit sheet", () => {
+    expect(ON_SITE_SRC).toContain(`title="${ON_SITE_RULE}"`); expect(ON_SITE_SRC).toContain(ON_SITE_LABEL);
+    expect(OFF_SITE_SRC).toContain(`title="${OFF_SITE_RULE}"`); expect(OFF_SITE_SRC).toContain(OFF_SITE_LABEL);
+    expect(OFF_SITE_LABEL).toBe("Can clock in off site (while the network lock is on)");
+    const both = { has075: true, has114: true };
+    expect(clockSwitchesFor(user("u04"), both)).toEqual({ onSite: true, offSite: true });
+    expect(clockSwitchesFor(user("u04"), { has075: false, has114: true })).toEqual({ onSite: false, offSite: true });
+    expect(clockSwitchesFor(user("u04"), { has075: true, has114: false })).toEqual({ onSite: true, offSite: false });
+    expect(clockSwitchesFor(user("u10"), both)).toEqual({ onSite: false, offSite: false });
+    expect(clockSwitchesFor(user("u15"), both)).toEqual({ onSite: false, offSite: false });
+    expect(editChanges({ fullName: "Callum Reeve", role: "office", secondary: "", username: "creeve", hidden: ["invoices", "approval"], inspector: true, onSite: false, offSite: true }, user("u04"), { flagsError: false })).toEqual(["on site only", "off-site clock-in"]);
+  });
+  it("the page sentence is split, not lost: the generic part is a tooltip, the rule stays visible, together they are the real wording", () => {
+    expect(`${USERS_INTRO_GENERIC} ${USERS_INTRO_RULE}`).toBe("Add people to Fernhill Engineering Ltd, choose what they can open, and manage their passwords. Nothing is e-mailed unless you press Send password reset e-mail.");
+    expect(PAGE).toContain("Add people to {company?.name"); expect(PAGE).toContain(USERS_INTRO_RULE);
+  });
+  it("the source holds no per-row clock-in switch any more", () => {
+    expect(SRC).not.toContain("function ClockIn"); expect(SRC).not.toContain("toggleFlag");
+  });
+});
+
 describe("users preview: sample data and boundary", () => {
   it("every address is on a reserved .example domain and the file imports no auth, session or network code", () => {
     for (const u of SEED_USERS) expect(u.email).toMatch(/\.example$/);
@@ -181,5 +205,41 @@ describe("users preview: rendering", () => {
     await act(async () => { (dlg.querySelector('[data-testid="save-user"]') as HTMLButtonElement).click(); });
     expect(dlg.querySelector('[data-testid="form-summary"]')?.textContent).toContain(ADD_NEEDS_PERSON);
     expect(document.body.textContent).not.toMatch(/saved successfully|User updated|deactivated\b(?! would)/);
+  });
+  it("rows no longer carry the clock-in switches; the Edit user sheet does, with the real labels, for an active person only", async () => {
+    const h = await mount();
+    expect(h.querySelector('[data-testid="user-row"] [data-testid="on-site-only"]')).toBeNull();
+    expect(h.querySelector('[data-testid="user-row"] [data-testid="clock-in-off-site"]')).toBeNull();
+    expect(h.querySelector('[data-testid="clock-in-off-site-note"]')).not.toBeNull();
+    const edit = (name: string) => h.querySelector(`[data-testid="user-row"][data-user="${name}"] button[data-action="Edit"]`) as HTMLButtonElement;
+    await act(async () => { edit("Callum Reeve").click(); });
+    const dlg = document.querySelector('[data-testid="dlg-edit-user"]')!;
+    expect(dlg.querySelector('[data-testid="on-site-only"]')?.textContent).toContain(ON_SITE_LABEL);
+    expect(dlg.querySelector('[data-testid="clock-in-off-site"]')?.textContent).toContain(OFF_SITE_LABEL);
+    expect((dlg.querySelector('[data-testid="on-site-only"] input') as HTMLInputElement).checked).toBe(true);
+    await act(async () => { (dlg.querySelector('[data-testid="on-site-only"] input') as HTMLInputElement).click(); });
+    await act(async () => { (dlg.querySelector('[data-testid="save-user"]') as HTMLButtonElement).click(); });
+    expect(document.body.textContent).toContain("Changes to Callum Reeve would be saved: on site only.");
+    expect(document.body.textContent).toContain("Nothing was saved.");
+  });
+  it("one 'N things need attention' disclosure holds the two original messages verbatim", async () => {
+    const h = await mount();
+    expect(h.querySelectorAll('[data-testid="attention"]').length).toBe(1);
+    expect(h.querySelector('[data-testid="attention-summary"]')?.textContent).toBe("2 things need attention");
+    expect(h.querySelector('[data-testid="attention"]')?.tagName).toBe("DETAILS");
+    expect(h.querySelector('[data-testid="missing-names"]')?.textContent).toBe("1 person has no display name, so the Job Board can't say who a job is assigned to. Use Edit to add one, or ask them to add it in Account Settings.");
+    expect(h.querySelector('[data-testid="admin-mfa-rule"]')?.textContent).toBe(adminMfaRuleMessage(overviewOf(SEED_USERS)!, (id) => nameOf(user(id))).text);
+    expect(SRC).toContain("so the Job Board can&apos;t say who a job is assigned to. Use Edit to add one, or ask them to add it in Account Settings.");
+    expect(PAGE).toContain("so the Job Board can&apos;t say who a job is assigned to. Use Edit to add one, or ask them to add it in Account Settings.");
+  });
+  it("one role pill style, and one primary action (Edit) per row with the rest under More", async () => {
+    const h = await mount();
+    const pills = Array.from(h.querySelectorAll('[data-testid="role-pill"]'));
+    expect(pills.length).toBeGreaterThan(SEED_USERS.length - 3);
+    expect(new Set(pills.map((p) => p.className)).size).toBe(1);
+    for (const row of Array.from(h.querySelectorAll('[data-testid="user-row"]'))) {
+      expect(row.querySelectorAll("button[data-action]").length).toBeLessThanOrEqual(1);
+    }
+    expect(h.querySelectorAll('button[aria-label^="More actions for"]').length).toBeGreaterThanOrEqual(SEED_USERS.length - 3);
   });
 });

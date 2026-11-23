@@ -14,7 +14,7 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import SchedulePreview, {
   BOOKINGS, BOOK_NEEDS_HOURS, BOOK_NEEDS_JOB, BOOK_NEEDS_MACHINE, BOOK_NEEDS_START, MACHINES, MACHINE_DAYS_NEEDED, MACHINE_HOURS_RANGE, MACHINE_NAME_NEEDED, MIN_BAR_PERCENT, NOW,
   OVERRIDE_ONLY_ADMIN, OVERRIDE_REASON_MIN, ROLES, SCHEDULE_COLUMN_KEYS, SPLIT_STATUS_ONLY, STATUS_LABEL, afterRequiredDate, bookDisabled, bookingStatusLabel, canBook, canManageMachines, canOverride,
-  checkFirstText, validateBooking, validateMachine,
+  checkFirstText, validateBooking, validateMachine, MIN_BAR_PX, MIN_DAY_COL, SCHEDULE_INTRO, barStyle,
 } from "@/components/schedule/preview/SchedulePreview";
 import { computeFinish, findOverlaps, machineStatus, scheduleAll } from "@/lib/machine-schedule";
 
@@ -133,6 +133,30 @@ describe("rendering", () => {
     expect(toast).toContain("Preview only");
     expect(toast).toContain("Nothing was saved.");
     expect(toast).not.toMatch(/\bsaved successfully|booked successfully|updated successfully\b/i);
+    await act(async () => { root.unmount(); });
+  });
+  it("v2: 90 px day columns, every bar labelled, the red IN USE line appears once, the generic sentence is the title's description", async () => {
+    expect(MIN_DAY_COL).toBeGreaterThanOrEqual(90);
+    expect(MIN_BAR_PX).toBeGreaterThanOrEqual(40);
+    expect(barStyle(10, 5)).toEqual({ left: `min(10%, calc(100% - ${MIN_BAR_PX}px))`, width: `max(5%, ${MIN_BAR_PX}px)` });
+    expect(SRC).not.toContain("IN USE:"); expect(SRC).toContain("<PreviewBar"); expect(SRC).toContain("<PageHeader");
+    expect(SCHEDULE_INTRO).toBe("Book jobs onto machines and see when each machine is free.");
+    host = document.createElement("div"); document.body.append(host);
+    const root = createRoot(host);
+    await act(async () => { root.render(createElement(SchedulePreview)); });
+    expect(host.querySelector("[data-testid=schedule-title]")?.getAttribute("title")).toBe(SCHEDULE_INTRO);
+    const region = host.querySelector('[role=region][aria-label^="Machine timeline"]') as HTMLElement;
+    expect(region.getAttribute("aria-label")).toBe("Machine timeline, scrolls sideways");
+    const bars = Array.from(host.querySelectorAll("[data-testid=booking-bar]:not([data-covered]), [data-testid=run-bar]"));
+    expect(bars.length).toBeGreaterThan(10);
+    for (const b of bars) {
+      expect(b.querySelector("[data-testid=bar-label]")?.textContent?.trim()).toMatch(/^J-\d{4}$/);
+      expect(b.getAttribute("title")).toBeTruthy(); expect(b.getAttribute("aria-label")).toBeTruthy();
+    }
+    const inUse = Array.from(host.querySelectorAll("[data-testid=machine-status][data-in-use=true]"));
+    expect(inUse.length).toBe(2);
+    for (const card of inUse) expect((card.textContent?.match(/since/g) ?? []).length).toBe(1);
+    expect(host.textContent).not.toContain("IN USE");
     await act(async () => { root.unmount(); });
   });
 });
