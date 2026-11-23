@@ -189,6 +189,12 @@ describe("reports preview: rendered", () => {
   beforeAll(() => { (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true; });
   afterEach(() => { act(() => root?.unmount()); host?.remove(); });
   const mount = () => { host = document.createElement("div"); document.body.append(host); root = createRoot(host); act(() => root.render(createElement(ReportsPreview))); return host; };
+  it("v2: one PreviewBar, one h1 and no yellow pill beside the title", () => {
+    const el = mount();
+    expect(el.querySelectorAll('[role="group"][aria-label="Preview information"]')).toHaveLength(1);
+    expect(el.querySelectorAll("h1")).toHaveLength(1);
+    expect(el.querySelector("h1")?.textContent).toBe("Reports");
+  });
   it("labelled sample data; the four cards in order; the figures; Download answers Preview only", () => {
     const el = mount(); const t = el.textContent ?? "";
     expect(t).toContain("Preview, sample data, nothing is saved");

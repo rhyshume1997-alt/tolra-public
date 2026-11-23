@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * BOUNDARY (Numbers, Module 7, PREVIEW ONLY). Route /numbers/preview. Inputs: none from the server. Everything shown is fictional sample data (invoices, credit
+ * BOUNDARY (v2: shared UI v4 plus structural items 10 and 11, the shared PreviewBar and PageHeader and the type scale; nothing else changes) (Numbers, Module 7, PREVIEW ONLY). Route /numbers/preview. Inputs: none from the server. Everything shown is fictional sample data (invoices, credit
  * notes, payments, machines and machine runs for the twelve London months to November 2026, as of Fri 20/11/2026) held in this file, plus the person's clicks.
  * Outputs: the Numbers look-and-feel prototype of app/(dashboard)/numbers/page.tsx: the Months choice (3, 6, 12), the Invoiced ex VAT and Received tiles, the three
  * questions (customer reliance, invoices into cash with its month table, machine time) and the real failure wording. Only LOCAL UI state; no Supabase, no server
@@ -14,7 +14,7 @@
 
 import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode, RefObject } from "react";
-import { Button, Popover, SegmentedControl, ToastProvider, cx, premiumTokens, tabularNumbers, useToast } from "@/components/ui/premium";
+import { Button, PageHeader, Popover, PreviewBar, SegmentedControl, ToastProvider, cx, premiumTokens, tabularNumbers, typeScale, useToast } from "@/components/ui/premium";
 import { gbp } from "@/lib/money";
 import { cashByMonth, customerConcentration, invoicedByMonth, londonMonthsEnding, machineHours, receivedByMonth, sumOrNull, windowOf } from "@/lib/numbers";
 import type { NumberCredit, NumberInvoice, NumberMachine, NumberPayment, NumberRun } from "@/lib/numbers";
@@ -207,29 +207,24 @@ function Inner() {
 
   return (
     <div className={cx(premiumTokens, s.root)} data-testid="numbers-preview" data-role={role} data-screen={screen}>
-      <header className={s.head}>
-        <div className={s.titleBlock}>
-          <div className={s.titleLine}>
-            <h1 className={s.title}>Numbers</h1>
-            <span className={s.previewTag} title="Everything on this screen is fictional sample data. Nothing is read from or saved to your account.">Preview, sample data, nothing is saved</span>
-            <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
-              <div className={s.dock}>
-                <p className={s.dockNote}>Not part of Tolra. Sample data as of Friday 20 November 2026; states are simulated and no request is made.</p>
-                <p className={s.dockLabel}>Role (the view the person works in)</p>
-                <SegmentedControl label="Role" value={role} size="sm" onChange={(v) => { setRole(v); toast.clear(); }} options={[{ value: "admin", label: "Admin" }, { value: "office", label: "Office" }, { value: "workshop", label: "Workshop" }, { value: "viewer", label: "Viewer" }]} />
-                <p className={s.dockLabel}>Screen state</p>
-                <div className={s.dockStates} role="group" aria-label="Screen state">
-                  {([["ready", "Normal"], ["loading", "Loading"], ["failed", "Every read failed"], ["partial", "Payments couldn't load"], ["no-figures", "An invoice has no figures"], ["empty", "New company, no data"]] as Array<[Screen, string]>).map(([v, l]) => (
-                    <button key={v} type="button" className={s.dockBtn} aria-pressed={screen === v} onClick={() => { toast.clear(); setScreen(v); }}>{l}</button>))}
-                </div>
-                <Button size="sm" variant="secondary" onClick={() => { setRole("admin"); setScreen("ready"); setMonths(6); toast.clear(); }}>Reset preview</Button>
-              </div>
-            </Popover>
+      <PreviewBar controls={
+        <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
+          <div className={s.dock}>
+            <p className={typeScale.caption}>Not part of Tolra. Sample data as of Friday 20 November 2026; states are simulated and no request is made.</p>
+            <p className={typeScale.label}>Role (the view the person works in)</p>
+            <SegmentedControl label="Role" value={role} size="sm" onChange={(v) => { setRole(v); toast.clear(); }} options={[{ value: "admin", label: "Admin" }, { value: "office", label: "Office" }, { value: "workshop", label: "Workshop" }, { value: "viewer", label: "Viewer" }]} />
+            <p className={typeScale.label}>Screen state</p>
+            <div className={s.dockStates} role="group" aria-label="Screen state">
+              {([["ready", "Normal"], ["loading", "Loading"], ["failed", "Every read failed"], ["partial", "Payments couldn't load"], ["no-figures", "An invoice has no figures"], ["empty", "New company, no data"]] as Array<[Screen, string]>).map(([v, l]) => (
+                <Button key={v} size="sm" variant="secondary" fullWidth aria-pressed={screen === v} onClick={() => { toast.clear(); setScreen(v); }}>{l}</Button>))}
+            </div>
+            <Button size="sm" variant="secondary" onClick={() => { setRole("admin"); setScreen("ready"); setMonths(6); toast.clear(); }}>Reset preview</Button>
           </div>
-          {admin ? <p className={s.subtitle} data-testid="numbers-span">{span}. Months follow the UK calendar.</p> : null}
-        </div>
-        {admin ? <div className={s.headControls}><span className={s.monthsLabel} id="months-label">Months</span><SegmentedControl label="Months to show" value={String(months)} onChange={(v) => setMonths(Number(v))} options={MONTH_CHOICES.map((n) => ({ value: String(n), label: String(n), testId: `months-${n}` }))} /></div> : null}
-      </header>
+        </Popover>
+      } />
+      <PageHeader title="Numbers"
+        description={admin ? <span data-testid="numbers-span">{span}. Months follow the UK calendar.</span> : undefined}
+        actions={admin ? <div className={s.headControls}><span className={typeScale.label} id="months-label">Months</span><SegmentedControl label="Months to show" value={String(months)} onChange={(v) => setMonths(Number(v))} options={MONTH_CHOICES.map((n) => ({ value: String(n), label: String(n), testId: `months-${n}` }))} /></div> : undefined} />
 
       {!admin ? (
         <section className={s.gate} data-testid="not-admin"><h2 className={s.gateTitle}>Loading{"…"}</h2><p className={s.muted}>Preview only: no redirect happens here. On the real page a non-admin view is sent back to the Dashboard (Numbers is admin only).</p></section>

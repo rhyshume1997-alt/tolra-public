@@ -18,7 +18,7 @@
 
 import { useCallback, useId, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { Button, Field, Input, Popover, SegmentedControl, Select, StatusBadge, Switch, ToastProvider, cx, premiumTokens, tabularNumbers, useToast } from "@/components/ui/premium";
+import { Button, Field, Input, PageHeader, Popover, PreviewBar, SegmentedControl, Select, StatusBadge, Switch, ToastProvider, cx, premiumTokens, tabularNumbers, typeScale, useToast } from "@/components/ui/premium";
 import type { StatusTone } from "@/components/ui/premium";
 import { calendarDate, fmtDateTime, toDateInput } from "@/lib/dates";
 import { NCR_CONFIRMED_TYPES } from "@/lib/jobs/ncr-register";
@@ -468,32 +468,27 @@ function Inner() {
 
   return (
     <div className={cx(premiumTokens, s.root)} data-testid="reports-preview" data-role={role} data-page={pageNow} data-screen={screen}>
-      <header className={s.head}>
-        <div className={s.titleBlock}>
-          <div className={s.titleLine}>
-            <h1 className={s.title}>{pageNow === "revenue" ? "Revenue" : "Reports"}</h1>
-            <span className={s.previewTag} title="Everything on this screen is fictional sample data. Nothing is read from or saved to your account.">Preview, sample data, nothing is saved</span>
-            <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
-              <div className={s.dock}>
-                <p className={s.dockNote}>Not part of Tolra. Sample data as of Friday 20 November 2026; states are simulated and no request is made.</p>
-                <p className={s.dockLabel}>Page</p>
+      <PreviewBar controls={
+        <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
+          <div className={s.dock}>
+                <p className={typeScale.caption}>Not part of Tolra. Sample data as of Friday 20 November 2026; states are simulated and no request is made.</p>
+                <p className={typeScale.label}>Page</p>
                 <SegmentedControl label="Page" value={page} size="sm" onChange={setPage} options={[{ value: "operations", label: "Reports", testId: "page-operations" }, { value: "revenue", label: "Revenue", testId: "page-revenue" }]} />
-                <p className={s.dockLabel}>Role (the view the person works in)</p>
+                <p className={typeScale.label}>Role (the view the person works in)</p>
                 <SegmentedControl label="Role" value={role} size="sm" onChange={(v) => { setRole(v); toast.clear(); }} options={[{ value: "admin", label: "Admin" }, { value: "office", label: "Office" }, { value: "workshop", label: "Workshop" }, { value: "viewer", label: "Viewer" }]} />
-                <p className={s.dockLabel}>Screen state</p>
+                <p className={typeScale.label}>Screen state</p>
                 <div className={s.dockStates} role="group" aria-label="Screen state">
-                  {SCREENS.map(([v, l]) => <button key={v} type="button" className={s.dockBtn} aria-pressed={screen === v} onClick={() => { toast.clear(); setScreen(v); }}>{l}</button>)}
+                  {SCREENS.map(([v, l]) => <Button key={v} size="sm" variant="secondary" fullWidth aria-pressed={screen === v} onClick={() => { toast.clear(); setScreen(v); }}>{l}</Button>)}
                 </div>
                 <Switch label="Reports switched on" hint="Company setting, off by default." checked={reportsOn} onChange={setReportsOn} data-testid="dock-reports-on" />
                 <Switch label="Revenue report switched on" hint="Company setting, off by default." checked={revenueOn} onChange={setRevenueOn} data-testid="dock-revenue-on" />
-                <p className={s.dockLabel}>Hidden for this person (Page access)</p>
+                <p className={typeScale.label}>Hidden for this person (Page access)</p>
                 {HIDEABLE.map((k) => <Switch key={k} label={`${sectionLabel(k)} hidden`} checked={hidden.includes(k)} onChange={(on) => toggleHidden(k, on)} data-testid={`dock-hide-${k}`} />)}
                 <Button size="sm" variant="secondary" onClick={() => { setRole("admin"); setPage("operations"); setScreen("ready"); setMonths(12); setRange(defaultRange()); setCustomer(""); setHidden([]); setReportsOn(true); setRevenueOn(true); toast.clear(); }}>Reset preview</Button>
               </div>
-            </Popover>
-          </div>
-        </div>
-      </header>
+        </Popover>
+      } />
+      <PageHeader title={pageNow === "revenue" ? "Revenue" : "Reports"} />
 
       {!allowed ? (
         <section className={s.denied} data-testid="access-denied"><h2 className={s.deniedTitle}>Access Denied</h2><p className={s.muted}>Redirecting you back to the dashboard.</p><p className={s.muted}>Preview only: no redirect happens here. Reports are for Admin and Office; Workshop and Viewer cannot open them.</p></section>

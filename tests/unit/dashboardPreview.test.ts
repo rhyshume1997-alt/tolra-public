@@ -239,4 +239,48 @@ describe("dashboard preview: rendered", () => {
     expect(toast).toContain("Preview only"); expect(toast).toContain("This would open /quotes. Nothing was changed.");
     expect(document.body.textContent).not.toMatch(/\b(saved successfully|has been saved|was saved|success)\b/i);
   });
+  it("v2: one PreviewBar, no yellow pill, one h1; the greeting line is the page description", () => {
+    const el = mount();
+    expect(el.querySelectorAll('[role="group"][aria-label="Preview information"]')).toHaveLength(1);
+    expect(el.querySelectorAll("h1")).toHaveLength(1);
+    expect(el.querySelector("header p")?.textContent).toContain("Good afternoon, Sam");
+  });
+  it("v2: the jump links are the shared underline Tabs (tablist, one selected tab, every section reachable), and a tab press scrolls to its section", () => {
+    const el = mount();
+    const list = el.querySelector('[role="tablist"][aria-label="Jump to"]')!;
+    const tabs = [...list.querySelectorAll('[role="tab"]')];
+    expect(tabs.map((x) => x.textContent)).toEqual(["Today", "Money", "Work", "Machines", "People"]);
+    expect(tabs.filter((x) => x.getAttribute("aria-selected") === "true")).toHaveLength(1);
+    for (const tab of tabs) expect(el.querySelector(`#${tab.getAttribute("aria-controls")}`), tab.textContent ?? "").not.toBeNull();
+    const scroll = (Element.prototype as unknown as { scrollIntoView: () => void });
+    const calls: string[] = []; const old = scroll.scrollIntoView; scroll.scrollIntoView = function (this: Element) { calls.push((this as HTMLElement).id); };
+    act(() => { (tabs[2] as HTMLElement).click(); });
+    scroll.scrollIntoView = old;
+    expect(calls).toEqual(["work"]);
+    expect(tabs[2].getAttribute("aria-selected")).toBe("true");
+  });
+  it("v2: one heading level per section (every heading inside a section is the same level, h3 under the h2 title)", () => {
+    const el = mount();
+    for (const id of ["today", "money", "work", "machines", "people"]) {
+      const sec = el.querySelector(`#${id}`)!;
+      expect(sec.querySelector("h2")?.textContent, id).toBeTruthy();
+      const inner = [...sec.querySelectorAll("h1, h2, h3, h4, h5, h6")].slice(1).map((h) => h.tagName);
+      expect(new Set(inner).size, `${id}: ${inner.join(",")}`).toBeLessThanOrEqual(1);
+      expect(inner.every((n) => n === "H3"), id).toBe(true);
+    }
+  });
+  it("v2: 'Also counted in Today' is a two-column list: label left, count right, every item still there with its link and count", () => {
+    const el = mount();
+    const box = el.querySelector('[data-testid="overview-others"]')!;
+    expect(box.querySelector("h3")?.textContent).toBe("Also counted in Today");
+    const rows = [...box.querySelectorAll("ul > li")];
+    expect(rows.length).toBe(otherAttention(attentionFor(SAMPLE, "admin"), { items: adminData(SAMPLE, false).attention, failed: false }, false)?.length);
+    for (const li of rows) {
+      expect(li.querySelector('[class*="otherLabel"]')).not.toBeNull();
+      expect(li.querySelector('[class*="otherCount"]')).not.toBeNull();
+    }
+    expect(box.querySelectorAll("a[href]").length).toBe(rows.length);
+    expect(box.querySelector('[data-testid="other-count-overdue-invoices"], [data-testid^="other-count-"]')).not.toBeNull();
+  });
 });
+

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * BOUNDARY (Dashboard, Module 7, PREVIEW ONLY). Route /dashboard/preview inside the existing dashboard shell (verified session, sidebar, top bar).
+ * BOUNDARY (Dashboard, Module 7, PREVIEW ONLY, v2 = shared UI v4 plus owner-approved structural items 6, 10 and 11: one PreviewBar, one PageHeader, ONE heading level per section (the section title is h2, every panel and group inside it the same level below), the jump links as the shared underline Tabs, "Also counted in Today" as a two-column list with right-aligned counts, the type scale). Route /dashboard/preview inside the existing dashboard shell (verified session, sidebar, top bar).
  * Inputs: none from the server. Everything shown is fictional sample data (rows for invoices, credit notes, payments, quotes, RFQs, jobs, machines,
  * bookings, machine runs, inspections, delivery notes and so on, as of Fri 20/11/2026) held in this file, plus the person's clicks. Outputs: the
  * Dashboard look-and-feel prototype for all four views (Admin Overview, Office, Workshop, Viewer) with every tile, chart, link, filter and role rule of
@@ -22,7 +22,7 @@
 import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent, ReactNode, RefObject } from "react";
 import {
-  Button, Popover, SegmentedControl, StatusBadge, Switch, ToastProvider, cx, premiumTokens, tabularNumbers, useToast,
+  Button, PageHeader, Popover, PreviewBar, SegmentedControl, StatusBadge, Switch, Tabs, ToastProvider, cx, premiumTokens, srOnly, tabularNumbers, typeScale, useToast,
 } from "@/components/ui/premium";
 import { buildAttention, type AttentionInput, type AttentionRole, type AttentionSection } from "@/lib/attention-items";
 import { attentionState } from "@/lib/attention";
@@ -234,7 +234,7 @@ const pad2 = (n: number) => String(n).padStart(2, "0");
 const COMPLETE_JOBS: JobRow[] = Object.entries(FINISHED_TUPLES).flatMap(([month, rows]) => rows.map(([day, delta]) => {
   const finished = `${month}-${pad2(day)}`;
   const required = new Date(Date.parse(`${finished}T00:00:00Z`) - delta * DAY_MS).toISOString().slice(0, 10);
-  return J(`J-${month.slice(5)}${pad2(day)}`, "Sample customer", "Finished job", { id: `jd-${month.slice(5)}${pad2(day)}`, started_at: `${finished}T07:00:00Z`, finished_at: `${finished}T16:00:00Z`, inspected_at: `${finished}T17:00:00Z`, date_required: required, flow_status: "complete" });
+  return J(`J-${month.slice(5)}${pad2(day)}`, "Marlow Hydraulics", "Finished job", { id: `jd-${month.slice(5)}${pad2(day)}`, started_at: `${finished}T07:00:00Z`, finished_at: `${finished}T16:00:00Z`, inspected_at: `${finished}T17:00:00Z`, date_required: required, flow_status: "complete" });
 }));
 const INSPECTION_TUPLES: Array<[string, string]> = [
   // [job, result of the FIRST inspection]; a later pass after a fail is a second row and never counts.
@@ -307,8 +307,8 @@ export const SAMPLE: Sample = {
     DN("d7", "DLN-0206", "Ashby Rail Services", "signed", "2026-11-16", { invoice_id: "i-INV-2122" }),
   ],
   purchaseOrders: [
-    { id: "po1", po_ref: "PO-0455", supplier: "Sample Metals Ltd", status: "ordered", expected_delivery: "2026-11-12", received_at: null },
-    { id: "po2", po_ref: "PO-0458", supplier: "Example Tooling Ltd", status: "ordered", expected_delivery: "2026-11-18", received_at: null },
+    { id: "po1", po_ref: "PO-0455", supplier: "Ironbridge Metals", status: "ordered", expected_delivery: "2026-11-12", received_at: null },
+    { id: "po2", po_ref: "PO-0458", supplier: "Harlow Tooling Supplies", status: "ordered", expected_delivery: "2026-11-18", received_at: null },
   ],
   problems: [{ id: "p1", reported_at: "2026-11-18T10:00:00Z", status: "open", reason: "material", note: "Bar stock short by 3 lengths", job_id: "j-1057", jobs: { job_no: "J-1057", customer: "Halden Precision" } }],
   unbilled: [{ job_id: "jd-1103", job_no: "J-1103", customer: "Marlow Hydraulics", completed_at: "2026-11-12T10:00:00Z", to_despatch: 0, to_invoice: 12 }],
@@ -461,23 +461,23 @@ export function sampleFloor(): Floor {
   return wholeFloor({
     machines: MACHINES.map(({ id, name, active }) => ({ id, name, active })),
     inUse: [
-      { run_id: "ru1", machine_id: "m1", machine_name: "CNC Mill 1", job_id: "j-1056", job_no: "J-1056", operator_name: "Priya Sample", started_at: "2026-11-20T08:05:00Z", stale: false },
-      { run_id: "ru2", machine_id: "m2", machine_name: "CNC Mill 2", job_id: "j-1051", job_no: "J-1051", operator_name: "Jordan Example", started_at: "2026-11-20T08:20:00Z", stale: false },
-      { run_id: "ru3", machine_id: "m5", machine_name: "Wire erosion", job_id: "j-1066", job_no: "J-1066", operator_name: "Priya Sample", started_at: "2026-11-19T16:40:00Z", stale: false },
+      { run_id: "ru1", machine_id: "m1", machine_name: "CNC Mill 1", job_id: "j-1056", job_no: "J-1056", operator_name: "Priya Nair", started_at: "2026-11-20T08:05:00Z", stale: false },
+      { run_id: "ru2", machine_id: "m2", machine_name: "CNC Mill 2", job_id: "j-1051", job_no: "J-1051", operator_name: "Jordan Mackay", started_at: "2026-11-20T08:20:00Z", stale: false },
+      { run_id: "ru3", machine_id: "m5", machine_name: "Wire erosion", job_id: "j-1066", job_no: "J-1066", operator_name: "Priya Nair", started_at: "2026-11-19T16:40:00Z", stale: false },
     ],
-    paused: [{ machine_id: "m3", paused_run_id: "pr1", job_id: "j-1063", job_no: "J-1063", operator_name: "Casey Testfield", paused_by_name: "Casey Testfield", paused_at: "2026-11-20T12:05:00Z" }],
-    bench: [{ job_id: "j-1060", run_id: "br1", is_open: true, started_at: "2026-11-20T13:10:00Z", ended_at: null, end_reason: null, operator_id: "u3", operator_name: "Robin Placeholder", on_machine: false, state: "on_bench" }],
+    paused: [{ machine_id: "m3", paused_run_id: "pr1", job_id: "j-1063", job_no: "J-1063", operator_name: "Casey Ross", paused_by_name: "Casey Ross", paused_at: "2026-11-20T12:05:00Z" }],
+    bench: [{ job_id: "j-1060", run_id: "br1", is_open: true, started_at: "2026-11-20T13:10:00Z", ended_at: null, end_reason: null, operator_id: "u3", operator_name: "Robin Gallagher", on_machine: false, state: "on_bench" }],
     jobs: jobRows, bookings: BOOKINGS.filter((b) => b.status !== "complete").map((b) => ({ id: b.id, job_id: `j-${b.job_no.slice(2)}`, job_no: b.job_no, machine_id: b.machine_id, start_at: b.start_at, status: b.status })),
   }, TODAY, NOW);
 }
 export const SAMPLE_CLOCKED_IN = 5;
 export const SAMPLE_TEAM: TeamRow[] = [
-  { userId: "u-priya", name: "Priya Sample", now: { state: "on_job", jobNo: "J-1056", since: "2026-11-20T08:05:00Z" }, jobMinutes: 1950, paidMinutes: 2310, onJobsPercent: 84, jobsFinished: 3, daysWorked: 4 },
-  { userId: "u-jordan", name: "Jordan Example", now: { state: "on_job", jobNo: "J-1051", since: "2026-11-20T08:20:00Z" }, jobMinutes: 1805, paidMinutes: 2250, onJobsPercent: 80, jobsFinished: 2, daysWorked: 4 },
-  { userId: "u-casey", name: "Casey Testfield", now: { state: "on_break", since: "2026-11-20T12:05:00Z" }, jobMinutes: 1420, paidMinutes: 2160, onJobsPercent: 66, jobsFinished: 1, daysWorked: 4 },
-  { userId: "u-robin", name: "Robin Placeholder", now: { state: "on_job", jobNo: "J-1060", since: "2026-11-20T13:10:00Z" }, jobMinutes: 1210, paidMinutes: 1980, onJobsPercent: 61, jobsFinished: 0, daysWorked: 4 },
-  { userId: "u-lee", name: "Lee Placeholder", now: { state: "out" }, jobMinutes: 960, paidMinutes: 1620, onJobsPercent: 59, jobsFinished: 1, daysWorked: 3 },
-  { userId: "u-morgan", name: "Morgan Dummerby", now: { state: "clocked_in", since: "2026-11-20T13:55:00Z" }, jobMinutes: 410, paidMinutes: 1100, onJobsPercent: 37, jobsFinished: 0, daysWorked: 3 },
+  { userId: "u-priya", name: "Priya Nair", now: { state: "on_job", jobNo: "J-1056", since: "2026-11-20T08:05:00Z" }, jobMinutes: 1950, paidMinutes: 2310, onJobsPercent: 84, jobsFinished: 3, daysWorked: 4 },
+  { userId: "u-jordan", name: "Jordan Mackay", now: { state: "on_job", jobNo: "J-1051", since: "2026-11-20T08:20:00Z" }, jobMinutes: 1805, paidMinutes: 2250, onJobsPercent: 80, jobsFinished: 2, daysWorked: 4 },
+  { userId: "u-casey", name: "Casey Ross", now: { state: "on_break", since: "2026-11-20T12:05:00Z" }, jobMinutes: 1420, paidMinutes: 2160, onJobsPercent: 66, jobsFinished: 1, daysWorked: 4 },
+  { userId: "u-robin", name: "Robin Gallagher", now: { state: "on_job", jobNo: "J-1060", since: "2026-11-20T13:10:00Z" }, jobMinutes: 1210, paidMinutes: 1980, onJobsPercent: 61, jobsFinished: 0, daysWorked: 4 },
+  { userId: "u-lee", name: "Lee Menzies", now: { state: "out" }, jobMinutes: 960, paidMinutes: 1620, onJobsPercent: 59, jobsFinished: 1, daysWorked: 3 },
+  { userId: "u-morgan", name: "Morgan Sutherland", now: { state: "clocked_in", since: "2026-11-20T13:55:00Z" }, jobMinutes: 410, paidMinutes: 1100, onJobsPercent: 37, jobsFinished: 0, daysWorked: 3 },
 ];
 
 /* ------------------------------------------------------------------ roles, tiles, links ------------------------------------------------------------------ */
@@ -539,7 +539,7 @@ function useWidth(initial = 320): [RefObject<HTMLDivElement | null>, number] {
 function Dot({ light }: { light: Light }) {
   return <i className={s.dot} style={{ background: LIGHT_COLOUR[light] }} aria-hidden="true" />;
 }
-const Word = ({ light }: { light: Light }) => (LIGHT_WORD[light] ? <span className={s.srOnly}> ({LIGHT_WORD[light]})</span> : null);
+const Word = ({ light }: { light: Light }) => (LIGHT_WORD[light] ? <span className={srOnly}> ({LIGHT_WORD[light]})</span> : null);
 
 /** A headline figure: label, one figure in tabular numerals, one line of context. A link when its page opens for this person. The traffic light is a dot with its WORD. */
 function Tile({ label, value, sub, hint, href, allowed, light = "none", testId, large }: { label: string; value: string; sub?: string; hint?: string; href?: string; allowed?: boolean; light?: Light; testId?: string; large?: boolean }) {
@@ -549,7 +549,7 @@ function Tile({ label, value, sub, hint, href, allowed, light = "none", testId, 
       <span className={s.tileLabel}>{label}{light !== "none" ? <span className={s.lightWord}><Dot light={light} />{LIGHT_WORD[light]}</span> : null}</span>
       <span className={cx(s.tileValue, tabularNumbers, large && s.tileValueLg)} data-kpi-value="">{value}</span>
       {sub ? <span className={s.tileSub}>{sub}</span> : null}
-      {hint ? <span id={hintId} className={s.srOnly}>{hint}</span> : null}
+      {hint ? <span id={hintId} className={srOnly}>{hint}</span> : null}
     </>
   );
   return href && allowed
@@ -583,7 +583,7 @@ function DataTable({ summary, head, rows, testId }: { summary: string; head: str
       {open ? (
         <div id={id} className={s.tableWrap}>
           <table className={cx(s.dataTable, tabularNumbers)}>
-            <caption className={s.srOnly}>{summary}</caption>
+            <caption className={srOnly}>{summary}</caption>
             <thead><tr>{head.map((h, i) => <th key={h} scope="col" className={i ? s.right : undefined}>{h}</th>)}</tr></thead>
             <tbody>{rows.map((r) => <tr key={r[0]}>{r.map((c, i) => (i === 0 ? <th key={i} scope="row">{c}</th> : <td key={i} className={s.right}>{c}</td>))}</tr>)}</tbody>
           </table>
@@ -744,13 +744,18 @@ function LeakRow({ leaks, canOpen }: { leaks: Leak[]; canOpen: (href: string) =>
 }
 
 function OthersRow({ others, loading, canOpen }: { others: OtherAttention[] | null; loading: boolean; canOpen: (href: string) => boolean }) {
+  const lvl = useContext(LevelCtx);
   return (
     <div className={s.others} data-testid="overview-others">
-      <span className={s.othersLabel}>Also counted in Today</span>
-      {others === null ? <span className={s.muted}>{loading ? LOADING : `${DASH} ${FAILED}`}</span> : !others.length ? <span className={s.muted}>Nothing else needs you.</span> : others.map((o) => {
-        const body = <>{o.label}{o.kind === "rule" ? <span className={cx(s.countChip, tabularNumbers)} data-testid={`other-count-${o.id}`}>{o.count}</span> : null}</>;
-        return canOpen(o.href) ? <A key={o.id} href={o.href} className={s.otherLink} testId={`other-${o.id}`}>{body}</A> : <span key={o.id} className={s.otherPlain} data-testid={`other-${o.id}`}>{body}</span>;
-      })}
+      <Hn n={lvl} className={typeScale.label}>Also counted in Today</Hn>
+      {others === null ? <p className={cx(typeScale.secondary, s.muted)}>{loading ? LOADING : `${DASH} ${FAILED}`}</p> : !others.length ? <p className={cx(typeScale.secondary, s.muted)}>Nothing else needs you.</p> : (
+        <ul className={s.othersList}>
+          {others.map((o) => {
+            const body = <><span className={s.otherLabel}>{o.label}</span><span className={cx(typeScale.name, s.otherCount, tabularNumbers)} data-testid={o.kind === "rule" ? `other-count-${o.id}` : undefined}>{o.kind === "rule" ? o.count : null}</span></>;
+            return <li key={o.id}>{canOpen(o.href) ? <A href={o.href} className={s.otherRow} testId={`other-${o.id}`}>{body}</A> : <span className={cx(s.otherRow, s.otherPlain)} data-testid={`other-${o.id}`}>{body}</span>}</li>;
+          })}
+        </ul>
+      )}
     </div>
   );
 }
@@ -774,8 +779,8 @@ function AttentionList({ att, extra, extraFailed, extraLoading, canOpen, retry }
         {sections.map((sec) => (sec.failed || sec.count > 0) ? (
           <div key={sec.id} className={s.attnSection} data-testid={`attention-${sec.id}`}>
             <div className={s.attnHead}>
-              <Hn n={lvl + 1} className={s.attnHeading}>{sec.title}{sec.failed ? null : <span className={cx(s.countChip, tabularNumbers)} data-testid={`attention-count-${sec.id}`}>{sec.count}</span>}</Hn>
-              {!sec.failed && canOpen(sec.href) ? <A href={sec.href} className={s.viewAll}>View all<span className={s.srOnly}> {sec.title}</span></A> : null}
+              <Hn n={lvl} className={s.attnHeading}>{sec.title}{sec.failed ? null : <span className={cx(s.countChip, tabularNumbers)} data-testid={`attention-count-${sec.id}`}>{sec.count}</span>}</Hn>
+              {!sec.failed && canOpen(sec.href) ? <A href={sec.href} className={s.viewAll}>View all<span className={srOnly}> {sec.title}</span></A> : null}
             </div>
             {sec.failed ? <p className={s.muted}>Couldn&rsquo;t load this list. <button type="button" className={s.textBtn} onClick={retry}>Retry</button></p> : null}
             {sec.items.map((item) => <A key={item.key} href={item.href} allowed={canOpen(item.href)} className={s.attnRow}><span className={s.attnTitle}>{item.title}</span><span className={s.attnDetail}>{item.detail}</span></A>)}
@@ -801,10 +806,15 @@ function JumpNav({ present }: { present: string[] }) {
   }, [present]);
   const links = OVERVIEW_SECTIONS.filter((x) => present.includes(x.id));
   if (links.length < 2) return null;
+  const go = (id: string) => {
+    setCurrent(id);
+    const reduce = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    document.getElementById(id)?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+  };
   return (
-    <nav aria-label="Jump to" className={s.jump} data-testid="overview-jump">
-      {links.map((x) => <a key={x.id} href={`#${x.id}`} aria-current={current === x.id ? "true" : undefined} className={s.jumpLink} onClick={() => setCurrent(x.id)}>{x.label}</a>)}
-    </nav>
+    <div className={s.jump} data-testid="overview-jump">
+      <Tabs label="Jump to" value={current} onChange={go} tabs={links.map((x) => ({ value: x.id, label: x.label, controls: x.id, testId: `jump-${x.id}` }))} />
+    </div>
   );
 }
 
@@ -812,9 +822,9 @@ function Section({ id, title, figure, sub, href, linkLabel, canOpen, children }:
   return (
     <section id={id} aria-labelledby={`${id}-title`} className={s.section} data-testid={`overview-${id}`}>
       <header className={s.sectionHead}>
-        <h2 id={`${id}-title`} className={s.sectionTitle}>{title}</h2>
+        <h2 id={`${id}-title`} className={cx(typeScale.section, s.sectionTitle)}>{title}</h2>
         {figure ? <p className={cx(s.sectionFigure, tabularNumbers)} data-testid={`overview-${id}-figure`}>{figure}</p> : null}
-        <p className={s.sectionSub}>{sub}</p>
+        <p className={cx(typeScale.secondary, s.sectionSub)}>{sub}</p>
         {href && linkLabel && canOpen(href) ? <A href={href} className={s.sectionLink}>{linkLabel}</A> : null}
       </header>
       {children}
@@ -1010,7 +1020,7 @@ function AdminView({ role, office = false, d, loading, error, att, isVisible, ca
         {errorNotice}
         <JumpNav present={present} />
         {present.includes("today") ? <Section id="today" title="Today" figure={summary.total === null ? `${DASH} ${summary.detail}` : summary.detail} sub="Where work and money are slipping, and what needs doing" canOpen={canOpen}>
-          {showLeaks ? <div><LeakRow leaks={leaks} canOpen={canOpen} /><OthersRow others={others} loading={loading || att.loading} canOpen={canOpen} /></div> : null}
+          {showLeaks ? <div className={s.todayStack}><LeakRow leaks={leaks} canOpen={canOpen} /><OthersRow others={others} loading={loading || att.loading} canOpen={canOpen} /></div> : null}
           {showAttention ? attentionCard : null}
         </Section> : null}
         {present.includes("money") ? <Section id="money" title="Money" sub="What's coming in, from whom, and what's still owed" href="/invoices" linkLabel="Open invoicing" canOpen={canOpen}>{tileRow(moneyTiles)}{panelGrid(moneyPanels)}</Section> : null}
@@ -1115,7 +1125,6 @@ function WholeFloorPanel({ floor, loading, failed, role, clockedIn, canOpen, ret
 function FloorRowView({ row, floor, canOpen }: { row: FloorRow; floor: Floor; canOpen: (href: string) => boolean }) {
   const href = row.job ? `/jobs?job=${encodeURIComponent(row.job.id)}` : "/schedule";
   const linkable = canOpen(row.job ? "/jobs" : "/schedule");
-  const label = `${row.place}: ${FLOOR_WORDS[row.state].label}${row.job ? `, ${row.job.jobNo}` : ""}`;
   const since = sinceText(row, NOW), elapsed = elapsedText(row, NOW);
   const tone = (w: FloorState | "late") => LIGHT_COLOUR[w === "running" ? "blue" : w === "paused" ? "amber" : w === "late" ? "red" : "none"];
   const body = (
@@ -1137,7 +1146,7 @@ function FloorRowView({ row, floor, canOpen }: { row: FloorRow; floor: Floor; ca
       <div>{row.bench ? null : (<><p className={s.muted}>Next</p><p className={s.nextJob}>{row.next === undefined ? DASH : row.next ?? <span className={s.muted}>Nothing booked</span>}</p></>)}</div>
     </>
   );
-  return <li className={s.floorRow} data-testid="floor-row" data-state={row.state}>{linkable ? <A href={href} className={s.floorLink} label={label}>{body}</A> : <div className={s.floorLink}>{body}</div>}</li>;
+  return <li className={s.floorRow} data-testid="floor-row" data-state={row.state}>{linkable ? <A href={href} className={s.floorLink}>{body}</A> : <div className={s.floorLink}>{body}</div>}</li>;
 }
 
 function WorkshopView({ role, d, loading, error, att, isVisible, canOpen, retry, floor, floorFailed, clockedIn, preview }: Omit<ViewProps, "office" | "basis" | "setBasis" | "team" | "d"> & { d: WorkshopData | null; floor: Floor | null; floorFailed: boolean; preview: (d: string) => void }) {
@@ -1243,49 +1252,45 @@ function Inner() {
   return (
     <NavCtx.Provider value={go}>
       <div className={cx(premiumTokens, s.root)} data-testid="dashboard-preview" data-role={role} data-screen={screen}>
-        <header className={s.head}>
-          <div className={s.titleBlock}>
-            <div className={s.titleLine}>
-              <h1 className={s.title}>Dashboard</h1>
-              <span className={s.previewTag} title="Everything on this screen is fictional sample data. Nothing is read from or saved to your account.">Preview, sample data, nothing is saved</span>
-              <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
-                <div className={s.dock}>
-                  <p className={s.dockNote}>Not part of Tolra. Sample data as of Friday 20 November 2026; states are simulated and no request is made.</p>
-                  <p className={s.dockLabel}>Role (the view the person works in)</p>
-                  <SegmentedControl label="Role" value={role} options={ROLES} size="sm" onChange={(v) => { setRole(v); toast.clear(); }} />
-                  <p className={s.dockLabel}>Screen state</p>
-                  <div className={s.dockStates} role="group" aria-label="Screen state">
-                    {SCREENS.map((x) => <button key={x.v} type="button" aria-pressed={screen === x.v} className={s.dockBtn} onClick={() => pickScreen(x.v)}>{x.label}</button>)}
-                  </div>
-                  <Switch label="Owed trend snapshots" hint="On when the database has migration 116; off hides the trend." checked={snapshots} onChange={setSnapshots} data-testid="dock-snapshots" />
-                  <Switch label="AI helper" hint="The header link shows only when the server has it on and the company has a feature on." checked={aiOn} onChange={setAiOn} data-testid="dock-ai" />
-                  <Switch label="Unrecognised-network warning" hint="Admin only: clock-ins from a network Tolra doesn't recognise." checked={bannerOn} onChange={(on) => { setBannerOn(on); setBanner(on); }} data-testid="dock-banner" />
-                  <Switch label="Invoicing hidden from this person" hint="Admin > Users > Page access: tiles that point at Invoicing stop being links." checked={hideInvoicing} onChange={setHideInvoicing} data-testid="dock-hide-invoicing" />
-                  <Button size="sm" variant="secondary" onClick={resetAll}>Reset preview</Button>
+        <PreviewBar controls={
+          <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
+            <div className={s.dock}>
+              <p className={typeScale.caption}>Not part of Tolra. Sample data as of Friday 20 November 2026; states are simulated and no request is made.</p>
+              <p className={typeScale.label}>Role (the view the person works in)</p>
+              <SegmentedControl label="Role" value={role} options={ROLES} size="sm" onChange={(v) => { setRole(v); toast.clear(); }} />
+              <p className={typeScale.label}>Screen state</p>
+              <div className={s.dockStates} role="group" aria-label="Screen state">
+                {SCREENS.map((x) => <Button key={x.v} size="sm" variant="secondary" fullWidth aria-pressed={screen === x.v} onClick={() => pickScreen(x.v)}>{x.label}</Button>)}
+              </div>
+              <Switch label="Owed trend snapshots" hint="On when the database has migration 116; off hides the trend." checked={snapshots} onChange={setSnapshots} data-testid="dock-snapshots" />
+              <Switch label="AI helper" hint="The header link shows only when the server has it on and the company has a feature on." checked={aiOn} onChange={setAiOn} data-testid="dock-ai" />
+              <Switch label="Unrecognised-network warning" hint="Admin only: clock-ins from a network Tolra doesn't recognise." checked={bannerOn} onChange={(on) => { setBannerOn(on); setBanner(on); }} data-testid="dock-banner" />
+              <Switch label="Invoicing hidden from this person" hint="Admin > Users > Page access: tiles that point at Invoicing stop being links." checked={hideInvoicing} onChange={setHideInvoicing} data-testid="dock-hide-invoicing" />
+              <Button size="sm" variant="secondary" onClick={resetAll}>Reset preview</Button>
+            </div>
+          </Popover>
+        } />
+        <PageHeader title="Dashboard" description={`${greeting(FIRST_NAME)}. ${fmtDateText(NOW, { weekday: "long", year: true, numberAs: "full" })}`}
+          actions={
+            <div className={s.headControls}>
+              {role === "admin" || role === "office" ? (
+                <>
+                  {aiOn ? <A href="/ai-helper" className={s.headLink} testId="ai-helper-link">AI helper</A> : null}
+                  {showApproval ? <A href="/approval" className={s.headLink} testId="approval-link">{emails} email{emails === 1 ? "" : "s"} need{emails === 1 ? "s" : ""} approval</A> : null}
+                </>
+              ) : null}
+              <Popover label="Columns" title="Dashboard: show / hide" variant="secondary" size="md" data-testid="columns-trigger">
+                <p className={cx(typeScale.caption, s.colScope)} data-testid="column-scope">{own ? COLUMN_SCOPE_OWN : COLUMN_SCOPE_COMPANY}</p>
+                <div className={s.colList}>
+                  {DASHBOARD_TILES.filter((t) => tileKeys.includes(t.key)).map((t) => (
+                    <Switch key={t.key} label={t.label} checked={!hidden.includes(t.key)} data-testid={`col-${t.key}`}
+                      onChange={(on) => setHiddenTiles((h) => ({ ...h, [kind]: on ? (h[kind] ?? []).filter((k) => k !== t.key) : [...(h[kind] ?? []), t.key] }))} />
+                  ))}
                 </div>
+                <div className={s.colReset}><Button size="sm" variant="secondary" disabled={!hidden.length} onClick={() => setHiddenTiles((h) => ({ ...h, [kind]: [] }))}>{resetLabel(own)}</Button></div>
               </Popover>
             </div>
-            <p className={s.subtitle}>{greeting(FIRST_NAME)}. {fmtDateText(NOW, { weekday: "long", year: true, numberAs: "full" })}</p>
-          </div>
-          <div className={s.headControls}>
-            {role === "admin" || role === "office" ? (
-              <>
-                {aiOn ? <A href="/ai-helper" className={s.headLink} testId="ai-helper-link">AI helper</A> : null}
-                {showApproval ? <A href="/approval" className={s.headLink} testId="approval-link">{emails} email{emails === 1 ? "" : "s"} need{emails === 1 ? "s" : ""} approval</A> : null}
-              </>
-            ) : null}
-            <Popover label="Columns" title="Dashboard: show / hide" variant="secondary" size="md" data-testid="columns-trigger">
-              <p className={s.colScope} data-testid="column-scope">{own ? COLUMN_SCOPE_OWN : COLUMN_SCOPE_COMPANY}</p>
-              <div className={s.colList}>
-                {DASHBOARD_TILES.filter((t) => tileKeys.includes(t.key)).map((t) => (
-                  <Switch key={t.key} label={t.label} checked={!hidden.includes(t.key)} data-testid={`col-${t.key}`}
-                    onChange={(on) => setHiddenTiles((h) => ({ ...h, [kind]: on ? (h[kind] ?? []).filter((k) => k !== t.key) : [...(h[kind] ?? []), t.key] }))} />
-                ))}
-              </div>
-              <div className={s.colReset}><Button size="sm" variant="secondary" disabled={!hidden.length} onClick={() => setHiddenTiles((h) => ({ ...h, [kind]: [] }))}>{resetLabel(own)}</Button></div>
-            </Popover>
-          </div>
-        </header>
+          } />
 
         {role === "admin" && banner && bannerOn && !loading ? (
           <div className={s.banner} role="alert" data-testid="unrecognised-network-banner">
@@ -1295,7 +1300,7 @@ function Inner() {
         ) : null}
 
         <div className={s.body} aria-busy={loading || undefined}>
-          {loading ? <p className={s.srOnly} role="status">Loading the dashboard</p> : null}
+          {loading ? <p className={srOnly} role="status">Loading the dashboard</p> : null}
           <LevelCtx.Provider value={role === "admin" ? 3 : 2}>
             {role === "workshop" || role === "viewer"
               ? <WorkshopView role={role} d={workshop} loading={loading} error={failed} att={att} isVisible={isVisible} canOpen={canOpen} retry={retry} floor={floor} floorFailed={failed} clockedIn={clockedIn} preview={preview} />
