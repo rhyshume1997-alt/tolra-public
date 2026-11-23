@@ -1,8 +1,10 @@
 /**
- * Tooly as a living guide on the public home page: the menu's stages are the job traveller's stages (FLOW_STEPS), every caption is an
- * existing string from lib/marketing.ts (no new claim), the reduced-motion path still shows the same captions with nothing moving, the
- * Hide Tooly control exists and swaps to Show Tooly, the placement search keeps him off headings, links and form fields, and the intro
- * timeline walks every real stage once. (Clicking and sessionStorage are checked in a real browser; this file is server-rendered markup and pure functions.)
+ * Tooly as a living guide on the public home page. Pinned here: the menu's stages are the job traveller's stages (FLOW_STEPS); every caption is
+ * an existing string from lib/marketing.ts; the caption lives ONLY in a fixed strip that owns its space (the page's scroll area ends above it),
+ * never in a bubble beside him; he floats only in a measured, empty gutter; the intro never reaches over the content; the reduced-motion path
+ * shows the same captions with nothing moving; Hide Tooly leaves a Show Tooly button in the header; the frame files are light and registered.
+ * (Clicking, sessionStorage and the measured zero-overlap check run in a real browser: scratchpad/pw/overlap-proof.js; this file is
+ * server-rendered markup, source checks and pure functions.)
  */
 import { readFileSync, statSync } from "node:fs";
 import path from "node:path";
@@ -17,9 +19,8 @@ import { ToolyMenu } from "@/components/marketing/tooly-menu";
 import * as marketing from "@/lib/marketing";
 import { FLOW_STEPS } from "@/lib/marketing";
 import {
-  type FrameKey, FRAME_FILE, FRAME_SET, FRAME_SRC, WALK_FRAMES, frameLayout, leastCovered, lookForPose, walkFrameIndex,
-  GUIDE_COPY_SOURCES, GUIDE_LABELS, GUIDE_STOPS, INTRO_DONE, INTRO_START, MENU_STAGES, activeStopId, choosePlacement, idealY, introSchedule,
-  landSchedule, rectsOverlap, type Rect,
+  type FrameKey, FIGURE_MARGIN, FIGURE_SIZE, FRAME_FILE, FRAME_SET, FRAME_SRC, GUTTER_NEEDED, WALK_FRAMES, frameLayout, gutterWidth, gutterX, guideMode, lookForPose,
+  walkFrameIndex, GUIDE_COPY_SOURCES, GUIDE_LABELS, GUIDE_STOPS, INTRO_DONE, INTRO_PHASES, INTRO_START, MENU_STAGES, activeStopId, idealY, introSchedule, landSchedule,
 } from "@/lib/marketing/tooly-guide";
 
 const allCopy = (value: unknown, out: Set<string> = new Set()): Set<string> => {
@@ -31,7 +32,7 @@ const allCopy = (value: unknown, out: Set<string> = new Set()): Set<string> => {
 const ALLOWED = allCopy(marketing);
 
 const ctx = (over: Partial<GuideCtx> = {}): GuideCtx => ({
-  ready: true, motion: false, hidden: false, setHidden: () => {}, intro: INTRO_DONE, stage: false, menuOpen: false, setMenuOpen: () => {}, skip: () => {}, ...over,
+  ready: true, motion: false, hidden: false, setHidden: () => {}, intro: INTRO_DONE, mode: "strip", stage: false, menuOpen: false, setMenuOpen: () => {}, skip: () => {}, ...over,
 });
 const withCtx = (value: GuideCtx, child: ReturnType<typeof createElement>) => renderToStaticMarkup(createElement(GuideContext.Provider, { value }, child));
 
@@ -59,17 +60,19 @@ describe("menu stages", () => {
     expect(open).not.toContain('data-on="false"'); // still panel: every stamp shown
   });
 
-  it("the intro timeline stamps every real stage once, in order, and ends with Tooly placed", () => {
+  it("the intro never has a menu deck over the page: no deck phases, a short show, and it ends with Tooly placed", () => {
+    expect(INTRO_PHASES).toEqual(["drop", "land", "pull", "cheer"]);
     const events = introSchedule();
-    let s = INTRO_START;
-    const rows: number[] = [];
-    for (const ev of events) { s = ev.patch(s); if (s.phase === "carry" && !rows.includes(s.row)) rows.push(s.row); }
-    expect(rows).toEqual(FLOW_STEPS.map((_, i) => i));
-    expect(s).toEqual(INTRO_DONE);
+    let st = INTRO_START;
+    const phases = new Set<string>();
+    for (const ev of events) { st = ev.patch(st); phases.add(st.phase); }
+    expect([...phases].filter((p) => !["drop", "land", "pull", "cheer", "done"].includes(p))).toEqual([]);
+    expect(st).toEqual(INTRO_DONE);
     expect(events[0].at).toBe(0);
-    const drop = events.find((e) => e.patch(INTRO_START).phase === "drop")!;
-    expect(drop.at).toBe(0);
+    expect(events.at(-1)!.at).toBeLessThan(5000);
     expect(landSchedule().at(-1)!.patch(INTRO_START)).toEqual(INTRO_DONE);
+    // Nothing of the intro draws the stage list over the page: the stages appear only in the panel the person opens.
+    expect(readFileSync(path.join(process.cwd(), "components/marketing/tooly-guide.tsx"), "utf8")).not.toMatch(/tm-deck|tm-floor|data-scene/);
   });
 });
 
@@ -109,87 +112,112 @@ describe("captions", () => {
   });
 });
 
-describe("reduced motion", () => {
-  it("renders the same captions with nothing moving: no walking, no drop, no clips, decorative images, a labelled region", () => {
-    for (const stop of GUIDE_STOPS.filter((s) => s.caption)) {
-      const look = lookForPose(stop.pose);
-      const html = renderToStaticMarkup(createElement(ToolyGuideView, { stop, pose: look, frames: new Set([look as FrameKey, "pointUpLeft" as FrameKey]), bubble: "left", saysOpen: false, motion: false, size: 104, onHide: () => {}, onSays: () => {} }));
-      expect(html).toContain(stop.caption!.replace(/'/g, "&#x27;"));
-      expect(html).toContain('data-motion="false"');
-      expect(html).toContain('data-moving="false"');
-      expect(html).toContain('data-phase="done"');
-      expect(html).toContain(`aria-label="${GUIDE_LABELS.region.replace(/'/g, "&#x27;")}"`);
-      expect(html).not.toMatch(/<video\b/);
-      const imgs = html.match(/<img\b[^>]*>/g) ?? [];
-      expect(imgs.length).toBeGreaterThan(1);
-      for (const img of imgs) expect(img).toMatch(/alt=""/);
-      expect(html).toContain('aria-hidden="true"'); // the figure
-      expect(imgs.filter((i) => i.includes("opacity:1"))).toHaveLength(1);
+describe("the caption strip", () => {
+  const view = (stop = GUIDE_STOPS[0], over: Record<string, unknown> = {}) =>
+    renderToStaticMarkup(createElement(ToolyGuideView, { stop, pose: "idle", mode: "strip", motion: false, onHide: () => {}, ...over }));
+  const apos = (t: string) => t.replace(/'/g, "&#x27;");
+
+  it("shows every caption as real text in a polite live region, in a labelled region, with no bubble", () => {
+    for (const stop of GUIDE_STOPS.filter((x) => x.caption)) {
+      const html = view(stop);
+      expect(html).toContain('role="status"');
+      expect(html).toContain('aria-live="polite"');
+      expect(html).toContain(`aria-label="${apos(GUIDE_LABELS.region)}"`);
+      const live = html.slice(html.indexOf('class="tg-live"'));
+      expect(live).toContain(apos(stop.caption!));
+      expect(html).not.toContain("tg-bubble");
     }
   });
 
-  it("never mounts the guide before the page has mounted (nothing in the first paint)", () => {
+  it("is as tall as the tallest caption and never changes height: every caption sits invisibly in one grid cell, hidden from assistive tech", () => {
+    const html = view();
+    const sizers = html.slice(html.indexOf('class="tg-sizers"'), html.indexOf('class="tg-live"'));
+    expect(sizers).toContain('aria-hidden="true"');
+    expect((sizers.match(/class="tg-line"/g) ?? []).length).toBe(GUIDE_STOPS.filter((x) => x.caption).length);
+  });
+
+  it("holds the Hide Tooly button, and a small figure only where there is no gutter (decorative, labelled nothing)", () => {
+    expect(view()).toMatch(/<button[^>]*class="tg-btn"[^>]*>Hide Tooly<\/button>/);
+    const strip = view(GUIDE_STOPS[0], { mode: "strip" });
+    expect(strip).toContain("tg-strip-fig");
+    expect(strip).toContain('aria-hidden="true"');
+    const imgs = strip.match(/<img\b[^>]*>/g) ?? [];
+    expect(imgs.length).toBeGreaterThan(1);
+    for (const img of imgs) expect(img).toMatch(/alt=""/);
+    expect(view(GUIDE_STOPS[0], { mode: "gutter" })).not.toContain("tg-strip-fig"); // the one Tooly is the walker in the gutter
+  });
+
+  it("reduced motion: nothing moves (no drop phase, no video, motion flag off), the captions are the same", () => {
+    const html = view(GUIDE_STOPS[2], { motion: false });
+    expect(html).toContain('data-motion="false"');
+    expect(html).toContain('data-phase="done"');
+    expect(html).not.toMatch(/<video\b/);
+    expect(html).toContain(apos(GUIDE_STOPS[2].caption!));
+  });
+
+  it("never mounts anything before the page has mounted, nor while he is hidden", () => {
     expect(withCtx(ctx({ ready: false }), createElement(ToolyGuide))).toBe("");
     expect(renderToStaticMarkup(createElement(ToolyGuide))).toBe("");
+    expect(withCtx(ctx({ hidden: true }), createElement(ToolyGuide))).toBe("");
+  });
+
+  it("the live guide renders the strip (with Hide Tooly) and, with no clear gutter, no floating figure", () => {
+    const html = withCtx(ctx({ mode: "strip" }), createElement(ToolyGuide));
+    expect(html).toContain('class="tg-strip"');
+    expect(html).toContain(`>${GUIDE_LABELS.hide}<`);
+    expect(html).not.toContain('class="tg"');
+    expect(html).not.toContain("tg-trail");
+    expect(html).not.toContain("tg-ledge");
   });
 });
 
 describe("Hide Tooly", () => {
-  it("is a real button beside him, and hiding leaves only a Show Tooly button", () => {
-    const stop = GUIDE_STOPS[0];
-    const shown = withCtx(ctx({ intro: INTRO_DONE }), createElement(ToolyGuide));
-    expect(shown).toContain(`>${GUIDE_LABELS.hide}<`);
+  it("leaves a Show Tooly button in the header (nothing floats to bring him back), and Hide is gone", () => {
+    const shown = withCtx(ctx(), createElement(ToolyMenu));
     expect(shown).not.toContain(`>${GUIDE_LABELS.show}<`);
-    expect(renderToStaticMarkup(createElement(ToolyGuideView, { stop, pose: "wave", bubble: "none", saysOpen: false, motion: true, size: 104, onHide: () => {}, onSays: () => {} }))).toMatch(/<button[^>]*>Hide Tooly<\/button>/);
-    const hidden = withCtx(ctx({ hidden: true }), createElement(ToolyGuide));
+    const hidden = withCtx(ctx({ hidden: true }), createElement(ToolyMenu));
     expect(hidden).toContain(`>${GUIDE_LABELS.show}<`);
-    expect(hidden).not.toContain(`>${GUIDE_LABELS.hide}<`);
-    expect(hidden).not.toContain("<img");
-  });
-
-  it("folds a caption that has no clear place into a Tooly says button (aria-expanded) and keeps the text in the page", () => {
-    const stop = GUIDE_STOPS.find((s) => s.id === "pain")!;
-    const html = renderToStaticMarkup(createElement(ToolyGuideView, { stop, pose: stop.pose, bubble: "collapsed", saysOpen: false, motion: true, size: 56, onHide: () => {}, onSays: () => {} }));
-    expect(html).toMatch(/<button[^>]*aria-expanded="false"[^>]*aria-controls="tg-note"[^>]*>Tooly says<\/button>/);
-    expect(html).toContain("An enquiry comes in");
-    expect(html).toContain('data-open="false"');
+    expect(hidden).toContain(`>${GUIDE_LABELS.menu}<`);
+    expect(withCtx(ctx({ hidden: true }), createElement(ToolyGuide))).not.toContain(GUIDE_LABELS.hide);
   });
 });
 
-describe("placement", () => {
-  const input = { idealY: 300, vh: 900, topMin: 8, x: 1330, figW: 104, figH: 128, controlsW: 104, controlsH: 36, bubbleW: 264, bubbleH: 120, hasCaption: true };
-  const heading: Rect = { left: 1100, top: 280, right: 1300, bottom: 330 };
-
-  it("never lets his body, buttons or caption touch a heading, link or form field", () => {
-    const avoid = [heading, { left: 1000, top: 440, right: 1340, bottom: 480 }];
-    const result = choosePlacement({ ...input, avoid });
-    const bubbleRect: Rect = result.bubble === "left"
-      ? { left: input.x - 10 - input.bubbleW, top: result.y, right: input.x - 10, bottom: result.y + input.bubbleH }
-      : { left: input.x + input.figW - input.bubbleW, top: result.y - 10 - input.bubbleH, right: input.x + input.figW, bottom: result.y - 10 };
-    const parts: Rect[] = [
-      { left: input.x, top: result.y, right: input.x + input.figW, bottom: result.y + input.figH },
-      { left: input.x, top: result.y + input.figH, right: input.x + input.figW, bottom: result.y + input.figH + input.controlsH },
-      ...(result.bubble === "left" || result.bubble === "above" ? [bubbleRect] : []),
-    ];
-    for (const part of parts) for (const box of avoid) expect(rectsOverlap(part, box, 4)).toBe(false);
+describe("where he may be (the no-overlap rule)", () => {
+  it("floats only in a measured gutter wide enough for him, otherwise lives in the strip", () => {
+    expect(gutterWidth(1440, 1300)).toBe(140);
+    expect(gutterWidth(1000, 1100)).toBe(0);
+    expect(guideMode(140)).toBe("gutter");
+    expect(guideMode(GUTTER_NEEDED)).toBe("gutter");
+    expect(guideMode(GUTTER_NEEDED - 1)).toBe("strip");
+    expect(guideMode(0)).toBe("strip");
+    // The page's column is 1240 px wide with 40 px of padding at lg: the gutter is clear from 1440 px, not at 1280 px.
+    const gutterAt = (vw: number) => gutterWidth(vw, vw - Math.max(0, (vw - 1240) / 2) - 40);
+    expect(guideMode(gutterAt(1440))).toBe("gutter");
+    for (const vw of [390, 768, 1024, 1280, 1360]) expect(guideMode(gutterAt(vw)), String(vw)).toBe("strip");
   });
 
-  it("folds the caption away rather than cover something when nowhere is clear, and needs no caption when there is none", () => {
-    const wall: Rect = { left: 0, top: -50, right: 1440, bottom: 1000 };
-    expect(choosePlacement({ ...input, avoid: [wall] }).bubble).toBe("collapsed");
-    expect(choosePlacement({ ...input, hasCaption: false, avoid: [wall] }).bubble).toBe("none");
-    expect(choosePlacement({ ...input, avoid: [] })).toEqual({ y: 300, bubble: "left" });
+  it("when he does float, his whole figure (and so his trail and ledge) is right of the content column", () => {
+    for (const vw of [1440, 1600, 1920]) {
+      const contentRight = vw - (vw - 1240) / 2 - 40;
+      const x = gutterX(vw);
+      expect(x).toBeGreaterThanOrEqual(contentRight + 4);
+      expect(x + FIGURE_SIZE + FIGURE_MARGIN).toBe(vw);
+    }
   });
 
-  it("never puts the caption where the window would cut it off", () => {
-    const top = choosePlacement({ ...input, idealY: 20, x: 20, avoid: [{ left: 0, top: 0, right: 400, bottom: 200 }] });
-    if (top.bubble === "above") expect(top.y - 10 - input.bubbleH).toBeGreaterThanOrEqual(4);
-    const none = choosePlacement({ ...input, idealY: 8, x: 1330, avoid: [{ left: 0, top: 0, right: 1100, bottom: 900 }] });
-    if (none.bubble === "above") expect(none.y - 10 - input.bubbleH).toBeGreaterThanOrEqual(4);
-    expect(["left", "above", "collapsed"]).toContain(none.bubble);
+  it("the caption has no bubble anywhere: not in the source, not in the styles; the strip is fixed and the page scroll area ends above it", () => {
+    const root = process.cwd();
+    const css = readFileSync(path.join(root, "components/marketing/marketing.css"), "utf8");
+    const guide = readFileSync(path.join(root, "components/marketing/tooly-guide.tsx"), "utf8");
+    const lib = readFileSync(path.join(root, "lib/marketing/tooly-guide.ts"), "utf8");
+    for (const text of [css, guide, lib]) expect(text).not.toMatch(/tg-bubble|choosePlacement|leastCovered|tg-controls|Tooly says/);
+    expect(css).toMatch(/\.tg-strip \{[^}]*position: fixed;[^}]*bottom: 0;/);
+    expect(css).toMatch(/\.mk-sheet\.tg-docked \{[^}]*height: calc\(100dvh - var\(--tg-strip-h/);
+    expect(css).toMatch(/html\.tg-docked \{ overflow: hidden; \}/);
+    expect(guide).toContain("--tg-strip-h");
   });
 
-  it("follows the scroll from the top of the page to the bottom and stays in range", () => {
+  it("follows the scroll down the gutter from the top of the page to the foot, staying in range", () => {
     expect(idealY(0, 80, 700)).toBe(80);
     expect(idealY(1, 80, 700)).toBe(700);
     expect(idealY(0.5, 80, 700)).toBe(390);
@@ -259,35 +287,28 @@ describe("the on-model frames", () => {
     expect(walkFrameIndex(-50, h)).toBe(0);
   });
 
-  it("use the up-left point for point stops and the clipboard where a document is held; no stop needs a mirrored still", () => {
+  it("use the up-left point for point stops and the clipboard where a document is held; nothing is mirrored", () => {
     expect(lookForPose("point")).toBe("pointUpLeft");
     expect(lookForPose("think")).toBe("think");
     expect(GUIDE_STOPS.find((s) => s.id === "handles")!.pose).toBe("clipboard");
     expect(lookForPose("clipboard")).toBe("clipboard");
-    const html = renderToStaticMarkup(createElement(ToolyGuideView, { stop: GUIDE_STOPS[1], pose: "pointUpLeft", bubble: "left", saysOpen: false, motion: false, size: 104, onHide: () => {}, onSays: () => {} }));
+    const html = renderToStaticMarkup(createElement(ToolyGuideView, { stop: GUIDE_STOPS[1], pose: "pointUpLeft", mode: "strip", motion: false, onHide: () => {} }));
     expect(html).not.toContain("scaleX(-1)");
     expect(html).not.toContain("data-flip");
     expect(html).toContain("/tooly/point-upleft.webp");
   });
 
-  it("the intro uses the frames in order: air, land, spanner reach and heave (three times), rest, stamp up and down once per stage, then cheers", () => {
+  it("the intro uses the frames in order: air, land, spanner reach and heave (three times), rest, stamp up and down once, then the wave", () => {
     let st = INTRO_START;
     const seen: string[] = [];
-    for (const ev of introSchedule()) { st = ev.patch(st); if (seen.at(-1) !== st.look) seen.push(st.look); }
+    let notch = 0;
+    for (const ev of introSchedule()) { st = ev.patch(st); notch = Math.max(notch, st.notch); if (seen.at(-1) !== st.look) seen.push(st.look); }
     expect(seen.slice(0, 3)).toEqual(["air", "land", "reach"]);
     expect(seen.filter((l) => l === "heave")).toHaveLength(3);
+    expect(notch).toBe(3);
     expect(seen.indexOf("rest")).toBeGreaterThan(seen.lastIndexOf("heave"));
-    expect(seen.filter((l) => l === "stampDown")).toHaveLength(FLOW_STEPS.length);
+    expect(seen.filter((l) => l === "stampDown")).toHaveLength(1);
     expect(seen.indexOf("stampUp")).toBeGreaterThan(seen.indexOf("rest"));
     expect(seen.at(-1)).toBe("wave");
-  });
-
-  it("falls back to standing where least is covered, a heading counting more than running text", () => {
-    const common = { idealY: 300, vh: 900, topMin: 8, x: 1330, figW: 104, figH: 128, controlsW: 104, controlsH: 36 };
-    const heading: Rect = { left: 1300, top: 100, right: 1440, bottom: 880 };
-    const text: Rect = { left: 1300, top: 100, right: 1440, bottom: 880, soft: true };
-    expect(leastCovered({ ...common, avoid: [] })).toBe(300);
-    const y = leastCovered({ ...common, avoid: [heading, { ...text, top: 500, bottom: 700 }] });
-    expect(Number.isFinite(y)).toBe(true);
   });
 });

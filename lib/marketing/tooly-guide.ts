@@ -1,7 +1,8 @@
 /**
  * Tooly as a living guide on the public home page: plain data and pure functions, no React, no DOM, so tests can read them.
- * Inputs: the copy in lib/marketing.ts. Output: the stops Tooly visits (pose + caption), the menu's stage list, the intro timeline,
- * and the placement search that keeps him and his caption off headings, links and form fields.
+ * Inputs: the copy in lib/marketing.ts. Output: the stops Tooly visits (pose + caption), the menu's stage list, the intro timeline, and the
+ * rule for where he may stand: only in the empty right-hand gutter beside the page's content (measured at run time), otherwise only inside the
+ * caption strip that owns reserved space at the foot of the window. Nothing of his is ever placed over a content box, heading, text, link or field.
  * Must not change: every caption below is an existing string from lib/marketing.ts (no new claim, number, feature or integration);
  * the stages are FLOW_STEPS, never a second list; nothing here calls the network or touches the app, auth or the database.
  */
@@ -12,7 +13,7 @@ import {
 import type { ToolyPose } from "@/components/tooly/poses";
 
 /** Control labels (not claims). */
-export const GUIDE_LABELS = { menu: "Job stages", hide: "Hide Tooly", show: "Show Tooly", says: "Tooly says", region: "Tooly's guide", close: "Close" } as const;
+export const GUIDE_LABELS = { menu: "Job stages", hide: "Hide Tooly", show: "Show Tooly", region: "Tooly's guide", close: "Close" } as const;
 
 export const GUIDE_HIDDEN_KEY = "tolra.tooly.hidden";
 export const GUIDE_INTRO_KEY = "tolra.tooly.intro";
@@ -58,24 +59,31 @@ export const GUIDE_COPY_SOURCES: readonly string[] = GUIDE_STOPS.flatMap((s) => 
 // The intro: Tooly drops in, pulls the menu down with his spanner in three notches, then the document goes down the real stages.
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-export type IntroPhase = "off" | "wait" | "drop" | "land" | "pull" | "carry" | "cheer" | "lift" | "done";
-/** What he looks like: one of the new on-model frames (air, land, reach, heave, rest) or one of the original stills. */
+export type IntroPhase = "off" | "wait" | "drop" | "land" | "pull" | "cheer" | "done";
+/** What he looks like: one of the on-model frames (air, land, reach, heave, rest, stamp up, stamp down) or one of the original stills. */
 export type IntroLook = "air" | "land" | "reach" | "heave" | "rest" | "stampUp" | "stampDown" | ToolyPose;
-export type IntroState = { phase: IntroPhase; notch: 0 | 1 | 2 | 3; row: number; stamped: number; swing: number; look: IntroLook };
-export const INTRO_START: IntroState = { phase: "off", notch: 0, row: -1, stamped: 0, swing: 0, look: "idle" };
+export type IntroState = { phase: IntroPhase; notch: 0 | 1 | 2 | 3; swing: number; look: IntroLook };
+export const INTRO_START: IntroState = { phase: "off", notch: 0, swing: 0, look: "idle" };
 export const INTRO_WAIT: IntroState = { ...INTRO_START, phase: "wait" };
 export const INTRO_DONE: IntroState = { ...INTRO_START, phase: "done", look: "wave" };
+/** The phases in which the intro is running (nothing else moves him). */
+export const INTRO_PHASES: readonly IntroPhase[] = ["drop", "land", "pull", "cheer"];
 
 export const FALL_MS = 420; // the weighted fall, then the landing frame (inside the 120 to 700 ms range for a one-off hero moment)
 export const LAND_MS = 380;
 export const DROP_MS = FALL_MS + LAND_MS;
-export const ROW_MS = 460;
-const PULL_AT = [1100, 1550, 2000] as const; // three heaves, each a hold of "heave" then back to "reach"
+const PULL_AT = [1000, 1500, 2000] as const; // three heaves, each a hold of "heave" then back to "reach"
 const HEAVE_MS = 380;
-const CARRY_AT = 3000; // after the pull he rests the spanner on his shoulder, then stamps each stage
+/** How far the ledge he stands on is let down the cable at each heave (px), and where he first lands (px from the top of the window). */
+export const LEDGE_STEP = 34;
+export const INTRO_TOP = 84;
 
 export type IntroEvent = { at: number; patch: (s: IntroState) => IntroState };
-/** Wide screens: drop (air), land, take hold of the bolt (reach), heave three times while the panel lowers, spanner on the shoulder, then stamp each stage (stamp up, stamp down), then cheer. */
+/**
+ * Only where the right-hand gutter is clear (see guideMode): he drops into the gutter onto a ledge that hangs from the header on a cable, takes
+ * hold of the bolt, lowers the ledge in three heaves, rests the spanner on his shoulder, stamps the paper once and walks off down the gutter.
+ * Nothing in it passes over the page's content: the ledge, the cable and he are all inside the empty gutter. About 4 s.
+ */
 export function introSchedule(): IntroEvent[] {
   const ev: IntroEvent[] = [
     { at: 0, patch: (s) => ({ ...s, phase: "drop", look: "air" }) },
@@ -86,18 +94,14 @@ export function introSchedule(): IntroEvent[] {
     ev.push({ at, patch: (s) => ({ ...s, notch: (i + 1) as 1 | 2 | 3, swing: s.swing + 1, look: "heave" }) });
     ev.push({ at: at + HEAVE_MS, patch: (s) => ({ ...s, look: "reach" }) });
   });
-  ev.push({ at: PULL_AT[2] + HEAVE_MS, patch: (s) => ({ ...s, look: "rest" }) });
-  FLOW_STEPS.forEach((_, i) => {
-    ev.push({ at: CARRY_AT + i * ROW_MS, patch: (s) => ({ ...s, phase: "carry", row: i, swing: s.swing + 1, look: "stampUp" }) });
-    ev.push({ at: CARRY_AT + i * ROW_MS + 240, patch: (s) => ({ ...s, look: "stampDown", stamped: i + 1 }) });
-  });
-  const end = CARRY_AT + FLOW_STEPS.length * ROW_MS;
-  ev.push({ at: end, patch: (s) => ({ ...s, phase: "cheer", look: "celebrate" }) });
-  ev.push({ at: end + 800, patch: (s) => ({ ...s, phase: "lift", notch: 0, look: "wave" }) });
-  ev.push({ at: end + 1400, patch: () => INTRO_DONE });
+  const end = PULL_AT[2] + HEAVE_MS;
+  ev.push({ at: end + 150, patch: (s) => ({ ...s, look: "rest" }) });
+  ev.push({ at: end + 700, patch: (s) => ({ ...s, phase: "cheer", look: "stampUp" }) });
+  ev.push({ at: end + 950, patch: (s) => ({ ...s, look: "stampDown" }) });
+  ev.push({ at: end + 1600, patch: () => INTRO_DONE });
   return ev.sort((a, b) => a.at - b.at);
 }
-/** Narrow screens (no menu scene): he drops into his place at the edge (air, then the landing frame) and settles. */
+/** Where there is no clear gutter (tablets, phones, narrow windows): he drops into the caption strip (air, then the landing frame) and settles. */
 export function landSchedule(): IntroEvent[] {
   return [
     { at: 0, patch: (s) => ({ ...s, phase: "drop", look: "air" }) },
@@ -108,61 +112,23 @@ export function landSchedule(): IntroEvent[] {
 export const INTRO_TOTAL_MS = introSchedule().at(-1)!.at;
 
 // ---------------------------------------------------------------------------------------------------------------------------------
-// Placement: keep Tooly, his buttons and his caption off headings, links, buttons and form fields.
+// Where he may be. The rule has no exceptions: a floating Tooly (and his trail and the intro ledge) exists only in the gutter, the empty
+// strip of window between the page's content column and the window's right edge, and only when it is wide enough for him. Otherwise he is a
+// small figure inside the caption strip. The caption always lives in the strip (a fixed bar that owns its own space: the page's scroll area
+// ends above it), never in a bubble beside him.
 // ---------------------------------------------------------------------------------------------------------------------------------
 
-/** `soft`: running text (avoided where there is room); anything else is a heading, link, button or form field (avoided always). */
-export type Rect = { left: number; top: number; right: number; bottom: number; soft?: boolean };
-export const rectsOverlap = (a: Rect, b: Rect, pad = 0) => a.left < b.right + pad && a.right > b.left - pad && a.top < b.bottom + pad && a.bottom > b.top - pad;
+export const FIGURE_SIZE = 104; // his width in the gutter (css px)
+export const FIGURE_MARGIN = 18; // between him and the window's right edge
+export const GUTTER_NEEDED = FIGURE_SIZE + FIGURE_MARGIN + 4; // he must clear the content column by at least 4 px
+export const STRIP_FIGURE = 44; // his width inside the strip
 
-export type Placement = { y: number; bubble: "left" | "above" | "collapsed" | "none" };
-export type PlacementInput = {
-  idealY: number; vh: number; topMin: number; x: number; figW: number; figH: number; controlsW: number; controlsH: number;
-  bubbleW: number; bubbleH: number; hasCaption: boolean; avoid: readonly Rect[];
-  /** What the caption bubble itself must clear, when that is less than what he and his buttons must clear (the bubble may cover running text where he may not). */
-  bubbleAvoid?: readonly Rect[];
-};
-
-export function choosePlacement(i: PlacementInput): Placement {
-  const maxY = i.vh - i.figH - i.controlsH - 8;
-  const clamp = (y: number) => Math.min(Math.max(y, i.topMin), Math.max(i.topMin, maxY));
-  const clear = (r: Rect[], against: readonly Rect[]) => r.every((box) => against.every((a) => !rectsOverlap(box, a, 4)));
-  const free = (r: Rect[]) => clear(r, i.avoid);
-  const group = (y: number): Rect[] => [
-    { left: i.x, top: y, right: i.x + i.figW, bottom: y + i.figH },
-    { left: i.x + i.figW - i.controlsW, top: y + i.figH, right: i.x + i.figW, bottom: y + i.figH + i.controlsH },
-  ];
-  const bubble = (y: number, where: "left" | "above"): Rect =>
-    where === "left"
-      ? { left: i.x - 10 - i.bubbleW, top: y, right: i.x - 10, bottom: y + i.bubbleH }
-      : { left: i.x + i.figW - i.bubbleW, top: y - 10 - i.bubbleH, right: i.x + i.figW, bottom: y - 10 };
-  const offsets = [0];
-  for (let d = 24; d <= i.vh; d += 24) offsets.push(-d, d);
-  if (i.hasCaption) {
-    for (const d of offsets) {
-      const y = clamp(i.idealY + d);
-      for (const where of ["left", "above"] as const) {
-        const b = bubble(y, where);
-        const inside = b.left >= 4 && b.top >= 4 && b.bottom <= i.vh - 4; // the caption is never cut off by the window
-        if (inside && free(group(y)) && clear([b], i.bubbleAvoid ?? i.avoid)) return { y, bubble: where };
-      }
-    }
-  }
-  for (const d of offsets) {
-    const y = clamp(i.idealY + d);
-    if (free(group(y))) return { y, bubble: i.hasCaption ? "collapsed" : "none" };
-  }
-  // Nowhere is wholly clear: stand where the least is covered, a heading, link, button or field counting ten times running text.
-  const bubbleKind = i.hasCaption ? "collapsed" : "none";
-  let best = clamp(i.idealY);
-  let bestScore = Infinity;
-  for (const d of offsets) {
-    const y = clamp(i.idealY + d);
-    const score = group(y).reduce((sum, box) => sum + i.avoid.reduce((n, a) => n + (rectsOverlap(box, a, 4) ? (a.soft ? 1 : 10) : 0), 0), 0);
-    if (score < bestScore) { bestScore = score; best = y; }
-  }
-  return { y: best, bubble: bubbleKind };
-}
+export type GuideMode = "gutter" | "strip";
+/** The gutter, from the measured right edge of the content column (the widest container's content box) and the width of the scroll area. */
+export const gutterWidth = (clientWidth: number, contentRight: number) => Math.max(0, clientWidth - contentRight);
+export const guideMode = (gutter: number): GuideMode => (gutter >= GUTTER_NEEDED ? "gutter" : "strip");
+/** His left edge in the gutter, and the trail's centre. */
+export const gutterX = (clientWidth: number) => clientWidth - FIGURE_SIZE - FIGURE_MARGIN;
 
 /** Where Tooly would stand on his own: down the right-hand edge in step with how far the page is scrolled. */
 export function idealY(progress: number, topY: number, bottomY: number): number {
@@ -223,23 +189,3 @@ export const walkFrameIndex = (travel: number, figH: number) => ((Math.floor(Mat
 
 /** The look for a stop's pose: the new up-left point replaces the mirrored still; everything else is an original still. */
 export const lookForPose = (pose: ToolyPose | "clipboard"): ToolyPose | FrameKey => (pose === "point" ? "pointUpLeft" : pose === "clipboard" ? "clipboard" : pose);
-
-/** Last resort when nowhere is wholly clear: stand where the least is covered (a heading, link, button or field counts ten times running text). */
-export function leastCovered(i: Omit<PlacementInput, "hasCaption" | "bubbleW" | "bubbleH">): number {
-  const maxY = i.vh - i.figH - i.controlsH - 8;
-  const clamp = (y: number) => Math.min(Math.max(y, i.topMin), Math.max(i.topMin, maxY));
-  let best = clamp(i.idealY);
-  let bestScore = Infinity;
-  const offsets = [0];
-  for (let d = 24; d <= i.vh; d += 24) offsets.push(-d, d);
-  for (const d of offsets) {
-    const y = clamp(i.idealY + d);
-    const boxes: Rect[] = [
-      { left: i.x, top: y, right: i.x + i.figW, bottom: y + i.figH },
-      { left: i.x + i.figW - i.controlsW, top: y + i.figH, right: i.x + i.figW, bottom: y + i.figH + i.controlsH },
-    ];
-    const score = boxes.reduce((sum, box) => sum + i.avoid.reduce((n, a) => n + (rectsOverlap(box, a, 4) ? (a.soft ? 1 : 10) : 0), 0), 0) + Math.abs(d) / 2000;
-    if (score < bestScore) { bestScore = score; best = y; }
-  }
-  return best;
-}
