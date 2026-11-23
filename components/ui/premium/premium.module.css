@@ -233,15 +233,15 @@
 
 /* ---------- menu / popover (portal layers). Transitions, not keyframes: they can be interrupted. data-state closed is the hidden look; the layer scales in from the trigger (--origin-x, --origin-y). ---------- */
 .layer {
-  position: fixed; z-index: 80; min-width: 190px; max-height: min(70vh, 420px); overflow-y: auto; padding: 5px; border-radius: var(--ui-radius-md); background: #fff; box-shadow: var(--ui-elev-overlay);
+  position: fixed; z-index: 80; min-width: min(190px, calc(100vw - 16px)); max-width: calc(100vw - 16px); max-height: min(70vh, 420px); overflow-y: auto; overflow-x: hidden; padding: 5px; border-radius: var(--ui-radius-md); background: #fff; box-shadow: var(--ui-elev-overlay);
   opacity: 1; transform: scale(1); transform-origin: var(--origin-x, 0px) var(--origin-y, 0%);
   transition: opacity var(--ui-t-base) var(--ui-ease-out), transform var(--ui-t-base) var(--ui-ease-out);
 }
 .layer[data-state="closed"] { opacity: 0; transform: scale(0.95); pointer-events: none; transition-duration: var(--ui-t-exit); }
 .layer[data-instant="true"] { transition: none; }
-.popPanel { min-width: 260px; padding: 8px 12px 6px; }
+.popPanel { min-width: min(260px, calc(100vw - 16px)); padding: 8px 12px 6px; }
 .popTitle { margin: 4px 0 2px; font-size: var(--ui-fs-label); line-height: var(--ui-lh-label); font-weight: 600; color: var(--ui-ink-2); }
-.menuItem { position: relative; display: flex; align-items: center; width: 100%; min-height: 32px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; font-size: var(--ui-fs-body); font-weight: 400; text-align: left; transition: background-color var(--ui-t-fast) var(--ui-ease-out); }
+.menuItem { position: relative; display: flex; align-items: center; width: 100%; min-height: 32px; padding: 4px 10px; border: 0; border-radius: 6px; background: transparent; font-size: var(--ui-fs-body); font-weight: 400; text-align: left; overflow-wrap: anywhere; transition: background-color var(--ui-t-fast) var(--ui-ease-out); }
 .menuItem:focus-visible { background: #f0f3f9; }
 .menuItem:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: -2px; }
 .menuItem[aria-disabled="true"] { color: var(--ui-muted); cursor: not-allowed; }
@@ -251,16 +251,16 @@
 
 /* ---------- dialog: one pattern, navy primary, outlined Cancel. Centred, scales in from 0.95 (transform origin is the centre), leaves faster than it arrives. ---------- */
 .dialog {
-  position: fixed; inset: 0; margin: auto; width: min(480px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; padding: 24px 24px 20px; border: 0; border-radius: var(--ui-radius-lg); background: #fff; color: var(--ui-ink); box-shadow: var(--ui-elev-modal);
+  position: fixed; inset: 0; margin: auto; width: min(480px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); max-width: calc(100vw - 16px); overflow-y: auto; overflow-x: hidden; padding: 24px 24px 20px; border: 0; border-radius: var(--ui-radius-lg); background: #fff; color: var(--ui-ink); box-shadow: var(--ui-elev-modal);
   opacity: 1; transform: scale(1); transition: opacity var(--ui-t-slow) var(--ui-ease-out), transform var(--ui-t-slow) var(--ui-ease-out);
 }
 .dialog[data-state="closed"] { opacity: 0; transform: scale(0.95); transition-duration: var(--ui-t-exit); }
 .dialog::backdrop { background: rgba(14, 23, 38, 0.45); opacity: 1; transition: opacity var(--ui-t-base) var(--ui-ease-out); }
 .dialog[data-state="closed"]::backdrop { opacity: 0; transition-duration: var(--ui-t-exit); }
-.dialogTitle { font-family: var(--ui-font-heading); margin: 0; font-size: var(--ui-fs-section); line-height: var(--ui-lh-section); font-weight: var(--ui-fw-section); letter-spacing: var(--ui-ls-section); }
+.dialogTitle { font-family: var(--ui-font-heading); overflow-wrap: anywhere; margin: 0; font-size: var(--ui-fs-section); line-height: var(--ui-lh-section); font-weight: var(--ui-fw-section); letter-spacing: var(--ui-ls-section); }
 .dialogDesc { margin: 6px 0 0; color: var(--ui-ink-2); font-size: var(--ui-fs-body); line-height: var(--ui-lh-body); font-weight: 400; }
-.dialogBody { margin-top: 14px; }
-.dialogError { margin: 14px 0 0; padding: 10px 12px; border-radius: var(--ui-radius-sm); background: var(--ui-danger-soft); color: #8f1f1f; box-shadow: inset 3px 0 0 var(--ui-danger), inset 0 0 0 1px rgba(179, 45, 45, 0.18); font-size: var(--ui-fs-secondary); line-height: var(--ui-lh-secondary); font-weight: 500; }
+.dialogBody { margin-top: 14px; min-width: 0; overflow-wrap: anywhere; }
+.dialogError { overflow-wrap: anywhere; margin: 14px 0 0; padding: 10px 12px; border-radius: var(--ui-radius-sm); background: var(--ui-danger-soft); color: #8f1f1f; box-shadow: inset 3px 0 0 var(--ui-danger), inset 0 0 0 1px rgba(179, 45, 45, 0.18); font-size: var(--ui-fs-secondary); line-height: var(--ui-lh-secondary); font-weight: 500; }
 .dialogActions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 22px; }
 
 /* ---------- toast: neutral, one layer. Enters with a short slide and fade, leaves faster. ---------- */
@@ -276,7 +276,7 @@
 .toast[data-state="closed"] { opacity: 0; transform: translateY(-6px) scale(0.97); pointer-events: none; transition-duration: var(--ui-t-exit); }
 .toastError { box-shadow: inset 3px 0 0 var(--ui-danger), var(--ui-elev-overlay); }
 .toastRegion[data-placement^="bottom"] .toast[data-state="closed"] { transform: translateY(6px) scale(0.97); }
-.toastText { flex: 1; min-width: 0; font-size: var(--ui-fs-secondary); line-height: 19px; }
+.toastText { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: var(--ui-fs-secondary); line-height: 19px; }
 .toastTitle { margin: 0; font-size: var(--ui-fs-body); line-height: 20px; font-weight: 600; }
 .toastDetail { margin: 0; color: var(--ui-ink-2); font-weight: 400; }
 .toastClose { position: relative; flex: none; display: inline-grid; place-items: center; width: 24px; height: 24px; border: 0; border-radius: 6px; background: transparent; color: var(--ui-muted); transition: background-color var(--ui-t-fast) var(--ui-ease-out), color var(--ui-t-fast) var(--ui-ease-out); }
@@ -296,7 +296,8 @@
 /* ---------- table finish. Header: 12 px uppercase tracked, weight 600. Body: 14 px, weight 400 (put .tName on the name cell for weight 600). ---------- */
 .tableWrap { position: relative; border-radius: var(--ui-radius-lg); background: var(--ui-surface); box-shadow: var(--ui-elev-raised); overflow: hidden; }
 .tableFlush { border-radius: 0; background: transparent; box-shadow: none; }
-.tableScroll { overflow-x: auto; overscroll-behavior-x: contain; }
+/* v6: the horizontal scroll box exists on desktop only (above 1024 px). At 1024 px and under the table is stacked (see the v6 block) and nothing scrolls sideways. */
+@media (min-width: 1025px) { .tableScroll { overflow-x: auto; overscroll-behavior-x: contain; } }
 .tableScroll:focus-visible { outline-offset: -2px; }
 .table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--ui-fs-body); font-weight: 400; }
 .table th { position: sticky; top: 0; z-index: 3; height: 44px; padding: 0 14px; background: #f7f8fb; color: var(--ui-ink-2); font-size: var(--ui-fs-thead); line-height: var(--ui-lh-thead); font-weight: var(--ui-fw-thead); letter-spacing: var(--ui-ls-thead); text-transform: uppercase; text-align: left; white-space: nowrap; box-shadow: inset 0 -1px 0 var(--ui-line); }
@@ -348,7 +349,7 @@
 
 /* ---------- sheet: wide modal on the native dialog, header + scrolling body + custom footer. Same entrance as the dialog, 240 ms. ---------- */
 .sheet {
-  position: fixed; inset: 0; margin: auto; padding: 0; border: 0; border-radius: var(--ui-radius-lg); background: #fff; color: var(--ui-ink); box-shadow: var(--ui-elev-modal); max-height: calc(100dvh - 32px); overflow: hidden;
+  position: fixed; inset: 0; margin: auto; padding: 0; border: 0; border-radius: var(--ui-radius-lg); background: #fff; color: var(--ui-ink); box-shadow: var(--ui-elev-modal); max-height: calc(100dvh - 32px); max-width: calc(100vw - 16px); overflow: hidden;
   opacity: 1; transform: scale(1); transition: opacity var(--ui-t-sheet) var(--ui-ease-out), transform var(--ui-t-sheet) var(--ui-ease-out);
 }
 .sheet[data-state="closed"] { opacity: 0; transform: scale(0.95); transition-duration: var(--ui-t-exit); }
@@ -361,8 +362,8 @@
 .sheetHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 20px 20px 14px 24px; box-shadow: inset 0 -1px 0 var(--ui-line); }
 .sheetHeadText { min-width: 0; }
 .sheetTitle { font-family: var(--ui-font-heading); margin: 0; font-size: var(--ui-fs-section); line-height: var(--ui-lh-section); font-weight: var(--ui-fw-section); letter-spacing: var(--ui-ls-section); overflow-wrap: anywhere; }
-.sheetDesc { margin: 4px 0 0; color: var(--ui-ink-2); font-size: var(--ui-fs-body); line-height: var(--ui-lh-body); font-weight: 400; }
-.sheetBody { display: flex; flex-direction: column; gap: 16px; padding: 18px 24px; overflow-y: auto; overscroll-behavior: contain; }
+.sheetDesc { overflow-wrap: anywhere; margin: 4px 0 0; color: var(--ui-ink-2); font-size: var(--ui-fs-body); line-height: var(--ui-lh-body); font-weight: 400; }
+.sheetBody { display: flex; flex-direction: column; gap: 16px; min-width: 0; padding: 18px 24px; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
 .sheetBody:focus-visible { outline-offset: -2px; }
 .sheetFoot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 14px 24px 16px; background: var(--ui-surface-2); box-shadow: inset 0 1px 0 var(--ui-line); }
 @media (max-width: 640px) { .sheetHead, .sheetBody, .sheetFoot { padding-left: 16px; padding-right: 16px; } }
@@ -442,7 +443,7 @@
 /* ---------- menu: full width trigger, a reason under a disabled item ---------- */
 .menuBlock { justify-content: space-between; }
 .menuItemText { display: flex; flex-direction: column; align-items: flex-start; padding: 5px 0; min-width: 0; }
-.menuHint { max-width: 260px; color: var(--ui-muted); font-size: var(--ui-fs-caption); line-height: 16px; font-weight: 400; }
+.menuHint { max-width: min(260px, 100%); overflow-wrap: anywhere; color: var(--ui-muted); font-size: var(--ui-fs-caption); line-height: 16px; font-weight: 400; }
 .menuItem:has(.menuHint) { min-height: 44px; }
 
 /* ---------- table variants ---------- */
@@ -643,16 +644,11 @@
 .pbar { min-width: 0; max-width: 100%; }
 .pbarSlot, .phActions, .rowTrailing, .calloutAction { max-width: 100%; }
 
-/* ---------- segmented control: every segment is at least 48 px wide (so "All", "List", "3" are real targets); the scroller wrapper is invisible (display: contents) above 640 px ---------- */
-.segBtn { min-width: 48px; }
-.segScroll { display: contents; }
+/* ---------- segmented control: every segment is at least 48 px wide (so "All", "List", "3" are real targets). v6: it never scrolls sideways; under 640 px the track fills the width and its segments share each row (grow), wrapping onto more rows 16 px apart when they do not fit. ---------- */
+.segBtn { min-width: 48px; max-width: 100%; }
 @media (max-width: 640px) {
-  /* one row that scrolls inside the track: no lone segment on a second row. The wrapper is 48 px tall (8 px padding above and below, pulled back by the same margin) so the 48 px hit area is never clipped by the scroll box. */
-  .seg { flex-wrap: nowrap; min-width: 0; padding-left: 0; padding-right: 0; } /* min-width 0: the scroll row must never push a flex or grid parent wider than the screen */
-  .segScroll { position: relative; display: flex; align-items: center; gap: 2px; flex: 0 1 auto; min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; padding: 8px 4px; margin: -8px 0; }
-  .segScroll::-webkit-scrollbar { display: none; }
-  .segSm .segScroll { padding-top: 12px; padding-bottom: 12px; margin: -12px 0; }
-  .segScroll .segBtn { flex: 0 0 auto; }
+  .seg { display: flex; width: 100%; min-width: 0; }
+  .seg .segBtn { flex: 1 1 auto; }
 }
 
 /* ---------- preview bar: under 640 px the label wraps (two short lines) instead of being cut; shortLabel swaps in a shorter visible text and keeps the full text for assistive technology ---------- */
@@ -665,17 +661,16 @@
   .pbarHasShort .pbarShort { display: inline; }
 }
 
-/* ---------- selection bar under 640 px: an active bar is ONE row. The actions scroll inside it (16 px apart; a focused button scrolls into view); with the compact prop the row is count + one primary + a More menu instead ---------- */
+/* ---------- selection bar under 640 px (v6): an active bar never scrolls sideways. Its count and actions wrap (rows 16 px apart, so 48 px hit areas never overlap); with the compact prop the row is count + one primary + a More menu instead ---------- */
 .barCompact { display: none; }
+.barCount { min-width: 0; overflow-wrap: anywhere; }
 @media (max-width: 640px) {
-  .barOn { flex-wrap: nowrap; gap: 12px; }
-  .barOn .barCount { flex: 0 1 auto; min-width: 0; }
+  .barOn { gap: 16px 12px; }
   .barOn .barSpacer { display: none; }
-  .barOn .barActions { flex: 1 1 0; min-width: 0; contain: inline-size; flex-wrap: nowrap; justify-content: flex-start; gap: 16px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; padding: 8px 12px 8px 2px; margin: -8px -12px -8px 0; }
-  .barOn .barActions::-webkit-scrollbar { display: none; }
-  .barOn .barActions > * { flex: none; }
+  .barOn .barActions { flex: 1 1 100%; min-width: 0; justify-content: flex-start; gap: 16px 8px; }
+  .barOn[data-compact="true"] { flex-wrap: nowrap; gap: 12px; }
   .barOn[data-compact="true"] .barActions { display: none; }
-  .barOn[data-compact="true"] .barCompact { display: flex; flex: 1 1 0; min-width: 0; align-items: center; justify-content: flex-end; gap: 16px; }
+  .barOn[data-compact="true"] .barCompact { display: flex; flex: 1 1 0; min-width: 0; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 16px 8px; }
 }
 
 /* ---------- menu: a danger item (red words, a red tint on hover and focus; the label says what is destroyed, so colour is never the only signal) ---------- */
@@ -749,6 +744,104 @@
 .fpBody { display: grid; gap: 16px; padding: 6px 0 10px; }
 .fpGroup { display: grid; gap: 8px; min-width: 0; border: 0; margin: 0; padding: 0; }
 .fpGroupLabel { margin: 0; padding: 0; color: var(--ui-ink-2); font-size: var(--ui-fs-label); line-height: var(--ui-lh-label); font-weight: 600; }
+
+/* ====================================================================================================================
+   v6 additions: NO SIDEWAYS SCROLLING on a phone or tablet (1024 px and under). Nothing in this folder may scroll or overflow sideways there; a horizontal scroll box exists on desktop (above 1024 px) only.
+   Visual defaults changed on purpose: ScrollTable is stacked records, the SegmentedControl and an active SelectionBar wrap instead of scrolling, long words wrap, buttons and tabs may wrap their label.
+   ==================================================================================================================== */
+
+/* ---------- text that must wrap: long unbroken words and numbers break instead of pushing the layout wider ---------- */
+.tokens { overflow-wrap: break-word; }
+.fieldLabel, .fieldHint, .fieldError, .fieldNote, .switchLabel, .switchHint, .stateTitle, .stateText, .panelTitle, .discText, .rowMeta, .tileLabel, .tileValue, .tileHint, .tileDelta, .tileStatus, .popTitle, .toastTitle, .toastDetail, .errTitle, .errLabel, .groupTitle, .groupHint, .rangeError, .fpGroupLabel, .phDesc, .calloutText { overflow-wrap: anywhere; }
+.tile, .tileHead, .tileLabel { min-width: 0; max-width: 100%; }
+.tile > * { max-width: 100%; }
+.discSummary, .panelHead > *, .callout > *, .listRow > *, .rowMain { min-width: 0; }
+.input, .field, .range, .group, .panel, .disc, .fp, .fpBody { max-width: 100%; }
+.panelTitle, .discText { min-width: 0; }
+
+/* ---------- controls: under the tablet limit a label that is too long wraps inside its control (the control grows taller) instead of being wider than the screen ---------- */
+@media (max-width: 1024px) {
+  .btn, .chip, .chipX, .segBtn { max-width: 100%; white-space: normal; text-align: center; overflow-wrap: anywhere; }
+  .btn { height: auto; min-height: var(--ui-h-md); padding-top: 6px; padding-bottom: 6px; line-height: 1.25; }
+  .btn.sizeSm { min-height: var(--ui-h-sm); padding-top: 4px; padding-bottom: 4px; }
+  .btn.sizeLg { min-height: var(--ui-h-lg); }
+  .btn.sizeIcon { height: 48px; padding: 0; }
+  .chip, .chipX { height: auto; min-height: var(--ui-h-sm); padding-top: 4px; padding-bottom: 4px; line-height: 1.25; }
+  .segBtn { height: auto; min-height: 32px; padding-top: 6px; padding-bottom: 6px; line-height: 1.25; }
+  .segSm .segBtn { min-height: 24px; padding-top: 3px; padding-bottom: 3px; }
+  .badge { max-width: 100%; white-space: normal; height: auto; min-height: 22px; padding-top: 3px; padding-bottom: 3px; line-height: 1.2; }
+  .tab { max-width: 100%; white-space: normal; text-align: left; height: auto; min-height: 44px; padding-top: 8px; padding-bottom: 8px; line-height: 1.25; }
+  .tabs { row-gap: 4px; }
+  .pbar { max-width: 100%; }
+  .pbar .btn.btn { height: 24px; min-height: 24px; padding-top: 0; padding-bottom: 0; white-space: nowrap; }
+}
+
+/* ---------- tabs: the row wraps (rows 4 px apart, so each 48 px hit area touches but never overlaps its neighbour) or, with overflow="more", the tabs that do not fit move into a More menu ---------- */
+.tabs { row-gap: 4px; }
+.tabsMoreWrap { display: flex; align-items: stretch; gap: 4px; min-width: 0; max-width: 100%; box-shadow: inset 0 -1px 0 var(--ui-line); }
+.tabsMore { flex: 1 1 auto; min-width: 0; flex-wrap: nowrap; box-shadow: none; }
+.tabsMore > .tab { flex: none; }
+.tabMore { flex: none; display: inline-flex; align-items: center; }
+
+/* ---------- segmented control: collapseToSelect shows the shared Select instead of the segments under 640 px ---------- */
+.segCollapse { max-width: 100%; }
+.segCollapseSelect { display: none; }
+@media (max-width: 640px) {
+  .segCollapse > .seg { display: none; }
+  .segCollapse > .segCollapseSelect { display: block; width: 100%; }
+}
+
+/* ---------- scroll table, STACKED at 1024 px and under: the same table markup reflows into one record block per row. Header row hidden visually (kept for assistive technology), primary cell = title line, other cells label/value pairs
+   (the label is the cell's data-ui-label, set from the header text by ScrollTable), actions row at the bottom with 16 px between wrapped rows, totals as a block, sub-rows as full-width notes. !important is used only to beat the desktop
+   rules for sticky pinning, fixed column widths and row heights, none of which apply to a stacked record. ---------- */
+@media (max-width: 1024px) {
+  .tableWrap { overflow: hidden; max-width: 100%; }
+  .tableScroll { overflow: visible; max-width: 100%; }
+  .edgeFade { display: none !important; }
+  .table, .table thead, .table tbody, .table tfoot, .table tr, .table th, .table td { display: block; }
+  .table { width: 100%; max-width: 100%; min-width: 0; }
+  .table thead { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  .table tbody tr, .table tfoot tr { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px 0; min-width: 0; padding: 14px 16px; background: var(--row-bg, #fff); box-shadow: inset 0 -1px 0 var(--ui-line); }
+  .table > :last-child > tr:last-child { box-shadow: none; }
+  .table tbody tr[data-selected="true"] { box-shadow: inset 3px 0 0 var(--ui-brand), inset 0 -1px 0 var(--ui-line); }
+  .table > tbody:last-child > tr[data-selected="true"]:last-child { box-shadow: inset 3px 0 0 var(--ui-brand); }
+  .table tfoot tr { --row-bg: #f7f8fb; box-shadow: inset 0 1px 0 var(--ui-line-strong); }
+  .table tbody[data-record="true"] tr:not(:last-child) { box-shadow: none; padding-bottom: 0; }
+  .table tbody[data-record="true"][data-selected="true"] tr { box-shadow: inset 3px 0 0 var(--ui-brand); }
+  .table tbody[data-record="true"][data-selected="true"]:not(:last-of-type) tr:last-child { box-shadow: inset 3px 0 0 var(--ui-brand), inset 0 -1px 0 var(--ui-line); }
+  .table tbody[data-record="true"] tr:last-child { box-shadow: inset 0 -1px 0 var(--ui-line); }
+  .table tbody[data-record="true"]:last-of-type tr:last-child { box-shadow: none; }
+  .table tr[data-sub="true"] { padding-top: 6px; }
+  .table :is(th, td) {
+    position: static !important; left: auto !important; right: auto !important; z-index: auto !important; width: auto !important; min-width: 0 !important; max-width: 100% !important; height: auto !important; padding: 0 !important;
+    background: transparent !important; box-shadow: none !important; white-space: normal !important; overflow-wrap: anywhere; text-align: left !important; text-transform: none; letter-spacing: normal;
+    font-size: var(--ui-fs-body); line-height: var(--ui-lh-body); font-weight: 400; color: var(--ui-ink); transition: none;
+  }
+  .table :is(th, td)::before, .table :is(th, td)::after { content: none !important; }
+  .table :is(th, td)[data-stack="field"][data-ui-label]:not([data-ui-label=""])::before { content: attr(data-ui-label) !important; position: static !important; inset: auto !important; opacity: 1 !important; box-shadow: none !important; display: block; flex: none; width: clamp(84px, 34%, 9rem); color: var(--ui-muted); font-size: var(--ui-fs-secondary); line-height: var(--ui-lh-body); font-weight: 400; text-transform: none; letter-spacing: normal; }
+  .table td > *, .table th > * { max-width: 100%; }
+  .table td > * { min-width: 0; }
+  /* label / value pair: the label is the cell's ::before, the value (text or any elements) follows it on the same line and wraps inside its own column */
+  .table :is(th, td)[data-stack="field"], .table :is(th, td)[data-stack="note"] { grid-column: 1 / -1; }
+  .table :is(th, td)[data-stack="field"] { display: flex; flex-wrap: nowrap; align-items: baseline; gap: 4px 12px; }
+  .table :is(th, td)[data-stack="field"][data-ui-label=""] { display: block; }
+  .table :is(th, td)[data-stack="hidden"], .table :is(th, td)[data-stack-empty="true"] { display: none; }
+  /* title line: card style, weight 600, to the right of the selection checkbox when there is one */
+  .table :is(th, td)[data-stack="title"] { grid-column: 1 / -1; grid-row: 1; align-self: center; font-family: var(--ui-font-heading); font-size: var(--ui-fs-card); line-height: var(--ui-lh-card); font-weight: var(--ui-fw-card) !important; letter-spacing: var(--ui-ls-card); }
+  .table tr[data-stack-select="true"] :is(th, td)[data-stack="title"] { grid-column: 2; }
+  .table :is(th, td)[data-stack="select"] { grid-column: 1; grid-row: 1; align-self: center; margin: -13px 4px -13px -13px; }
+  .table :is(th, td)[data-stack="actions"] { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 16px 8px; padding-top: 4px !important; }
+  .table :is(th, td)[data-stack="note"] { color: var(--ui-ink-2); font-size: var(--ui-fs-secondary); line-height: var(--ui-lh-secondary); }
+  .table tr[data-sub="true"] td[colspan] > * { position: static; left: auto; max-width: 100%; }
+  .table tfoot :is(th, td)[data-stack="field"] { font-weight: 600; }
+  .table tbody tr[data-clickable="true"]:focus-visible { outline-offset: -2px; }
+}
+/* tablet (641 to 1024 px): plain records sit as cards two to a row instead of one long column; record groups (data-record) stay one column */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .table tbody:not([data-record="true"]) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 12px; }
+  .table tbody:not([data-record="true"]) tr { border-radius: var(--ui-radius-md); box-shadow: inset 0 0 0 1px var(--ui-line) !important; align-content: start; }
+  .table tbody:not([data-record="true"]) tr[data-selected="true"] { box-shadow: inset 0 0 0 1.5px var(--ui-brand) !important; }
+}
 
 /* ---------- reduced motion: movement is removed, a short opacity fade stays on the layers that appear and disappear ---------- */
 @media (prefers-reduced-motion: reduce) {
