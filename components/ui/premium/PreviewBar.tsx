@@ -3,6 +3,7 @@
  * Output: ONE slim 28 px full-width strip that holds the preview tag and a slot for the "Preview controls" trigger, so the page title row stays clean (no yellow pill, no button beside the heading). Preview furniture is not product UI:
  * muted text on a quiet grey, 12 px. Any Button put in the slot, including a Popover or Menu trigger, is drawn as a 24 px text button with a 48 px hit area. The first word of a label that starts with "Preview" is set a little heavier.
  * v5: under 640 px the label WRAPS onto a second short line instead of being cut with an ellipsis (the bar grows to fit); with shortLabel the phone shows the short text and the full label stays in the page for assistive technology, and the group is named by the full label.
+ * v6: the label is wrapped or cut with an ellipsis (its full text is the title) and the bar is never wider than its parent at any width; nothing scrolls sideways.
  * Must not change: it is a role="group" named by its label (not a landmark, so it never breaks the one-main-landmark rule); it holds no state and does nothing itself; it is for preview builds only and must not ship in a real product screen.
  */
 import type { ReactNode } from "react";
@@ -29,7 +30,7 @@ function tagged(text: string): ReactNode {
 export function PreviewBar({ label = PREVIEW_LABEL, shortLabel, controls, className, ...rest }: PreviewBarProps) {
   return (
     <div role="group" aria-label={shortLabel ? label : "Preview information"} data-testid={rest["data-testid"]} className={cx(premiumTokens, styles.pbar, className)}>
-      <span className={cx(styles.pbarText, shortLabel && styles.pbarHasShort)}>
+      <span className={cx(styles.pbarText, shortLabel && styles.pbarHasShort)} title={label}>
         {shortLabel ? (
           <>
             <span className={styles.pbarFull}>{tagged(label)}</span>
