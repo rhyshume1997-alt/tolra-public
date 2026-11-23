@@ -1,0 +1,67 @@
+/*
+ * BOUNDARY (AI section, Integrations module 6 by the coordinator's decision, PREVIEW ONLY). Inputs: the class names used by components/integrations/preview/AiHelperPreview.tsx, and the --ui-*
+ * tokens that components/ui/premium defines on its token class (applied to the page root). Output: the look of the AI section preview only. Must not change: no global selectors, nothing outside this
+ * module, no business rules. Control heights stay on the 32 / 40 / 48 px scale. Motion is 120 to 200 ms, opacity, colour and transform only, off under prefers-reduced-motion.
+ * Forbidden: gradients, blur or glass, decorative icons.
+ */
+
+.root { display: flex; flex-direction: column; gap: 16px; max-width: 1720px; padding-bottom: 24px; font-feature-settings: "kern", "liga"; }
+
+.head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px 16px; }
+.headText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.title { margin: 0; font-size: 28px; line-height: 34px; font-weight: 650; letter-spacing: -0.022em; color: var(--ui-ink); }
+.subtitle { margin: 0; max-width: 78ch; color: var(--ui-ink-2); font-size: 14px; line-height: 21px; }
+.previewBar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 12px; margin-left: auto; }
+.previewTag { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 6px; background: #fff8e1; color: #6b4300; box-shadow: inset 0 0 0 1px #e6c25a; font-size: 12px; font-weight: 600; letter-spacing: 0.005em; }
+.dock { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding-bottom: 8px; max-width: 320px; }
+.dockNote { margin: 0 0 4px; color: var(--ui-muted); font-size: 12.5px; line-height: 17px; }
+.dockLabel { margin: 6px 0 0; color: var(--ui-ink-2); font-size: 12px; font-weight: 650; }
+.dockStates { display: flex; flex-direction: column; gap: 4px; width: 100%; margin-bottom: 6px; }
+.dockBtn { position: relative; height: 32px; padding: 0 10px; border: 0; border-radius: 8px; background: #fff; text-align: left; font-size: 13px; font-weight: 500; box-shadow: inset 0 0 0 1px var(--ui-line-strong); transition: background-color var(--ui-t-fast) var(--ui-ease); }
+.dockBtn::after { content: ""; position: absolute; inset: -8px 0; }
+.dockBtn:hover { background: var(--ui-surface-2); }
+.dockBtn[aria-pressed="true"] { background: var(--ui-brand); color: var(--ui-on-brand); font-weight: 600; box-shadow: var(--ui-inset-light), var(--ui-inset-dark); }
+
+
+.body { margin: 0 0 12px; max-width: 80ch; color: var(--ui-ink-2); font-size: 14px; line-height: 21px; }
+.plain { margin: 0; color: var(--ui-ink-2); font-size: 14px; }
+.statement { margin: 0; max-width: 100%; padding: 14px 20px; border-radius: var(--ui-radius-lg); background: #fff; box-shadow: 0 0 0 1px var(--ui-line), var(--ui-shadow-1); color: var(--ui-ink-2); font-size: 14px; line-height: 21px; }
+.manage { margin: 0; }
+.link { position: relative; color: var(--ui-accent); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.link::after { content: ""; position: absolute; inset: -14px -6px; }
+.link:hover { color: var(--ui-brand); text-decoration-thickness: 2px; }
+.what { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; list-style: none; max-width: 90ch; color: var(--ui-ink-2); font-size: 14px; line-height: 21px; }
+.what strong { color: var(--ui-ink); font-weight: 650; }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin-top: 12px; }
+.controls select, .askForm select { width: 220px; max-width: 100%; }
+.count { color: var(--ui-muted); font-size: 12.5px; }
+.placeholder { margin: 12px 0 0; padding: 12px 14px; border-radius: var(--ui-radius-sm); background: var(--ui-surface-2); box-shadow: inset 0 0 0 1px var(--ui-line-strong); border-left: 3px solid var(--ui-line-strong); color: var(--ui-muted); font-size: 13.5px; font-style: italic; }
+.figures { display: flex; flex-direction: column; gap: 8px; margin: 12px 0 0; padding: 0; list-style: none; }
+.figure { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 16px; padding: 10px 14px; border-radius: var(--ui-radius-sm); box-shadow: inset 0 0 0 1px var(--ui-line); font-size: 14px; }
+.figureTitle { font-weight: 600; color: var(--ui-ink); }
+.figureCount { color: var(--ui-muted); font-size: 13px; font-style: italic; }
+.suggest { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; padding: 14px; border-radius: var(--ui-radius-md); box-shadow: inset 0 0 0 1px var(--ui-line); }
+.suggest .placeholder { margin-top: 0; }
+.review { margin: 0; color: #6b4300; font-size: 13.5px; }
+.line { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: var(--ui-radius-sm); background: var(--ui-surface-2); box-shadow: inset 0 0 0 1px var(--ui-line); }
+.flags { display: flex; flex-wrap: wrap; gap: 4px; }
+.flag { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 6px; background: var(--ui-warn-soft); color: #6b4300; box-shadow: inset 0 0 0 1px rgba(217, 154, 6, 0.4); font-size: 11.5px; font-weight: 600; }
+.lineGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 16px; align-items: center; }
+.linePrice { color: var(--ui-muted); font-size: 12.5px; line-height: 17px; }
+.tooly { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
+.toolyFace { width: 64px; height: 64px; object-fit: contain; }
+.toolyTitle { margin: 0; font-size: 18px; line-height: 24px; font-weight: 650; color: var(--ui-ink); }
+.toolyTag { margin: 0; color: var(--ui-muted); font-size: 13.5px; }
+.askForm { display: flex; flex-direction: column; gap: 8px; max-width: 80ch; }
+.draft { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; padding: 14px; border-radius: var(--ui-radius-md); box-shadow: inset 0 0 0 1px var(--ui-line); }
+.draftHead { margin: 0; font-weight: 650; font-size: 14px; }
+.draftLine { margin: 0; font-size: 14px; color: var(--ui-ink-2); font-style: italic; }
+
+.denied { padding: 32px; border-radius: var(--ui-radius-lg); background: #fff; text-align: center; box-shadow: 0 0 0 1px var(--ui-line), var(--ui-shadow-1); }
+.deniedTitle { margin: 0; font-size: 24px; line-height: 30px; font-weight: 650; letter-spacing: -0.015em; }
+.deniedText { margin: 8px 0 0; color: var(--ui-ink-2); }
+.deniedNote { margin: 14px auto 0; max-width: 520px; color: var(--ui-muted); font-size: 12.5px; }
+
+@media (max-width: 900px) { .lineGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 767px) { .title { font-size: 24px; line-height: 30px; } .lineGrid { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .dockBtn, .link { animation: none !important; transition: none !important; } }
