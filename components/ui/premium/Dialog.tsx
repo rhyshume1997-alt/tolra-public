@@ -6,6 +6,7 @@
  * v2: optional middle action (secondaryLabel + onSecondary + secondaryDisabled?): order is Cancel, secondary, primary; without it the dialog is exactly as before. With it Cancel turns quiet so
  * the navy primary stays the one strong choice. Busy disables Cancel and the secondary too.
  * v3 nesting: a Dialog inside a Sheet (or another Dialog) handles only its OWN cancel and Tab events (target check, and the Tab wrap counts only its own controls), so Escape closes just the inner one.
+ * v4: it scales in from 0.95 with a fade (200 ms, centred) and leaves in 120 ms: the content stays rendered while it leaves, then the native dialog closes (data-state on the dialog drives the CSS transition).
  * Must not change: it is controlled (it closes only when the caller sets open to false); the first focus is Cancel for plain confirmations; an
  * `error` is shown inside the dialog and never turns into a success message. It performs nothing: onConfirm is the caller's real action.
  */
@@ -13,6 +14,7 @@ import { useEffect, useId, useRef, type ReactNode } from "react";
 import styles from "./premium.module.css";
 import { Button } from "./Button";
 import { cx, premiumTokens } from "./tokens";
+import { useModalPresence } from "./usePresence";
 
 export interface DialogProps {
   open: boolean;
@@ -36,18 +38,20 @@ export function Dialog({ open, title, description, children, confirmLabel, cance
   const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
   const hasSecondary = !!secondaryLabel && !!onSecondary;
+  const { shown, state } = useModalPresence(open);
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
-    if (open && !d.open) d.showModal();
-    if (!open && d.open) d.close();
-  }, [open]);
+    if (shown && !d.open) d.showModal();
+    if (!shown && d.open) d.close();
+  }, [shown]);
   return (
     <dialog
       ref={ref}
       className={cx(premiumTokens, styles.dialog)}
       aria-labelledby={`${id}-t`}
       aria-describedby={description ? `${id}-d` : undefined}
+      data-state={state}
       onCancel={(e) => { if (e.target !== e.currentTarget) return; e.preventDefault(); if (!busy) onClose(); }}
       onKeyDown={(e) => {
         if (e.key !== "Tab") return;
@@ -62,7 +66,7 @@ export function Dialog({ open, title, description, children, confirmLabel, cance
         else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
       }}
     >
-      {open ? (
+      {shown ? (
         <>
           <h2 id={`${id}-t`} className={styles.dialogTitle}>{title}</h2>
           {description ? <p id={`${id}-d`} className={styles.dialogDesc}>{description}</p> : null}
