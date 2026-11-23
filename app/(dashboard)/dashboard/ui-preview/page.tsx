@@ -5,19 +5,21 @@
  * Must not change: it reads and writes nothing (no Supabase, no fetch, no storage). Nothing here saves, finishes or sends anything, and
  * no control reports success: a confirm just closes and says "Preview only". v2 adds SegmentedControl, Sheet, form fields, StatTile and the toast, dialog,
  * popover, state-panel and selection-bar options. v3 adds the sections from "Button v3" down: danger and pressed buttons, menu hints, table variants, panel, callout, disclosure, list rows, form group, error
- * summary, date range, link tiles, wrapped chips and segments, nested sheets and large fields. Delete this route when a real module has adopted the set.
+ * summary, date range, link tiles, wrapped chips and segments, nested sheets and large fields. v4 (craft pass) shows the type scale, the elevation levels, PageHeader, Tabs, the StatusBadge modes and the info-neutral tone, StackedRows,
+ * the PreviewBar, the Panel nested and flat variants and a Type specimen (the same Tolra content in each candidate font that this build can load; nothing is changed by it), and the header of this page is itself a PreviewBar plus a PageHeader. Delete this route when a real module has adopted the set.
  */
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import {
   Button, Callout, Checkbox, ChipGroup, DateRangeGroup, Dialog, Disclosure, EmptyState, ErrorSummary, FailedState, Field, FilterChip, FormGroup, Input, List, ListRow, LoadingState, Menu, Panel, Popover,
   ScrollTable, SegmentedControl, Select, SelectionBar, Sheet, StatTile, StatTiles, StatusBadge, Switch, Textarea, ToastProvider, rowClickIsForRow, useToast, premiumTokens, tabularNumbers, cx,
-  type ErrorSummaryItem, type ToastPlacement,
+  PageHeader, PreviewBar, StackedRows, TabPanel, Tabs, typeScale,
+  type ErrorSummaryItem, type StackedRow, type ToastPlacement,
 } from "@/components/ui/premium";
 
 const sec: CSSProperties = { display: "grid", gap: 14, paddingTop: 24, borderTop: "1px solid rgba(14,23,38,0.1)" };
 const h2: CSSProperties = { margin: 0, fontSize: 18, fontWeight: 600, letterSpacing: "-0.01em" };
 const row: CSSProperties = { display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 };
-const cap: CSSProperties = { margin: 0, color: "#566074", fontSize: 12.5 };
+const cap: CSSProperties = { margin: 0, color: "#566074", fontSize: 13, lineHeight: "18px" };
 const focusRing: CSSProperties = { outline: "2px solid var(--ui-accent)", outlineOffset: 2 };
 
 function Section({ id, title, note, children }: { id: string; title: string; note?: string; children: ReactNode }) {
@@ -77,16 +79,35 @@ function Showcase({ setPlace }: { setPlace: (p: Place) => void }) {
 
   return (
     <div className={cx(premiumTokens)} style={{ display: "grid", gap: 28, maxWidth: 1100, paddingBottom: 48 }}>
-      <header style={{ display: "grid", gap: 6 }}>
-        <h1 style={{ margin: 0, fontSize: 28, lineHeight: "34px", fontWeight: 650, letterSpacing: "-0.022em" }}>Shared UI preview</h1>
-        <p style={{ margin: 0, color: "#3b4559" }}>
-          Every component of the shared set in each state. Sample content for layout only: nothing on this page reads or saves any data.
-        </p>
-      </header>
+      <PreviewBar data-testid="preview-bar" controls={
+        <Popover label="Preview controls" title="Preview controls" data-testid="pbar-controls">
+          <Switch label="Sample control one" hint="Does nothing here" checked={sw.a} onChange={(v) => setSw({ ...sw, a: v })} />
+          <Switch label="Sample control two" checked={sw.b} onChange={(v) => setSw({ ...sw, b: v })} />
+        </Popover>
+      } />
+      <PageHeader title="Shared UI preview" description="Every component of the shared set in each state. Sample content for layout only: nothing on this page reads or saves any data." data-testid="page-header-main" />
 
-      <Section id="s-type" title="Type and figures" note="Archivo throughout. Figures that line up in columns use tabular figures.">
+      <Section id="s-type" title="Type scale and figures" note="IBM Plex Sans throughout (weights 400, 500, 600). Weight carries the hierarchy: 600 for names and titles, 500 for labels and captions, 400 for body and secondary text. 13 px is the smallest running text; 12 px only for table headers, captions and badges. Figures that line up in columns use tabular figures.">
+        <div style={{ display: "grid", gap: 10 }} data-testid="type-scale">
+          {([
+            ["page", "26 / 32, 600, tracked tight (22 / 28 under 640 px)", "Job board"],
+            ["section", "18 / 24, 600", "Open jobs this week"],
+            ["card", "15 / 22, 600", "Hartley Engineering"],
+            ["label", "13 / 18, 600", "Customer reference"],
+            ["body", "14 / 20, 400", "Bracket, 6mm plate, laser cut and folded"],
+            ["name", "14 / 20, 600", "J-0431 Bracket, 6mm plate"],
+            ["secondary", "13 / 18, 400, muted", "Due Friday, Laser 2, 120 off"],
+            ["caption", "12 / 16, 500, muted", "Updated 14:32 by Sam"],
+            ["tableHead", "12 / 16, 600, uppercase, tracked", "Customer"],
+            ["numeral", "28 / 32, 600, tabular (24 / 28 under 640 px)", "£12,480.50"],
+          ] as const).map(([k, spec, sample]) => (
+            <div key={k} style={{ display: "grid", gap: 2, paddingBottom: 6 }}>
+              <span style={cap}><strong style={{ fontWeight: 600, color: "#0e1726" }}>{k}</strong> {spec}</span>
+              <span className={cx(premiumTokens, typeScale[k])} data-testid={`type-${k}`}>{sample}</span>
+            </div>
+          ))}
+        </div>
         <div style={{ ...row, gap: 32, alignItems: "baseline" }}>
-          <Cell label="Archivo 28 / 650"><span style={{ fontSize: 28, fontWeight: 650, letterSpacing: "-0.022em" }}>Job board</span></Cell>
           <Cell label="Tabular figures (digits share a width)">
             <span style={{ display: "flex", gap: 16 }}>
               <span className={tabularNumbers} style={{ fontSize: 22, fontWeight: 600 }} data-testid="tab-a">11111.11</span>
@@ -101,6 +122,10 @@ function Showcase({ setPlace }: { setPlace: (p: Place) => void }) {
           </Cell>
         </div>
       </Section>
+
+      <ShowcaseV4 previewOnly={previewOnly} />
+
+      <FontSpecimenSection />
 
       <Section id="s-btn" title="Button" note="Primary, secondary, quiet. Heights 32, 40, 48. Every control has a 48 px hit area (pseudo element), so the look stays refined. Hover and press are live: move the pointer over them.">
         {(["primary", "secondary", "quiet"] as const).map((v) => (
@@ -191,15 +216,25 @@ function Showcase({ setPlace }: { setPlace: (p: Place) => void }) {
         </StatTiles>
       </Section>
 
-      <Section id="s-badge" title="Status badge" note="One grammar: dot plus word. Never colour alone.">
+      <Section id="s-badge" title="Status badge" note="One grammar: dot plus word. Never colour alone. Pill is the quiet tinted chip; text drops the chip where the word already says it. info-neutral is for records that exist (not green, not amber).">
         <div style={row} data-testid="badges">
           <StatusBadge tone="neutral">Not started</StatusBadge>
+          <StatusBadge tone="info-neutral">3 linked</StatusBadge>
           <StatusBadge tone="progress">Running</StatusBadge>
           <StatusBadge tone="info">Sent</StatusBadge>
           <StatusBadge tone="warn">At risk</StatusBadge>
           <StatusBadge tone="ok">On time</StatusBadge>
           <StatusBadge tone="danger">Late</StatusBadge>
           <StatusBadge tone="warn" plain>Plain: waiting</StatusBadge>
+        </div>
+        <div style={row} data-testid="badges-text">
+          <StatusBadge mode="text" tone="neutral">Not started</StatusBadge>
+          <StatusBadge mode="text" tone="info-neutral">3 linked</StatusBadge>
+          <StatusBadge mode="text" tone="progress">Running</StatusBadge>
+          <StatusBadge mode="text" tone="info">Sent</StatusBadge>
+          <StatusBadge mode="text" tone="warn">At risk</StatusBadge>
+          <StatusBadge mode="text" tone="ok">On time</StatusBadge>
+          <StatusBadge mode="text" tone="danger">Late</StatusBadge>
         </div>
       </Section>
 
@@ -373,6 +408,230 @@ function Showcase({ setPlace }: { setPlace: (p: Place) => void }) {
   );
 }
 
+/* ---------------------------------------------------------------- v4 ---------------------------------------------------------------- */
+
+const STACK_ROWS: StackedRow[] = ROWS.slice(0, 3).map((r) => ({
+  id: r.id,
+  title: `${r.id} ${r.desc}`,
+  status: <StatusBadge mode="text" tone={r.tone}>{r.status}</StatusBadge>,
+  fields: [{ label: "Customer", value: r.customer }, { label: "Due", value: r.due }, { label: "Machine", value: r.machine }, { label: "Value", value: <span className={tabularNumbers}>£{r.value}</span> }],
+  actions: <><Button size="sm" variant="secondary">View</Button><Button size="sm" variant="quiet">More</Button></>,
+  testId: `stack-${r.id}`,
+}));
+
+function Elev({ name, shadow, note }: { name: string; shadow: string; note: string }) {
+  return (
+    <div className={premiumTokens} style={{ display: "grid", gap: 6 }}>
+      <div style={{ height: 72, borderRadius: 14, background: "#fff", boxShadow: shadow, display: "grid", placeItems: "center" }} data-testid={`elev-${name}`}><span className={typeScale.name}>{name}</span></div>
+      <span style={cap}>{note}</span>
+    </div>
+  );
+}
+
+function ShowcaseV4({ previewOnly }: { previewOnly: (what: string) => void }) {
+  const [tab, setTab] = useState<"today" | "overdue" | "week" | "all">("today");
+  const [tab2, setTab2] = useState<"a" | "b">("a");
+  return (
+    <>
+      <Section id="s-v4-elev" title="Elevation and nesting" note="Four levels: flat (hairline), raised (card: hairline, soft shadow, 1 px inner highlight), overlay (menu, popover, toast) and modal (dialog, sheet). Panel variants: raised (default), flat, and nested, which draws no card at all so a panel inside a panel is never a card in a card.">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 16, padding: 16, background: "#eef1f6", borderRadius: 14 }}>
+          <Elev name="flat" shadow="var(--ui-elev-flat)" note="--ui-elev-flat" />
+          <Elev name="raised" shadow="var(--ui-elev-raised)" note="--ui-elev-raised" />
+          <Elev name="overlay" shadow="var(--ui-elev-overlay)" note="--ui-elev-overlay" />
+          <Elev name="modal" shadow="var(--ui-elev-modal)" note="--ui-elev-modal" />
+        </div>
+        <div style={{ display: "grid", gap: 16 }}>
+          <Panel title="Raised panel (default)" headingLevel={3} data-testid="panel-raised" actions={<Button size="sm" variant="secondary" onClick={() => previewOnly("Nothing was added.")}>Add line</Button>}>
+            <div style={{ display: "grid", gap: 14 }}>
+              <StatTiles label="Inside a panel, flat tiles" columns={3}>
+                <StatTile flat label="Open" value="19" hint="Not archived" />
+                <StatTile flat label="Late" value="2" delta="Down 1 on last week" deltaTone="ok" />
+                <StatTile flat label="Due today" value="4" />
+              </StatTiles>
+              <Panel nested title="Nested panel: no card, a hairline above" headingLevel={4} data-testid="panel-nested">
+                <ScrollTable flush label="Jobs inside a panel">
+                  <thead><tr><th scope="col">Job</th><th scope="col">Customer</th><th scope="col">Status</th></tr></thead>
+                  <tbody>{ROWS.slice(0, 2).map((r) => (<tr key={r.id}><td><span className={typeScale.name}>{r.id}</span></td><td>{r.customer}</td><td><StatusBadge mode="text" tone={r.tone}>{r.status}</StatusBadge></td></tr>))}</tbody>
+                </ScrollTable>
+              </Panel>
+              <EmptyState compact headingLevel={4} title="No notes yet" detail="A compact empty state draws no card of its own." />
+            </div>
+          </Panel>
+          <Panel variant="flat" title="Flat panel (hairline only)" headingLevel={3} data-testid="panel-flat">
+            <p style={{ margin: 0, color: "#3b4559" }}>For a page that already sits on a raised surface, or where several panels sit side by side.</p>
+          </Panel>
+        </div>
+      </Section>
+
+      <Section id="s-v4-header" title="Page header" note="Title in the page style, an optional description, optional actions. One heading only. Actions wrap under the text on a narrow screen. The header of this very page is one.">
+        <div style={{ display: "grid", gap: 28 }}>
+          <PageHeader title="Quotes" description="Prices we have offered. Draft quotes can still change; sent quotes are the record." headingLevel={3} data-testid="ph-full" actions={<><Button variant="secondary" onClick={() => previewOnly("Nothing was exported.")}>Export</Button><Button variant="primary" onClick={() => previewOnly("No quote was created.")}>New quote</Button></>} />
+          <PageHeader title="Machine schedule" headingLevel={3} data-testid="ph-title-only" />
+          <div style={{ maxWidth: 340, borderTop: "1px dashed rgba(14,23,38,0.2)", paddingTop: 12 }}>
+            <span style={cap}>A 340 px frame</span>
+            <PageHeader title="Delivery notes" description="Goes with finished work." headingLevel={3} data-testid="ph-narrow" actions={<Button variant="primary">New delivery note</Button>} />
+          </div>
+        </div>
+      </Section>
+
+      <Section id="s-v4-tabs" title="Tabs" note="Underline tabs for the sections of one screen: 44 px, a 2 px navy bar, the first label on the content edge. Left and Right move and select, Home and End jump, Tab enters on the selected tab. Use SegmentedControl for a view of the same data.">
+        <div style={{ display: "grid", gap: 14 }}>
+          <div data-testid="tabs-wrap">
+            <Tabs label="Dashboard sections" value={tab} onChange={setTab} data-testid="tabs-main" tabs={[
+              { value: "today", label: "Today", count: 29, controls: "tp-today", id: "t-today", testId: "tab-today" },
+              { value: "overdue", label: "Overdue", count: 7, controls: "tp-overdue", id: "t-overdue" },
+              { value: "week", label: "This week", count: 41, controls: "tp-week", id: "t-week" },
+              { value: "all", label: "Archive", disabled: true, disabledReason: "Not available in the preview", controls: "tp-all", id: "t-all" },
+            ]} />
+            <div style={{ paddingTop: 16 }}>
+              <TabPanel id="tp-today" tabId="t-today" hidden={tab !== "today"}><span className={typeScale.secondary}>Today: 29 things need you. The first tab label starts exactly where the content starts.</span></TabPanel>
+              <TabPanel id="tp-overdue" tabId="t-overdue" hidden={tab !== "overdue"}><span className={typeScale.secondary}>Overdue: 7 jobs past their date.</span></TabPanel>
+              <TabPanel id="tp-week" tabId="t-week" hidden={tab !== "week"}><span className={typeScale.secondary}>This week: 41 jobs.</span></TabPanel>
+            </div>
+          </div>
+          <div style={{ maxWidth: 360 }}>
+            <Tabs label="Two sections" value={tab2} onChange={setTab2} tabs={[{ value: "a", label: "Details" }, { value: "b", label: "History", count: 3 }]} data-testid="tabs-two" />
+          </div>
+        </div>
+      </Section>
+
+      <Section id="s-v4-stack" title="Stacked rows" note="The narrow form of a table: one record per row, label and value pairs, actions underneath. Always shown here. A real screen pairs it with the table: ScrollTable narrowHidden plus StackedRows narrowOnly, so under 640 px only the stacked form shows.">
+        <div style={{ display: "grid", gap: 16 }}>
+          <div style={{ maxWidth: 390 }}><StackedRows label="Jobs, stacked" rows={STACK_ROWS} data-testid="stack-demo" /></div>
+          <div data-testid="stack-pair">
+            <ScrollTable narrowHidden label="Jobs, table form (hidden under 640 px)">
+              <thead><tr><th scope="col">Job</th><th scope="col">Customer</th><th scope="col">Status</th><th scope="col">Due</th></tr></thead>
+              <tbody>{ROWS.slice(0, 3).map((r) => (<tr key={r.id}><td><span className={typeScale.name}>{r.id}</span></td><td>{r.customer}</td><td><StatusBadge mode="text" tone={r.tone}>{r.status}</StatusBadge></td><td>{r.due}</td></tr>))}</tbody>
+            </ScrollTable>
+            <StackedRows narrowOnly label="Jobs, stacked form (shown under 640 px)" rows={STACK_ROWS} data-testid="stack-narrow" />
+          </div>
+        </div>
+      </Section>
+
+      <Section id="s-v4-preview" title="Preview bar" note="ONE 28 px strip holds the preview tag and the Preview controls trigger, so the page title row carries neither. Any Button in the slot (a Popover or Menu trigger too) becomes a 24 px text button with a 48 px hit area. The bar at the top of this page is the live one.">
+        <div style={{ display: "grid", gap: 12 }}>
+          <PreviewBar data-testid="pbar-plain" />
+          <PreviewBar data-testid="pbar-demo" controls={<Button size="sm" variant="secondary" data-testid="pbar-demo-btn" onClick={() => previewOnly("The controls were not opened.")}>Preview controls</Button>} />
+          <div style={{ maxWidth: 390 }}><PreviewBar data-testid="pbar-narrow" controls={<Button size="sm" variant="secondary">Preview controls</Button>} /></div>
+        </div>
+      </Section>
+    </>
+  );
+}
+
+/* ---------------------------------------------------------------- type specimen ---------------------------------------------------------------- */
+
+/** Candidate UI fonts. `weights` says what a same-origin copy would offer; a font this build cannot load is omitted (never faked). */
+const CANDIDATES = [
+  { name: "IBM Plex Sans", note: "the shared set's font now: static 400 500 600 from @fontsource (bundled, same origin)" },
+  { name: "Archivo", note: "the real app's current font (before): static 400 to 700, 650 snaps to 700" },
+  { name: "Inter", note: "variable 100 to 900" },
+  { name: "Geist", note: "variable 100 to 900" },
+  { name: "Public Sans", note: "variable 100 to 900" },
+  { name: "Instrument Sans", note: "variable 400 to 700" },
+  { name: "Figtree", note: "variable 300 to 900" },
+] as const;
+
+/** True when the browser really has this family (its text measures differently from both generic fallbacks). */
+function fontAvailable(name: string): boolean {
+  const ctx = document.createElement("canvas").getContext("2d");
+  if (!ctx) return false;
+  const t = "mmmmmmmmmmlliWQ0O8B1234567890";
+  const w = (f: string) => { ctx.font = `16px ${f}`; return ctx.measureText(t).width; };
+  return w(`"${name}", monospace`) !== w("monospace") || w(`"${name}", serif`) !== w("serif");
+}
+
+function Specimen({ name, note }: { name: string; note: string }) {
+  const fam = `"${name}", system-ui, sans-serif`;
+  const tab1 = useRef<HTMLSpanElement>(null);
+  const tab0 = useRef<HTMLSpanElement>(null);
+  const pro1 = useRef<HTMLSpanElement>(null);
+  const pro0 = useRef<HTMLSpanElement>(null);
+  const [w, setW] = useState<string>("measuring");
+  useEffect(() => {
+    document.fonts.ready.then(() => {
+      const r = (x: React.RefObject<HTMLSpanElement | null>) => (x.current ? x.current.getBoundingClientRect().width : 0);
+      const t1 = r(tab1), t0 = r(tab0), p1 = r(pro1), p0 = r(pro0);
+      setW(`tabular 11111.11 = ${t1.toFixed(1)} px, 00000.00 = ${t0.toFixed(1)} px (${Math.abs(t1 - t0) < 0.1 ? "equal" : "NOT equal"}); proportional ${p1.toFixed(1)} vs ${p0.toFixed(1)} px (${Math.abs(p1 - p0) < 0.1 ? "equal, no difference" : "differ"})`);
+    });
+  }, []);
+  const frame: CSSProperties = { ["--ui-font-override" as string]: fam, display: "grid", gap: 16, padding: 16, background: "#fff", borderRadius: 14, boxShadow: "0 0 0 1px rgba(14,23,38,0.1)", minWidth: 0 };
+  const probe: CSSProperties = { fontFamily: fam, fontSize: 22, fontWeight: 600, display: "inline-block" };
+  const amb = (bg: string, fg: string): CSSProperties => ({ fontFamily: fam, fontSize: 13, lineHeight: "20px", padding: "6px 10px", background: bg, color: fg, borderRadius: 8, overflowWrap: "anywhere" });
+  return (
+    <div className={premiumTokens} style={frame} data-testid={`spec-${name.replace(/ /g, "-")}`}>
+      <div style={{ display: "grid", gap: 2 }}>
+        <span className={typeScale.card}>{name}</span>
+        <span style={cap}>{note}</span>
+      </div>
+      <div style={{ display: "grid", gap: 4 }}>
+        <span style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+          <span ref={tab1} className={tabularNumbers} style={probe}>11111.11</span>
+          <span ref={tab0} className={tabularNumbers} style={probe}>00000.00</span>
+          <span ref={pro1} style={{ ...probe, fontVariantNumeric: "proportional-nums", fontFeatureSettings: '"pnum" 1' }}>11111.11</span>
+          <span ref={pro0} style={{ ...probe, fontVariantNumeric: "proportional-nums", fontFeatureSettings: '"pnum" 1' }}>00000.00</span>
+        </span>
+        <span style={cap} data-testid="spec-widths">{w}</span>
+      </div>
+      <div style={{ display: "grid", gap: 6 }}>
+        <div style={amb("#fff", "#0e1726")}>0 O o  1 l I |  5 6 S  8 B 3  rn m  cl d. Hamburgefonstiv 13 px on white. Quote Q-2041, 1,240.50</div>
+        <div style={amb("#1e3472", "#ffffff")}>0 O o  1 l I |  5 6 S  8 B 3  rn m  cl d. Hamburgefonstiv 13 px on navy. Quote Q-2041, 1,240.50</div>
+        <div style={{ ...amb("#fff", "#0e1726"), fontSize: 14 }}>Hamburgefonstiv 14 px: bracket, 6mm plate, laser cut and folded for Hartley Engineering.</div>
+      </div>
+      <StatTiles label={`${name} figures`} columns={2}>
+        <StatTile flat label="Open value" value="£42,310.00" hint="19 open jobs" delta="£8,120.50 overdue" deltaTone="danger" />
+        <StatTile flat label="Paid this month" value="£126,904.75" hint="31 invoices" />
+      </StatTiles>
+      <ScrollTable flush dense label={`${name} jobs`}>
+        <thead><tr><th scope="col">Job</th><th scope="col">Customer</th><th scope="col" style={{ textAlign: "right" }}>Qty</th><th scope="col" style={{ textAlign: "right" }}>Value</th><th scope="col">Status</th></tr></thead>
+        <tbody>
+          {ROWS.slice(0, 4).map((r) => (
+            <tr key={r.id}><td><span className={typeScale.name}>{r.id}</span></td><td>{r.customer}</td><td className={tabularNumbers} style={{ textAlign: "right" }}>{r.qty}</td><td className={tabularNumbers} style={{ textAlign: "right" }}>{r.value}</td><td><StatusBadge mode="text" tone={r.tone}>{r.status}</StatusBadge></td></tr>
+          ))}
+        </tbody>
+      </ScrollTable>
+      <div style={{ display: "grid", gap: 0, gridTemplateColumns: "repeat(2, minmax(0, 1fr))", columnGap: 12 }}>
+        <Field label="Customer reference" hint="As on their purchase order"><Input defaultValue="PO-100482" /></Field>
+        <Field label="Quantity" error="Quantity must be at least 1."><Input defaultValue="0" /></Field>
+      </div>
+      <div style={{ display: "grid", gap: 8, padding: 16, borderRadius: 14, boxShadow: "var(--ui-elev-modal)" }}>
+        <span className={cx(premiumTokens, typeScale.section)}>Finish 2 jobs?</span>
+        <span className={cx(premiumTokens, typeScale.body)} style={{ color: "#3b4559" }}>They move to Complete and leave the shop-floor list. This can&apos;t be undone.</span>
+        <span style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}><Button variant="secondary">Cancel</Button><Button variant="primary">Finish 2 jobs</Button></span>
+      </div>
+      <div style={row}>
+        <StatusBadge tone="info-neutral">3 linked</StatusBadge><StatusBadge tone="progress">Running</StatusBadge><StatusBadge tone="warn">At risk</StatusBadge><StatusBadge tone="ok">On time</StatusBadge><StatusBadge tone="danger">Late</StatusBadge>
+      </div>
+    </div>
+  );
+}
+
+function FontSpecimenSection() {
+  const [avail, setAvail] = useState<Record<string, boolean> | null>(null);
+  useEffect(() => {
+    let live = true;
+    (async () => {
+      const out: Record<string, boolean> = {};
+      for (const c of CANDIDATES) {
+        try { await Promise.all([400, 500, 600, 700].map((wt) => document.fonts.load(`${wt} 16px "${c.name}"`))); } catch { /* not loadable */ }
+        out[c.name] = fontAvailable(c.name);
+      }
+      if (live) setAvail(out);
+    })();
+    return () => { live = false; };
+  }, []);
+  const shown = CANDIDATES.filter((c) => avail?.[c.name]);
+  const omitted = CANDIDATES.filter((c) => avail && !avail[c.name]).map((c) => c.name);
+  return (
+    <Section id="s-v4-fonts" title="Type specimen" note="The same Tolra content in each candidate font: KPI figures with currency, a dense table with right-aligned tabular numerals, a form, a dialog title, status badges and 12 px uppercase table headers. Only fonts this build can really load are drawn; the rest are listed as omitted. The swap is one line: set --ui-font-override on any ancestor (or change the default of --ui-font in the tokens). The default font is not changed by this page.">
+      <p style={cap} data-testid="spec-omitted">{avail === null ? "Checking which fonts can load…" : omitted.length ? `Not loadable here, omitted: ${omitted.join(", ")}.` : "All candidates loaded."}</p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 520px), 1fr))", gap: 16 }} data-testid="spec-grid">
+        {shown.map((c) => <Specimen key={c.name} name={c.name} note={c.note} />)}
+      </div>
+    </Section>
+  );
+}
+
 /* ---------------------------------------------------------------- v3 ---------------------------------------------------------------- */
 
 const MINI_COLS = ["Job", "Customer", "Description", "Qty", "Value", "Actions"] as const;
@@ -496,7 +755,7 @@ function ShowcaseV3({ previewOnly }: { previewOnly: (what: string) => void }) {
                     <td className={tabularNumbers} style={{ whiteSpace: "nowrap" }}>{last}</td>
                     <td><StatusBadge tone="ok">Active</StatusBadge></td>
                   </tr>
-                  <tr data-sub="true"><td colSpan={4}><div style={{ color: "#566074", fontSize: 12.5 }} data-testid="subrow-note">Clock-in: on site only. A full-width note under the record: it stays at the left edge, is never wider than what you can see, and must not widen the table.</div></td></tr>
+                  <tr data-sub="true"><td colSpan={4}><div style={{ color: "#566074", fontSize: 13 }} data-testid="subrow-note">Clock-in: on site only. A full-width note under the record: it stays at the left edge, is never wider than what you can see, and must not widen the table.</div></td></tr>
                 </tbody>
               );
             })}
