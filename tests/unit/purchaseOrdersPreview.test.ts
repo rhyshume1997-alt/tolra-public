@@ -4,14 +4,18 @@
  * REAL lib functions it uses or mirrors (lib/purchase-order-total, lib/money, lib/archive phaseOf, lib/list-filter purchaseOrderMatchesFilter, lib/status-colours,
  * lib/spreadsheet). Output: pass/fail. Pins the Total (inc VAT) column, the form totals, tile figures, Show counts, the dashboard filter, the archive rule and
  * the row action rules to the real functions over the 12 sample orders, and checks by rendering that nothing reports success and the role gate holds.
+ * v2 adds: the structural items (Filters (n) popover with removable chips, bulk actions and the selection bar only once a row is ticked, Export of all rows kept in the toolbar, one primary action
+ * plus More per row, the explainer sentence as a tooltip and a description, the PreviewBar, plausible sample names, no !important) and a proof that every real row control is still reachable.
  * Must not change: never loosen these to make a change pass. No network, no Supabase. Written with createElement (no JSX).
  */
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
+import { readFileSync } from "node:fs";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import PurchaseOrdersPreview, {
-  DEFAULT_FILTERS, SEED_POS, TODAY, VAT, canIssue, canMarkReceived, canRecordSent, canUsePurchaseOrders, matchesListFilter, phaseCounts, phaseFor, scopeTitle, statsOf, toneOf, totalOf, visiblePos,
+  CHIPS, DEFAULT_FILTERS, PO_TITLE_TIP, SEED_POS, SUPPLIERS, TODAY, VAT, allRowActions, canIssue, canMarkReceived, canRecordSent, canUsePurchaseOrders, matchesListFilter, phaseCounts, phaseFor, rowActionPlan, scopeTitle,
+  statsOf, toneOf, totalOf, visiblePos,
 } from "@/components/purchase-orders/preview/PurchaseOrdersPreview";
 import { phaseOf as realPhaseOf } from "@/lib/archive";
 import { purchaseOrderMatchesFilter } from "@/lib/list-filter";
@@ -96,5 +100,90 @@ describe("purchase orders preview: rendered behaviour", () => {
     click(byText(document.body, "button", /Preview controls/));
     click(byText(document.body, '[role="radiogroup"][aria-label="Role"] [role="radio"], [role="group"][aria-label="Role"] button', "Workshop"));
     expect(h.querySelector('[data-testid="access-denied"]')?.textContent).toContain("Access Denied");
+  });
+});
+
+describe("purchase orders preview v2: structure (owner-approved items 1, 2, 4, 7, 9, 10, 11)", () => {
+  it("every real row control stays reachable: one primary action, the rest in More, for every order", () => {
+    for (const p of SEED_POS) {
+      const plan = rowActionPlan(p);
+      const all = allRowActions(p);
+      expect([plan.primary.id, ...plan.more.map((a) => a.id)].sort(), p.ref).toEqual(all.map((a) => a.id).sort());
+      expect(plan.primary.disabled).toBeFalsy();
+      for (const id of ["view", "edit", "receive", "print", "archive"]) expect(all.some((a) => a.id === id), `${p.ref} ${id}`).toBe(true);
+      expect(all.some((a) => a.id === "issue")).toBe(canIssue(p));
+      expect(all.some((a) => a.id === "sent")).toBe(canRecordSent(p));
+      expect(all.find((a) => a.id === "receive")?.disabled).toBe(!canMarkReceived(p));
+    }
+    expect(rowActionPlan(SEED_POS.find((p) => p.status === "draft" && canIssue(p))!).primary.id).toBe("issue");
+    expect(rowActionPlan(SEED_POS.find((p) => p.status === "issued")!).primary.id).toBe("sent");
+    expect(rowActionPlan(SEED_POS.find((p) => p.status === "awaiting")!).primary.id).toBe("receive");
+    expect(rowActionPlan(SEED_POS.find((p) => p.status === "received")!).primary.id).toBe("view");
+  });
+  it("each table row shows exactly two buttons in its actions cell (the next step and More)", () => {
+    const h = mount();
+    const rowsEls = h.querySelectorAll("tbody tr[data-po]");
+    expect(rowsEls.length).toBeGreaterThan(3);
+    rowsEls.forEach((tr) => { expect(tr.querySelectorAll("td:last-child button")).toHaveLength(2); });
+  });
+  it("a disabled Mark Received stays in More and says why", () => {
+    const h = mount();
+    click(h.querySelector('tr[data-po="PO-0112"] [data-testid="more-trigger"]'));
+    const item = byText(document.body, '[role="menuitem"]', /Mark Received/)!;
+    expect(item.getAttribute("aria-disabled")).toBe("true");
+    expect(item.textContent).toContain("A draft cannot be received yet");
+  });
+  it("Export of all rows stays in the toolbar at rest; ticking a row swaps the toolbar for the selection bar with Print, Export and Mark Selected Received", () => {
+    const h = mount();
+    expect(h.querySelector("[data-selection]")).toBeNull();
+    const idle = h.querySelector('[data-testid="export-trigger"]')!;
+    expect(idle.getAttribute("aria-label")).toContain("Exports all");
+    expect(byText(h, "button", "Print Selected")).toBeUndefined();
+    click(h.querySelectorAll('[data-testid="select-row"]')[0]);
+    const bar = h.querySelector("[data-selection]")!;
+    expect(bar.textContent).toContain("1 selected of");
+    for (const label of ["Print Selected", "Mark Selected Received", "Clear selection"]) expect(byText(bar, "button", label), label).toBeTruthy();
+    expect(bar.querySelector('[data-testid="export-trigger"]')?.getAttribute("aria-label")).toContain("Exports the 1 purchase order selected");
+    expect(h.querySelector('[role="group"][aria-label="List controls"]')).toBeNull();
+    click(byText(bar, "button", "Mark Selected Received"));
+    expect(document.body.textContent).toContain("Preview only");
+    click(byText(bar, "button", "Clear selection"));
+    expect(h.querySelector("[data-selection]")).toBeNull();
+  });
+  it("Filters (n) popover holds every status chip; active filters show as removable chips with one Clear filters", () => {
+    const h = mount();
+    const trigger = () => h.querySelector<HTMLElement>('[data-testid="filters-trigger"]')!;
+    expect(trigger().textContent?.trim()).toBe("Filters");
+    click(trigger());
+    for (const c of CHIPS) expect(document.querySelector(`[data-testid="chip-${c.v}"]`), c.label).not.toBeNull();
+    click(document.querySelector('[data-testid="chip-draft"]')); click(document.querySelector('[data-testid="chip-issued"]'));
+    expect(trigger().textContent).toContain("Filters (2)");
+    const active = h.querySelector('[data-testid="active-filters"]')!;
+    expect(active.querySelectorAll("[data-active-chip]")).toHaveLength(2);
+    click(active.querySelector('[aria-label="Remove filter Draft"]'));
+    expect(trigger().textContent).toContain("Filters (1)");
+    click(h.querySelector('[data-testid="clear-filters"]'));
+    expect(h.querySelector('[data-testid="active-filters"]')).toBeNull();
+  });
+  it("the explainer is a tooltip and a description of the title; one preview strip; plausible sample names; no !important", () => {
+    const h = mount();
+    const holder = h.querySelector("h1 [title]")!;
+    expect(holder.getAttribute("title")).toBe(PO_TITLE_TIP);
+    expect(document.getElementById(holder.getAttribute("aria-describedby") ?? "")?.textContent).toBe(PO_TITLE_TIP);
+    expect(h.querySelector("h1")?.textContent).toBe("Purchase Orders");
+    expect(h.querySelector('[role="group"][aria-label="Preview information"] [data-testid="dock-toggle"]')).not.toBeNull();
+    expect(JSON.stringify(SEED_POS) + SUPPLIERS.join()).not.toMatch(/placeholder|testfield|mockridge|sampleford|dummerby|exampleton/i);
+    expect(SUPPLIERS).toContain("Clydeside Metals Ltd");
+    for (const f of ["components/purchase-orders/preview/PurchaseOrdersPreview.module.css", "components/purchase-orders/preview/PurchaseOrdersPreview.tsx"]) expect(readFileSync(f, "utf8").replace(/\/\*[\s\S]*?\*\//g, ""), f).not.toMatch(/!important/);
+  });
+  it("New purchase order: a failed save lists every problem in a summary and answers nothing saved", () => {
+    const h = mount();
+    click(h.querySelector('[data-testid="new-po"]'));
+    click(byText(document.body, "dialog button", "Save PO"));
+    const summary = document.querySelector("dialog[open] section[aria-labelledby]")!;
+    expect(summary.textContent).toContain("Choose a supplier.");
+    expect(summary.textContent).toContain("Enter a quantity.");
+    expect(summary.textContent).toContain("Enter a unit price.");
+    expect(document.body.textContent).not.toMatch(/saved successfully|has been created/i);
   });
 });

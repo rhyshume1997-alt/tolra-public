@@ -1,25 +1,28 @@
 "use client";
 
 /**
- * BOUNDARY (Invoices module 4, PREVIEW ONLY). Inputs: none from the server. Everything shown is fictional sample data (26 invoices, as of
- * 20/11/2026) held in this file, plus the person's clicks. Outputs: an Invoicing list look-and-feel prototype (money dashboard and ageing, late
- * payer patterns, invoicing trends, Show and status filters, selection and Export, Cards / List / Table and the compact accounting list, Columns,
- * row actions, the invoice sheet and every confirmation the real page has) whose only state is LOCAL UI state. It never reads or writes Supabase,
+ * BOUNDARY (Invoices module 4, PREVIEW ONLY, v2 = shared UI v4 plus the owner-approved structural items 1, 2, 4, 7, 9, 10, 11). Inputs: none from the server. Everything
+ * shown is fictional sample data (26 invoices, as of 20/11/2026) held in this file, plus the person's clicks. Outputs: an Invoicing list look-and-feel prototype (money
+ * dashboard with one primary figure and quiet ageing, late payer patterns, invoicing trends, a one-row toolbar with Show, a Filters (n) popover, Export, Columns, Compact list
+ * and Cards / List / Table, removable active-filter chips, the sticky selection bar with Export and Pay Selected in Full once a row is ticked, one primary action plus More per
+ * row, the invoice sheet and every confirmation the real page has) whose only state is LOCAL UI state. It never reads or writes Supabase,
  * calls no server action, API route, payment, Xero or accounting integration, and no action ever reports success: every action that would issue,
  * send, record a payment, reverse, void, write off, archive, chase, save or export answers with the neutral "Preview only" toast and nothing changes.
  * Run-time imports from lib/ are PURE modules only (money, receivables, payments, dates, invoice-ref, invoice-phase-filters, range-label,
  * document-integrity, vat, status-colours, empty-hints): none of them reaches Supabase. Logic that lives in a module that does (archive phaseOf,
  * list-filter, invoice-void, invoice-write-off, invoice-list-totals) is mirrored here and pinned to the real function by tests/unit/invoicesPreview.test.ts.
  * MUST NOT CHANGE: wording, defaults, column order, filter semantics, money rules and the role gate mirror today's Invoicing page
- * (app/(dashboard)/invoices/page.tsx: admin and office only; workshop and viewer see "Access Denied"). Do not wire this file to real data or real
- * actions, add no control the real page lacks (no search box, no sort), and keep row controls at a 48 px hit area.
+ * (app/(dashboard)/invoices/page.tsx: admin and office only; workshop and viewer see "Access Denied"). Every real control stays reachable (rowActionPlan proves the row
+ * ones). Do not wire this file to real data or real actions, add no control the real page lacks (no search box, no sort), and keep row controls at a 48 px hit area.
+ * No !important and no override of a shared component's own classes: tune by token or prop only.
  */
 
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
 import {
-  Button, Checkbox, ChipGroup, Dialog, EmptyState, FailedState, Field, FilterChip, Input, LoadingState, Menu, Popover, ScrollTable, SegmentedControl, Select,
-  SelectionBar, Sheet, StatTile, StatTiles, StatusBadge, Switch, Textarea, ToastProvider, cx, premiumTokens, tabularNumbers, useToast,
+  Button, Callout, Checkbox, ChipGroup, DateRangeGroup, Dialog, Disclosure, EmptyState, ErrorSummary, FailedState, Field, FilterChip, Input, List, ListRow, LoadingState, Menu, PageHeader, Panel,
+  Popover, PreviewBar, ScrollTable, SegmentedControl, Select, SelectionBar, Sheet, StatTile, StatTiles, StatusBadge, Switch, Textarea, ToastProvider, cx, premiumTokens, rowClickIsForRow, srOnly,
+  tabularNumbers, typeScale, useToast,
 } from "@/components/ui/premium";
 import type { StatusTone } from "@/components/ui/premium";
 import { fmtDate } from "@/lib/dates";
@@ -89,9 +92,9 @@ export type InvoiceRow = SeedInvoice & {
 };
 
 export const CUSTOMER_ADDRESS: Record<string, string[]> = {
-  "Marlow Hydraulics": ["Unit 4, Cobden Park", "Redditch", "B98 9QT"], "Tern Marine Engineering": ["Quay Lane Works", "Poole", "BH15 1HT"], "Coldharbour Automation": ["12 Coldharbour Road", "Derby", "DE21 6AA"],
+  "Kilbride Hydraulics": ["Unit 4, Peel Park", "East Kilbride", "G74 5PB"], "Solway Marine Engineering": ["Whitesands Works", "Dumfries", "DG1 2RS"], "Carronside Automation": ["12 Carron Road", "Falkirk", "FK2 7XQ"],
   "Ashby Rail Services": ["Depot Road", "Ashby-de-la-Zouch", "LE65 2UB"], "Kestrel Components": ["Kestrel House, Mill Street", "Stroud", "GL5 3AD"], "Pemberton Packaging": ["Pemberton Mill", "Wigan", "WN3 4HT"],
-  "Halden Precision": ["8 Halden Way", "Luton", "LU4 8XD"], "Wren & Calder": ["Calder Works", "Halifax", "HX1 5PQ"], "Brightwell Valves": ["Brightwell Estate", "Swindon", "SN2 8QA"], "Northgate Fabrication": ["Northgate Yard", "Lincoln", "LN1 3DE"],
+  "Ardmore Precision": ["8 Ardmore Way", "Glenrothes", "KY6 2NQ"], "Wren & Calder": ["Calder Works", "Halifax", "HX1 5PQ"], "Brightwell Valves": ["Brightwell Estate", "Swindon", "SN2 8QA"], "Northgate Fabrication": ["Northgate Yard", "Lincoln", "LN1 3DE"],
 };
 
 /* ================================================================== */
@@ -99,12 +102,12 @@ export const CUSTOMER_ADDRESS: Record<string, string[]> = {
 /* ================================================================== */
 
 const L = (description: string, quantity: number, unitPrice: number, vatPct = 20, vatExempt = false): SeedLine => ({ description, quantity, unitPrice, vatPct, vatExempt });
-const P = (id: string, amount: number, paidOn: string, method: string, reference: string, extra: Partial<SeedPayment> = {}): SeedPayment => ({ id, amount, paidOn, method, reference, by: "Sam Okoro", source: "recorded", ...extra });
+const P = (id: string, amount: number, paidOn: string, method: string, reference: string, extra: Partial<SeedPayment> = {}): SeedPayment => ({ id, amount, paidOn, method, reference, by: "Fiona MacLeod", source: "recorded", ...extra });
 
 export const SEED_INVOICES: SeedInvoice[] = [
-  { id: "i-d1", reference: draftKey("i-d1"), unnumbered: true, createdAt: "2026-11-19T10:12:00Z", customer: "Marlow Hydraulics", rawStatus: "draft", date: "2026-11-19", dueDate: "2026-12-19", terms: "30 days", customerPo: "MH-41102", carriage: 0, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0,
+  { id: "i-d1", reference: draftKey("i-d1"), unnumbered: true, createdAt: "2026-11-19T10:12:00Z", customer: "Kilbride Hydraulics", rawStatus: "draft", date: "2026-11-19", dueDate: "2026-12-19", terms: "30 days", customerPo: "KH-41102", carriage: 0, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0,
     lines: [L("Manifold block, machined and anodised", 40, 86.5), L("First-off inspection report", 1, 120)], jobStage: "Draft, awaiting inspection" },
-  { id: "i-d2", reference: draftKey("i-d2"), unnumbered: true, createdAt: "2026-11-16T14:40:00Z", customer: "Tern Marine Engineering", rawStatus: "draft", date: "2026-11-16", dueDate: "2026-12-16", terms: "30 days", carriage: 12.5, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0,
+  { id: "i-d2", reference: draftKey("i-d2"), unnumbered: true, createdAt: "2026-11-16T14:40:00Z", customer: "Solway Marine Engineering", rawStatus: "draft", date: "2026-11-16", dueDate: "2026-12-16", terms: "30 days", carriage: 12.5, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0,
     lines: [L("Deck cleat 250 mm, 316 stainless", 24, 64), L("Backing plate, laser cut", 24, 11.75)], jobStage: "Ready to issue", autoDraftedFrom: "DLN-0211", deliveryNotes: [{ ref: "DLN-0211", date: "2026-11-16", status: "despatched" }] },
   { id: "i-d3", reference: draftKey("i-d3"), unnumbered: true, createdAt: "2026-11-18T09:05:00Z", customer: "Kestrel Components", rawStatus: "draft", date: "2026-11-18", dueDate: "2026-12-18", terms: "30 days", carriage: 0, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0,
     lines: [L("Sensor housing, turned and milled", 250, 14.2), L("Anodise, black", 250, 2.35)], autoDraftedFrom: "DLN-0209", deliveryNotes: [{ ref: "DLN-0209", date: "2026-11-18", status: "despatched" }] },
@@ -112,24 +115,24 @@ export const SEED_INVOICES: SeedInvoice[] = [
     lines: [L("Brake bracket weldment", 120, 38.4), L("Paint, RAL 7016", 120, 4.1)], deliveryNotes: [{ ref: "DLN-0206", date: "2026-11-16", status: "delivered" }] },
   { id: "i-47", reference: "INV-1047", createdAt: "2026-11-12T08:00:00Z", customer: "Northgate Fabrication", rawStatus: "sent", date: "2026-11-12", dueDate: "2026-12-12", terms: "30 days", quoteRef: "QUO-0434", customerPo: "NF-88213", carriage: 0, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0, sentAt: "2026-11-12T11:00:00Z",
     lines: [L("Guard frame, 40 x 40 box section", 8, 412), L("Fixings and finishing", 1, 140)], deliveryAddress: "Northgate Yard\nGoods inward, Bay 3\nLincoln LN1 3DE" },
-  { id: "i-46", reference: "INV-1046", createdAt: "2026-11-10T08:00:00Z", customer: "Halden Precision", rawStatus: "sent", date: "2026-11-10", dueDate: "2026-11-24", terms: "14 days", carriage: 0, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0, sentAt: "2026-11-10T10:00:00Z",
+  { id: "i-46", reference: "INV-1046", createdAt: "2026-11-10T08:00:00Z", customer: "Ardmore Precision", rawStatus: "sent", date: "2026-11-10", dueDate: "2026-11-24", terms: "14 days", carriage: 0, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0, sentAt: "2026-11-10T10:00:00Z",
     lines: [L("Calibration fixture, ground", 4, 640), L("Inspection and certification", 4, 85)] },
   { id: "i-45", reference: "INV-1045", createdAt: "2026-11-06T08:00:00Z", customer: "Brightwell Valves", rawStatus: "sent", date: "2026-11-06", dueDate: "2026-11-20", terms: "14 days", carriage: 18, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0, sentAt: "2026-11-06T13:00:00Z",
     lines: [L("Valve body, 316 investment cast, finish machined", 80, 52.3)] },
-  { id: "i-44", reference: "INV-1044", createdAt: "2026-10-30T08:00:00Z", customer: "Coldharbour Automation", rawStatus: "sent", date: "2026-10-30", dueDate: "2026-11-13", terms: "14 days", carriage: 0, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0, sentAt: "2026-10-30T09:00:00Z", paymentClaimedAt: "2026-11-18T09:20:00Z",
+  { id: "i-44", reference: "INV-1044", createdAt: "2026-10-30T08:00:00Z", customer: "Carronside Automation", rawStatus: "sent", date: "2026-10-30", dueDate: "2026-11-13", terms: "14 days", carriage: 0, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0, sentAt: "2026-10-30T09:00:00Z", paymentClaimedAt: "2026-11-18T09:20:00Z",
     lines: [L("Gearbox housing, 5 axis machined", 6, 312)] },
   { id: "i-43", reference: "INV-1043", createdAt: "2026-10-22T08:00:00Z", customer: "Pemberton Packaging", rawStatus: "sent", date: "2026-10-22", dueDate: "2026-11-05", terms: "14 days", carriage: 0, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0, sentAt: "2026-10-22T09:00:00Z", chasePaused: { reason: "Query on the delivery", until: "2026-11-27" },
     lines: [L("Sealing jaw bar, hardened", 16, 94.5)], invoiceNote: "Goods received short by 2 off: replacement to follow." },
-  { id: "i-42", reference: "INV-1042", createdAt: "2026-09-28T08:00:00Z", customer: "Tern Marine Engineering", rawStatus: "partial", date: "2026-09-28", dueDate: "2026-10-28", terms: "30 days", customerPo: "TM/5521", carriage: 0, vatEnabled: true, carriageVat: true, credited: 150, refunded: 0, amountPaid: 1000, sentAt: "2026-09-28T09:00:00Z",
-    lines: [L("Bush, aluminium bronze, bored", 12, 58), L("Material certificates", 1, 35), L("Rudder stock sleeves, bronze", 12, 128)], payments: [P("p-42a", 1000, "2026-11-02", "BACS", "TM PAY 4471")],
+  { id: "i-42", reference: "INV-1042", createdAt: "2026-09-28T08:00:00Z", customer: "Solway Marine Engineering", rawStatus: "partial", date: "2026-09-28", dueDate: "2026-10-28", terms: "30 days", customerPo: "SM/5521", carriage: 0, vatEnabled: true, carriageVat: true, credited: 150, refunded: 0, amountPaid: 1000, sentAt: "2026-09-28T09:00:00Z",
+    lines: [L("Bush, aluminium bronze, bored", 12, 58), L("Material certificates", 1, 35), L("Rudder stock sleeves, bronze", 12, 128)], payments: [P("p-42a", 1000, "2026-11-02", "BACS", "SM PAY 4471")],
     creditNotes: [{ ref: "CRN-0031", date: "2026-11-04", total: 150, allocated: 150, status: "issued" }] },
   { id: "i-41", reference: "INV-1041", createdAt: "2026-09-20T08:00:00Z", customer: "Wren & Calder", rawStatus: "sent", date: "2026-09-20", dueDate: "2026-10-20", terms: "30 days", carriage: 0, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0, sentAt: "2026-09-20T09:00:00Z",
     lines: [L("Idler roller 89 mm, galvanised", 90, 41), L("Bearing set", 90, 7.4)] },
-  { id: "i-40", reference: "INV-1040", createdAt: "2026-08-31T08:00:00Z", customer: "Marlow Hydraulics", rawStatus: "sent", date: "2026-08-31", dueDate: "2026-09-30", terms: "30 days", customerPo: "MH-40918", carriage: 0, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0, sentAt: "2026-08-31T09:00:00Z",
+  { id: "i-40", reference: "INV-1040", createdAt: "2026-08-31T08:00:00Z", customer: "Kilbride Hydraulics", rawStatus: "sent", date: "2026-08-31", dueDate: "2026-09-30", terms: "30 days", customerPo: "KH-40918", carriage: 0, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0, sentAt: "2026-08-31T09:00:00Z",
     lines: [L("Cylinder gland, turned", 100, 22.5), L("Rod end, turned and threaded", 100, 15.9)] },
-  { id: "i-39", reference: "INV-1039", createdAt: "2026-08-13T08:00:00Z", customer: "Coldharbour Automation", rawStatus: "sent", date: "2026-08-13", dueDate: "2026-09-12", terms: "30 days", carriage: 0, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0, sentAt: "2026-08-13T09:00:00Z",
+  { id: "i-39", reference: "INV-1039", createdAt: "2026-08-13T08:00:00Z", customer: "Carronside Automation", rawStatus: "sent", date: "2026-08-13", dueDate: "2026-09-12", terms: "30 days", carriage: 0, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0, sentAt: "2026-08-13T09:00:00Z",
     lines: [L("Linear actuator end cap, turned", 200, 6.8)] },
-  { id: "i-38", reference: "INV-1038", createdAt: "2026-08-06T08:00:00Z", customer: "Coldharbour Automation", rawStatus: "sent", date: "2026-08-06", dueDate: "2026-09-05", terms: "30 days", carriage: 0, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0, sentAt: "2026-08-06T09:00:00Z",
+  { id: "i-38", reference: "INV-1038", createdAt: "2026-08-06T08:00:00Z", customer: "Carronside Automation", rawStatus: "sent", date: "2026-08-06", dueDate: "2026-09-05", terms: "30 days", carriage: 0, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0, sentAt: "2026-08-06T09:00:00Z",
     lines: [L("Coupling flange, 4140", 30, 74)] },
   { id: "i-37", reference: "INV-1037", createdAt: "2026-10-12T08:00:00Z", customer: "Kestrel Components", rawStatus: "paid", date: "2026-10-12", dueDate: "2026-11-11", terms: "30 days", customerPo: "KC-2290", carriage: 0, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0, sentAt: "2026-10-12T09:00:00Z", paidAt: "2026-11-02T10:00:00Z",
     lines: [L("Gimbal bracket, 7075-T651", 150, 31.8)], payments: [P("p-37a", 5724, "2026-11-02", "BACS", "KC REM 8812")] },
@@ -137,22 +140,22 @@ export const SEED_INVOICES: SeedInvoice[] = [
     lines: [L("Handrail post, 48.3 mm tube, base plate welded", 36, 27.4)], payments: [P("p-36a", 400, "2026-10-27", "cheque", "Cheque 004519"), P("p-36x", -400, "2026-10-29", "cheque", "", { reversesPaymentId: "p-36a", voidReason: "Cheque bounced" }), P("p-36b", 1183.68, "2026-11-09", "BACS", "NF REM 2290")] },
   { id: "i-35", reference: "INV-1035", createdAt: "2026-10-20T08:00:00Z", customer: "Ashby Rail Services", rawStatus: "paid", date: "2026-10-20", dueDate: "2026-11-19", terms: "30 days", carriage: 0, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0, sentAt: "2026-10-20T09:00:00Z", paidAt: "2026-11-12T10:00:00Z",
     lines: [L("Pivot pin, hardened", 60, 9.6), L("Pin carrier, machined", 60, 18.2)], payments: [P("p-35a", 2001.6, "2026-11-12", "BACS", "ARS 77120")] },
-  { id: "i-34", reference: "INV-1034", createdAt: "2026-10-08T08:00:00Z", customer: "Halden Precision", rawStatus: "void", date: "2026-10-08", dueDate: "2026-11-07", terms: "30 days", carriage: 0, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0,
+  { id: "i-34", reference: "INV-1034", createdAt: "2026-10-08T08:00:00Z", customer: "Ardmore Precision", rawStatus: "void", date: "2026-10-08", dueDate: "2026-11-07", terms: "30 days", carriage: 0, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0,
     lines: [L("Reference gauge blocks", 3, 880)] },
   { id: "i-33", reference: "INV-1033", createdAt: "2026-07-14T08:00:00Z", customer: "Brightwell Valves", rawStatus: "written_off", date: "2026-07-14", dueDate: "2026-08-13", terms: "30 days", carriage: 0, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0, sentAt: "2026-07-14T09:00:00Z",
     lines: [L("Valve actuator brackets", 20, 45.5)] },
   { id: "i-32", reference: "INV-1032", createdAt: "2026-07-31T08:00:00Z", customer: "Wren & Calder", rawStatus: "sent", date: "2026-07-31", dueDate: "2026-08-30", terms: "30 days", carriage: 0, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0, paymentUnverified: true,
     lines: [L("Conveyor frame sections", 6, 310)] },
-  { id: "i-31", reference: "INV-1031", createdAt: "2026-10-01T08:00:00Z", customer: "Marlow Hydraulics", rawStatus: "paid", date: "2026-10-01", dueDate: "2026-10-31", terms: "30 days", carriage: 0, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0, sentAt: "2026-10-01T09:00:00Z", paidAt: "2026-10-29T10:00:00Z",
-    lines: [L("Prototype test block", 2, 260)], payments: [P("p-31a", 724, "2026-10-29", "BACS", "MH 55103")] },
+  { id: "i-31", reference: "INV-1031", createdAt: "2026-10-01T08:00:00Z", customer: "Kilbride Hydraulics", rawStatus: "paid", date: "2026-10-01", dueDate: "2026-10-31", terms: "30 days", carriage: 0, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0, sentAt: "2026-10-01T09:00:00Z", paidAt: "2026-10-29T10:00:00Z",
+    lines: [L("Prototype test block", 2, 260)], payments: [P("p-31a", 724, "2026-10-29", "BACS", "KH 55103")] },
   { id: "i-30", reference: "INV-1030", createdAt: "2026-11-02T08:00:00Z", customer: "Ashby Rail Services", rawStatus: "sent", date: "2026-11-02", dueDate: "2026-12-02", terms: "30 days", carriage: 0, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0, sentAt: "2026-11-02T09:00:00Z",
     lines: [L("Door pivot carrier, machined", 40, 18.2)], storedTotal: 800 },
   { id: "i-29", reference: "INV-1029", createdAt: "2026-09-10T08:00:00Z", customer: "Wren & Calder", rawStatus: "sent", date: "2026-09-10", terms: "30 days", carriage: 0, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0, sentAt: "2026-09-10T09:00:00Z",
     lines: [L("Idler bracket, painted", 24, 12.4)] },
   { id: "i-28", reference: "INV-1028", createdAt: "2026-10-15T08:00:00Z", customer: "Pemberton Packaging", rawStatus: "paid", date: "2026-10-15", dueDate: "2026-11-14", terms: "30 days", carriage: 0, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0, sentAt: "2026-10-15T09:00:00Z", paidAt: "2026-11-10T10:00:00Z",
     lines: [L("Cutter holder, hardened", 100, 12.4)], payments: [P("p-28a", 1488, "2026-11-10", "BACS", "PP 99120"), P("p-28b", 200, "2026-11-10", "BACS", "PP 99121")] },
-  { id: "i-90", reference: "INV-0987", createdAt: "2025-09-10T08:00:00Z", customer: "Tern Marine Engineering", rawStatus: "paid", date: "2025-09-10", dueDate: "2025-10-10", terms: "30 days", carriage: 0, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0, sentAt: "2025-09-10T09:00:00Z", paidAt: "2025-10-06T10:00:00Z",
-    lines: [L("Bush, aluminium bronze, bored", 30, 58)], payments: [P("p-90a", 2088, "2025-10-06", "BACS", "TM 2025-10")] },
+  { id: "i-90", reference: "INV-0987", createdAt: "2025-09-10T08:00:00Z", customer: "Solway Marine Engineering", rawStatus: "paid", date: "2025-09-10", dueDate: "2025-10-10", terms: "30 days", carriage: 0, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0, sentAt: "2025-09-10T09:00:00Z", paidAt: "2025-10-06T10:00:00Z",
+    lines: [L("Bush, aluminium bronze, bored", 30, 58)], payments: [P("p-90a", 2088, "2025-10-06", "BACS", "SM 2025-10")] },
   { id: "i-91", reference: "INV-0990", createdAt: "2026-10-01T08:00:00Z", customer: "Kestrel Components", rawStatus: "void", date: "2026-10-01", dueDate: "2026-10-31", terms: "30 days", carriage: 0, vatEnabled: true, carriageVat: true, credited: 0, refunded: 0, amountPaid: 0, manual: "archived",
     lines: [L("Test rig plates", 12, 74)] },
 ];
@@ -353,19 +356,39 @@ export function paymentsScope(selected: number): string {
 
 /** The sample's "Despatched but not invoiced" list (lib/uninvoiced reasons). */
 export const UNINVOICED = [
-  { id: "u1", ref: "DLN-0212", customer: "Marlow Hydraulics", reason: "No draft yet", sent: "2026-11-19", detail: "Sent out yesterday: the automatic draft is still to be made." },
+  { id: "u1", ref: "DLN-0212", customer: "Kilbride Hydraulics", reason: "No draft yet", sent: "2026-11-19", detail: "Sent out yesterday: the automatic draft is still to be made." },
   { id: "u2", ref: "DLN-0204", customer: "Pemberton Packaging", reason: "Automatic draft failed", sent: "2026-11-13", detail: "The draft could not be made: the order has no price on line 2." },
   { id: "u3", ref: "DLN-0198", customer: "Northgate Fabrication", reason: "Invoice by hand", sent: "2026-11-09", detail: "A hand-made delivery note, so it has no order to price from." },
 ];
 export const FROM_NOTES = [
-  { id: "n1", ref: "DLN-0212", customer: "Marlow Hydraulics", date: "2026-11-19", status: "despatched" },
+  { id: "n1", ref: "DLN-0212", customer: "Kilbride Hydraulics", date: "2026-11-19", status: "despatched" },
   { id: "n2", ref: "DLN-0204", customer: "Pemberton Packaging", date: "2026-11-13", status: "delivered" },
   { id: "n3", ref: "DLN-0198", customer: "Northgate Fabrication", date: "2026-11-09", status: "signed" },
 ];
 
 /* ================================================================== */
-/* 4. Small local pieces                                               */
+/* 4. The row action plan (structural item 7) and small local pieces   */
 /* ================================================================== */
+
+export type RowActionId = "view" | "pay" | "archive";
+export interface RowAction { id: RowActionId; label: string; disabled?: boolean; hint?: string }
+export const PAY_SETTLED_HINT = "Nothing is waiting for payment on this invoice";
+/** Every real row control, in the order the More menu shows them. Record payment is not offered at all on a draft (the real reason is paymentBlockedReason). */
+export function allRowActions(i: Pick<InvoiceRow, "rawStatus" | "status" | "paidAt" | "date" | "manual">): RowAction[] {
+  return [
+    { id: "view", label: "View" },
+    ...(paymentBlockedReason(i.rawStatus) ? [] : [{ id: "pay" as const, label: "Record payment", disabled: i.status === "paid" || i.status === "closed", hint: i.status === "paid" || i.status === "closed" ? PAY_SETTLED_HINT : undefined }]),
+    { id: "archive", label: phaseFor(i) === "archived" ? "Unarchive" : "Archive" },
+  ];
+}
+/** The next step is the one visible button (Record payment while money is owed, otherwise View); the rest go to More. */
+export function rowActionPlan(i: Pick<InvoiceRow, "rawStatus" | "status" | "paidAt" | "date" | "manual">): { primary: RowAction; more: RowAction[] } {
+  const all = allRowActions(i);
+  const pay = all.find((a) => a.id === "pay");
+  const primaryId: RowActionId = pay && !pay.disabled ? "pay" : "view";
+  return { primary: all.find((a) => a.id === primaryId) as RowAction, more: all.filter((a) => a.id !== primaryId) };
+}
+export const INVOICE_TITLE_TIP = "Invoices are what customers owe us. See what is unpaid and chase it.";
 
 const VIEW_KEY = "invoices-preview:view";
 const COMPACT_KEY = "invoices-preview:compact";
@@ -383,11 +406,11 @@ function useMedia(query: string, fallback: boolean): boolean {
   );
 }
 
-function StatusPill({ row }: { row: InvoiceRow }) {
-  return <StatusBadge tone={toneOf(row)}>{statusWords(row)}</StatusBadge>;
+function StatusPill({ row, mode = "pill" }: { row: InvoiceRow; mode?: "pill" | "text" }) {
+  return <StatusBadge tone={toneOf(row)} mode={mode}>{statusWords(row)}</StatusBadge>;
 }
 
-const Mono = ({ children }: { children: ReactNode }) => <span className={cx(s.ref, tabularNumbers)}>{children}</span>;
+const Ref = ({ children }: { children: ReactNode }) => <span className={cx(typeScale.name, tabularNumbers, s.ref)}>{children}</span>;
 
 /* ================================================================== */
 /* 5. Dialog state                                                     */
@@ -408,6 +431,9 @@ export default function InvoicesPreview() {
 
 function Inner() {
   const toast = useToast();
+  const tipId = useId();
+  const listRef = useRef<HTMLDivElement>(null);
+  const activeRef = useRef<HTMLDivElement>(null);
   const [role, setRole] = useState<Role>("admin");
   const [screen, setScreen] = useState<Screen>("ready");
   const [uncertain, setUncertain] = useState(false);
@@ -452,10 +478,10 @@ function Inner() {
   const overdue = useMemo(() => data.filter((i) => i.status === "overdue"), [data]);
   const inView = (c: ColumnKey) => !hidden.includes(c);
   const nSel = selected.length;
-  const sel = nSel > 0;
   const preview = useCallback((detail: string) => toast.show({ title: "Preview only", detail: `${detail} Nothing was saved.` }), [toast]);
   const isAdmin = role === "admin";
   const denied = !canUseInvoices(role);
+  const activeChips = CHIPS.filter((c) => c.v !== "all" && filters.chips.has(c.v));
 
   const resetAll = () => { setScreen("ready"); setUncertain(false); setFilters(DEFAULT_FILTERS); setSelected([]); setHidden([]); setDlg(null); setViewId(null); toast.clear(); };
   const pickScreen = (v: Screen | ListFilterKey | "uncertain") => {
@@ -475,249 +501,260 @@ function Inner() {
     return { ...f, chips: next };
   });
   const toggleSel = (ref: string) => setSelected((c) => (c.includes(ref) ? c.filter((r) => r !== ref) : [...c, ref]));
+  const focusFiltersTrigger = () => requestAnimationFrame(() => document.querySelector<HTMLElement>('[data-testid="filters-trigger"]')?.focus());
+  const removeChip = (value: string, index: number) => {
+    toggleChip(value);
+    requestAnimationFrame(() => { const rest = activeRef.current?.querySelectorAll<HTMLElement>("[data-active-chip]"); if (rest && rest.length) rest[Math.min(index, rest.length - 1)].focus(); else document.querySelector<HTMLElement>('[data-testid="filters-trigger"]')?.focus(); });
+  };
+  const clearFilters = () => { setFilters((f) => ({ ...f, chips: new Set(["all"]) })); focusFiltersTrigger(); };
+  const clearSelection = () => { setSelected([]); requestAnimationFrame(() => listRef.current?.querySelector<HTMLElement>('input[type="checkbox"]')?.focus()); };
   const exportAs = (fmt: string, payments = false) => preview(`The ${fmt} export would cover ${payments ? paymentsScope(nSel).replace(/^Exports /, "").replace(/^the /, "the ") : nSel ? `the ${nSel} selected invoice${nSel === 1 ? "" : "s"}` : `all ${visible.length} invoice${visible.length === 1 ? "" : "s"} in the current filter`}. No file was downloaded.`);
   const payInFull = () => {
     const eligible = payableOf(rows, selected);
     const draftsSelected = rows.some((i) => selected.includes(i.reference) && paymentBlockedReason(i.rawStatus));
-    if (!nSel) toast.show({ title: "Select at least one invoice first", tone: "error" });
-    else if (!eligible.length) toast.show({ title: draftsSelected ? `None of the selected invoices is waiting for payment. ${DRAFT_PAYMENT_REASON}.` : "None of the selected invoices is waiting for payment" });
+    if (!eligible.length) toast.show({ title: draftsSelected ? `None of the selected invoices is waiting for payment. ${DRAFT_PAYMENT_REASON}.` : "None of the selected invoices is waiting for payment" });
     else setDlg({ k: "bulk" });
   };
   const applyAging = (label: string) => setFilters((f) => ({ ...f, chips: new Set([label === "Current" ? "outstanding" : "overdue"]) }));
   const openPayment = (i: InvoiceRow) => setDlg({ k: "pay", id: i.id });
   const hasRows = data.length > 0;
   const [backlogOpen, setBacklogOpen] = useState(false);
+  const archive = (i: InvoiceRow) => preview(`${shownInvoiceRef(i)} would be ${phaseFor(i) === "archived" ? "moved out of the archive" : "archived"}.`);
+  const runAction = (i: InvoiceRow, id: RowActionId) => { if (id === "view") setViewId(i.id); else if (id === "pay") openPayment(i); else archive(i); };
+  const actions = (i: InvoiceRow) => <RowActions i={i} run={runAction} />;
+  const exportMenu = (n: number) => (
+    <Menu label="Export" size="sm" variant="secondary" data-testid="export-trigger" aria-label={`Export. ${scopeTitle(n, visible.length)}`} items={[
+      { id: "CSV", label: "CSV", onSelect: () => exportAs("CSV") }, { id: "Excel", label: "Excel", onSelect: () => exportAs("Excel") },
+      { id: "Payments CSV", label: "Payments CSV", hint: paymentsScope(n), onSelect: () => exportAs("Payments CSV", true) }, { id: "Payments Excel", label: "Payments Excel", hint: paymentsScope(n), onSelect: () => exportAs("Payments Excel", true) },
+      { id: "Word", label: "Word", onSelect: () => exportAs("Word") }, { id: "PDF", label: "PDF", onSelect: () => exportAs("PDF") },
+    ]} />
+  );
 
   return (
     <div className={cx(premiumTokens, s.root)} data-testid="invoices-preview" data-role={role} data-pview={shownView}>
-      <header className={s.head}>
-        <div className={s.titleBlock}>
-          <div className={s.titleLine}>
-            <h1 className={s.title}>Invoicing</h1>
-            <span className={s.previewTag} title="Everything on this screen is fictional sample data. Nothing is read from or saved to your account.">Preview, sample data, nothing is saved</span>
-            <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
-              <div className={s.dock}>
-                <p className={s.dockNote}>Not part of Tolra. Sample data; states are simulated and no request, payment or accounting call is made.</p>
-                <p className={s.dockLabel}>Role</p>
-                <SegmentedControl label="Role" value={role} options={ROLES} size="sm" onChange={(v) => { setRole(v); toast.clear(); }} />
-                <p className={s.dockLabel}>Screen state</p>
-                <div className={s.dockStates} role="group" aria-label="Screen state">
-                  {SCREENS.map((x) => {
-                    const cur = x.v === "uncertain" ? (uncertain ? "uncertain" : "") : filters.listFilter ?? screen;
-                    return <button key={x.v} type="button" aria-pressed={cur === x.v} className={s.dockBtn} onClick={() => pickScreen(x.v)}>{x.label}</button>;
-                  })}
-                </div>
-                <Button size="sm" variant="secondary" onClick={resetAll}>Reset preview</Button>
-              </div>
-            </Popover>
+      <PreviewBar controls={
+        <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
+          <div className={s.dock}>
+            <p className={typeScale.caption}>Not part of Tolra. Sample data; states are simulated and no request, payment or accounting call is made.</p>
+            <p className={typeScale.label}>Role</p>
+            <SegmentedControl label="Role" value={role} options={ROLES} size="sm" onChange={(v) => { setRole(v); toast.clear(); }} />
+            <p className={typeScale.label}>Screen state</p>
+            <div className={s.dockStates} role="group" aria-label="Screen state">
+              {SCREENS.map((x) => {
+                const cur = x.v === "uncertain" ? (uncertain ? "uncertain" : "") : filters.listFilter ?? screen;
+                return <Button key={x.v} size="sm" variant="secondary" fullWidth aria-pressed={cur === x.v} onClick={() => pickScreen(x.v)}>{x.label}</Button>;
+              })}
+            </div>
+            <Button size="sm" variant="secondary" onClick={resetAll}>Reset preview</Button>
           </div>
-          <p className={s.subtitle}>Invoices are what customers owe us. See what is unpaid and chase it.</p>
-          {!denied && loaded && drafts.total > 0 ? <p className={s.noteLine} data-testid="drafts-waiting" title={`${drafts.old} over ${DRAFT_INVOICE_DAYS} days old (what the dashboard counts). A draft has no number and isn't owed until a person issues it.`}>Drafts waiting to issue: {drafts.total}</p> : null}
-          {!denied && loaded && credit.total > 0 ? <p className={cx(s.noteLine, s.noteWarn)} data-testid="customer-credit-held" title="Open an invoice with credit to refund it or apply it to another invoice.">Customer credit held: {pounds(credit.total)} for {credit.customers} customer{credit.customers === 1 ? "" : "s"}</p> : null}
-        </div>
-        {denied ? null : (
-          <div className={s.headControls}>
+        </Popover>
+      } />
+      <PageHeader title={<span title={INVOICE_TITLE_TIP} aria-describedby={tipId}>Invoicing</span>}
+        actions={denied ? null : (
+          <div className={s.headActions}>
             <Button variant="secondary" data-testid="chase-all" disabled={!loaded || !overdue.length} title={overdue.length ? "Draft a chaser email for every overdue invoice" : "No overdue invoices"}
               onClick={() => preview(`Chaser e-mails would be drafted for ${overdue.length} overdue invoice${overdue.length === 1 ? "" : "s"}. No chase was run and no e-mail was drafted.`)}>Chase All Overdue</Button>
             <Button variant="secondary" data-testid="from-notes" onClick={() => setDlg({ k: "fromNotes" })}>Invoice from Delivery Notes</Button>
             <Button variant="primary" data-testid="new-invoice" onClick={() => setDlg({ k: "new" })}>New invoice</Button>
           </div>
-        )}
-      </header>
+        )} />
+      <p id={tipId} className={srOnly}>{INVOICE_TITLE_TIP}</p>
+      {!denied && loaded && (drafts.total > 0 || credit.total > 0) ? (
+        <div className={s.notes}>
+          {drafts.total > 0 ? <p className={typeScale.label} data-testid="drafts-waiting" title={`${drafts.old} over ${DRAFT_INVOICE_DAYS} days old (what the dashboard counts). A draft has no number and isn't owed until a person issues it.`}>Drafts waiting to issue: {drafts.total}</p> : null}
+          {credit.total > 0 ? <p className={cx(typeScale.label, s.noteWarn)} data-testid="customer-credit-held" title="Open an invoice with credit to refund it or apply it to another invoice.">Customer credit held: {pounds(credit.total)} for {credit.customers} customer{credit.customers === 1 ? "" : "s"}</p> : null}
+        </div>
+      ) : null}
 
       {denied ? (
-        <section className={s.denied} data-testid="access-denied">
-          <h2 className={s.deniedTitle}>Access Denied</h2>
-          <p className={s.deniedText}>Redirecting you back to the dashboard.</p>
-          <p className={s.deniedNote}>Preview only: no redirect happens here. The real Invoicing page is for Admin and Office; Workshop and Viewer cannot open it.</p>
-        </section>
+        <div data-testid="access-denied">
+          <EmptyState headingLevel={2} title="Access Denied" detail="Redirecting you back to the dashboard." />
+          <p className={cx(typeScale.caption, s.deniedNote)}>Preview only: no redirect happens here. The real Invoicing page is for Admin and Office; Workshop and Viewer cannot open it.</p>
+        </div>
       ) : (
         <>
-          <section className={s.money} aria-label="Money Dashboard">
-            <div className={s.moneyTotal}>
-              <h2 className={s.panelTitle}>Money Dashboard</h2>
-              <p className={cx(s.moneyFigure, tabularNumbers, loaded && overdue.length > 0 && s.moneyDanger)} data-testid="money-total">{loaded ? pounds(owedTotal) : "—"}</p>
-              <p className={s.moneyCaption}>{loaded ? `Across ${unpaid.length} outstanding invoice${unpaid.length === 1 ? "" : "s"}` : screen === "loading" ? "Loading…" : " "}</p>
+          <Panel title="Money Dashboard" headingLevel={2}>
+            <div className={s.money}>
+              <div className={s.moneyTotal}>
+                <p className={cx(typeScale.numeral, s.moneyFigure, loaded && overdue.length > 0 && s.moneyDanger)} data-testid="money-total">{loaded ? pounds(owedTotal) : "—"}</p>
+                <p className={typeScale.secondary}>{loaded ? `Across ${unpaid.length} outstanding invoice${unpaid.length === 1 ? "" : "s"}` : screen === "loading" ? "Loading…" : " "}</p>
+              </div>
+              <StatTiles label="Ageing of money owed" columns={4}>
+                {aging.map((b) => (
+                  <StatTile key={b.label} flat label={b.label} value={loaded ? pounds(b.value) : "—"} loading={screen === "loading"} data-testid={`aging-${b.label.split(" ")[0].toLowerCase().replace(/[^a-z0-9]/g, "")}`}
+                    className={cx(s.quiet, b.value > 0 && s[`tone${b.tone[0].toUpperCase()}${b.tone.slice(1)}`])}
+                    onPress={loaded ? () => applyAging(b.label) : undefined} />
+                ))}
+              </StatTiles>
             </div>
-            <StatTiles label="Ageing of money owed" columns={4}>
-              {aging.map((b) => (
-                <StatTile key={b.label} label={b.label} value={loaded ? pounds(b.value) : "—"} loading={screen === "loading"} data-testid={`aging-${b.label.split(" ")[0].toLowerCase().replace(/[^a-z0-9]/g, "")}`}
-                  className={b.value > 0 ? s[`age${b.tone[0].toUpperCase()}${b.tone.slice(1)}`] : undefined}
-                  onPress={loaded ? () => applyAging(b.label) : undefined} />
-              ))}
-            </StatTiles>
-          </section>
+          </Panel>
 
           <div className={s.insights}>
-            <section className={s.insight} aria-label="Late Payer Patterns">
-              <h2 className={s.panelTitle}>Late Payer Patterns</h2>
-              {screen === "loading" ? <p className={s.mutedLine}>Loading…</p> : latePayers.length && loaded ? (
-                <ul className={s.payers}>
+            <Panel title="Late Payer Patterns" headingLevel={2}>
+              {screen === "loading" ? <p className={typeScale.secondary}>Loading…</p> : latePayers.length && loaded ? (
+                <List plain dense label="Late payer patterns">
                   {latePayers.map((p) => (
-                    <li key={p.customer} className={s.payer}>
-                      <StatusBadge tone={p.label === "CHRONIC" ? "danger" : "warn"}>{p.label}</StatusBadge>
-                      <p className={s.payerName}>{p.customer}</p>
-                      <p className={s.payerMeta}>{p.late} · {p.avg} · <span className={tabularNumbers}>{pounds(p.owed)}</span> owed</p>
-                    </li>
+                    <ListRow key={p.customer} className={s.payerRow} leading={<span className={s.badgeSlot}><StatusBadge tone={p.label === "CHRONIC" ? "danger" : "warn"}>{p.label}</StatusBadge></span>} title={p.customer}
+                      meta={<>{p.late} · {p.avg} · <span className={tabularNumbers}>{pounds(p.owed)}</span> owed</>} />
                   ))}
-                </ul>
-              ) : <p className={s.mutedLine}>No customers have overdue invoices.</p>}
-            </section>
-            <section className={s.insight} aria-label="Invoicing Trends">
-              <h2 className={s.panelTitle}>Invoicing Trends</h2>
-              <form className={s.range} onSubmit={(e) => { e.preventDefault(); setRange(rangeDraft); preview(`The date range ${fmtDate(rangeDraft.from)} to ${fmtDate(rangeDraft.to)} is applied to the figures on this screen only.`); }}>
-                <Field label="From"><Input type="date" value={rangeDraft.from} onChange={(e) => setRangeDraft((r) => ({ ...r, from: e.target.value }))} /></Field>
-                <Field label="To"><Input type="date" value={rangeDraft.to} onChange={(e) => setRangeDraft((r) => ({ ...r, to: e.target.value }))} /></Field>
-                <Button type="submit" variant="secondary">Apply</Button>
-              </form>
-              <p className={s.mutedLine}>Showing: {fmtDate(range.from)} to {fmtDate(range.to)}</p>
-                            <StatTiles label="Invoicing trends" columns={3}>
-                <StatTile label="Invoices Raised" value={loaded ? trends.raised : "—"} hint={loaded ? raisedCaption(range.from, range.to) : undefined} loading={screen === "loading"} data-testid="raised-caption" />
-                <StatTile label="Paid On Time" value={loaded ? trends.onTime : "—"} hint={loaded ? trends.onTimeOf : undefined} loading={screen === "loading"} data-testid="paid-on-time" />
-                <StatTile label="Average days late" value={loaded ? trends.avgLate : "—"} loading={screen === "loading"} />
-              </StatTiles>
-            </section>
+                </List>
+              ) : <p className={typeScale.secondary}>No customers have overdue invoices.</p>}
+            </Panel>
+            <Panel title="Invoicing Trends" headingLevel={2}>
+              <div className={s.trends}>
+                <DateRangeGroup label="Invoicing Trends date range" from={rangeDraft.from} to={rangeDraft.to} data-testid="trend-range"
+                  onFromChange={(v) => setRangeDraft((r) => ({ ...r, from: v }))} onToChange={(v) => setRangeDraft((r) => ({ ...r, to: v }))}
+                  onApply={() => { setRange(rangeDraft); preview(`The date range ${fmtDate(rangeDraft.from)} to ${fmtDate(rangeDraft.to)} is applied to the figures on this screen only.`); }} />
+                <p className={typeScale.secondary}>Showing: {fmtDate(range.from)} to {fmtDate(range.to)}</p>
+                <StatTiles label="Invoicing trends" columns={3}>
+                  <StatTile flat className={s.quiet} label="Invoices Raised" value={loaded ? trends.raised : "—"} hint={loaded ? raisedCaption(range.from, range.to) : undefined} loading={screen === "loading"} data-testid="raised-caption" />
+                  <StatTile flat className={s.quiet} label="Paid On Time" value={loaded ? trends.onTime : "—"} hint={loaded ? trends.onTimeOf : undefined} loading={screen === "loading"} data-testid="paid-on-time" />
+                  <StatTile flat className={s.quiet} label="Average days late" value={loaded ? trends.avgLate : "—"} loading={screen === "loading"} />
+                </StatTiles>
+              </div>
+            </Panel>
           </div>
 
-          <section className={s.panel} aria-label="Filters" aria-busy={screen === "loading" || undefined}>
-            {filters.listFilter ? (
-              <div className={s.notice} role="status" data-testid="list-filter-notice">
-                <p>Showing only: <strong>{INVOICE_FILTER_LABELS[filters.listFilter]}</strong></p>
-                <Button size="sm" variant="secondary" onClick={() => setFilters((f) => ({ ...f, listFilter: null }))}>Show everything</Button>
+          {nSel > 0 ? (
+            <SelectionBar count={nSel} filteredTotal={visible.length} noun="invoice" onSelectAll={() => setSelected(visible.map((i) => i.reference))} onClear={clearSelection}
+              statusText={({ count, filteredTotal }) => `${count} selected of ${filteredTotal} filtered ${filteredTotal === 1 ? "record" : "records"}`}>
+              {exportMenu(nSel)}
+              <Button size="sm" variant="secondary" data-testid="pay-selected" onClick={payInFull}>Pay Selected in Full</Button>
+            </SelectionBar>
+          ) : (
+            <div className={s.toolbar} role="group" aria-label="List controls" aria-busy={screen === "loading" || undefined}>
+              <div className={s.tbGroup}>
+                <span className={s.showGroup} title={INVOICE_SHOW_NOTE}>
+                  <span className={typeScale.label}>Show</span>
+                  <SegmentedControl label="Show" value={filters.phase} disabled={!loaded && screen !== "empty"} size="sm"
+                    onChange={(v) => setFilters((f) => ({ ...f, phase: v, chips: chipsForPhase(f.chips, v) }))}
+                    options={[
+                      { value: "open", label: `Open (${counts.open})`, testId: "show-open" }, { value: "done", label: `Done (${counts.done})`, testId: "show-done" },
+                      { value: "archived", label: `Archived (${counts.archived})`, testId: "show-archived" }, { value: "all", label: "All", testId: "show-all" },
+                    ]} />
+                </span>
+                <Popover label={activeChips.length ? `Filters (${activeChips.length})` : "Filters"} title="Filters" size="sm" variant="secondary" data-testid="filters-trigger">
+                  <ChipGroup label="Filters">
+                    {CHIPS.map((c) => <FilterChip key={c.v} selected={filters.chips.has(c.v)} disabled={screen === "loading"} onToggle={() => toggleChip(c.v)} data-testid={`chip-${c.v}`}>{c.label}</FilterChip>)}
+                  </ChipGroup>
+                  <p className={cx(typeScale.caption, s.popNote)}>{INVOICE_SHOW_NOTE}</p>
+                </Popover>
               </div>
-            ) : null}
-            <div className={s.panelRow} title={INVOICE_SHOW_NOTE}>
-              <span className={s.panelLabel}>Show</span>
-              <SegmentedControl label="Show" value={filters.phase} disabled={!loaded && screen !== "empty"} size="sm"
-                onChange={(v) => setFilters((f) => ({ ...f, phase: v, chips: chipsForPhase(f.chips, v) }))}
-                options={[
-                  { value: "open", label: `Open (${counts.open})`, testId: "show-open" }, { value: "done", label: `Done (${counts.done})`, testId: "show-done" },
-                  { value: "archived", label: `Archived (${counts.archived})`, testId: "show-archived" }, { value: "all", label: "All", testId: "show-all" },
-                ]} />
-              <span className={s.showNote}>{INVOICE_SHOW_NOTE}</span>
+              <div className={s.tbGroup}>
+                {exportMenu(0)}
+                <Popover label="Columns" title="Invoices columns" size="sm" variant="secondary" data-testid="columns-trigger">
+                  <p className={cx(typeScale.caption, s.colScope)}>Changes apply to everyone in this company. In this preview they change this screen only.</p>
+                  {COLUMNS.map((c) => (c.locked ? (
+                    <p key={c.key} className={cx(typeScale.name, s.colLocked)} data-testid={`col-${c.key}`}><span>{c.label}</span><span className={typeScale.caption}>Always shown</span></p>
+                  ) : (
+                    <Switch key={c.key} label={c.label} checked={inView(c.key)} onChange={(on) => setHidden((h) => (on ? h.filter((k) => k !== c.key) : [...h, c.key]))} data-testid={`col-${c.key}`} />
+                  )))}
+                  <div className={s.colReset}><Button size="sm" variant="secondary" disabled={!hidden.length} onClick={() => setHidden([])}>Reset to default (show all columns)</Button></div>
+                </Popover>
+                {notPhone ? <Button size="sm" variant="secondary" aria-pressed={compact} data-testid="compact-toggle" onClick={() => setCompact(!compact)}>Compact list</Button> : null}
+                {notPhone ? (
+                  <SegmentedControl label="View" value={shownView} onChange={setView} size="sm" options={[
+                    { value: "cards", label: "Cards", testId: "view-cards-btn" },
+                    { value: "list", label: "List", disabled: !wide, disabledReason: "Needs a screen wider than 1024px", testId: "view-list-btn" },
+                    { value: "table", label: "Table", disabled: !wide, disabledReason: "Needs a screen wider than 1024px", testId: "view-table-btn" },
+                  ]} />
+                ) : null}
+              </div>
             </div>
-            <div className={s.panelRow}>
-              <span className={s.panelLabel}>Filters</span>
-              <ChipGroup label="Filters">
-                {CHIPS.map((c) => <FilterChip key={c.v} selected={filters.chips.has(c.v)} disabled={screen === "loading"} onToggle={() => toggleChip(c.v)} data-testid={`chip-${c.v}`}>{c.label}</FilterChip>)}
-              </ChipGroup>
-            </div>
-            <div className={cx(s.panelRow, s.viewRow)}>
-              <Popover label="Columns" title="Invoices columns" size="sm" variant="secondary" data-testid="columns-trigger">
-                <p className={s.colScope}>Changes apply to everyone in this company. In this preview they change this screen only.</p>
-                {COLUMNS.map((c) => (c.locked ? (
-                  <p key={c.key} className={s.colLocked} data-testid={`col-${c.key}`}><span>{c.label}</span><span>Always shown</span></p>
-                ) : (
-                  <Switch key={c.key} label={c.label} checked={inView(c.key)} onChange={(on) => setHidden((h) => (on ? h.filter((k) => k !== c.key) : [...h, c.key]))} data-testid={`col-${c.key}`} />
-                )))}
-                <div className={s.colReset}><Button size="sm" variant="secondary" disabled={!hidden.length} onClick={() => setHidden([])}>Reset to default (show all columns)</Button></div>
-              </Popover>
-              {notPhone ? (
-                <Button size="sm" variant="secondary" aria-pressed={compact} className={s.compactBtn} data-testid="compact-toggle" onClick={() => setCompact(!compact)}>Compact list</Button>
-              ) : null}
-              {notPhone ? (
-                <SegmentedControl label="View" value={shownView} onChange={setView} size="sm" options={[
-                  { value: "cards", label: "Cards", testId: "view-cards-btn" },
-                  { value: "list", label: "List", disabled: !wide, disabledReason: "Needs a screen wider than 1024px", testId: "view-list-btn" },
-                  { value: "table", label: "Table", disabled: !wide, disabledReason: "Needs a screen wider than 1024px", testId: "view-table-btn" },
-                ]} />
-              ) : null}
-            </div>
-          </section>
+          )}
 
-          <SelectionBar count={nSel} filteredTotal={visible.length} noun="invoice" onSelectAll={() => setSelected(visible.map((i) => i.reference))} onClear={() => setSelected([])}
-            selectAll="always" clear="always"
-            idleNote={`0 selected of ${visible.length} filtered ${visible.length === 1 ? "record" : "records"}. Export covers all ${visible.length}.`}>
-            <Menu label="Export" size="sm" variant="secondary" data-testid="export-trigger" items={[
-              { id: "CSV", label: "CSV", onSelect: () => exportAs("CSV") }, { id: "Excel", label: "Excel", onSelect: () => exportAs("Excel") },
-              { id: "Payments CSV", label: "Payments CSV", onSelect: () => exportAs("Payments CSV", true) }, { id: "Payments Excel", label: "Payments Excel", onSelect: () => exportAs("Payments Excel", true) },
-              { id: "Word", label: "Word", onSelect: () => exportAs("Word") }, { id: "PDF", label: "PDF", onSelect: () => exportAs("PDF") },
-            ]} />
-            <Button size="sm" variant="secondary" data-testid="pay-selected" disabled={!loaded} onClick={payInFull}>Pay Selected in Full</Button>
-          </SelectionBar>
+          {filters.listFilter ? (
+            <Callout tone="neutral" role="status" data-testid="list-filter-notice" action={<Button size="sm" variant="secondary" onClick={() => setFilters((f) => ({ ...f, listFilter: null }))}>Show everything</Button>}>
+              Showing only: <strong>{INVOICE_FILTER_LABELS[filters.listFilter]}</strong>
+            </Callout>
+          ) : null}
+          {activeChips.length ? (
+            <div ref={activeRef} className={s.activeRow} role="group" aria-label="Active filters" data-testid="active-filters">
+              {activeChips.map((c, i) => (
+                <Button key={c.v} size="sm" variant="secondary" className={s.activeChip} data-active-chip={c.v} aria-label={`Remove filter ${c.label}`} onClick={() => removeChip(c.v, i)}>
+                  {c.label}<svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M2.5 2.5 7.5 7.5M7.5 2.5 2.5 7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+                </Button>
+              ))}
+              <Button size="sm" variant="quiet" data-testid="clear-filters" onClick={clearFilters}>Clear filters</Button>
+            </div>
+          ) : null}
 
           {uncertain && loaded ? (
-            <div role="alert" data-testid="uncertain-payments" className={s.alertWarn}>
-              <p>{UNCERTAIN_MESSAGE}</p>
-              {rows.filter((i) => i.reference === "INV-1042").map((i) => (
-                <div key={i.id} className={s.alertRow}><Mono>{i.reference}</Mono><Button size="sm" variant="secondary" onClick={() => openPayment(i)}>Check and save</Button></div>
-              ))}
-            </div>
+            <Callout tone="warn" lead="" role="alert" data-testid="uncertain-payments"
+              action={rows.filter((i) => i.reference === "INV-1042").map((i) => <span key={i.id} className={s.btnRow}><Ref>{i.reference}</Ref><Button size="sm" variant="secondary" onClick={() => openPayment(i)}>Check and save</Button></span>)}>
+              {UNCERTAIN_MESSAGE}
+            </Callout>
           ) : null}
 
           {loaded ? (
-            <section className={s.backlog} aria-label="Despatched but not invoiced" data-testid="uninvoiced-delivery-notes">
-              <div className={s.backlogHead}>
-                <div>
-                  <h2 className={s.panelTitle}>Despatched but not invoiced</h2>
-                  <p className={s.mutedLine} data-testid="uninvoiced-count">{UNINVOICED.length} delivery notes despatched with no invoice.</p>
-                </div>
-                <div className={s.backlogBtns}>
+            <Panel title="Despatched but not invoiced" headingLevel={2} data-testid="uninvoiced-delivery-notes"
+              actions={
+                <span className={s.btnRow}>
                   <Button size="sm" variant="quiet" aria-expanded={backlogOpen} onClick={() => setBacklogOpen((o) => !o)}>{backlogOpen ? "Hide the list" : `Show the ${UNINVOICED.length}`}</Button>
                   <Button size="sm" variant="secondary" onClick={() => setDlg({ k: "fromNotes" })}>Invoice from Delivery Notes</Button>
-                </div>
-              </div>
-              {backlogOpen ? <ul className={s.backlogList} aria-label="Despatched but not invoiced">
-                {UNINVOICED.map((u) => (
-                  <li key={u.id} className={s.backlogItem}>
-                    <Mono>{u.ref}</Mono><span className={s.backlogCust}>{u.customer}</span><StatusBadge tone="warn">{u.reason}</StatusBadge>
-                    <span className={s.backlogDate}>Despatched {fmtDate(u.sent)}</span><span className={s.backlogDetail}>{u.detail}</span>
-                  </li>
-                ))}
-              </ul> : null}
-            </section>
+                </span>
+              }>
+              <p className={typeScale.secondary} data-testid="uninvoiced-count">{UNINVOICED.length} delivery notes despatched with no invoice.</p>
+              {backlogOpen ? (
+                <List plain dense label="Despatched but not invoiced">
+                  {UNINVOICED.map((u) => (
+                    <ListRow key={u.id} className={s.payerRow} title={<><Ref>{u.ref}</Ref> <span className={typeScale.body}>{u.customer}</span></>} meta={<>{u.detail}</>}
+                      trailing={<><StatusBadge tone="warn">{u.reason}</StatusBadge><span className={cx(typeScale.secondary, tabularNumbers)}>Despatched {fmtDate(u.sent)}</span></>} />
+                  ))}
+                </List>
+              ) : null}
+            </Panel>
           ) : null}
 
-          <h2 className={s.srOnly}>Invoices</h2>
-          {screen === "loading" ? <LoadingState label="Loading invoices" rows={6} />
-            : screen === "error" ? <FailedState title="Couldn’t load invoices." detail="The list could not be fetched. This is a simulated failure: no request was made and nothing was lost." onRetry={retry} retryLabel="Retry" headingLevel={3} />
-            : visible.length === 0 ? (
-              <EmptyState title={hasRows ? "No invoices match this filter" : "No invoices yet"}
-                detail={hasRows ? (filters.phase !== "all" ? `Nothing in Show: ${filters.phase[0].toUpperCase()}${filters.phase.slice(1)} matches this status. Try Show: All, or a different status.` : "Try a different filter.") : invoicesEmptyHint()}
-                action={hasRows ? <Button variant="secondary" onClick={() => setFilters((f) => ({ ...f, chips: new Set(["all"]) }))}>Show all</Button> : <Button variant="primary" onClick={() => setDlg({ k: "new" })}>New invoice</Button>} />
-            ) : shownView === "cards" ? (
-              <div className={s.cards} data-testid="view-cards">
-                {visible.map((i) => (
-                  <InvoiceCard key={i.id} i={i} selected={selected.includes(i.reference)} inView={inView} onSelect={() => toggleSel(i.reference)} onView={() => setViewId(i.id)}
-                    onPay={() => openPayment(i)} onArchive={() => preview(`${shownInvoiceRef(i)} would be ${phaseFor(i) === "archived" ? "moved out of the archive" : "archived"}.`)} />
-                ))}
-              </div>
-            ) : compact ? (
-              <CompactTable rows={visible} onOpen={(i) => setViewId(i.id)} />
-            ) : (
-              <ScrollTable label="Invoices" className={shownView === "list" ? s.dense : undefined}>
-                <thead>
-                  <tr>
-                    <th className={s.thFirst}>
-                      <span className={s.firstCell}>
-                        <Checkbox aria-label={`Select all ${visible.length} filtered invoices`} checked={visible.length > 0 && visible.every((i) => selected.includes(i.reference))} onChange={(e) => setSelected(e.target.checked ? visible.map((i) => i.reference) : [])} />
-                        Invoice
-                      </span>
-                    </th>
-                    {inView("customer") ? <th>Customer</th> : null}
-                    {inView("status") ? <th>Status</th> : null}
-                    {inView("amount") ? <th className={s.right}>Amount</th> : null}
-                    <th className={s.right}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visible.map((i) => (
-                    <tr key={i.id} data-invoice={shownInvoiceRef(i)} data-selected={selected.includes(i.reference) || undefined} className={i.status === "paid" ? s.rowPaid : undefined}>
-                      <td className={s.tdFirst}>
+          <h2 className={srOnly}>Invoices</h2>
+          <div ref={listRef}>
+            {screen === "loading" ? <LoadingState label="Loading invoices" rows={6} />
+              : screen === "error" ? <FailedState title="Couldn’t load invoices." detail="The list could not be fetched. This is a simulated failure: no request was made and nothing was lost." onRetry={retry} retryLabel="Retry" headingLevel={3} />
+              : visible.length === 0 ? (
+                <EmptyState title={hasRows ? "No invoices match this filter" : "No invoices yet"}
+                  detail={hasRows ? (filters.phase !== "all" ? `Nothing in Show: ${filters.phase[0].toUpperCase()}${filters.phase.slice(1)} matches this status. Try Show: All, or a different status.` : "Try a different filter.") : invoicesEmptyHint()}
+                  action={hasRows ? <Button variant="secondary" onClick={() => setFilters((f) => ({ ...f, chips: new Set(["all"]) }))}>Show all</Button> : <Button variant="primary" onClick={() => setDlg({ k: "new" })}>New invoice</Button>} />
+              ) : shownView === "cards" ? (
+                <div className={s.cards} data-testid="view-cards">
+                  {visible.map((i) => <InvoiceCard key={i.id} i={i} selected={selected.includes(i.reference)} inView={inView} onSelect={() => toggleSel(i.reference)} actions={actions(i)} />)}
+                </div>
+              ) : compact ? (
+                <CompactTable rows={visible} onOpen={(i) => setViewId(i.id)} />
+              ) : (
+                <ScrollTable label="Invoices" dense={shownView === "list"} pinLast>
+                  <thead>
+                    <tr>
+                      <th>
                         <span className={s.firstCell}>
-                          <Checkbox aria-label={`Select ${shownInvoiceRef(i)}`} data-testid="select-row" checked={selected.includes(i.reference)} onChange={() => toggleSel(i.reference)} />
-                          <RefCell i={i} />
+                          <Checkbox aria-label={`Select all ${visible.length} filtered invoices`} checked={visible.length > 0 && visible.every((i) => selected.includes(i.reference))} onChange={(e) => setSelected(e.target.checked ? visible.map((i) => i.reference) : [])} />
+                          Invoice
                         </span>
-                      </td>
-                      {inView("customer") ? <td><span className={s.clamp} title={i.customer}>{i.customer}</span>{i.chasePaused ? <span className={s.paused} data-testid="chase-paused">Chasing paused</span> : null}</td> : null}
-                      {inView("status") ? <td><StatusPill row={i} />{i.partPaid && i.dueDate ? <span className={s.cellNote}>{dueWords(i)}</span> : null}</td> : null}
-                      {inView("amount") ? <td className={cx(s.right, tabularNumbers)}><span className={s.money2}>{pounds(i.amount)}</span>{amountNote(i) ? <span className={s.cellNote}>{amountNote(i)}</span> : null}</td> : null}
-                      <td className={s.right}><RowActions i={i} onView={() => setViewId(i.id)} onPay={() => openPayment(i)} onArchive={() => preview(`${shownInvoiceRef(i)} would be ${phaseFor(i) === "archived" ? "moved out of the archive" : "archived"}.`)} /></td>
+                      </th>
+                      {inView("customer") ? <th>Customer</th> : null}
+                      {inView("status") ? <th>Status</th> : null}
+                      {inView("amount") ? <th className={s.right}>Amount</th> : null}
+                      <th className={s.actionsHead}>Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </ScrollTable>
-            )}
+                  </thead>
+                  <tbody>
+                    {visible.map((i) => (
+                      <tr key={i.id} data-invoice={shownInvoiceRef(i)} data-selected={selected.includes(i.reference) || undefined}>
+                        <td>
+                          <span className={s.firstCell}>
+                            <Checkbox aria-label={`Select ${shownInvoiceRef(i)}`} data-testid="select-row" checked={selected.includes(i.reference)} onChange={() => toggleSel(i.reference)} />
+                            <RefCell i={i} />
+                          </span>
+                        </td>
+                        {inView("customer") ? <td><span className={cx(typeScale.name, s.clamp)} title={i.customer}>{i.customer}</span>{i.chasePaused ? <span className={cx(typeScale.caption, s.paused)} data-testid="chase-paused">Chasing paused</span> : null}</td> : null}
+                        {inView("status") ? <td><StatusPill row={i} mode="text" />{i.partPaid && i.dueDate ? <span className={cx(typeScale.caption, s.cellNote)}>{dueWords(i)}</span> : null}</td> : null}
+                        {inView("amount") ? <td className={cx(s.right, tabularNumbers)}><span className={typeScale.name}>{pounds(i.amount)}</span>{amountNote(i) ? <span className={cx(typeScale.caption, s.cellNote)}>{amountNote(i)}</span> : null}</td> : null}
+                        <td className={s.actionsCell}><div className={s.rowActions}>{actions(i)}</div></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </ScrollTable>
+              )}
+          </div>
         </>
       )}
 
@@ -731,44 +768,42 @@ function Inner() {
 function RefCell({ i }: { i: InvoiceRow }) {
   return (
     <span className={s.refCell}>
-      <Mono>{shownInvoiceRef(i)}</Mono>
-      {i.jobStage ? <span className={s.refNote} data-testid="draft-job-stage">{i.jobStage}</span> : null}
-      {i.autoDraftedFrom ? <span className={s.refNote} data-testid="auto-drafted">Auto-drafted from {i.autoDraftedFrom}</span> : null}
+      <Ref>{shownInvoiceRef(i)}</Ref>
+      {i.jobStage ? <span className={cx(typeScale.caption, s.refNote)} data-testid="draft-job-stage">{i.jobStage}</span> : null}
+      {i.autoDraftedFrom ? <span className={cx(typeScale.caption, s.refNote)} data-testid="auto-drafted">Auto-drafted from {i.autoDraftedFrom}</span> : null}
     </span>
   );
 }
 
-function RowActions({ i, onView, onPay, onArchive }: { i: InvoiceRow; onView: () => void; onPay: () => void; onArchive: () => void }) {
+/** One visible button (the next step) and a More menu with every other real action; the buttons never wrap. */
+function RowActions({ i, run }: { i: InvoiceRow; run: (i: InvoiceRow, id: RowActionId) => void }) {
   const no = shownInvoiceRef(i);
-  const phase = phaseFor(i);
+  const plan = rowActionPlan(i);
+  const items = plan.more.map((a) => ({ id: a.id, label: a.label, disabled: a.disabled, hint: a.hint, separatorBefore: a.id === "archive", onSelect: () => run(i, a.id) }));
+  const aria: Record<RowActionId, string> = { view: `View ${no}`, pay: `Record payment on ${no}`, archive: `${phaseFor(i) === "archived" ? "Unarchive" : "Archive"} ${no}` };
   return (
-    <div className={s.rowActions}>
-      <Button size="sm" variant="secondary" data-action="View" aria-label={`View ${no}`} onClick={onView}>View</Button>
-      {paymentBlockedReason(i.rawStatus) ? null : <Button size="sm" variant="secondary" data-action="Record payment" aria-label={`Record payment on ${no}`} disabled={i.status === "paid" || i.status === "closed"} onClick={onPay}>Record payment</Button>}
-      <Button size="sm" variant="quiet" data-action="Archive" aria-label={`${phase === "archived" ? "Unarchive" : "Archive"} ${no}`} onClick={onArchive}>{phase === "archived" ? "Unarchive" : "Archive"}</Button>
-    </div>
+    <>
+      <Button size="sm" variant="secondary" data-action={plan.primary.label} aria-label={aria[plan.primary.id]} onClick={() => run(i, plan.primary.id)}>{plan.primary.label}</Button>
+      <Menu label="More" size="sm" variant="quiet" items={items} aria-label={`More actions for ${no}`} data-testid="more-trigger" />
+    </>
   );
 }
 
-function InvoiceCard({ i, selected, inView, onSelect, onView, onPay, onArchive }: { i: InvoiceRow; selected: boolean; inView: (c: ColumnKey) => boolean; onSelect: () => void; onView: () => void; onPay: () => void; onArchive: () => void }) {
+function InvoiceCard({ i, selected, inView, onSelect, actions }: { i: InvoiceRow; selected: boolean; inView: (c: ColumnKey) => boolean; onSelect: () => void; actions: ReactNode }) {
   const no = shownInvoiceRef(i);
   return (
-    <article className={cx(s.card, i.status === "paid" && s.cardPaid)} data-invoice={no} data-selected={selected || undefined} aria-label={no}>
+    <article className={cx(s.card, selected && s.cardOn)} data-testid={`card-${no}`} data-selected={selected || undefined} aria-label={no}>
       <div className={s.cardTop}>
         <Checkbox aria-label={`Select ${no} for export`} title="Select for export" data-testid="select-row" checked={selected} onChange={onSelect} />
         <div className={s.cardRef}><RefCell i={i} /></div>
         {inView("status") ? <StatusPill row={i} /> : null}
       </div>
       <dl className={s.dl}>
-        {inView("customer") ? <div className={s.dlWide}><dt>Customer</dt><dd className={s.dlStrong}>{i.customer}{i.chasePaused ? <span className={s.paused}>Chasing paused</span> : null}</dd></div> : null}
-        {inView("status") && i.partPaid && i.dueDate ? <div><dt>Due</dt><dd>{dueWords(i)}</dd></div> : null}
-        {inView("amount") ? <div className={s.dlValue}><dt>Amount</dt><dd className={cx(s.cardValue, tabularNumbers)}>{pounds(i.amount)}</dd>{amountNote(i) ? <dd className={s.cellNote}>{amountNote(i)}</dd> : null}</div> : null}
+        {inView("customer") ? <div className={s.dlWide}><dt className={typeScale.secondary}>Customer</dt><dd className={typeScale.name}>{i.customer}{i.chasePaused ? <span className={cx(typeScale.caption, s.paused)}>Chasing paused</span> : null}</dd></div> : null}
+        {inView("status") && i.partPaid && i.dueDate ? <div><dt className={typeScale.secondary}>Due</dt><dd className={typeScale.body}>{dueWords(i)}</dd></div> : null}
+        {inView("amount") ? <div className={s.dlWide}><dt className={typeScale.secondary}>Amount</dt><dd className={cx(typeScale.card, tabularNumbers)}>{pounds(i.amount)}</dd>{amountNote(i) ? <dd className={typeScale.caption}>{amountNote(i)}</dd> : null}</div> : null}
       </dl>
-      <div className={s.cardActions}>
-        <Button size="sm" variant="secondary" data-action="View" aria-label={`View ${no}`} onClick={onView}>View</Button>
-        {paymentBlockedReason(i.rawStatus) ? null : <Button size="sm" variant="secondary" data-action="Record payment" aria-label={`Record payment on ${no}`} disabled={i.status === "paid" || i.status === "closed"} onClick={onPay}>Record payment</Button>}
-        <span className={s.cardQuiet}><Button size="sm" variant="quiet" data-action="Archive" aria-label={`${phaseFor(i) === "archived" ? "Unarchive" : "Archive"} ${no}`} onClick={onArchive}>{phaseFor(i) === "archived" ? "Unarchive" : "Archive"}</Button></span>
-      </div>
+      <div className={s.cardActions}>{actions}</div>
     </article>
   );
 }
@@ -777,7 +812,7 @@ function InvoiceCard({ i, selected, inView, onSelect, onView, onPay, onArchive }
 function CompactTable({ rows, onOpen }: { rows: InvoiceRow[]; onOpen: (i: InvoiceRow) => void }) {
   const t = compactTotals(rows);
   return (
-    <ScrollTable label="Invoices, compact list" className={s.dense}>
+    <ScrollTable label="Invoices, compact list" dense>
       <thead>
         <tr><th>Invoice</th><th>Date</th><th>Customer</th><th className={s.right}>Net</th><th className={s.right}>VAT</th><th className={s.right}>Gross</th><th className={s.right}>Paid</th><th className={s.right}>Outstanding</th><th>Status</th><th>Due</th></tr>
       </thead>
@@ -785,14 +820,14 @@ function CompactTable({ rows, onOpen }: { rows: InvoiceRow[]; onOpen: (i: Invoic
         {rows.map((i) => {
           const { net, vat } = netAndVat(i);
           return (
-            <tr key={i.id} data-testid="compact-invoice-row" className={cx(s.clickRow, i.status === "paid" && s.rowPaid)}>
-              <td><button type="button" className={s.linkBtn} aria-label={`Open ${shownInvoiceRef(i)}`} onClick={() => onOpen(i)}><Mono>{shownInvoiceRef(i)}</Mono></button></td>
+            <tr key={i.id} data-testid="compact-invoice-row" data-clickable="true" onClick={(e) => { if (rowClickIsForRow(e.target, e.currentTarget)) onOpen(i); }}>
+              <td><Button variant="quiet" size="sm" aria-label={`Open ${shownInvoiceRef(i)}`} onClick={() => onOpen(i)}><Ref>{shownInvoiceRef(i)}</Ref></Button></td>
               <td className={cx(s.nowrap, tabularNumbers)}>{fmtDate(i.date)}</td>
               <td><span className={s.clamp} title={i.customer}>{i.customer}</span></td>
               <td className={cx(s.right, tabularNumbers)}>{pounds(net)}</td><td className={cx(s.right, tabularNumbers)}>{pounds(vat)}</td>
-              <td className={cx(s.right, s.money2, tabularNumbers)}>{pounds(i.amount)}</td><td className={cx(s.right, tabularNumbers)}>{pounds(i.amountPaid)}</td>
-              <td className={cx(s.right, s.money2, tabularNumbers)}>{pounds(i.balance)}</td>
-              <td><StatusPill row={i} /></td><td className={cx(s.nowrap, tabularNumbers)}>{fmtDate(i.dueDate)}</td>
+              <td className={cx(s.right, typeScale.name, tabularNumbers)}>{pounds(i.amount)}</td><td className={cx(s.right, tabularNumbers)}>{pounds(i.amountPaid)}</td>
+              <td className={cx(s.right, typeScale.name, tabularNumbers)}>{pounds(i.balance)}</td>
+              <td><StatusPill row={i} mode="text" /></td><td className={cx(s.nowrap, tabularNumbers)}>{fmtDate(i.dueDate)}</td>
             </tr>
           );
         })}
@@ -840,7 +875,7 @@ function Dialogs({ dlg, viewId, setViewId, close, setDlg, byId, rows, preview, i
         title={inv ? `Issue this invoice to ${inv.customer}?` : ""}
         description={`It gets the next invoice number and its contents are fixed. From then on it counts as money owed, whether or not it has been e-mailed. This can't be undone.${dlg?.k === "issue" && dlg.andSend ? " The e-mail and PDF open straight after; you then confirm it has gone." : ""}`}
         onConfirm={() => finish(`${inv ? shownInvoiceRef(inv) : "The draft"} would be issued with the next invoice number. No number was taken and no e-mail was opened.`)}>
-        <p className={s.sheetNote}>Preview only. The finance check, the invoice number and the e-mail are not run.</p>
+        <p className={typeScale.caption}>Preview only. The finance check, the invoice number and the e-mail are not run.</p>
       </Dialog>
 
       <Dialog open={dlg?.k === "sentConfirm" && !!inv} onClose={close} cancelLabel="Not yet" confirmLabel={"I’ve sent it"}
@@ -851,9 +886,11 @@ function Dialogs({ dlg, viewId, setViewId, close, setDlg, byId, rows, preview, i
         title={`Record ${bulk.length} invoice${bulk.length === 1 ? "" : "s"} as paid in full?`}
         description={`Records one payment on each, for its whole balance, dated today (${fmtDate(TODAY)}): ${pounds(bulkTotal)} received in total. For a part payment, use Record payment on that invoice.`}
         onConfirm={() => finish(`${bulk.length} payment${bulk.length === 1 ? "" : "s"} totalling ${pounds(bulkTotal)} would be recorded. No payment was recorded.`)}>
-        <ul className={s.payList} aria-label="Invoices to pay in full">
-          {bulk.map((i) => <li key={i.id}><Mono>{i.reference}</Mono><span>{i.customer}</span><span className={tabularNumbers}>{pounds(balanceDue(i.amount, i.amountPaid, i.credited, i.refunded))}</span></li>)}
-        </ul>
+        <div className={s.payList}>
+          <List dense label="Invoices to pay in full">
+            {bulk.map((i) => <ListRow key={i.id} title={<Ref>{i.reference}</Ref>} meta={i.customer} trailing={<span className={cx(typeScale.name, tabularNumbers)}>{pounds(balanceDue(i.amount, i.amountPaid, i.credited, i.refunded))}</span>} />)}
+          </List>
+        </div>
       </Dialog>
 
       <Dialog open={dlg?.k === "confirmComplete" && !!inv} onClose={close} confirmLabel="Confirm payments complete" confirmDisabled={!note.trim()}
@@ -900,6 +937,21 @@ function Dialogs({ dlg, viewId, setViewId, close, setDlg, byId, rows, preview, i
 
 /* ---------------- the invoice sheet ---------------- */
 
+function TotalsBlock({ i, totals, problem }: { i: InvoiceRow; totals: DocumentTotals; problem: string | null }) {
+  return (
+    <dl className={cx(s.totals, typeScale.body)}>
+      {i.lines.length && !problem ? (
+        <>
+          <div><dt>Subtotal</dt><dd className={tabularNumbers}>{pounds(totals.subtotal)}</dd></div>
+          {totals.carriage ? <div><dt>Carriage</dt><dd className={tabularNumbers}>{pounds(totals.carriage)}</dd></div> : null}
+          {i.vatEnabled ? (totals.vatBreakdown.filter((r) => !r.exempt).length ? totals.vatBreakdown.filter((r) => !r.exempt).map((r) => <div key={vatRowLabel(r)}><dt>{vatRowLabel(r)}</dt><dd className={tabularNumbers}>{pounds(r.vat)}</dd></div>) : <div><dt>VAT</dt><dd className={tabularNumbers}>{pounds(0)}</dd></div>) : <div><dt>No VAT</dt><dd>-</dd></div>}
+          <div className={s.totalRow}><dt>Grand total</dt><dd className={tabularNumbers}>{pounds(totals.total)}</dd></div>
+        </>
+      ) : <div className={s.totalRow}><dt>Invoice total</dt><dd className={tabularNumbers}>{pounds(i.amount)}</dd></div>}
+    </dl>
+  );
+}
+
 function ViewSheet({ i, isAdmin, onClose, setDlg, preview }: { i: InvoiceRow; isAdmin: boolean; onClose: () => void; setDlg: (d: Dlg | null) => void; preview: (d: string) => void }) {
   const no = shownInvoiceRef(i);
   const totals = totalsOfSeed(i);
@@ -916,14 +968,17 @@ function ViewSheet({ i, isAdmin, onClose, setDlg, preview }: { i: InvoiceRow; is
   const hasCreditNotes = !draft && !["void", "voided", "cancelled", "canceled", "credited", "written_off"].includes(invoiceStatus(i.rawStatus));
   const first = draft ? "Draft: no number yet and not money owed. Issue it to give it a number; then it can be printed and sent."
     : isVoid(i.rawStatus) ? "Void: not owed." : isWrittenOff(i.rawStatus) ? "Written off: not owed." : i.sentAt ? `Sent ${fmtDate(i.sentAt)}, ${i.sentAt.slice(11, 16)}` : "Not recorded as sent yet";
+  const fact = (label: string, value: ReactNode, opts: { wide?: boolean; num?: boolean; line?: boolean } = {}) => (
+    <div className={opts.wide ? s.factWide : undefined}><dt className={typeScale.secondary}>{label}</dt><dd className={cx(typeScale.name, opts.num && tabularNumbers, opts.line && s.preline)}>{value}</dd></div>
+  );
 
   return (
     <Sheet open size="lg" title={`${no} invoice details`} description="Invoice details and payments received." onClose={onClose} testId="dlg-view"
       footer={draft ? (
         <div className={s.viewFoot}>
-          <p className={s.footNote}>{first}</p>
+          <p className={cx(typeScale.secondary, s.footNote)}>{first}</p>
           <div className={s.footGroup}>
-            <Button variant="secondary" onClick={() => setDlg({ k: "deleteDraft", id: i.id })}>Delete Draft</Button>
+            <Button variant="danger" onClick={() => setDlg({ k: "deleteDraft", id: i.id })}>Delete Draft</Button>
             <Button variant="secondary" onClick={() => preview("The draft editor would open here.")}>Edit Draft</Button>
             <Button variant="secondary" disabled={Boolean(problem)} onClick={() => setDlg({ k: "issue", id: i.id, andSend: false })}>Issue Invoice</Button>
             <Button variant="primary" disabled={Boolean(problem)} onClick={() => setDlg({ k: "issue", id: i.id, andSend: true })}>Issue &amp; send</Button>
@@ -931,10 +986,10 @@ function ViewSheet({ i, isAdmin, onClose, setDlg, preview }: { i: InvoiceRow; is
         </div>
       ) : (
         <div className={s.viewFoot}>
-          <p className={s.footNote}>{first}</p>
+          <p className={cx(typeScale.secondary, s.footNote)}>{first}</p>
           <div className={s.footGroup}>
-            {voidOffered(i) ? <Button variant="secondary" className={s.danger} onClick={() => setDlg({ k: "void", id: i.id })}>Void Invoice</Button> : null}
-            {writeOffOffered(i) ? <Button variant="secondary" className={s.danger} onClick={() => setDlg({ k: "writeoff", id: i.id, mode: "write_off" })}>Write off</Button> : null}
+            {voidOffered(i) ? <Button variant="danger" onClick={() => setDlg({ k: "void", id: i.id })}>Void Invoice</Button> : null}
+            {writeOffOffered(i) ? <Button variant="danger" onClick={() => setDlg({ k: "writeoff", id: i.id, mode: "write_off" })}>Write off</Button> : null}
             {isWrittenOff(i.rawStatus) ? <Button variant="secondary" onClick={() => setDlg({ k: "writeoff", id: i.id, mode: "reverse" })}>Reverse write-off</Button> : null}
             <Button variant="secondary" disabled={Boolean(problem)} onClick={() => preview(`The PDF for ${no} is not generated.`)}>Download PDF</Button>
             {!isVoid(i.rawStatus) ? <Button variant="secondary" disabled={Boolean(problem)} onClick={() => preview(`${no} would be e-mailed now with the PDF attached. No e-mail was sent.`)}>Email now</Button> : null}
@@ -942,160 +997,139 @@ function ViewSheet({ i, isAdmin, onClose, setDlg, preview }: { i: InvoiceRow; is
           </div>
         </div>
       )}>
-      <div className={s.facts}>
-        <div><span className={s.factLabel}>Customer</span><p className={s.factStrong}>{i.customer}</p><p className={s.factMuted}>{address.slice(1).join(", ")}</p></div>
-        <div><span className={s.factLabel}>Status</span><p><StatusBadge tone={toneOf(i)}>{invoiceDetailStatusLabel(i)}</StatusBadge></p></div>
-        <div><span className={s.factLabel}>Invoice Date</span><p className={s.factStrong}>{fmtDate(i.date) || "-"}</p></div>
-        <div><span className={s.factLabel}>Due Date</span><p className={s.factStrong}>{fmtDate(i.dueDate) || "-"}{i.status === "overdue" ? ` (${i.daysOverdue} days overdue)` : ""}</p></div>
-        <div><span className={s.factLabel}>Payment Terms</span><p className={s.factStrong}>{i.terms || "-"}</p></div>
-        {i.quoteRef ? <div><span className={s.factLabel}>Our Quote No.</span><p className={cx(s.factStrong, tabularNumbers)}>{i.quoteRef}</p></div> : null}
-        {i.customerPo ? <div><span className={s.factLabel}>Customer PO</span><p className={cx(s.factStrong, tabularNumbers)}>{i.customerPo}</p></div> : null}
-        {i.deliveryAddress ? <div><span className={s.factLabel}>Delivery Address</span><p className={cx(s.factStrong, s.preline)}>{i.deliveryAddress}</p></div> : null}
-        {i.invoiceNote ? <div className={s.factWide}><span className={s.factLabel}>Invoice Note</span><p className={s.factStrong}>{i.invoiceNote}</p></div> : null}
-        {i.status === "paid" && i.amountPaid <= 0 ? <div><span className={s.factLabel}>Paid</span><p className={s.factStrong}>Marked paid; the amount received was never recorded</p></div>
-          : i.amountPaid > 0 ? <div><span className={s.factLabel}>Paid</span><p className={s.factStrong}>{pounds(i.amountPaid)} received{i.status === "paid" && i.paidAt ? `, settled ${fmtDate(i.paidAt)}` : ""}{i.paymentUnverified ? "; payment to confirm" : i.partPaid ? `; balance due ${pounds(i.balance)}` : ""}</p></div> : null}
-      </div>
+      <div className={s.sheetStack}>
+        <dl className={s.facts}>
+          <div><dt className={typeScale.secondary}>Customer</dt><dd className={typeScale.name}>{i.customer}</dd><dd className={typeScale.secondary}>{address.slice(1).join(", ")}</dd></div>
+          {fact("Status", <StatusBadge tone={toneOf(i)}>{invoiceDetailStatusLabel(i)}</StatusBadge>)}
+          {fact("Invoice Date", fmtDate(i.date) || "-")}
+          {fact("Due Date", `${fmtDate(i.dueDate) || "-"}${i.status === "overdue" ? ` (${i.daysOverdue} days overdue)` : ""}`)}
+          {fact("Payment Terms", i.terms || "-")}
+          {i.quoteRef ? fact("Our Quote No.", i.quoteRef, { num: true }) : null}
+          {i.customerPo ? fact("Customer PO", i.customerPo, { num: true }) : null}
+          {i.deliveryAddress ? fact("Delivery Address", i.deliveryAddress, { line: true }) : null}
+          {i.invoiceNote ? fact("Invoice Note", i.invoiceNote, { wide: true }) : null}
+          {i.status === "paid" && i.amountPaid <= 0 ? fact("Paid", "Marked paid; the amount received was never recorded")
+            : i.amountPaid > 0 ? fact("Paid", `${pounds(i.amountPaid)} received${i.status === "paid" && i.paidAt ? `, settled ${fmtDate(i.paidAt)}` : ""}${i.paymentUnverified ? "; payment to confirm" : i.partPaid ? `; balance due ${pounds(i.balance)}` : ""}`) : null}
+        </dl>
 
-      {i.id && collectible ? (
-        <section aria-label={`Payment check for invoice ${no}`} className={s.stack}>
-          {claimed ? (
-            <div className={s.callout} role="status">
-              <p className={s.calloutTitle}>Payment to confirm</p>
-              <p>The customer says they have paid invoice {no}. Chasing is paused while you check your bank account. This does not mean the payment has been received.</p>
-              <div className={s.calloutActions}>
+        {i.id && collectible ? (
+          claimed ? (
+            <Callout tone="warn" lead="Payment to confirm" role="status" action={
+              <span className={s.btnRow}>
                 <Button size="sm" variant="primary" onClick={() => setDlg({ k: "pay", id: i.id })}>Confirm payment received</Button>
                 <Button size="sm" variant="secondary" onClick={() => preview("Chasing would resume. Nothing was changed.")}>Not received, resume chasing</Button>
+              </span>
+            }>The customer says they have paid invoice {no}. Chasing is paused while you check your bank account. This does not mean the payment has been received.</Callout>
+          ) : <div aria-label={`Payment check for invoice ${no}`} role="group"><Button size="sm" variant="secondary" onClick={() => preview(`${no} would be marked as customer says paid. Nothing was changed.`)}>Customer says paid</Button></div>
+        ) : null}
+
+        {!draft ? (
+          <Panel variant="flat" label="Chasing" data-testid="chase-pause-invoice">
+            {i.chasePaused ? (
+              <div className={s.pauseRow}>
+                <div><p className={cx(typeScale.name, s.pauseTitle)}>Chasing paused{i.chasePaused.until ? ` until ${fmtDate(i.chasePaused.until)}` : ""}</p><p className={typeScale.secondary}>Reason: {i.chasePaused.reason}</p><p className={typeScale.caption}>No chase e-mails are drafted for {no} while it is paused.</p></div>
+                <Button size="sm" variant="secondary" onClick={() => preview("Chasing would resume. Nothing was changed.")}>Resume chasing</Button>
               </div>
-            </div>
-          ) : <div><Button size="sm" variant="secondary" onClick={() => preview(`${no} would be marked as customer says paid. Nothing was changed.`)}>Customer says paid</Button></div>}
-        </section>
-      ) : null}
+            ) : pausing ? (
+              <div className={s.pauseForm}>
+                <Field label="Reason"><Input maxLength={300} placeholder="e.g. Query on the delivery" /></Field>
+                <Field label="Until" optional><Input type="date" /></Field>
+                <div className={s.btnRow}><Button size="sm" variant="primary" onClick={() => { setPausing(false); preview(`Chasing on ${no} would be paused.`); }}>Pause</Button><Button size="sm" variant="quiet" onClick={() => setPausing(false)}>Cancel</Button></div>
+              </div>
+            ) : (
+              <div className={s.pauseRow}><p className={typeScale.secondary}>Chase steps run for {no}.</p><Button size="sm" variant="secondary" onClick={() => setPausing(true)}>Pause chasing</Button></div>
+            )}
+          </Panel>
+        ) : null}
 
-      {!draft ? (
-        <div className={s.pause} data-testid="chase-pause-invoice">
-          {i.chasePaused ? (
-            <div className={s.pauseRow}>
-              <div><p className={s.pauseTitle}>Chasing paused{i.chasePaused.until ? ` until ${fmtDate(i.chasePaused.until)}` : ""}</p><p className={s.factMuted}>Reason: {i.chasePaused.reason}</p><p className={s.hint}>No chase e-mails are drafted for {no} while it is paused.</p></div>
-              <Button size="sm" variant="secondary" onClick={() => preview("Chasing would resume. Nothing was changed.")}>Resume chasing</Button>
-            </div>
-          ) : pausing ? (
-            <div className={s.pauseForm}>
-              <Field label="Reason"><Input maxLength={300} placeholder="e.g. Query on the delivery" /></Field>
-              <Field label="Until" optional><Input type="date" /></Field>
-              <div className={s.pauseBtns}><Button size="sm" variant="primary" onClick={() => { setPausing(false); preview(`Chasing on ${no} would be paused.`); }}>Pause</Button><Button size="sm" variant="quiet" onClick={() => setPausing(false)}>Cancel</Button></div>
-            </div>
-          ) : (
-            <div className={s.pauseRow}><p className={s.factMuted}>Chase steps run for {no}.</p><Button size="sm" variant="secondary" onClick={() => setPausing(true)}>Pause chasing</Button></div>
-          )}
-        </div>
-      ) : null}
-
-      <div className={s.lines} role="table" aria-label="Invoice lines">
-        <div className={cx(s.lineRow, s.lineHead)} role="row"><span role="columnheader">Description</span><span role="columnheader" className={s.right}>Qty</span><span role="columnheader" className={s.right}>Unit Price</span><span role="columnheader" className={s.right}>Total</span></div>
-        {i.lines.length ? i.lines.map((l, n) => (
-          <div key={n} className={s.lineRow} role="row">
-            <span role="cell" className={s.preline}>{l.description}</span><span role="cell" className={cx(s.right, tabularNumbers)}>{l.quantity}</span>
-            <span role="cell" className={cx(s.right, tabularNumbers)}>{pounds(l.unitPrice)}</span><span role="cell" className={cx(s.right, tabularNumbers)}>{pounds(documentTotals([{ quantity: l.quantity, unitPrice: l.unitPrice, vatPct: 0 }]).subtotal)}</span>
-          </div>
-        )) : <p className={s.lineEmpty}>No line items recorded for this invoice.</p>}
-      </div>
-
-      <dl className={s.totals}>
-        {i.lines.length && !problem ? (
-          <>
-            <div><dt>Subtotal</dt><dd className={tabularNumbers}>{pounds(totals.subtotal)}</dd></div>
-            {totals.carriage ? <div><dt>Carriage</dt><dd className={tabularNumbers}>{pounds(totals.carriage)}</dd></div> : null}
-            {i.vatEnabled ? (totals.vatBreakdown.filter((r) => !r.exempt).length ? totals.vatBreakdown.filter((r) => !r.exempt).map((r) => <div key={vatRowLabel(r)}><dt>{vatRowLabel(r)}</dt><dd className={tabularNumbers}>{pounds(r.vat)}</dd></div>) : <div><dt>VAT</dt><dd className={tabularNumbers}>{pounds(0)}</dd></div>) : <div><dt>No VAT</dt><dd>-</dd></div>}
-            <div className={s.totalRow}><dt>Grand total</dt><dd className={tabularNumbers}>{pounds(totals.total)}</dd></div>
-          </>
-        ) : <div className={s.totalRow}><dt>Invoice total</dt><dd className={tabularNumbers}>{pounds(i.amount)}</dd></div>}
-      </dl>
-
-      {problem ? <p role="alert" className={s.blockMsg}>{problem}</p> : null}
-
-      {!draft ? (
-        <section aria-label="Payments" className={s.stack}>
-          <div className={s.secHead}>
-            <h3 className={s.secTitle}>Payments</h3>
-            {canPay ? <Button size="sm" variant="primary" onClick={() => setDlg({ k: "pay", id: i.id })}>Record payment</Button> : null}
-          </div>
-          {live.length ? (
-            <ul className={s.list} aria-label="Payment history">
-              {live.map((p) => {
-                const reversal = payments.find((o) => o.reversesPaymentId === p.id);
-                return (
-                  <li key={p.id} className={s.listItem} data-testid="payment-row">
-                    <span className={cx(s.payCells, reversal && s.struck)}>
-                      <span className={cx(s.payDate, tabularNumbers)}>{p.paidOn ? fmtDate(p.paidOn) : "Date not recorded"}</span>
-                      <span className={cx(s.payAmt, tabularNumbers)}>{pounds(p.amount)}</span>
-                      <span>{p.method || (p.source === "legacy" ? "Carried over" : "")}</span><span>{p.reference}</span><span>{p.by}</span>
-                    </span>
-                    {reversal ? <span className={s.reversed}>Reversed {fmtDate(reversal.paidOn)}: {reversal.voidReason}</span> : null}
-                    {isAdmin && !reversal && p.source !== "legacy" ? <Button size="sm" variant="secondary" className={s.pushRight} onClick={() => setDlg({ k: "reverse", id: i.id, paymentId: p.id })}>Reverse</Button> : null}
-                  </li>
-                );
-              })}
-            </ul>
-          ) : <p className={s.mutedLine}>{paymentsEmptyText({ loaded: true, status: i.status, amountPaid: i.amountPaid })}</p>}
-          {i.credited > 0 ? <p className={s.mutedLine}>Credits applied {pounds(i.credited)}, balance due {pounds(i.balance)}.</p> : null}
-          {payments.length ? <p className={s.mutedLine}>Received so far {pounds(netPaid(payments))}{i.balance > 0 ? `, balance due ${pounds(i.balance)}` : ""}.</p> : null}
-        </section>
-      ) : null}
-
-      {credit > 0 ? (
-        <section aria-label="Customer credit" className={s.callout}>
-          <p><strong>Customer credit {pounds(credit)}</strong> on {i.reference}: paid or credited beyond the invoice. It stays on the account until it is refunded or applied to another invoice.</p>
-          <div className={s.calloutActions}>
-            <Button size="sm" variant="secondary" onClick={() => preview("The credit would be applied to another invoice.")}>Apply to another invoice</Button>
-            {isAdmin ? <Button size="sm" variant="secondary" onClick={() => preview(`A refund of ${pounds(credit)} would be recorded. No refund was made.`)}>Refund</Button> : null}
-          </div>
-        </section>
-      ) : null}
-
-      <section aria-label="Delivery notes" className={s.stack}>
-        <div className={s.secHead}><h3 className={s.secTitle}>Delivery notes</h3></div>
-        {i.deliveryNotes?.length ? (
-          <ul className={s.list} aria-label="Delivery notes on this invoice">
-            {i.deliveryNotes.map((n) => <li key={n.ref} className={s.listItem}><Mono>{n.ref}</Mono><span className={tabularNumbers}>{fmtDate(n.date)}</span><StatusBadge tone="info">{n.status}</StatusBadge><a className={s.pushRight} href="#preview-only" onClick={(e) => { e.preventDefault(); preview(`${n.ref} would open for printing.`); }}>Open / print</a></li>)}
-          </ul>
-        ) : <p className={s.mutedLine}>No delivery notes are linked to this invoice yet.</p>}
-      </section>
-
-      {hasCreditNotes ? (
-        <section aria-label="Credit notes" className={s.stack}>
-          <div className={s.secHead}><h3 className={s.secTitle}>Credit notes</h3><Button size="sm" variant="secondary" onClick={() => preview("The credit note form would open.")}>New credit note</Button></div>
-          {i.creditNotes?.length ? (
-            <ul className={s.list} aria-label="Credit notes for this invoice">
-              {i.creditNotes.map((c) => (
-                <li key={c.ref ?? "draft"} className={s.listItem} data-testid="credit-note-row">
-                  <Mono>{c.ref ?? "Draft"}</Mono><span className={tabularNumbers}>{fmtDate(c.date)}</span><span className={cx(s.payAmt, tabularNumbers)}>{pounds(c.total)}</span>
-                  <span className={s.factMuted}>{c.status === "draft" ? "Not issued" : `${pounds(c.allocated)} applied to ${i.reference}, ${pounds(fromPence(toPence(c.total) - toPence(c.allocated)))} left`}</span>
-                  {c.status === "issued" ? <Button size="sm" variant="secondary" className={s.pushRight} onClick={() => preview(`The PDF for ${c.ref} is not generated.`)}>Download PDF</Button> : null}
-                </li>
+        {i.lines.length ? (
+          <ScrollTable label="Invoice lines" dense>
+            <thead><tr><th>Description</th><th className={s.right}>Qty</th><th className={s.right}>Unit Price</th><th className={s.right}>Total</th></tr></thead>
+            <tbody>
+              {i.lines.map((l, n) => (
+                <tr key={n}><td className={s.preline}>{l.description}</td><td className={cx(s.right, tabularNumbers)}>{l.quantity}</td><td className={cx(s.right, tabularNumbers)}>{pounds(l.unitPrice)}</td><td className={cx(s.right, tabularNumbers)}>{pounds(documentTotals([{ quantity: l.quantity, unitPrice: l.unitPrice, vatPct: 0 }]).subtotal)}</td></tr>
               ))}
-            </ul>
-          ) : <p className={s.mutedLine}>No credit notes against this invoice.</p>}
-        </section>
-      ) : null}
+            </tbody>
+          </ScrollTable>
+        ) : <p className={typeScale.secondary}>No line items recorded for this invoice.</p>}
 
-      {i.status === "unverified" ? (
-        <div className={s.callout} role="status">
-          <p>Imported without payment details. Check your records: record each payment you find, then confirm the payments are complete (with none recorded, that it is still owed in full). Recording a payment does not settle that by itself. Until you confirm, it isn&apos;t counted as money owed or chased.</p>
-          <div className={s.calloutActions}>
-            {isAdmin ? <Button size="sm" variant="secondary" onClick={() => setDlg({ k: "confirmComplete", id: i.id })}>Confirm Still Owed</Button> : null}
-            <Button size="sm" variant="primary" onClick={() => setDlg({ k: "pay", id: i.id })}>Record payment</Button>
-          </div>
-        </div>
-      ) : null}
+        <TotalsBlock i={i} totals={totals} problem={problem} />
 
-      <details className={s.activity}>
-        <summary>Activity</summary>
-        <ul className={s.activityList}>
-          <li><span className={tabularNumbers}>{fmtDate(i.createdAt)}</span> Sam Okoro created this invoice.</li>
-          {!draft && i.sentAt ? <li><span className={tabularNumbers}>{fmtDate(i.sentAt)}</span> Sam Okoro recorded it as sent.</li> : null}
-          {payments.length ? <li><span className={tabularNumbers}>{fmtDate(payments[payments.length - 1].paidOn)}</span> A payment of {pounds(Math.abs(payments[payments.length - 1].amount))} was {payments[payments.length - 1].reversesPaymentId ? "reversed" : "recorded"}.</li> : null}
-        </ul>
-      </details>
+        {problem ? <Callout tone="error" lead="">{problem}</Callout> : null}
+
+        {!draft ? (
+          <Panel title="Payments" headingLevel={3} variant="flat" actions={canPay ? <Button size="sm" variant="primary" onClick={() => setDlg({ k: "pay", id: i.id })}>Record payment</Button> : undefined}>
+            {live.length ? (
+              <List plain dense label="Payment history">
+                {live.map((p) => {
+                  const reversal = payments.find((o) => o.reversesPaymentId === p.id);
+                  return (
+                    <ListRow key={p.id} data-testid="payment-row" className={s.flushRow}
+                      title={<span className={cx(s.payCells, reversal && s.struck)}><span className={tabularNumbers}>{p.paidOn ? fmtDate(p.paidOn) : "Date not recorded"}</span><span className={tabularNumbers}>{pounds(p.amount)}</span></span>}
+                      meta={[p.method || (p.source === "legacy" ? "Carried over" : ""), p.reference, p.by].filter(Boolean).join(" · ")}
+                      trailing={isAdmin && !reversal && p.source !== "legacy" ? <Button size="sm" variant="secondary" onClick={() => setDlg({ k: "reverse", id: i.id, paymentId: p.id })}>Reverse</Button> : undefined}>
+                      {reversal ? <span className={cx(typeScale.caption, s.reversed)}>Reversed {fmtDate(reversal.paidOn)}: {reversal.voidReason}</span> : null}
+                    </ListRow>
+                  );
+                })}
+              </List>
+            ) : <p className={typeScale.secondary}>{paymentsEmptyText({ loaded: true, status: i.status, amountPaid: i.amountPaid })}</p>}
+            {i.credited > 0 ? <p className={cx(typeScale.secondary, s.panelNote)}>Credits applied {pounds(i.credited)}, balance due {pounds(i.balance)}.</p> : null}
+            {payments.length ? <p className={cx(typeScale.secondary, s.panelNote)}>Received so far {pounds(netPaid(payments))}{i.balance > 0 ? `, balance due ${pounds(i.balance)}` : ""}.</p> : null}
+          </Panel>
+        ) : null}
+
+        {credit > 0 ? (
+          <Callout tone="warn" lead="" action={
+            <span className={s.btnRow}>
+              <Button size="sm" variant="secondary" onClick={() => preview("The credit would be applied to another invoice.")}>Apply to another invoice</Button>
+              {isAdmin ? <Button size="sm" variant="secondary" onClick={() => preview(`A refund of ${pounds(credit)} would be recorded. No refund was made.`)}>Refund</Button> : null}
+            </span>
+          }><strong>Customer credit {pounds(credit)}</strong> on {i.reference}: paid or credited beyond the invoice. It stays on the account until it is refunded or applied to another invoice.</Callout>
+        ) : null}
+
+        <Panel title="Delivery notes" headingLevel={3} variant="flat">
+          {i.deliveryNotes?.length ? (
+            <List plain dense label="Delivery notes on this invoice">
+              {i.deliveryNotes.map((n) => (
+                <ListRow key={n.ref} className={s.flushRow} title={<Ref>{n.ref}</Ref>} meta={<span className={tabularNumbers}>{fmtDate(n.date)}</span>}
+                  trailing={<><StatusBadge tone="info">{n.status}</StatusBadge><Button size="sm" variant="quiet" onClick={() => preview(`${n.ref} would open for printing.`)}>Open / print</Button></>} />
+              ))}
+            </List>
+          ) : <p className={typeScale.secondary}>No delivery notes are linked to this invoice yet.</p>}
+        </Panel>
+
+        {hasCreditNotes ? (
+          <Panel title="Credit notes" headingLevel={3} variant="flat" actions={<Button size="sm" variant="secondary" onClick={() => preview("The credit note form would open.")}>New credit note</Button>}>
+            {i.creditNotes?.length ? (
+              <List plain dense label="Credit notes for this invoice">
+                {i.creditNotes.map((c) => (
+                  <ListRow key={c.ref ?? "draft"} data-testid="credit-note-row" className={s.flushRow} title={<><Ref>{c.ref ?? "Draft"}</Ref> <span className={cx(typeScale.name, tabularNumbers)}>{pounds(c.total)}</span></>}
+                    meta={<><span className={tabularNumbers}>{fmtDate(c.date)}</span> · {c.status === "draft" ? "Not issued" : `${pounds(c.allocated)} applied to ${i.reference}, ${pounds(fromPence(toPence(c.total) - toPence(c.allocated)))} left`}</>}
+                    trailing={c.status === "issued" ? <Button size="sm" variant="secondary" onClick={() => preview(`The PDF for ${c.ref} is not generated.`)}>Download PDF</Button> : undefined} />
+                ))}
+              </List>
+            ) : <p className={typeScale.secondary}>No credit notes against this invoice.</p>}
+          </Panel>
+        ) : null}
+
+        {i.status === "unverified" ? (
+          <Callout tone="warn" lead="" role="status" action={
+            <span className={s.btnRow}>
+              {isAdmin ? <Button size="sm" variant="secondary" onClick={() => setDlg({ k: "confirmComplete", id: i.id })}>Confirm Still Owed</Button> : null}
+              <Button size="sm" variant="primary" onClick={() => setDlg({ k: "pay", id: i.id })}>Record payment</Button>
+            </span>
+          }>Imported without payment details. Check your records: record each payment you find, then confirm the payments are complete (with none recorded, that it is still owed in full). Recording a payment does not settle that by itself. Until you confirm, it isn&apos;t counted as money owed or chased.</Callout>
+        ) : null}
+
+        <Disclosure summary="Activity">
+          <ul className={s.activityList}>
+            <li><span className={tabularNumbers}>{fmtDate(i.createdAt)}</span> Fiona MacLeod created this invoice.</li>
+            {!draft && i.sentAt ? <li><span className={tabularNumbers}>{fmtDate(i.sentAt)}</span> Fiona MacLeod recorded it as sent.</li> : null}
+            {payments.length ? <li><span className={tabularNumbers}>{fmtDate(payments[payments.length - 1].paidOn)}</span> A payment of {pounds(Math.abs(payments[payments.length - 1].amount))} was {payments[payments.length - 1].reversesPaymentId ? "reversed" : "recorded"}.</li> : null}
+          </ul>
+        </Disclosure>
+      </div>
     </Sheet>
   );
 }
@@ -1129,8 +1163,8 @@ function PaymentSheet({ i, onClose, preview }: { i: InvoiceRow; onClose: () => v
           <Field label="Method"><Select value={method} onChange={(e) => setMethod(e.target.value)}>{PAYMENT_METHODS.map((m) => <option key={m} value={m}>{m === "BACS" ? "BACS" : m[0].toUpperCase() + m.slice(1)}</option>)}</Select></Field>
           <Field label="Reference" optional><Input maxLength={100} placeholder="Cheque no. or bank reference" value={ref} onChange={(e) => setRef(e.target.value)} /></Field>
         </div>
-        {error ? <p role="alert" className={s.blockMsg}>{error}</p> : null}
-        <p className={s.sheetNote}>Preview only. No payment is recorded and no accounting system is contacted.</p>
+        {error ? <Callout tone="error" lead="">{error}</Callout> : null}
+        <p className={typeScale.caption}>Preview only. No payment is recorded and no accounting system is contacted.</p>
       </form>
     </Sheet>
   );
@@ -1148,21 +1182,20 @@ function FromNotesSheet({ onClose, preview }: { onClose: () => void; preview: (d
         <Button variant="secondary" onClick={onClose}>Cancel</Button>
         <Button variant="primary" disabled={!chosen.length} onClick={() => preview(`A draft invoice would be made from ${chosen.length} delivery note${chosen.length === 1 ? "" : "s"}.`)}>{`Make draft invoice${chosen.length > 1 ? ` from ${chosen.length} notes` : ""}`}</Button>
       </>}>
-      <ul className={s.list} aria-label="Delivery notes to invoice">
-        {FROM_NOTES.map((n) => (
-          <li key={n.id} className={s.listItem}>
-            <label className={s.pickRow}>
-              <Checkbox aria-label={`Invoice ${n.ref}`} checked={chosen.includes(n.id)} onChange={(e) => setChosen((c) => (e.target.checked ? [...c, n.id] : c.filter((x) => x !== n.id)))} />
-              <Mono>{n.ref}</Mono><span>{n.customer}</span><span className={cx(s.pushRight, s.factMuted)}>{fmtDate(n.date)}, {n.status}</span>
-            </label>
-          </li>
-        ))}
-      </ul>
-      <div className={s.formGrid}>
-        <Field label="Invoice date"><Input type="date" value={date} onChange={(e) => { setDate(e.target.value); setDue(addDays(e.target.value, 30)); }} /></Field>
-        <Field label="Due date"><Input type="date" value={due} onChange={(e) => setDue(e.target.value)} /></Field>
+      <div className={s.sheetStack}>
+        <List label="Delivery notes to invoice">
+          {FROM_NOTES.map((n) => (
+            <ListRow key={n.id} leading={<Checkbox id={`fn-${n.id}`} aria-label={`Invoice ${n.ref}`} checked={chosen.includes(n.id)} onChange={(e) => setChosen((c) => (e.target.checked ? [...c, n.id] : c.filter((x) => x !== n.id)))} />}
+              title={<label htmlFor={`fn-${n.id}`} className={s.pickLabel}><Ref>{n.ref}</Ref> <span className={typeScale.body}>{n.customer}</span></label>}
+              trailing={<span className={cx(typeScale.secondary, tabularNumbers)}>{fmtDate(n.date)}, {n.status}</span>} />
+          ))}
+        </List>
+        <div className={s.formGrid}>
+          <Field label="Invoice date"><Input type="date" value={date} onChange={(e) => { setDate(e.target.value); setDue(addDays(e.target.value, 30)); }} /></Field>
+          <Field label="Due date"><Input type="date" value={due} onChange={(e) => setDue(e.target.value)} /></Field>
+        </div>
+        <p className={typeScale.caption}>Preview only. Nothing is read from your delivery notes and no invoice is made.</p>
       </div>
-      <p className={s.sheetNote}>Preview only. Nothing is read from your delivery notes and no invoice is made.</p>
     </Sheet>
   );
 }
@@ -1184,19 +1217,25 @@ function NewInvoiceSheet({ onClose, preview }: { onClose: () => void; preview: (
   const [vatChoice, setVatChoice] = useState<VatChoice>("20");
   const [extra, setExtra] = useState<ExtraLine[]>([]);
   const [tried, setTried] = useState(false);
+  const [signal, setSignal] = useState(0);
   useEffect(() => { if (!dueTouched) setDue(addDays(date || TODAY, termsDays(terms))); }, [date, terms, dueTouched]);
   const totals = documentTotals([
     { quantity: Number(qty) || 0, unitPrice: Number(unit) || 0, ...fromVatChoice(vatChoice) },
     ...extra.map((l) => ({ quantity: Number(l.qty) || 0, unitPrice: Number(l.unit) || 0, ...fromVatChoice(l.vat) })),
   ], Number(carriage) || 0, { vatEnabled: vatOn, carriageVat: true, standardRate: 20 });
-  const submit = () => { setTried(true); if (!customer || !unit) return; preview(`A draft invoice for ${customer} totalling ${pounds(totals.total)} would be saved. No invoice was created.`); };
+  const problems = [
+    ...(customer ? [] : [{ fieldId: "inv-customer", message: "Choose a customer.", label: "Customer" }]),
+    ...(unit ? [] : [{ fieldId: "inv-unit", message: "Enter a unit price.", label: "Unit price (ex VAT)" }]),
+  ];
+  const submit = () => { setTried(true); if (problems.length) { setSignal((n) => n + 1); return; } preview(`A draft invoice for ${customer} totalling ${pounds(totals.total)} would be saved. No invoice was created.`); };
   const setX = (n: number, patch: Partial<ExtraLine>) => setExtra((rows) => rows.map((r, k) => (k === n ? { ...r, ...patch } : r)));
   return (
     <Sheet open size="lg" title="Create Invoice" description="Enter the invoice details. With VAT on, the line is taxed at its rate and carriage at the standard rate." onClose={onClose} testId="dlg-new" closeButton={false}
       footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button variant="primary" onClick={submit}>Save Invoice</Button></>}>
-      <form className={s.form} onSubmit={(e) => { e.preventDefault(); submit(); }}>
+      <form className={s.form} noValidate onSubmit={(e) => { e.preventDefault(); submit(); }}>
+        {tried && problems.length ? <ErrorSummary errors={problems} focusSignal={signal} headingLevel={3} /> : null}
         <div className={s.formGrid}>
-          <Field label="Customer" required error={tried && !customer ? "Choose a customer." : undefined}>
+          <Field id="inv-customer" label="Customer" required error={tried && !customer ? "Choose a customer." : undefined}>
             <Select value={customer} onChange={(e) => setCustomer(e.target.value)}><option value="">Select customer...</option>{Object.keys(CUSTOMER_ADDRESS).map((c) => <option key={c} value={c}>{c}</option>)}</Select>
           </Field>
           <Field label="Job" optional hint="Fills the customer, quote and PO."><Select defaultValue=""><option value="">Job (optional): fills the customer, quote and PO</option><option>JOB-2211 Manifold blocks</option><option>JOB-2208 Brake brackets</option></Select></Field>
@@ -1210,7 +1249,7 @@ function NewInvoiceSheet({ onClose, preview }: { onClose: () => void; preview: (
         <Field label="Description" required><Textarea maxLength={500} placeholder="Description" /></Field>
         <div className={s.formGrid3}>
           <Field label="Quantity"><Input type="number" step="0.001" min="0" inputMode="decimal" required value={qty} onChange={(e) => setQty(e.target.value)} /></Field>
-          <Field label="Unit price (ex VAT)" required error={tried && !unit ? "Enter a unit price." : undefined}><Input type="number" step="0.01" min="0" inputMode="decimal" placeholder="0.00" value={unit} onChange={(e) => setUnit(e.target.value)} /></Field>
+          <Field id="inv-unit" label="Unit price (ex VAT)" required error={tried && !unit ? "Enter a unit price." : undefined}><Input type="number" step="0.01" min="0" inputMode="decimal" placeholder="0.00" value={unit} onChange={(e) => setUnit(e.target.value)} /></Field>
           <Field label="Carriage (ex VAT)" optional><Input type="number" step="0.01" min="0" inputMode="decimal" placeholder="0.00" value={carriage} onChange={(e) => setCarriage(e.target.value)} /></Field>
         </div>
         {extra.map((l, n) => (
@@ -1228,14 +1267,14 @@ function NewInvoiceSheet({ onClose, preview }: { onClose: () => void; preview: (
             <Switch label="Add VAT" checked={vatOn} onChange={setVatOn} />
             <Field label={extra.length ? "First line VAT" : "Line VAT"}><Select value={vatChoice} disabled={!vatOn} onChange={(e) => setVatChoice(e.target.value as VatChoice)}>{VAT_CHOICES.map((v) => <option key={v} value={v}>{VAT_CHOICE_LABELS[v]}</option>)}</Select></Field>
           </div>
-          <dl className={s.totals} data-testid="new-totals">
+          <dl className={cx(s.totals, typeScale.body)} data-testid="new-totals">
             <div><dt>Subtotal</dt><dd className={tabularNumbers}>{pounds(totals.subtotal)}</dd></div>
             <div><dt>Carriage</dt><dd className={tabularNumbers}>{pounds(totals.carriage)}</dd></div>
             {vatOn ? (totals.vatBreakdown.filter((r) => !r.exempt).length ? totals.vatBreakdown.filter((r) => !r.exempt).map((r) => <div key={vatRowLabel(r)}><dt>{vatRowLabel(r)}</dt><dd className={tabularNumbers}>{pounds(r.vat)}</dd></div>) : <div><dt>VAT</dt><dd className={tabularNumbers}>{pounds(0)}</dd></div>) : <div><dt>No VAT</dt><dd>-</dd></div>}
             <div className={s.totalRow}><dt>Grand total</dt><dd className={tabularNumbers}>{pounds(totals.total)}</dd></div>
           </dl>
         </div>
-        <p className={s.sheetNote}>Preview only. Saving does not create an invoice.</p>
+        <p className={typeScale.caption}>Preview only. Saving does not create an invoice.</p>
       </form>
     </Sheet>
   );
