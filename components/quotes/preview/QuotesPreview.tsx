@@ -15,7 +15,7 @@
  * at a 48 px hit area.
  */
 
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Button, Callout, Checkbox, ChipGroup, Dialog, EmptyState, FailedState, Field, FilterChip, Input, LoadingState, Menu, PageHeader, Popover, PreviewBar, ScrollTable, SegmentedControl, Select,
   SelectionBar, Sheet, StatTile, StatTiles, StatusBadge, Switch, Textarea, ToastProvider, cx, premiumTokens, srOnly, tabularNumbers, typeScale, useToast,
@@ -302,14 +302,6 @@ const SCREENS: Array<{ v: Screen | ListFilterKey; label: string }> = [
   { v: "expired", label: "Dashboard link: Expired" }, { v: "no-decision", label: "Dashboard link: No decision" },
 ];
 
-function useMedia(query: string, fallback: boolean): boolean {
-  return useSyncExternalStore(
-    (cb) => { const m = window.matchMedia(query); m.addEventListener("change", cb); return () => m.removeEventListener("change", cb); },
-    () => window.matchMedia(query).matches,
-    () => fallback,
-  );
-}
-
 function StatusPill({ status, mode = "pill" }: { status: QuoteStatus; mode?: StatusMode }) {
   return <StatusBadge mode={mode} tone={STATUS_TONE[status]} plain={status === "superseded"} className={status === "superseded" ? s.superseded : undefined}>{STATUS_LABEL[status]}</StatusBadge>;
 }
@@ -350,15 +342,14 @@ function Inner() {
   const [viewId, setViewId] = useState<string | null>(null);
   const setDlg = useCallback((d: Dlg | null) => { setDlgState(d); if (d) toast.clear(); if (d?.k === "builder") setViewId(null); }, [toast]);
   const [reloadTimer, setReloadTimer] = useState<number | null>(null);
-  const wide = useMedia("(min-width: 1024px)", true);
-  const notPhone = useMedia("(min-width: 768px)", true);
 
   useEffect(() => {
     try { const v = window.localStorage.getItem(VIEW_KEY); if (v === "cards" || v === "list" || v === "table") setViewState(v); } catch { /* storage unavailable: Cards stays */ }
   }, []);
   useEffect(() => () => { if (reloadTimer) window.clearTimeout(reloadTimer); }, [reloadTimer]);
   const setView = (v: ViewMode) => { setViewState(v); try { window.localStorage.setItem(VIEW_KEY, v); } catch { /* ignore */ } };
-  const shownView: ViewMode = wide ? view : "cards";
+  /* v4: Table and List are stacked records at 1024 px and under (the shared ScrollTable reflows them), so every view works at every width. */
+  const shownView: ViewMode = view;
 
   const rows = useMemo(() => quoteRows(), []);
   const byId = useMemo(() => new Map(rows.map((q) => [q.id, q])), [rows]);
@@ -371,6 +362,9 @@ function Inner() {
   const legend = useMemo(() => legendOf(data, filters), [data, filters]);
   const scopeTotal = STATUS_ORDER.reduce((n, k) => n + legend.counts[k], 0);
   const inView = (c: ColumnKey) => !hidden.includes(c);
+  /* v4: the stacked record (1024 px and under) shows Customer, Status, Value, Valid until, then Date and Description under the quote ref; the indexes follow the visible columns. */
+  const tableCols = COLUMNS.filter((c) => inView(c.key)).map((c) => c.key);
+  const stackPriority = (["customer", "status", "value", "valid", "date", "description"] as ColumnKey[]).filter((k) => tableCols.includes(k)).map((k) => tableCols.indexOf(k));
   const nSel = selected.length;
   const preview = useCallback((detail: string) => toast.show({ title: "Preview only", detail: `${detail} Nothing was saved.` }), [toast]);
 
@@ -459,13 +453,11 @@ function Inner() {
                 <p className={typeScale.caption}>Changes apply to everyone in this company. In this preview they change this screen only.</p>
               </div>
             </Popover>
-            {notPhone ? (
-              <SegmentedControl label="View" value={shownView} onChange={setView} options={[
-                { value: "cards", label: "Cards", testId: "view-cards-btn" },
-                { value: "list", label: "List", disabled: !wide, disabledReason: "Needs a screen wider than 1024px", testId: "view-list-btn" },
-                { value: "table", label: "Table", disabled: !wide, disabledReason: "Needs a screen wider than 1024px", testId: "view-table-btn" },
-              ]} />
-            ) : null}
+            <SegmentedControl label="View" value={shownView} onChange={setView} options={[
+              { value: "cards", label: "Cards", testId: "view-cards-btn" },
+              { value: "list", label: "List", testId: "view-list-btn" },
+              { value: "table", label: "Table", testId: "view-table-btn" },
+            ]} />
             <ExportMenu nSel={nSel} total={visible.length} onExport={exportAs} testId="export-trigger" />
             <Button variant="primary" data-testid="new-quote" onClick={() => setDlg({ k: "builder", mode: "new" })}>New quote</Button>
           </>
@@ -519,7 +511,7 @@ function Inner() {
             <div className={s.fRow}>
               <div className={s.fGroup}>
                 <span className={typeScale.label} aria-hidden="true">Show</span>
-                <SegmentedControl label="Show" value={filters.phase} disabled={!loaded && screen !== "empty"} onChange={(v) => setFilters((f) => ({ ...f, phase: v }))} options={[
+                <SegmentedControl label="Show" collapseToSelect value={filters.phase} disabled={!loaded && screen !== "empty"} onChange={(v) => setFilters((f) => ({ ...f, phase: v }))} options={[
                   { value: "open", label: `Open (${n(counts.open)})`, testId: "show-open" }, { value: "done", label: `Done (${n(counts.done)})`, testId: "show-done" },
                   { value: "archived", label: `Archived (${n(counts.archived)})`, testId: "show-archived" }, { value: "all", label: "All", testId: "show-all" },
                 ]} />
@@ -550,6 +542,7 @@ function Inner() {
           </section>
 
           <SelectionBar count={nSel} filteredTotal={visible.length} noun="quote" idleNote={idleNote}
+            compact={{ primary: <ExportMenu nSel={nSel} total={visible.length} onExport={exportAs} testId="export-selected-compact" size="sm" /> }}
             statusText={({ count, filteredTotal }) => `${count} selected of ${recordWord(filteredTotal)}`}
             onSelectAll={() => setSelected(visible.map((q) => q.ref))} onClear={() => setSelected([])}>
             {nSel > 0 ? <ExportMenu nSel={nSel} total={visible.length} onExport={exportAs} testId="export-selected-trigger" size="sm" /> : null}
@@ -576,12 +569,12 @@ function Inner() {
                 ))}
               </div>
             ) : (
-              <ScrollTable label="Quotes" pinLast>
+              <ScrollTable label="Quotes" pinLast primary={0} columnPriority={stackPriority}>
                 <thead>
                   <tr>
                     <th className={s.thFirst}>
                       <span className={s.firstCell}>
-                        <Checkbox aria-label={`Select all ${visible.length} filtered quotes`} checked={visible.length > 0 && visible.every((q) => selected.includes(q.ref))} onChange={(e) => setSelected(e.target.checked ? visible.map((q) => q.ref) : [])} />
+                        <span className={s.selectAll}><Checkbox aria-label={`Select all ${visible.length} filtered quotes`} checked={visible.length > 0 && visible.every((q) => selected.includes(q.ref))} onChange={(e) => setSelected(e.target.checked ? visible.map((q) => q.ref) : [])} /></span>
                         Quote
                       </span>
                     </th>
@@ -806,7 +799,7 @@ function ViewSheet({ q, versions, replacedBy, onClose, setDlg, setViewId, previe
         {q.lines.map((l, i) => (
           <div key={i} className={cx(s.lineRow, l.declined && s.lineOff)} data-testid="quote-line">
             <span><span className={l.declined ? s.struck : undefined}>{l.description}</span>{lineReference(l) ? <small className={s.lineRef}>{lineReference(l)}</small> : null}{l.declined ? <em className={s.notOrdered}>Not ordered</em> : null}</span>
-            <span className={cx(s.right, tabularNumbers)}>{l.quantity}</span><span className={cx(s.right, tabularNumbers)}>{gbp(l.unitPrice)}</span><span className={cx(s.right, tabularNumbers)}>{gbp(totalsOf([l], false).subtotal)}</span>
+            <span data-l="Qty" className={cx(s.right, tabularNumbers)}>{l.quantity}</span><span data-l="Unit price" className={cx(s.right, tabularNumbers)}>{gbp(l.unitPrice)}</span><span data-l="Total" className={cx(s.right, tabularNumbers)}>{gbp(totalsOf([l], false).subtotal)}</span>
           </div>
         ))}
       </div>
@@ -849,10 +842,10 @@ function BuilderSheet({ mode, q, onClose, preview }: { mode: "new" | "edit" | "c
           <div className={cx(s.bRow, s.bHead)}><span>Description</span><span>Qty</span><span>Unit price</span><span>VAT</span><span className={s.right}>Line total</span><span /></div>
           {lines.map((l, i) => (
             <div key={i} className={s.bRow}>
-              <Input aria-label="Description" maxLength={500} value={l.description} onChange={(e) => setLine(i, { description: e.target.value })} />
-              <Input aria-label="Quantity" type="number" min="0" step="0.001" inputMode="decimal" value={l.qty} onChange={(e) => setLine(i, { qty: Number(e.target.value) })} />
-              <Input aria-label="Unit price" type="number" min="0" step="0.01" inputMode="decimal" value={l.unit} onChange={(e) => setLine(i, { unit: Number(e.target.value) })} />
-              <Select aria-label="VAT rate" disabled={!vatOn} value={l.vat} onChange={(e) => setLine(i, { vat: e.target.value as BuilderLine["vat"] })}><option value="20">20%</option><option value="5">5%</option><option value="0">0%</option><option value="exempt">Exempt</option></Select>
+              <div className={s.bCell}><span className={s.bCellLabel} aria-hidden="true">Description</span><Input aria-label="Description" maxLength={500} value={l.description} onChange={(e) => setLine(i, { description: e.target.value })} /></div>
+              <div className={s.bCell}><span className={s.bCellLabel} aria-hidden="true">Qty</span><Input aria-label="Quantity" type="number" min="0" step="0.001" inputMode="decimal" value={l.qty} onChange={(e) => setLine(i, { qty: Number(e.target.value) })} /></div>
+              <div className={s.bCell}><span className={s.bCellLabel} aria-hidden="true">Unit price</span><Input aria-label="Unit price" type="number" min="0" step="0.01" inputMode="decimal" value={l.unit} onChange={(e) => setLine(i, { unit: Number(e.target.value) })} /></div>
+              <div className={s.bCell}><span className={s.bCellLabel} aria-hidden="true">VAT</span><Select aria-label="VAT rate" disabled={!vatOn} value={l.vat} onChange={(e) => setLine(i, { vat: e.target.value as BuilderLine["vat"] })}><option value="20">20%</option><option value="5">5%</option><option value="0">0%</option><option value="exempt">Exempt</option></Select></div>
               <span className={cx(s.bTotal, tabularNumbers)}>{gbp(Math.round(l.qty * l.unit * 100) / 100)}</span>
               <Button size="sm" variant="quiet" aria-label="Remove line" onClick={() => setLines((rows) => rows.filter((_, j) => j !== i))}>Remove</Button>
             </div>
