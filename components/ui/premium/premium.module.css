@@ -67,11 +67,12 @@
   --ui-sheet-lg: 860px;
   --ui-toast-top: 76px;
   --ui-toast-edge: 16px;
-  /* fonts, defined once. Swap the whole set by changing the default here, or for one screen by setting --ui-font-override (and optionally --ui-font-heading-override, --ui-font-numeric-override) on any ancestor.
-     Default is unchanged: Archivo (loaded by app/layout.tsx from @fontsource, same origin) with tabular figures for numbers. */
-  --ui-font: var(--ui-font-override, var(--font-archivo, "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif));
+  /* fonts, defined once. One family for the whole UI: IBM Plex Sans (headings and body), weights 400, 500 and 600 only (static files, so no 650 or 700 snap), loaded by ./fonts.ts from @fontsource (bundled, same origin).
+     Swap the set by changing the default here, or for one screen by setting --ui-font-override (and optionally --ui-font-heading-override, --ui-font-numeric-override) on any ancestor. --ui-font-mono is for codes and references only. */
+  --ui-font: var(--ui-font-override, "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif);
   --ui-font-heading: var(--ui-font-heading-override, var(--ui-font));
   --ui-font-numeric: var(--ui-font-numeric-override, var(--ui-font));
+  --ui-font-mono: var(--ui-font-mono-override, "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace);
   --ui-numeric-features: "tnum" 1, "lnum" 1;
   /* elevation: flat (hairline only), raised (card), overlay (menu, popover, toast), modal (dialog, sheet). Soft shadows plus a 1 px inner highlight. */
   --ui-elev-flat: 0 0 0 1px var(--ui-line);
@@ -79,7 +80,7 @@
   --ui-elev-overlay: 0 0 0 1px rgba(14, 23, 38, 0.1), 0 2px 6px rgba(14, 23, 38, 0.08), 0 16px 32px -14px rgba(14, 23, 38, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.9);
   --ui-elev-modal: 0 0 0 1px rgba(14, 23, 38, 0.08), 0 4px 10px rgba(14, 23, 38, 0.06), 0 28px 64px -24px rgba(14, 23, 38, 0.46), inset 0 1px 0 rgba(255, 255, 255, 0.9);
   /* type scale: size, line height, weight (and tracking). Weight contrast: 600 names and titles, 500 labels and captions, 400 body and secondary text. 12 px only for table headers, captions and badges. */
-  --ui-fs-page: 26px; --ui-lh-page: 32px; --ui-fw-page: 650; --ui-ls-page: -0.02em;
+  --ui-fs-page: 26px; --ui-lh-page: 32px; --ui-fw-page: 600; --ui-ls-page: -0.018em;
   --ui-fs-section: 18px; --ui-lh-section: 24px; --ui-fw-section: 600; --ui-ls-section: -0.01em;
   --ui-fs-card: 15px; --ui-lh-card: 22px; --ui-fw-card: 600; --ui-ls-card: -0.004em;
   --ui-fs-label: 13px; --ui-lh-label: 18px; --ui-fw-label: 600; --ui-ls-label: 0.002em;
@@ -102,7 +103,7 @@
 .tokens :where(button) { cursor: pointer; }
 .tokens :focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
 
-/* Archivo with tabular figures: use on every number that sits in a column or a counter. */
+/* Tabular figures (IBM Plex Sans digits are tabular by default; the feature setting keeps it true for any swapped font): use on every number that sits in a column or a counter. */
 .num { font-family: var(--ui-font-numeric); font-variant-numeric: tabular-nums lining-nums; font-feature-settings: var(--ui-numeric-features); }
 .srOnly { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
@@ -116,6 +117,7 @@
 .tSecondary { font-size: var(--ui-fs-secondary); line-height: var(--ui-lh-secondary); font-weight: var(--ui-fw-secondary); color: var(--ui-muted); }
 .tCaption { font-size: var(--ui-fs-caption); line-height: var(--ui-lh-caption); font-weight: var(--ui-fw-caption); letter-spacing: var(--ui-ls-caption); color: var(--ui-muted); }
 .tTableHead { font-size: var(--ui-fs-thead); line-height: var(--ui-lh-thead); font-weight: var(--ui-fw-thead); letter-spacing: var(--ui-ls-thead); text-transform: uppercase; color: var(--ui-ink-2); }
+.tMono { font-family: var(--ui-font-mono); font-size: var(--ui-fs-secondary); line-height: var(--ui-lh-secondary); font-weight: 400; }
 .tNumeral { font-family: var(--ui-font-numeric); font-size: var(--ui-fs-numeral); line-height: var(--ui-lh-numeral); font-weight: var(--ui-fw-numeral); letter-spacing: var(--ui-ls-numeral); font-variant-numeric: tabular-nums lining-nums; font-feature-settings: var(--ui-numeric-features); }
 
 /* ---------- button ---------- */

@@ -11,7 +11,7 @@ import {
   ScrollTable, SegmentedControl, Select, SelectionBar, Sheet, StatTile, StatTiles, StatusBadge, Switch, Textarea,
   TOKEN_NAMES, calloutLead, cx, dataAttributes, fieldDescribedBy, nextMenuIndex, nextSegmentIndex, pickFirstEnabled, pickInvalidTarget, placeLayer, rangeError, rowClickIsForRow, scrollEdges, selectionControls,
   tabStopIndex, toastRegionStyle,
-  PageHeader, PreviewBar, StackedRows, TabPanel, Tabs, isTabKey, layerOriginStyle, toneClassKey, typeScale, PREVIEW_LABEL, EXIT_MS,
+  PageHeader, PreviewBar, StackedRows, TabPanel, Tabs, isTabKey, layerOriginStyle, toneClassKey, typeScale, PREVIEW_LABEL, EXIT_MS, UI_FONT_FAMILY, UI_FONT_WEIGHTS,
 } from "@/components/ui/premium";
 
 const dir = path.resolve(__dirname, "../../components/ui/premium");
@@ -165,8 +165,8 @@ describe("stylesheet rules", () => {
     expect(rm).toContain("transition: none !important");
     expect(rm).toContain(".dialog::backdrop");
   });
-  it("uses Archivo with tabular figures", () => {
-    expect(css).toMatch(/--ui-font:[^;]*Archivo/);
+  it("uses IBM Plex Sans with tabular figures", () => {
+    expect(css).toMatch(/--ui-font:[^;]*IBM Plex Sans/);
     expect(css).toContain('"tnum" 1');
   });
   it("the first table column is sticky and its shadow appears only when scrolled", () => {
@@ -181,6 +181,8 @@ describe("stylesheet rules", () => {
       expect(src, f).toMatch(/BOUNDARY/);
       if (f.endsWith(".ts") || f.endsWith(".tsx")) {
         for (const m of src.matchAll(/from "([^"]+)"/g)) expect(m[1].startsWith(".") || ["react", "react-dom"].includes(m[1]), `${f}: ${m[1]}`).toBe(true);
+        // v4: the only side-effect imports allowed are the font files of the two @fontsource packages already in package.json
+        for (const m of src.matchAll(/^import "([^"]+)"/gm)) expect(m[1].startsWith("./") || /^@fontsource\/ibm-plex-(sans|mono)\/latin-\d+\.css$/.test(m[1]), `${f}: ${m[1]}`).toBe(true);
       }
     }
   });
@@ -833,7 +835,7 @@ describe("v4 motion rules (scanned from premium.module.css)", () => {
 describe("v4 type scale", () => {
   const block = css.slice(css.indexOf(".tokens {"), css.indexOf("}", css.indexOf(".tokens {")));
   it("defines the nine styles with size, line height and weight tokens", () => {
-    for (const t of ["--ui-fs-page: 26px", "--ui-lh-page: 32px", "--ui-fw-page: 650", "--ui-fs-section: 18px", "--ui-fw-section: 600", "--ui-fs-card: 15px", "--ui-lh-card: 22px", "--ui-fw-card: 600",
+    for (const t of ["--ui-fs-page: 26px", "--ui-lh-page: 32px", "--ui-fw-page: 600", "--ui-fs-section: 18px", "--ui-fw-section: 600", "--ui-fs-card: 15px", "--ui-lh-card: 22px", "--ui-fw-card: 600",
       "--ui-fs-label: 13px", "--ui-fs-body: 14px", "--ui-lh-body: 20px", "--ui-fw-body: 400", "--ui-fs-secondary: 13px", "--ui-fw-secondary: 400", "--ui-fs-caption: 12px", "--ui-fw-caption: 500",
       "--ui-fs-thead: 12px", "--ui-fw-thead: 600", "--ui-ls-thead: 0.04em", "--ui-fs-numeral: 28px", "--ui-fw-numeral: 600", "--ui-fw-name: 600"]) expect(block, t).toContain(t);
   });
@@ -862,8 +864,8 @@ describe("v4 type scale", () => {
 });
 
 describe("v4 font tokens", () => {
-  it("the family is defined once in the tokens: --ui-font (Archivo by default), --ui-font-heading and --ui-font-numeric follow it, each with an optional override variable", () => {
-    expect(css).toMatch(/--ui-font: var\(--ui-font-override, var\(--font-archivo, "Archivo"/);
+  it("the family is defined once in the tokens: --ui-font (IBM Plex Sans by default), --ui-font-heading and --ui-font-numeric follow it, each with an optional override variable", () => {
+    expect(css).toMatch(/--ui-font: var\(--ui-font-override, "IBM Plex Sans"/);
     expect(css).toContain("--ui-font-heading: var(--ui-font-heading-override, var(--ui-font));");
     expect(css).toContain("--ui-font-numeric: var(--ui-font-numeric-override, var(--ui-font));");
     expect(css).toContain('--ui-numeric-features: "tnum" 1, "lnum" 1;');
@@ -871,7 +873,7 @@ describe("v4 font tokens", () => {
   });
   it("no component names a font family of its own: every font-family comes from a token", () => {
     const fams = rules.split("\n").filter((l) => /font-family:/.test(l) && !/^\s*--ui-font/.test(l));
-    for (const l of fams) expect(l, l.trim().slice(0, 80)).toMatch(/font-family: var\(--ui-font(-heading|-numeric)?\)/);
+    for (const l of fams) expect(l, l.trim().slice(0, 80)).toMatch(/font-family: var\(--ui-font(-heading|-numeric|-mono)?\)/);
     expect(fams.length).toBeGreaterThan(8);
   });
   it("numerals use the numeric font and the shared tabular feature setting; titles use the heading font", () => {
@@ -1036,5 +1038,34 @@ describe("v4 exports and boundaries", () => {
   it("v4 CSS has no gradients, no glass and no global selectors", () => {
     const added = css.slice(css.indexOf("v4 additions (craft pass)"));
     expect(added).not.toMatch(/gradient\(|backdrop-filter|blur\(|:root|:global/);
+  });
+});
+
+describe("v4 font: IBM Plex Sans for the whole set", () => {
+  const fonts = fs.readFileSync(path.join(dir, "fonts.ts"), "utf8");
+  it("loads only the latin 400, 500 and 600 files of IBM Plex Sans (and Plex Mono 400) from @fontsource, and nothing heavier", () => {
+    const imports = [...fonts.matchAll(/^import "([^"]+)"/gm)].map((m) => m[1]);
+    expect(imports).toEqual(["@fontsource/ibm-plex-sans/latin-400.css", "@fontsource/ibm-plex-sans/latin-500.css", "@fontsource/ibm-plex-sans/latin-600.css", "@fontsource/ibm-plex-mono/latin-400.css"]);
+    expect(UI_FONT_FAMILY).toBe("IBM Plex Sans");
+    expect([...UI_FONT_WEIGHTS]).toEqual([400, 500, 600]);
+    const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../../package.json"), "utf8"));
+    expect(pkg.dependencies["@fontsource/ibm-plex-sans"]).toBeTruthy(); // already a dependency: nothing added
+    expect(pkg.dependencies["@fontsource/ibm-plex-mono"]).toBeTruthy();
+  });
+  it("the tokens file pulls the font in, and the family is applied only through the .tokens class", () => {
+    expect(fs.readFileSync(path.join(dir, "tokens.ts"), "utf8")).toContain('import "./fonts";');
+    expect(rules).not.toMatch(/(^|\n)\s*(html|body|\*)\s*\{/); // no global font rule in the stylesheet
+    expect(css).toMatch(/\.tokens \{[^}]*font-family: var\(--ui-font\)/);
+  });
+  it("no weight above 600 anywhere in the stylesheet (no 650 or 700 snap)", () => {
+    const weights = [...rules.matchAll(/font-weight:\s*(\d+)/g)].map((m) => Number(m[1]));
+    const tokenWeights = [...rules.matchAll(/--ui-fw-[a-z]+:\s*(\d+)/g)].map((m) => Number(m[1]));
+    for (const w of [...weights, ...tokenWeights]) expect(w).toBeLessThanOrEqual(600);
+    expect(css).toContain("--ui-fw-page: 600");
+  });
+  it("numerals use tabular figures and a mono token exists for codes", () => {
+    expect(css).toContain('--ui-numeric-features: "tnum" 1, "lnum" 1;');
+    expect(css).toContain("--ui-font-mono:");
+    expect(typeof typeScale.mono).toBe("string");
   });
 });
