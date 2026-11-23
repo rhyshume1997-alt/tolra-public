@@ -7,7 +7,7 @@
  * popover, state-panel and selection-bar options. v3 adds the sections from "Button v3" down: danger and pressed buttons, menu hints, table variants, panel, callout, disclosure, list rows, form group, error
  * summary, date range, link tiles, wrapped chips and segments, nested sheets and large fields. v4 (craft pass) shows the type scale, the elevation levels, PageHeader, Tabs, the StatusBadge modes and the info-neutral tone, StackedRows,
  * v5 (gaps found by the module builders) is the last block of sections ("v5:"): short-label and phone segmented control, PreviewBar at 390, SelectionBar on phones, danger menu items, the danger dialog and multi-line text, pinned columns, the attention disclosure, a StatTile control slot,
- * the 48 px icon button and expander, RemovableChip, FiltersPopover and the label-in-name helper.
+ * the 48 px icon button and expander, RemovableChip, FiltersPopover and the label-in-name helper. v6 (no sideways scrolling) is the "v6:" section: stacked ScrollTable options, collapseToSelect, Tabs More, long words; every other section must fit 320 to 1024 px wide.
  * the PreviewBar, the Panel nested and flat variants and a Type specimen (the same Tolra content in each candidate font that this build can load; nothing is changed by it), and the header of this page is itself a PreviewBar plus a PageHeader. Delete this route when a real module has adopted the set.
  */
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
@@ -356,11 +356,11 @@ function Showcase({ setPlace }: { setPlace: (p: Place) => void }) {
         </div>
       </Section>
 
-      <Section id="s-table" title="Table finish" note="Sticky first column, a right edge fade while more columns are hidden, and a shadow on the first column only once scrolled sideways. Rows are 64 px with hover and selected tints.">
+      <Section id="s-table" title="Table finish" note="Above 1024 px: sticky first column, a right edge fade while more columns are hidden, a shadow on the first column only once scrolled sideways, 64 px rows. At 1024 px and under (phone and tablet) the SAME table is stacked records: a title line, label and value pairs, the Open action at the bottom. Nothing scrolls sideways there.">
         <SelectionBar count={sel.length} filteredTotal={ROWS.length} noun="job" onSelectAll={() => setSel(allIds)} onClear={() => setSel([])} stickyTop="0px">
           <Button size="sm" variant="primary" disabled={sel.length === 0} onClick={() => previewOnly(`${sel.length} jobs were not finished.`)} data-testid="bulk-finish">Finish selected ({sel.length})</Button>
         </SelectionBar>
-        <ScrollTable label="Sample jobs (scrolls sideways)">
+        <ScrollTable label="Sample jobs (stacked at 1024 px and under, scrolls sideways only on desktop)">
           <thead>
             <tr>{COLS.map((c, i) => <th key={c} scope="col" style={i === 0 ? { minWidth: 200 } : undefined}>{c}</th>)}</tr>
           </thead>
@@ -716,7 +716,7 @@ function ShowcaseV3({ previewOnly }: { previewOnly: (what: string) => void }) {
         </div>
       </Section>
 
-      <Section id="s-v3-table" title="Table v3: dense, totals, pinned Actions, clickable rows, record groups" note="The frames are 620 px wide so the tables scroll. Dense = 48 px rows. The totals row is a tfoot. pinLast keeps Actions in view with a shadow on its left edge only while columns are hidden. A colspan sub-row no longer leaks the first-column shadow.">
+      <Section id="s-v3-table" title="Table v3: dense, totals, pinned Actions, clickable rows, record groups" note="Above 1024 px the frames are 620 px wide so the tables scroll; at 1024 px and under every one of them is stacked (totals as a block, sub-rows as notes, clickable rows kept). Dense = 48 px rows. The totals row is a tfoot. pinLast keeps Actions in view with a shadow on its left edge only while columns are hidden. A colspan sub-row no longer leaks the first-column shadow.">
         <div style={{ maxWidth: 620, display: "grid", gap: 20 }}>
           <ScrollTable label="Dense jobs with totals and pinned Actions" dense pinLast>
             <thead><tr>{MINI_COLS.map((c, i) => <th key={c} scope="col" style={i === 0 ? { minWidth: 120 } : i === 2 ? { minWidth: 220 } : undefined}>{c}</th>)}</tr></thead>
@@ -858,7 +858,8 @@ const SHOW_LABEL: Record<string, string> = { open: "Open", done: "Done", all: "A
 function ShowcaseV5({ previewOnly }: { previewOnly: (what: string) => void }) {
   const [seg, setSeg] = useState<"all" | "list" | "3" | "6">("all");
   const [segPhone, setSegPhone] = useState<"open" | "done" | "archived" | "all">("open");
-  const [segLong, setSegLong] = useState<"m3" | "m6" | "m12" | "all">("m12");
+  const [segLong, setSegLong] = useState<"m3" | "m6" | "m12" | "all" | "custom">("m12");
+  const [tab6, setTab6] = useState("a");
   const [segSm, setSegSm] = useState<"3" | "6">("3");
   const [barSel, setBarSel] = useState(2);
   const [danger, setDanger] = useState<null | "menu" | "plain" | "multi">(null);
@@ -919,11 +920,11 @@ function ShowcaseV5({ previewOnly }: { previewOnly: (what: string) => void }) {
 
   return (
     <>
-      <Section id="s-v5-seg" title="v5: segmented control with short labels, and on a phone" note="Every segment is at least 48 px wide and 48 px tall (a 48 px hit area, neighbours touch but never overlap). Under 640 px the control is ONE row that scrolls inside itself, so 'All' never drops alone to a second row and the selected segment is scrolled into view. Narrow your browser under 640 px to see the phone form; the 358 px frame below is the wide-screen stand in (it wraps with a 16 px row gap).">
+      <Section id="s-v5-seg" title="v5: segmented control with short labels, and on a phone" note="Every segment is at least 48 px wide and 48 px tall (a 48 px hit area, neighbours touch but never overlap). v6: under 640 px the control never scrolls: it fills the width, its segments share the row and wrap onto more rows 16 px apart. The 358 px frames below show the phone form.">
         <div style={{ display: "grid", gap: 18 }}>
           <Cell label="Short labels"><SegmentedControl label="View" value={seg} onChange={setSeg} data-testid="v5-seg-short" options={[{ value: "all", label: "All", testId: "v5-seg-all" }, { value: "list", label: "List", testId: "v5-seg-list" }, { value: "3", label: "3", testId: "v5-seg-3" }, { value: "6", label: "6", testId: "v5-seg-6" }]} /></Cell>
           <Cell label="Small, months"><SegmentedControl label="Months" size="sm" value={segSm} onChange={setSegSm} data-testid="v5-seg-sm" options={[{ value: "3", label: "3" }, { value: "6", label: "6" }]} /></Cell>
-          <Cell label="Longer labels (a phone's width: scrolls inside the control, the selected one in view)">
+          <Cell label="Longer labels (a phone's width: the segments wrap onto a second row)">
             <div style={{ width: "100%", maxWidth: 358, minWidth: 0 }} data-testid="v5-seg-frame-long">
               <SegmentedControl label="Period" value={segLong} onChange={setSegLong} data-testid="v5-seg-long" options={[{ value: "m3", label: "Last 3 months" }, { value: "m6", label: "Last 6 months" }, { value: "m12", label: "Last 12 months" }, { value: "all", label: "All time" }]} />
             </div>
@@ -944,9 +945,9 @@ function ShowcaseV5({ previewOnly }: { previewOnly: (what: string) => void }) {
         </div>
       </Section>
 
-      <Section id="s-v5-bar" title="v5: selection bar on a phone" note="Under 640 px an active bar is ONE row (it wrapped to 120 to 190 px). By default its actions scroll inside the row, 16 px apart, and a focused action scrolls into view. With compact the row is the count, one primary action and a More menu holding Select all, Clear selection and your other actions. Narrow your browser under 640 px to see both; above that they look like the normal bar.">
+      <Section id="s-v5-bar" title="v5: selection bar on a phone" note="v6: under 640 px an active bar never scrolls: the count, then the actions wrapped 16 px apart. With compact the row is the count, one primary action and a More menu holding Select all, Clear selection and your other actions. Narrow your browser under 640 px to see both; above that they look like the normal bar.">
         <div style={{ display: "grid", gap: 14 }}>
-          <Cell label="Default: actions scroll in one row on a phone">
+          <Cell label="Default: the actions wrap under the count on a phone">
             <div style={{ width: "100%" }}>
               <SelectionBar count={barSel} filteredTotal={24} noun="job" stickyTop="0px" onSelectAll={() => setBarSel(24)} onClear={() => setBarSel(0)}>
                 <Button size="sm" variant="primary" onClick={() => previewOnly("No jobs were finished.")}>Finish selected ({barSel})</Button>
@@ -1043,6 +1044,32 @@ function ShowcaseV5({ previewOnly }: { previewOnly: (what: string) => void }) {
         <div style={{ display: "grid", gap: 10, maxWidth: 640 }}>
           <FiltersPopover groups={groups} active={active} onClear={() => setFilters(FILTER_DEFAULT)} data-testid="v5-filters" />
           <p style={{ ...cap, margin: 0 }} data-testid="v5-filters-state">Filtering: show {SHOW_LABEL[filters.show]}, {filters.statuses.length ? filters.statuses.join(", ") : "any status"}.</p>
+        </div>
+      </Section>
+
+      <Section id="s-v6" title="v6: no sideways scrolling (stacked table options, Select collapse, Tabs More)" note="Phone and tablet rule: nothing here scrolls sideways at 1024 px and under. These demos use the new options: primary and columnPriority on a ScrollTable (which cell is the title, which cells come first), actionsColumn, stackHide, a SegmentedControl that collapses to the shared Select under 640 px, Tabs that move into a More menu, and a long unbroken word.">
+        <div style={{ display: "grid", gap: 18, minWidth: 0 }}>
+          <ScrollTable label="Jobs with a chosen title and field order" primary={1} columnPriority={[3, 2]} stackHide={[4]} dense>
+            <thead><tr><th scope="col">Job</th><th scope="col">Customer</th><th scope="col">Due</th><th scope="col">Status</th><th scope="col">Internal ref</th><th scope="col">Actions</th></tr></thead>
+            <tbody>
+              {ROWS.slice(0, 3).map((r) => (
+                <tr key={r.id}><td>{r.id}</td><td>{r.customer}</td><td>{r.due}</td><td><StatusBadge tone={r.tone}>{r.status}</StatusBadge></td><td>REF-{r.id}</td><td><Button size="sm" variant="secondary" onClick={() => previewOnly(`${r.id} was not changed.`)}>Open</Button><Button size="sm" variant="quiet">Copy</Button></td></tr>
+              ))}
+            </tbody>
+          </ScrollTable>
+          <Cell label="collapseToSelect: segments above 640 px, the shared Select under it">
+            <SegmentedControl collapseToSelect label="Period" value={segLong} onChange={setSegLong} data-testid="v6-seg-collapse" options={[{ value: "m3", label: "Last 3 months" }, { value: "m6", label: "Last 6 months" }, { value: "m12", label: "Last 12 months" }, { value: "all", label: "All time" }, { value: "custom", label: "Custom range" }]} />
+          </Cell>
+          <Cell label="Tabs with overflow=more (the tabs that do not fit go into More)">
+            <div style={{ width: "100%", maxWidth: 360, minWidth: 0 }}>
+              <Tabs overflow="more" label="Sections" value={tab6} onChange={setTab6} data-testid="v6-tabs-more" tabs={[{ value: "a", label: "Overview" }, { value: "b", label: "Schedule", count: 12 }, { value: "c", label: "Materials" }, { value: "d", label: "Documents" }, { value: "e", label: "History" }]} />
+            </div>
+          </Cell>
+          <Cell label="A long unbroken word and number wrap instead of widening the page">
+            <Panel title="Supercalifragilisticexpialidocious_customer_reference_000000000000000000000000000000">
+              <p style={{ margin: 0 }}>Reference 12345678901234567890123456789012345678901234567890 and https://example.com/a/very/long/path/that/never/breaks/anywhere/at/all/ever/and/ever</p>
+            </Panel>
+          </Cell>
         </div>
       </Section>
 
