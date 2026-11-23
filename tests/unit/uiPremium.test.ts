@@ -1,4 +1,4 @@
-// BOUNDARY (module 7, shared UI, NEW; v2 adds the segmented control, sheet, form fields, stat tile and the option checks). Inputs: the files in components/ui/premium. Output: checks on their pure helpers, their server-rendered
+// BOUNDARY (module 7, shared UI, NEW; v2 adds the segmented control, sheet, form fields, stat tile and the option checks; v3 adds the danger and pressed buttons, menu hints, table variants, panel, callout, disclosure, list, form group, error summary, date range, link tile, large fields and nesting). Inputs: the files in components/ui/premium. Output: checks on their pure helpers, their server-rendered
 // markup (roles, aria, names) and on the stylesheet's rules (sizes, no glass, reduced motion). Must not change: it reads no database and calls
 // no network; loosening a rule here (hit areas, no gradients or blur, reduced motion) needs the same PM approval as changing the rule itself.
 import fs from "node:fs";
@@ -7,9 +7,10 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import {
-  Button, Checkbox, ChipGroup, Dialog, EmptyState, FailedState, Field, FilterChip, Input, LoadingState, SegmentedControl, Select, SelectionBar, Sheet,
-  StatTile, StatTiles, StatusBadge, Switch, Textarea,
-  TOKEN_NAMES, cx, fieldDescribedBy, nextMenuIndex, nextSegmentIndex, pickFirstEnabled, placeLayer, scrollEdges, selectionControls, tabStopIndex, toastRegionStyle,
+  Button, Callout, Checkbox, ChipGroup, DateRangeGroup, Dialog, Disclosure, EmptyState, ErrorSummary, FailedState, Field, FilterChip, FormGroup, Input, List, ListRow, LoadingState, Menu, Panel,
+  ScrollTable, SegmentedControl, Select, SelectionBar, Sheet, StatTile, StatTiles, StatusBadge, Switch, Textarea,
+  TOKEN_NAMES, calloutLead, cx, dataAttributes, fieldDescribedBy, nextMenuIndex, nextSegmentIndex, pickFirstEnabled, pickInvalidTarget, placeLayer, rangeError, rowClickIsForRow, scrollEdges, selectionControls,
+  tabStopIndex, toastRegionStyle,
 } from "@/components/ui/premium";
 
 const dir = path.resolve(__dirname, "../../components/ui/premium");
@@ -401,8 +402,8 @@ describe("v2 stylesheet rules", () => {
     expect(TOKEN_NAMES).toContain("--ui-hit");
   });
   it("segmented control: 40 and 32 px tracks, 48 px hit area for both, focus ring, disabled look", () => {
-    expect(css).toMatch(/\.seg \{[^}]*height: var\(--ui-h-md\)/);
-    expect(css).toMatch(/\.segSm \{ height: var\(--ui-h-sm\)/);
+    expect(css).toMatch(/\.seg \{[^}]*min-height: var\(--ui-h-md\)/); // v3: min-height so a wrapped track can grow (was height)
+    expect(css).toMatch(/\.segSm \{ height: auto; min-height: var\(--ui-h-sm\)/); // v3: min-height so a wrapped track can grow (was height)
     expect(css).toMatch(/\.segBtn \{[^}]*height: 32px/);
     expect(css).toMatch(/\.segBtn::after \{ content: ""; position: absolute; inset: -8px -1px; \}/);
     expect(css).toMatch(/\.segSm \.segBtn \{ height: 24px/);
@@ -443,5 +444,295 @@ describe("v2 stylesheet rules", () => {
   it("v2 adds no gradients, no glass and no global selectors (the rules above still hold)", () => {
     const added = css.slice(css.indexOf("segmented control: one choice"));
     expect(added).not.toMatch(/gradient\(|backdrop-filter|blur\(|:root|:global/);
+  });
+});
+
+/* ---------------- v3 additions ---------------- */
+
+const cssAfter = (marker: string) => css.slice(css.indexOf(marker));
+const v3css = cssAfter("v3 additions. Everything below");
+
+describe("v3 helpers", () => {
+  it("rangeError: only From after To is an error; empty ends and equal dates are fine; custom names are used", () => {
+    expect(rangeError("2026-11-10", "2026-11-01")).toBe("From must be on or before To.");
+    expect(rangeError("2026-11-01", "2026-11-01")).toBeUndefined();
+    expect(rangeError("", "2026-11-01")).toBeUndefined();
+    expect(rangeError("2026-11-10", "")).toBeUndefined();
+    expect(rangeError("2026-12-01", "2026-11-01", { from: "Start", to: "End" })).toBe("Start must be on or before End.");
+  });
+  it("pickInvalidTarget: the first control that exists and is enabled, in the order given", () => {
+    expect(pickInvalidTarget([null, { disabled: true }, { disabled: false, n: 3 }, { n: 4 }])).toEqual({ disabled: false, n: 3 });
+    expect(pickInvalidTarget([null, { disabled: true }])).toBeNull();
+    expect(pickInvalidTarget([])).toBeNull();
+  });
+  it("calloutLead: the tone's word, none for neutral, an explicit lead (even empty) wins", () => {
+    expect(calloutLead("info")).toBe("Note");
+    expect(calloutLead("warn")).toBe("Warning");
+    expect(calloutLead("error")).toBe("Problem");
+    expect(calloutLead("neutral")).toBe("");
+    expect(calloutLead("warn", "Heads up")).toBe("Heads up");
+    expect(calloutLead("error", "")).toBe("");
+  });
+  it("dataAttributes keeps only data-* strings, numbers and booleans", () => {
+    expect(dataAttributes({ "data-testid": "a", "data-n": 2, "data-b": true, label: "x", "data-o": {}, onChange: noop })).toEqual({ "data-testid": "a", "data-n": 2, "data-b": true });
+  });
+  it("rowClickIsForRow: a click on plain cell text is for the row, a click on a control inside the row is not", () => {
+    const row = { contains: (n: unknown) => n === btn || n === link } as unknown as Element;
+    const btn = {}; const link = {};
+    const target = (control: unknown) => ({ closest: () => control });
+    expect(rowClickIsForRow(target(null) as unknown as EventTarget, row)).toBe(true);
+    expect(rowClickIsForRow(target(btn) as unknown as EventTarget, row)).toBe(false);
+    expect(rowClickIsForRow(target(link) as unknown as EventTarget, row)).toBe(false);
+    expect(rowClickIsForRow(target({}) as unknown as EventTarget, row)).toBe(true); // a control outside this row (nested table, portal) does not count
+    expect(rowClickIsForRow(null, row)).toBe(true);
+  });
+});
+
+describe("v3 markup and roles", () => {
+  it("Button: danger variants use their own class, fullWidth adds the block class, defaults are unchanged", () => {
+    const d = html(createElement(Button, { variant: "danger" }, "Delete"));
+    expect(d).toContain("danger");
+    expect(d).toContain('type="button"');
+    expect(html(createElement(Button, { variant: "dangerSolid" }, "Delete"))).toContain("dangerSolid");
+    expect(html(createElement(Button, { variant: "dangerQuiet" }, "Delete"))).toContain("dangerQuiet");
+    expect(html(createElement(Button, { fullWidth: true, size: "lg", variant: "primary" }, "Save"))).toContain("btnBlock");
+    const plain = html(createElement(Button, null, "Plain"));
+    expect(plain).toContain("secondary");
+    expect(plain).not.toMatch(/btnBlock|danger/);
+    expect(html(createElement(Button, { "aria-pressed": true, variant: "secondary" }, "Compact"))).toContain('aria-pressed="true"');
+  });
+  it("Menu: the trigger takes aria-label, fullWidth and className; without them it is the v2 trigger", () => {
+    const h = html(createElement(Menu, { label: "More", "aria-label": "More actions for Tomas", fullWidth: true, className: "mine", items: [{ id: "a", label: "Edit", onSelect: noop }] }));
+    expect(h).toContain('aria-label="More actions for Tomas"');
+    expect(h).toContain("menuBlock");
+    expect(h).toContain("btnBlock");
+    expect(h).toContain("mine");
+    expect(h).toContain('aria-haspopup="menu"');
+    const v2 = html(createElement(Menu, { label: "Export", items: [] }));
+    expect(v2).not.toContain("aria-label");
+    expect(v2).not.toContain("btnBlock");
+  });
+  it("ScrollTable: dense and pinLast are opt in; the default output has neither", () => {
+    const plain = html(createElement(ScrollTable, { label: "Jobs", children: createElement("tbody") }));
+    expect(plain).not.toContain("data-pin-last");
+    expect(plain).not.toContain("tableDense");
+    const on = html(createElement(ScrollTable, { label: "Jobs", dense: true, pinLast: true, children: createElement("tbody") }));
+    expect(on).toContain('data-pin-last="true"');
+    expect(on).toContain("tableDense");
+    expect(on).toContain('role="region"');
+    expect(on).toContain('aria-label="Jobs"');
+  });
+  it("Panel: a section named by a heading whose level you choose (default h2); no title, no heading", () => {
+    const h = html(createElement(Panel, { title: "Lines", headingLevel: 3, actions: createElement("button", { type: "button" }, "Add"), children: "Body" }));
+    expect(h).toContain("<section");
+    expect(h).toMatch(/<h3[^>]*>Lines<\/h3>/);
+    expect(h).toContain("aria-labelledby");
+    expect(h).toContain(">Add<");
+    expect(html(createElement(Panel, { title: "T", children: "x" }))).toContain("<h2");
+    const none = html(createElement(Panel, { children: "x" }));
+    expect(none).not.toMatch(/<h[1-6]/);
+    expect(none).not.toContain("aria-labelledby");
+    expect(html(createElement(Panel, { title: "T", bare: true, children: "x" }))).toContain("panelBare");
+    const named = html(createElement(Panel, { label: "Filters", busy: true, children: "x" }));
+    expect(named).toContain('aria-label="Filters"');
+    expect(named).toContain('aria-busy="true"');
+    expect(html(createElement(Panel, { title: "T", label: "Ignored", children: "x" }))).not.toContain("Ignored");
+  });
+  it("Callout: words as well as a bar; error is an alert, others are not live unless asked; no icon", () => {
+    const e = html(createElement(Callout, { tone: "error", children: "Quantity must be at least 1." }));
+    expect(e).toContain('role="alert"');
+    expect(e).toContain("Problem: ");
+    expect(e).toContain("callout_error");
+    expect(e).not.toMatch(/<svg|<img/);
+    const w = html(createElement(Callout, { tone: "warn", children: "Paused" }));
+    expect(w).toContain("Warning: ");
+    expect(w).not.toContain("role=");
+    expect(html(createElement(Callout, { tone: "warn", role: "status", children: "Paused" }))).toContain('role="status"');
+    expect(html(createElement(Callout, { tone: "neutral", children: "Quiet" }))).not.toContain("<strong");
+    expect(html(createElement(Callout, { children: "Default is info" }))).toContain("Note: ");
+    expect(html(createElement(Callout, { tone: "info", action: createElement("button", { type: "button" }, "Show all"), children: "x" }))).toContain(">Show all<");
+  });
+  it("Disclosure is the native details and summary, closed by default, open with defaultOpen", () => {
+    const c = html(createElement(Disclosure, { summary: "More detail", children: "Inside" }));
+    expect(c).toContain("<details");
+    expect(c).toContain("<summary");
+    expect(c).not.toMatch(/<details[^>]*\sopen/);
+    expect(html(createElement(Disclosure, { summary: "More detail", defaultOpen: true, children: "Inside" }))).toMatch(/<details[^>]*\sopen/);
+    expect(c).toContain('aria-hidden="true"');
+  });
+  it("List and ListRow: a list of items; href makes the title a link; trailing and meta are optional", () => {
+    const h = html(createElement(List, { label: "Customers", children: [
+      createElement(ListRow, { key: "a", title: "Hartley", meta: "3 jobs", href: "/customers/1", trailing: createElement("button", { type: "button" }, "Edit") }),
+      createElement(ListRow, { key: "b", title: "Calder" }),
+    ] }));
+    expect(h).toContain("<ul");
+    expect(h).toContain('aria-label="Customers"');
+    expect(h.match(/<li/g)).toHaveLength(2);
+    expect(h).toContain('href="/customers/1"');
+    expect(h.match(/<a /g)).toHaveLength(1);
+    expect(h).toContain("3 jobs");
+    expect(h).toContain(">Edit<");
+  });
+  it("FormGroup: role=group named by a heading, or a fieldset with a legend; the hint is its description", () => {
+    const g = html(createElement(FormGroup, { title: "Job details", hint: "What and for whom.", children: "fields" }));
+    expect(g).toContain('role="group"');
+    expect(g).toMatch(/<h3[^>]*>Job details<\/h3>/);
+    expect(g).toContain("aria-labelledby");
+    expect(g).toContain("aria-describedby");
+    const f = html(createElement(FormGroup, { title: "Dates", as: "fieldset", headingLevel: 4, children: "fields" }));
+    expect(f).toContain("<fieldset");
+    expect(f).toContain("<legend");
+    expect(f).not.toContain("<h4");
+    expect(html(createElement(FormGroup, { title: "G", headingLevel: 2, children: "x" }))).toContain("<h2");
+  });
+  it("ErrorSummary: a named section listing each problem as a link to its field; nothing when there are none", () => {
+    const h = html(createElement(ErrorSummary, { errors: [{ fieldId: "g-name", label: "Job name", message: "Enter a job name." }, { fieldId: "g-qty", message: "Quantity must be at least 1." }] }));
+    expect(h).toContain("<section");
+    expect(h).toContain("aria-labelledby");
+    expect(h).toContain("Fix these before saving");
+    expect(h).toContain('href="#g-name"');
+    expect(h).toContain('href="#g-qty"');
+    expect(h).toContain("Job name");
+    expect(h).toContain("Enter a job name.");
+    expect(h.match(/<li/g)).toHaveLength(2);
+    expect(html(createElement(ErrorSummary, { errors: [] }))).toBe("");
+    expect(html(createElement(ErrorSummary, { errors: [{ fieldId: "x", message: "m" }], headingLevel: 2, title: "Problems" }))).toMatch(/<h2[^>]*>Problems<\/h2>/);
+  });
+  it("DateRangeGroup: From, To and Apply in a named group; From after To marks both inputs invalid with one described error; no error otherwise", () => {
+    const base = { label: "Report period", onFromChange: noop, onToChange: noop, onApply: noop };
+    const bad = html(createElement(DateRangeGroup, { ...base, from: "2026-11-10", to: "2026-11-01" }));
+    expect(bad).toContain('role="group"');
+    expect(bad).toContain('aria-label="Report period"');
+    expect(bad.match(/type="date"/g)).toHaveLength(2);
+    expect(bad.match(/aria-invalid="true"/g)).toHaveLength(2);
+    const errId = /aria-describedby="([^"]+)"/.exec(bad)?.[1];
+    expect(errId).toBeTruthy();
+    expect(bad.match(new RegExp(`aria-describedby="${errId}"`, "g"))).toHaveLength(2);
+    expect(bad).toContain(`id="${errId}"`);
+    expect(bad).toContain("From must be on or before To.");
+    expect(bad).toContain(">Apply<");
+    const ok = html(createElement(DateRangeGroup, { ...base, from: "2026-11-01", to: "2026-11-10", applyLabel: "Show" }));
+    expect(ok).not.toContain("aria-invalid");
+    expect(ok).not.toContain("aria-describedby");
+    expect(ok).toContain(">Show<");
+    expect(html(createElement(DateRangeGroup, { ...base, from: "2026-11-01", to: "2026-11-10", error: "The server refused this range." }))).toContain("The server refused this range.");
+  });
+  it("StatTile v3: href makes a link, status is dot plus word, definition is a title and a described-by text; no new props = v2 markup", () => {
+    const h = html(createElement(StatTile, { label: "Needs attention", value: "3", href: "/jobs?filter=late", status: "Act now", statusTone: "danger", definition: "Jobs past their due date." }));
+    expect(h).toContain("<a ");
+    expect(h).toContain('href="/jobs?filter=late"');
+    expect(h).toContain('title="Jobs past their due date."');
+    expect(h).toMatch(/aria-describedby="([^"]+)"/);
+    const id = /aria-describedby="([^"]+)"/.exec(h)![1];
+    expect(h).toContain(`id="${id}"`);
+    expect(h).toContain("Act now");
+    expect(h).not.toContain("<button");
+    const v2 = html(createElement(StatTile, { label: "Open", value: "7" }));
+    expect(v2).not.toContain("title=");
+    expect(v2).not.toContain("aria-describedby");
+    expect(v2).not.toContain("<a ");
+    const dot = html(createElement(StatTile, { label: createElement("span", { className: "dot" }, "•"), value: "4" }));
+    expect(dot).toContain("dot");
+  });
+  it("Switch passes every data-* attribute to the button and still shows state in words", () => {
+    const h = html(createElement(Switch, { checked: true, onChange: noop, label: "Machine", "data-testid": "sw", "data-col": "machine" }));
+    expect(h).toContain('data-testid="sw"');
+    expect(h).toContain('data-col="machine"');
+    expect(h).toContain('role="switch"');
+    expect(h).toContain(">On<");
+  });
+  it("Field v3: own id, and large puts the large class on Input, Select and Textarea; without it nothing changes", () => {
+    const own = html(createElement(Field, { label: "Name", id: "g-name", children: createElement(Input, null) }));
+    expect(own).toContain('for="g-name"');
+    expect(own).toContain('id="g-name"');
+    const big = html(createElement(Field, { label: "Name", large: true, children: createElement(Input, null) }));
+    expect(big).toContain("inputLg");
+    expect(html(createElement(Input, { large: true, "aria-label": "x" }))).toContain("inputLg");
+    expect(html(createElement(Select, { large: true, "aria-label": "x" }))).toContain("inputLg");
+    expect(html(createElement(Textarea, { large: true, "aria-label": "x" }))).toContain("inputLg");
+    expect(html(createElement(Field, { label: "Name", children: createElement(Input, null) }))).not.toContain("inputLg");
+  });
+  it("EmptyState compact adds the compact class and nothing else; the default stays h3 and uncompacted", () => {
+    expect(html(createElement(EmptyState, { title: "None", compact: true }))).toContain("stateCompact");
+    const d = html(createElement(EmptyState, { title: "None" }));
+    expect(d).not.toContain("stateCompact");
+    expect(d).toContain("<h3");
+  });
+});
+
+describe("v3 stylesheet rules", () => {
+  it("v3 CSS has no gradients, no glass, no global selectors and no !important outside the reduced-motion block", () => {
+    const body = v3css.slice(0, v3css.indexOf("@media (prefers-reduced-motion: reduce)"));
+    expect(body).not.toMatch(/gradient\(|backdrop-filter|blur\(|:root|:global/);
+    expect(body).not.toContain("!important");
+  });
+  it("danger: three classes with hover, active and a red that keeps 4.5:1 on white (#b32d2d)", () => {
+    for (const c of [".danger ", ".dangerSolid ", ".dangerQuiet "]) expect(v3css).toContain(c);
+    expect(v3css).toContain(".danger:hover");
+    expect(v3css).toContain(".dangerSolid:hover");
+    expect(v3css).toContain("--ui-danger");
+  });
+  it("pressed buttons are styled by the stylesheet with a selector heavier than the hover rules (no !important for consumers)", () => {
+    expect(v3css).toContain('.btn[aria-pressed="true"]:is(.secondary, .quiet)');
+    expect(v3css).toContain('.btn[aria-pressed="true"]:is(.secondary, .quiet):is(:hover, :active)');
+    expect(v3css).toContain(".onDark.btn[aria-pressed=");
+  });
+  it("hit areas: chips 48 with 16 px wrapped gap, segmented rows 16 px apart and no scroll box, selection bar rows 16 px apart", () => {
+    expect(css).toMatch(/\.chips \{[^}]*gap: 16px 6px/);
+    expect(css).toMatch(/\.chip::after \{ content: ""; position: absolute; inset: -8px 0; \}/);
+    expect(css).toMatch(/\.seg \{[^}]*flex-wrap: wrap[^}]*gap: 16px 2px/);
+    expect(css).not.toMatch(/\.seg \{ overflow-x/);
+    expect(css).not.toMatch(/max-width: 640px\) \{ \.seg/);
+    expect(css).toMatch(/\.bar \{[^}]*gap: 16px 10px/);
+    expect(css).toMatch(/\.barActions \{[^}]*gap: 16px 8px/);
+  });
+  it("the Switch hit area does not reach past its row (it made the page scroll 2 px sideways at 390 px)", () => {
+    expect(css).toMatch(/\.switch::after \{ content: ""; position: absolute; inset: -12px 0; \}/);
+    expect(css).not.toContain("inset: -12px -4px");
+  });
+  it("tables: dense, totals row, clickable rows, record groups, pinned last column with a shadow that shows only while more is hidden, colspan cells never draw the first-column shadow", () => {
+    expect(v3css).toContain(".tableDense td");
+    expect(v3css).toContain(".table tfoot td");
+    expect(v3css).toContain('tr[data-clickable="true"]');
+    expect(v3css).toContain('tbody[data-record="true"]');
+    expect(v3css).toContain('tr[data-sub="true"]');
+    expect(v3css).toMatch(/\.table td\[colspan\]:first-child::after[^}]*content: none/);
+    expect(v3css).toMatch(/tr\[data-sub="true"\] td\[colspan\] > \* \{ position: sticky; left: 14px; max-width: calc\(var\(--ui-scroll-w, 100%\) - 28px\)/);
+    expect(v3css).toMatch(/data-pin-last="true"\] \.table :is\(th, td\):last-child:not\(\[colspan\]\) \{ position: sticky; right: 0;/);
+    expect(v3css).toMatch(/data-pin-last="true"\]\[data-more="true"\][^{]*::before \{ opacity: 1; \}/);
+    expect(v3css).toMatch(/data-pin-last="true"\] \.edgeFade \{ display: none; \}/);
+  });
+  it("new surfaces exist: panel, callout tones with a left bar, disclosure, list rows, form group, error summary, range, link tile, large field, compact state", () => {
+    expect(v3css).toContain(".panelBare.panelNoTitle .panelBody { padding: 0; }"); // an untitled bare panel has no padding at all
+    for (const c of [".panel ", ".panelHead", ".callout_neutral", ".callout_info", ".callout_warn", ".callout_error", "inset 3px 0 0 var(--tone-bar)", ".discSummary", ".discChevron", ".listRow", ".rowLink::after", ".group ", ".errLink", ".range ", ".tileLink", ".tileStatus", ".inputLg", ".stateCompact"]) expect(v3css, c).toContain(c);
+    expect(v3css).toMatch(/\.discSummary \{[^}]*min-height: 48px/);
+    expect(v3css).toMatch(/\.errLink \{[^}]*min-height: 48px/);
+    expect(v3css).toMatch(/\.inputLg \{[^}]*height: var\(--ui-h-lg\)[^}]*border-block-width: 0[^}]*font-size: 16px/);
+    expect(v3css).toMatch(/\.stateCompact \{ min-height: 0;/);
+  });
+  it("reduced motion also stops the disclosure chevron and row transitions", () => {
+    const rm = css.slice(css.indexOf("@media (prefers-reduced-motion: reduce)"));
+    expect(rm).toContain(".discChevron");
+    expect(rm).toContain("transition: none !important");
+  });
+});
+
+describe("v3 nesting and focus (source level: the browser run proves the behaviour)", () => {
+  const sheet = fs.readFileSync(path.join(dir, "Sheet.tsx"), "utf8");
+  const dialog = fs.readFileSync(path.join(dir, "Dialog.tsx"), "utf8");
+  it("Sheet and Dialog act only on their own cancel and Tab events, and trap only their own controls", () => {
+    for (const src of [sheet, dialog]) {
+      expect(src).toContain("e.target !== e.currentTarget");
+      expect(src).toContain('closest("dialog") !== self');
+      expect(src).toContain('el.closest("dialog") === self');
+    }
+  });
+  it("the v3 exports exist and no v1 or v2 name went away", async () => {
+    const m = await import("@/components/ui/premium");
+    for (const n of ["Panel", "Callout", "Disclosure", "List", "ListRow", "FormGroup", "ErrorSummary", "DateRangeGroup", "focusFirstInvalid", "pickInvalidTarget", "rangeError", "rowClickIsForRow", "dataAttributes", "calloutLead",
+      "SegmentedControl", "Sheet", "Field", "Input", "Textarea", "Select", "StatTile", "StatTiles", "fieldDescribedBy", "nextSegmentIndex", "tabStopIndex", "pickFirstEnabled", "selectionControls", "toastRegionStyle"]) expect(m, n).toHaveProperty(n);
+  });
+  it("every v3 file carries a boundary comment", () => {
+    for (const f of ["Surface.tsx", "Disclosure.tsx", "List.tsx", "FormParts.tsx"]) expect(fs.readFileSync(path.join(dir, f), "utf8"), f).toMatch(/BOUNDARY/);
   });
 });

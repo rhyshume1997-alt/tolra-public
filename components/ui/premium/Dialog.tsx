@@ -5,6 +5,7 @@
  * ONE pattern only: a navy primary button on the right, an outlined Cancel beside it, 40 px high, 14 px radius. No tones, no yellow, no blue.
  * v2: optional middle action (secondaryLabel + onSecondary + secondaryDisabled?): order is Cancel, secondary, primary; without it the dialog is exactly as before. With it Cancel turns quiet so
  * the navy primary stays the one strong choice. Busy disables Cancel and the secondary too.
+ * v3 nesting: a Dialog inside a Sheet (or another Dialog) handles only its OWN cancel and Tab events (target check, and the Tab wrap counts only its own controls), so Escape closes just the inner one.
  * Must not change: it is controlled (it closes only when the caller sets open to false); the first focus is Cancel for plain confirmations; an
  * `error` is shown inside the dialog and never turns into a success message. It performs nothing: onConfirm is the caller's real action.
  */
@@ -47,10 +48,12 @@ export function Dialog({ open, title, description, children, confirmLabel, cance
       className={cx(premiumTokens, styles.dialog)}
       aria-labelledby={`${id}-t`}
       aria-describedby={description ? `${id}-d` : undefined}
-      onCancel={(e) => { e.preventDefault(); if (!busy) onClose(); }}
+      onCancel={(e) => { if (e.target !== e.currentTarget) return; e.preventDefault(); if (!busy) onClose(); }}
       onKeyDown={(e) => {
         if (e.key !== "Tab") return;
-        const f = Array.from(ref.current?.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select, textarea, [href], [tabindex]:not([tabindex="-1"])') ?? []);
+        const self = ref.current;
+        if (!self || (e.target as HTMLElement).closest("dialog") !== self) return;
+        const f = Array.from(self.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select, textarea, [href], [tabindex]:not([tabindex="-1"])')).filter((el) => el.closest("dialog") === self);
         if (f.length === 0) return;
         const first = f[0];
         const last = f[f.length - 1];

@@ -5,6 +5,7 @@
  * Select all N, Clear, and the actions. Buttons inside it pick up the on-dark look through OnDarkContext.
  * v2: selectAll and clear say WHEN each button shows ("active" default = only while something is selected, "always" = also at idle, "never"); idle Clear is disabled at 0, idle Select all is hidden when
  * there is nothing to select; statusText replaces the active line (a string or a function of {count, filteredTotal, noun}). Defaults draw exactly what v1 drew.
+ * v3: when the bar wraps (narrow screens) its rows are 16 px apart, so the 48 px hit areas of buttons on different rows never overlap.
  * Must not change: actions are the caller's and decide their own disabled state from count; this bar never selects, deletes or finishes anything.
  */
 import type { ReactNode } from "react";

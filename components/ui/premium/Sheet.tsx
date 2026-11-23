@@ -6,6 +6,8 @@
  * the page behind is inert, Escape asks to close through onClose, and focus goes back to the element that opened it, even when the caller unmounts the sheet to close it.
  * Must not change: it is controlled (it closes only when the caller stops rendering it or sets open to false); it performs nothing itself, the footer buttons are the caller's real actions;
  * dismissible={false} (for an action in flight) blocks Escape and hides the Close button but never traps the person without the caller's own way out.
+ * v3 nesting: a Sheet or Dialog rendered INSIDE a Sheet is a nested modal. Its cancel (Escape) and Tab events travel up the React tree, so each handler first checks that the event came from its OWN dialog
+ * (target check) and the Tab wrap only counts controls that belong to its own dialog (nesting-aware trap): Escape closes only the inner one, Tab never escapes it, and the outer one is left alone.
  */
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import styles from "./premium.module.css";
@@ -58,10 +60,12 @@ export function Sheet({ open, title, description, size = "md", children, footer,
       aria-labelledby={`${uid}-t`}
       aria-describedby={description ? `${uid}-d` : undefined}
       data-testid={testId}
-      onCancel={(e) => { e.preventDefault(); if (dismissible) onClose(); }}
+      onCancel={(e) => { if (e.target !== e.currentTarget) return; e.preventDefault(); if (dismissible) onClose(); }}
       onKeyDown={(e) => {
         if (e.key !== "Tab") return;
-        const f = Array.from(ref.current?.querySelectorAll<HTMLElement>(TABBABLE) ?? []);
+        const self = ref.current;
+        if (!self || (e.target as HTMLElement).closest("dialog") !== self) return;
+        const f = Array.from(self.querySelectorAll<HTMLElement>(TABBABLE)).filter((el) => el.closest("dialog") === self);
         if (!f.length) return;
         if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
         else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
