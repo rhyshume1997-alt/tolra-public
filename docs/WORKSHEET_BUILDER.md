@@ -75,11 +75,12 @@ changes**: no custom layout is offered, Basic and JNR sheet print exactly as bef
   database); the sign-off snapshot, `worksheet_version`, inspection and every existing job column are untouched. Limit: a paper copy cannot change, but the
   app does not record which layout an *unsigned* job was last printed on, so a reprint of an unsigned job uses the layout as it is now.
 
-### Release 170 (SQL; proposal only, nothing applied)
+### Release 170 (SQL; phase 170 after 167, nothing applied anywhere)
 
-`supabase/proposals/p170_worksheet_custom.sql` (canonical), `supabase/release/170_worksheet_custom.release.sql`, `.rollback.sql`,
-`supabase/verify/worksheet_custom_170.sql`, registered in `supabase/release-plan.json` `other_proposals` and the preflight proposal list. Adds one column
-(`jobs.worksheet_custom`, default `{}`), its shape constraint, and a guard that refuses a browser session changing it once the job's current revision has a
-primary sign-off. Proved on plain PostgreSQL 16 by `tests/postgres/worksheet-custom-170.proof.sql` (release twice, verify, behaviour, rollback). It is **not
-a numbered phase** (no preflight marker row, CI install step or fixture entry): promoting it and applying it anywhere need Rhys's yes on the exact file,
-after a fresh backup for production. Until it is applied the app works: layouts print, custom fields show "can't be saved yet".
+`supabase/proposals/p170_worksheet_custom.sql` (canonical), `supabase/release/170_worksheet_custom.release.sql`, `.rollback.sql` and
+`supabase/verify/worksheet_custom_170.sql`, a numbered phase in `supabase/release-plan.json` with its preflight marker and "170 needs" row, the CI install
+step and schema marker, and the post-144 fixture. Adds one column (`jobs.worksheet_custom`, default `{}`), its shape constraint, and a guard that refuses a
+browser session changing it once the job's current revision has a primary sign-off. The rollback **refuses while any job holds a custom value** (it never
+deletes records). Proved by `tests/db/worksheet-custom-170.test.ts` on the Supabase stack in CI, and locally on plain PostgreSQL 16 by
+`tests/postgres/worksheet-custom-170.proof.sql`. Applying it to any real database needs Rhys's separate yes on the exact file, after a fresh backup. The
+builder itself stays off by default; until the release is applied the app works and custom fields say they can't be saved yet.

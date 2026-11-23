@@ -1,9 +1,8 @@
--- Release 170 behavioural proof on a plain PostgreSQL stand-in (run by hand: psql -v ON_ERROR_STOP=1 -f tests/postgres/worksheet-custom-170.proof.sql
--- against an EMPTY scratch database; it DROPS and recreates schema public, so never point it at a real database). Not run by CI (CI has no
--- plain-PG step for this); the Supabase-stack proof is a later numbered-phase task. It builds a tiny stand-in for public.jobs and
+-- Release 170 behavioural proof on a plain PostgreSQL stand-in (a local check beside the Supabase-stack proof tests/db/worksheet-custom-170.test.ts; run by hand: psql -v ON_ERROR_STOP=1 -f tests/postgres/worksheet-custom-170.proof.sql
+-- against an EMPTY scratch database; it DROPS and recreates schema public, so never point it at a real database). Not run by CI (CI runs the stack proof). It builds a tiny stand-in for public.jobs and
 -- public.job_signoffs, applies supabase/release/170_worksheet_custom.release.sql (twice), and checks: every existing job gets {}, a browser session can fill
 -- the fields of an unsigned job, cannot change a job whose CURRENT revision has a primary sign-off (42501, hint signed_off_custom_locked), can
--- again after a newer revision, the owner is exempt, no other column changes, bad shapes are refused, and the rollback restores the table.
+-- again after a newer revision, the owner is exempt, no other column changes, bad shapes are refused, rollback refuses while a value is held, restores the table when none is, and re-release works.
 -- Inputs: none. Outputs: psql stops with an error if any check fails, else prints PASS lines. Must not change: it never touches real data.
 \set ON_ERROR_STOP on
 DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;
@@ -73,11 +72,30 @@ DO $$ BEGIN
   RAISE NOTICE 'PASS no browser role can execute the trigger function';
 END $$;
 
--- 8. Rollback restores the table exactly (column, constraint, trigger and function gone).
+-- 8. Rollback refuses while a job holds a value, and changes nothing (psql keeps going so the next checks can read the state).
+\set ON_ERROR_STOP off
+\i supabase/release/170_worksheet_custom.rollback.sql
+\set ON_ERROR_STOP on
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'jobs' AND column_name = 'worksheet_custom') OR to_regprocedure('public.jobs_worksheet_custom_lock()') IS NULL THEN RAISE EXCEPTION 'FAIL rollback went ahead while jobs held values'; END IF;
+  IF (SELECT count(*) FROM public.jobs WHERE worksheet_custom <> '{}'::jsonb) < 1 THEN RAISE EXCEPTION 'FAIL values were lost'; END IF;
+  RAISE NOTICE 'PASS rollback refused while a job holds a custom value, and changed nothing';
+END $$;
+
+-- 9. With no values held, rollback restores the table exactly; re-release brings it back; rollback again is a no-op.
+UPDATE public.jobs SET worksheet_custom = '{}';
 \i supabase/release/170_worksheet_custom.rollback.sql
 DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'jobs' AND column_name = 'worksheet_custom') THEN RAISE EXCEPTION 'FAIL column remains'; END IF;
   IF to_regprocedure('public.jobs_worksheet_custom_lock()') IS NOT NULL THEN RAISE EXCEPTION 'FAIL function remains'; END IF;
   IF EXISTS (SELECT 1 FROM before_rows b JOIN public.jobs j ON (b.r->>'id')::uuid = j.id WHERE to_jsonb(j) IS DISTINCT FROM b.r AND j.job_no <> 'J-1') THEN RAISE EXCEPTION 'FAIL rollback changed job data'; END IF;
   RAISE NOTICE 'PASS rollback leaves the jobs table as it was before 170';
+END $$;
+\i supabase/release/170_worksheet_custom.rollback.sql
+\i supabase/release/170_worksheet_custom.release.sql
+\i supabase/release/170_worksheet_custom.rollback.sql
+\i supabase/release/170_worksheet_custom.release.sql
+DO $$ BEGIN
+  IF (SELECT count(*) FROM public.jobs WHERE worksheet_custom = '{}'::jsonb) <> 3 THEN RAISE EXCEPTION 'FAIL re-release'; END IF;
+  RAISE NOTICE 'PASS re-release after rollback, and rollback again, behave';
 END $$;

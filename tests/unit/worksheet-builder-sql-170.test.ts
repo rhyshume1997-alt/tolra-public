@@ -1,7 +1,8 @@
 /**
  * Release 170 (module K): the SQL files agree with each other and stay inside what was approved: one column, one constraint, one guard
- * function, one trigger; the release body is the proposal's, verbatim; rollback and verify exist; it is not a numbered phase (that needs
- * Rhys's yes) and touches no existing data, policy or grant. The behavioural proof runs on PostgreSQL (tests/postgres/worksheet-custom-170.proof.sql).
+ * function, one trigger; the release body is the proposal's, verbatim; rollback and verify exist; it is phase 170 (after 167) in the release plan and
+ * touches no existing data, policy or grant. The behavioural proof is tests/db/worksheet-custom-170.test.ts (Supabase stack, CI) and, on plain
+ * PostgreSQL, tests/postgres/worksheet-custom-170.proof.sql.
  */
 import { execSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -14,16 +15,16 @@ const proposal = read("supabase/proposals/p170_worksheet_custom.sql");
 const release = read("supabase/release/170_worksheet_custom.release.sql");
 const rollback = read("supabase/release/170_worksheet_custom.rollback.sql");
 const verify = read("supabase/verify/worksheet_custom_170.sql");
-const plan = JSON.parse(read("supabase/release-plan.json")) as { phases: { number: number }[]; other_proposals: { source: string }[] };
+const plan = JSON.parse(read("supabase/release-plan.json")) as { phases: { number: number; after: string; source: string; release: string; rollback: string; verify: string; marker: string }[]; other_proposals: { source: string }[] };
 
 /** The SQL after the proposal's leading comment block. */
-const proposalBody = proposal.slice(proposal.search(/^ALTER TABLE/m));
-const releaseBody = release.split("-- ---- BODY ----\n")[1];
+const proposalBody = proposal.slice(proposal.indexOf("BEGIN;") + 6, proposal.lastIndexOf("COMMIT;")).trim();
 const sqlOnly = (text: string) => text.split("\n").filter((line) => !line.trim().startsWith("--")).join("\n");
 
 describe("release 170", () => {
-  it("the release body is the proposal body, verbatim", () => {
-    expect(releaseBody).toBe(proposalBody);
+  it("the release contains the proposal body verbatim, and starts the way the fixture and the CI install step look for", () => {
+    expect(release).toContain(proposalBody);
+    expect(release.startsWith("-- Post-144 release step 170 ")).toBe(true);
   });
   it("the function body's fingerprint in the release, rollback and verify is the same and matches the proposal's function", () => {
     const md5s = [release, rollback, verify].map((text) => [...text.matchAll(/'([0-9a-f]{32})'/g)].map((m) => m[1]));
@@ -55,7 +56,7 @@ describe("release 170", () => {
     expect(release).toMatch(/DRIFTED/);
     expect(release).toMatch(/p170_fingerprint/);
     expect(rollback.match(/^BEGIN;$/gm)).toHaveLength(1);
-    expect(rollback).toMatch(/LOST by this rollback/);
+    expect(rollback).toMatch(/REFUSES, changing nothing, while any job holds a custom/);
     expect(sqlOnly(rollback).match(/^(DROP|ALTER TABLE)[^\n]*/gm)).toEqual([
       "DROP TRIGGER IF EXISTS jobs_worksheet_custom_lock ON public.jobs;",
       "DROP FUNCTION IF EXISTS public.jobs_worksheet_custom_lock();",
@@ -65,11 +66,29 @@ describe("release 170", () => {
       "DROP FUNCTION pg_temp.p170_fingerprint();",
     ]);
   });
-  it("is registered as a proposal only: not a numbered phase, so nothing installs it without Rhys's yes", () => {
-    expect(plan.phases.map((p) => p.number)).not.toContain(170);
-    expect(plan.other_proposals.map((p) => p.source)).toContain("supabase/proposals/p170_worksheet_custom.sql");
-    expect(read("supabase/verify/release_preflight.sql")).toContain("'supabase/proposals/p170_worksheet_custom.sql'");
-    expect(release).toMatch(/NOT yet a numbered phase/);
+  it("is phase 170 after 167 in the plan, with its marker in release preflight, and is no longer a loose proposal", () => {
+    expect(plan.phases.at(-1)).toEqual({ number: 170, after: "167", source: "supabase/proposals/p170_worksheet_custom.sql", release: "supabase/release/170_worksheet_custom.release.sql", rollback: "supabase/release/170_worksheet_custom.rollback.sql", verify: "supabase/verify/worksheet_custom_170.sql", marker: "post-144 marker 170 worksheet_custom" });
+    expect(plan.other_proposals.map((p) => p.source)).not.toContain("supabase/proposals/p170_worksheet_custom.sql");
+    const preflight = read("supabase/verify/release_preflight.sql");
+    expect(preflight).toContain("'post-144 marker 170 worksheet_custom'");
+    expect(preflight).toContain("'170 needs:");
+    expect(preflight).toContain("'supabase/proposals/p170_worksheet_custom.sql'");
+  });
+  it("the same function fingerprint is in the preflight marker row", () => {
+    const md5 = release.match(/= '([0-9a-f]{32})'/)![1];
+    expect(read("supabase/verify/release_preflight.sql")).toContain(`= '${md5}'`);
+  });
+  it("rollback refuses, and changes nothing, while any job holds a custom value", () => {
+    expect(rollback).toMatch(/IF v_col THEN[\s\S]*IF EXISTS \(SELECT 1 FROM public\.jobs j WHERE j\.worksheet_custom <> '\{\}'::jsonb\) THEN/);
+    expect(rollback).toMatch(/this file never deletes records/);
+    expect(rollback.indexOf("worksheet_custom <> '{}'::jsonb")).toBeLessThan(rollback.indexOf("DROP TRIGGER IF EXISTS"));
+  });
+  it("is wired into CI: the install loop, the schema marker script and the DB proof", () => {
+    const ci = read(".github/workflows/ci.yml");
+    expect(ci).toContain('"170_worksheet_custom|worksheet_custom_170|post-144 marker 170 worksheet_custom"');
+    expect(ci).toContain("tests/db/worksheet-custom-170.test.ts");
+    expect(read("scripts/ci-schema-markers.sh")).toContain('"post-144 marker 170 worksheet_custom|worksheet_custom_170|170 worksheet_custom applied"');
+    expect(read("tests/support/db-release-sequencer.ts")).toContain('"worksheet-custom-170.test.ts"');
   });
   it("the app never writes the column anywhere except lib/worksheet-builder/custom-values.ts", () => {
     const out = execSync("grep -rln worksheet_custom app components lib --include=*.ts --include=*.tsx || true", { cwd: path.resolve(__dirname, "../.."), encoding: "utf8" }).trim().split("\n").sort();

@@ -1,11 +1,10 @@
--- Release 170 (module K, the worksheet builder): one column and one guard for a company's own custom worksheet fields. Number 170 allocated by Rhys.
--- NOT yet a numbered phase in supabase/release-plan.json and NOT in the CI install step or release preflight rows: promoting it to a numbered phase,
--- and applying it anywhere, each need Rhys's separate yes on this exact file (after a fresh backup for production). One transaction; never part of
--- baseline replay. Not applied anywhere. Canonical source: supabase/proposals/p170_worksheet_custom.sql (its body is copied below between the BODY
--- lines, verbatim; tests/unit/worksheet-builder-sql-170.test.ts fails if they drift).
+-- Post-144 release step 170 (module K, the worksheet builder: a company's own custom worksheet fields; registered in supabase/release-plan.json as phase 170,
+-- after 167; CI's post-144 step installs it). Number 170 allocated by Rhys; promoted from proposal with his approval for go-live. One transaction; never part
+-- of baseline replay. Not applied anywhere hosted: production only with Rhys's separate yes on this exact file after a fresh backup. Canonical source:
+-- supabase/proposals/p170_worksheet_custom.sql (its body between BEGIN; and COMMIT; is copied below verbatim; scripts/check-release-plan.mjs fails if they drift).
 -- WHAT IT DOES: adds public.jobs.worksheet_custom (jsonb, NOT NULL, default '{}', an object of at most 20000 characters; every existing job gets {}),
 -- and public.jobs_worksheet_custom_lock() with its BEFORE UPDATE OF worksheet_custom trigger: a browser session cannot change worksheet_custom of a job
--- whose current revision has a primary sign-off (42501, hint signed_off_custom_locked). The app (flag-gated, off by default) already treats the
+-- whose current revision has a primary sign-off (42501, hint signed_off_custom_locked). The worksheet builder is off by default in the app and treats a
 -- missing column as "not available yet".
 -- WHAT IT DOES NOT DO: change any existing column, row, other function, trigger, policy or grant; it does not add the column to jobs_worksheet_version's
 -- watched fields (a custom value never raises the revision, withdraws a pass or stales a sign-off) or to the sign-off snapshot.
@@ -17,7 +16,8 @@
 -- The self-check compares a fingerprint of everything else (every other function with grants, every other jobs column, constraint, trigger, policy and
 -- grant, and every jobs row except the new column) before and after, and requires the new objects exactly as below.
 -- Verify: supabase/verify/worksheet_custom_170.sql (every row true). Rollback: supabase/release/170_worksheet_custom.rollback.sql (drops only the four new
--- objects; custom values saved in the column are lost by it). Behavioural proof on plain PostgreSQL 16: tests/postgres/worksheet-custom-170.proof.sql.
+-- objects; REFUSES while any job holds a custom value, so no record is deleted). Behavioural proof: tests/db/worksheet-custom-170.test.ts (Supabase stack, CI)
+-- and tests/postgres/worksheet-custom-170.proof.sql (plain PostgreSQL 16).
 -- Inputs: the database. Outputs: one column, one constraint, one function, one trigger. Must not change: anything else.
 BEGIN;
 DO $post_release_guard$
@@ -80,7 +80,6 @@ AS $p170fp$
 $p170fp$;
 CREATE TEMP TABLE p170_before ON COMMIT DROP AS SELECT * FROM pg_temp.p170_fingerprint();
 
--- ---- BODY ----
 ALTER TABLE public.jobs ADD COLUMN IF NOT EXISTS worksheet_custom JSONB NOT NULL DEFAULT '{}'::JSONB;
 DO $p170_constraint$
 BEGIN
@@ -114,7 +113,6 @@ REVOKE ALL ON FUNCTION public.jobs_worksheet_custom_lock() FROM PUBLIC, anon, au
 DROP TRIGGER IF EXISTS jobs_worksheet_custom_lock ON public.jobs;
 CREATE TRIGGER jobs_worksheet_custom_lock BEFORE UPDATE OF worksheet_custom ON public.jobs
   FOR EACH ROW EXECUTE FUNCTION public.jobs_worksheet_custom_lock();
--- ---- BODY ----
 
 DO $p170_self_check$
 DECLARE
