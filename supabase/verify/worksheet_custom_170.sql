@@ -1,7 +1,7 @@
--- Release 170 (module K worksheet builder: jobs.worksheet_custom and its sign-off guard). Read only: every row should be TRUE (8) once 170 is applied.
+-- Release 170 (module K worksheet builder: jobs.worksheet_custom and its sign-off guard; phase 170 in supabase/release-plan.json). Read only: every row should be TRUE (8).
 -- Before 170 is applied, rows 1 to 5 are false (the last three read only what must stay true).
 -- Inputs: none. Outputs: one row per check (check_name, ok). Must not change: this file only reads. The function body is compared with every whitespace
--- character removed (an SQL-editor paste may store CRLF). The behavioural proof is tests/postgres/worksheet-custom-170.proof.sql.
+-- character removed (an SQL-editor paste may store CRLF). The behavioural proof is tests/db/worksheet-custom-170.test.ts.
 WITH f AS (SELECT p.oid, p.prosecdef, p.proconfig, p.prorettype, md5(regexp_replace(p.prosrc, '\s', '', 'g')) AS body_md5, p.proacl, p.proowner
            FROM pg_proc p WHERE p.oid = to_regprocedure('public.jobs_worksheet_custom_lock()'))
 SELECT 'jobs.worksheet_custom is jsonb NOT NULL default {}' AS check_name,

@@ -1,8 +1,9 @@
 -- Rollback of release 170 (supabase/release/170_worksheet_custom.release.sql). Drops ONLY the four objects 170 added: the trigger
 -- jobs_worksheet_custom_lock, the function public.jobs_worksheet_custom_lock(), the constraint jobs_worksheet_custom_shape and the column
--- public.jobs.worksheet_custom. Every other column and row of jobs is exactly as before 170. WARNING: custom worksheet values saved in the column
--- exist nowhere else and are LOST by this rollback; take a backup first if the worksheet builder has been used. After it the app treats the column as
--- missing ("not available yet") and the builder's custom fields can no longer be saved (printing and everything else are unaffected).
+-- public.jobs.worksheet_custom. Every other column and row of jobs is exactly as before 170. REFUSES, changing nothing, while any job holds a custom
+-- worksheet value (anything other than {}): those values exist nowhere else and this file never deletes records. To go back while values exist, switch the
+-- worksheet builder off for the company (the layouts stay as they are) or have Rhys decide on an export first. After the rollback the app treats the column
+-- as missing ("not available yet") and the builder's custom fields can no longer be saved (printing and everything else are unaffected).
 -- STATE: ABSENT (none of the four objects: nothing to do, nothing is changed), INSTALLED as 170 left it (the four objects are dropped), DRIFTED (any of
 -- them present but not exactly 170's: REFUSES, changes nothing).
 -- The self-check compares the same fingerprint as the release before and after and requires the four objects gone. Inputs: the database. Outputs:
@@ -17,6 +18,12 @@ BEGIN
  SELECT EXISTS (SELECT 1 FROM information_schema.columns c WHERE c.table_schema = 'public' AND c.table_name = 'jobs' AND c.column_name = 'worksheet_custom') INTO v_col;
  SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_proc p WHERE p.pronamespace = 'public'::regnamespace AND p.proname = 'jobs_worksheet_custom_lock') INTO v_fun;
  SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_trigger t WHERE t.tgrelid = 'public.jobs'::regclass AND t.tgname = 'jobs_worksheet_custom_lock') INTO v_trg;
+ IF v_col THEN
+  -- Only planned when the column exists (a plain AND would plan the query, and fail, on a database that is already rolled back).
+  IF EXISTS (SELECT 1 FROM public.jobs j WHERE j.worksheet_custom <> '{}'::jsonb) THEN
+   RAISE EXCEPTION '170 rollback: % job(s) hold custom worksheet values; they exist nowhere else and this file never deletes records, so nothing was changed (switch the worksheet builder off instead, or have Rhys decide on an export first)', (SELECT count(*) FROM public.jobs j WHERE j.worksheet_custom <> '{}'::jsonb);
+  END IF;
+ END IF;
  IF v_fun AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_proc p WHERE p.oid = to_regprocedure('public.jobs_worksheet_custom_lock()') AND p.prosecdef AND p.proconfig = ARRAY['search_path=pg_catalog, public'] AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'a7d2d5df942ae0fc369d15d7bd7ee21c') THEN
   RAISE EXCEPTION '170 rollback: public.jobs_worksheet_custom_lock is not 170''s (body, security, search_path or argument list differ); stop and compare it first, nothing was changed';
  END IF;
