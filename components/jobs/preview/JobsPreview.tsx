@@ -15,7 +15,7 @@
  * real board does not have (no tabs, search box or sort). Row controls keep a 48 px hit area (e2e rule).
  */
 
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import {
@@ -403,13 +403,6 @@ function useSay(): Say {
 }
 
 const VIEW_KEY = "jobs-preview:view";
-const subscribeMedia = (query: string) => (notify: () => void) => { const m = window.matchMedia(query); m.addEventListener("change", notify); return () => m.removeEventListener("change", notify); };
-/** Wide = the fixed-sidebar layout (over 1024px). Phones (under 768px) have no switcher. Server and tests render wide. */
-function useMedia(query: string, server: boolean) {
-  const sub = useMemo(() => subscribeMedia(query), [query]);
-  return useSyncExternalStore(sub, () => (typeof window.matchMedia === "function" ? window.matchMedia(query).matches : server), () => server);
-}
-
 const statusTone = (st: Status): StatusTone => (st === "not_started" ? "neutral" : st === "running" ? "progress" : st === "complete" ? "ok" : "warn");
 const dueTone: Record<DueLight, StatusTone> = { "On time": "ok", "At risk": "warn", Late: "danger", "No due date": "neutral" };
 
@@ -547,7 +540,7 @@ const DATA_CELL: Record<Exclude<ColumnKey, "ref" | "machine" | "operator" | "due
   attachments: (j) => <FileNames names={j.attachments} />,
   started: (j) => <span className={cx(tabularNumbers, j.started === "Not started" && typeScale.secondary)}>{j.started}</span>,
   finished: (j) => <span className={cx(tabularNumbers, j.finished === "Not finished" && typeScale.secondary)}>{j.finished}</span>,
-  inspection: (j) => <><span className={cx(j.inspection === "Not finished" && typeScale.secondary)}>{j.inspection}</span>{j.reworkNote ? <span className={cx(typeScale.secondary, s.block)}>Rework: {j.reworkNote}</span> : null}</>,
+  inspection: (j) => <div className={s.stageCell}><span className={cx(j.inspection === "Not finished" && typeScale.secondary)}>{j.inspection}</span>{j.reworkNote ? <span className={typeScale.secondary}>Rework: {j.reworkNote}</span> : null}</div>,
 };
 
 function cellFor(key: ColumnKey, j: Job, ctx: RowCtx): ReactNode {
@@ -559,13 +552,19 @@ function cellFor(key: ColumnKey, j: Job, ctx: RowCtx): ReactNode {
         <RelatedLinks job={j} ctx={ctx} />
       </div>
     );
-    case "stage": return <><span className={typeScale.name}>{j.stage ?? "—"}</span><span className={cx(typeScale.secondary, s.block)} data-testid="job-progress">{j.progress}</span></>;
+    case "stage": return <div className={s.stageCell}><span className={typeScale.name}>{j.stage ?? "—"}</span><span className={typeScale.secondary} data-testid="job-progress">{j.progress}</span></div>;
     case "machine": return <MachineCell job={j} ctx={ctx} />;
     case "operator": return <OperatorCell job={j} ctx={ctx} />;
     case "due": return <DueCell job={j} />;
     case "actions": return <RowActions job={j} ctx={ctx} />;
     default: return DATA_CELL[key](j);
   }
+}
+
+/** v3: the stacked record (1024 px and under) shows the cells in this order after the Job No title: the 0-based indexes in the table (the checkbox column is 0). Pure, exported for tests. */
+export const STACK_ORDER: ColumnKey[] = ["customer", "description", "specification", "stage", "machine", "operator", "due", "inspection", "started", "finished", "drawings", "attachments"];
+export function stackPriority(columns: Array<{ key: ColumnKey }>): number[] {
+  return STACK_ORDER.map((k) => columns.findIndex((c) => c.key === k)).filter((i) => i >= 0).map((i) => i + 1);
 }
 
 function JobTable({ jobs, groups, view, columns, selected, expanded, role, ctx, flash, dispatch }: {
@@ -607,10 +606,10 @@ function JobTable({ jobs, groups, view, columns, selected, expanded, role, ctx, 
   };
   return (
     <div data-testid={`view-${view}`} className={cx(s.jt, list ? s.isList : s.isTable)}>
-      <ScrollTable label={`Jobs, ${view} view`} dense pinLast>
+      <ScrollTable label={`Jobs, ${view} view`} dense pinLast primary={1} columnPriority={stackPriority(columns)} actionsColumn="last">
         <thead>
           <tr>
-            <th className={s.cSel}><span className={s.selCell}><Checkbox checked={allTicked} onChange={() => dispatch({ t: "selectAll", refs: allTicked ? [] : jobs.map((j) => j.ref) })} aria-label={`Select all ${jobs.length} filtered jobs`} data-testid="select-all-header" />{list ? <span className={srOnly}>Details</span> : null}</span></th>
+            <th className={s.cSel} data-ui-label="Select"><span className={s.selCell}><Checkbox checked={allTicked} onChange={() => dispatch({ t: "selectAll", refs: allTicked ? [] : jobs.map((j) => j.ref) })} aria-label={`Select all ${jobs.length} filtered jobs`} data-testid="select-all-header" />{list ? <span className={srOnly}>Details</span> : null}</span></th>
             {columns.map((c) => <th key={c.key} scope="col" data-col={c.key} className={cx(s[`c_${c.key}`], c.key === "ref" && s.stickyRef)}>{c.label}</th>)}
           </tr>
         </thead>
@@ -891,14 +890,13 @@ function JobsBoard() {
   if (dlg) lastDlg.current = dlg;
   const say = useSay();
   const toast = useToast();
-  const wide = useMedia("(min-width: 1025px)", true);
-  const notPhone = useMedia("(min-width: 768px)", true);
 
   useEffect(() => {
     try { const v = window.localStorage.getItem(VIEW_KEY); if (v === "cards" || v === "list" || v === "table") dispatch({ t: "view", v }); } catch { /* storage unavailable: the default List stays */ }
   }, []);
   const setView = (v: ViewMode) => { dispatch({ t: "view", v }); try { window.localStorage.setItem(VIEW_KEY, v); } catch { /* ignore */ } };
-  const view: ViewMode = wide ? st.view : "cards";
+  // v3: every view works at every width (the table reflows into stacked records at 1024 px and under), so the view is just the chosen one.
+  const view: ViewMode = st.view;
 
   const counts = useMemo(() => countsOf(st.jobs), [st.jobs]);
   const vis = useMemo(() => (st.screen === "empty" || st.screen === "loading" ? [] : visibleJobs(st.jobs, st.filters)), [st.jobs, st.filters, st.screen]);
@@ -955,6 +953,8 @@ function JobsBoard() {
 
   const reload = () => { dispatch({ t: "screen", v: "loading" }); window.setTimeout(() => { dispatch({ t: "screen", v: "ready" }); say.info("Sample jobs shown again. No server was contacted."); }, 700); };
 
+  const printPack = () => say.info(`The workshop pack for ${nSel} job${nSel === 1 ? "" : "s"} is not opened in the preview.`);
+  const finishSelected = () => { if (!planBulkFinish(selectedVisible).targets.length) { say.fail("None of the selected jobs can be finished."); return; } setDlg({ k: "bulk" }); };
   const noJobs = st.screen === "empty";
   const jobWord = (n: number) => `${n} filtered job${n === 1 ? "" : "s"}`;
   const idleNote = st.screen === "loading" ? "Loading jobs" : `${vis.length} job${vis.length === 1 ? "" : "s"} shown`;
@@ -968,13 +968,11 @@ function JobsBoard() {
         actions={
           <>
             <ColumnsMenu hidden={st.hidden} role={st.role} dispatch={dispatch} />
-            {notPhone ? (
-              <SegmentedControl label="View" value={view} onChange={setView} options={[
-                { value: "cards", label: "Cards", testId: "view-cards-btn" },
-                { value: "list", label: "List", disabled: !wide, disabledReason: "Needs a screen wider than 1024px", testId: "view-list-btn" },
-                { value: "table", label: "Table", disabled: !wide, disabledReason: "Needs a screen wider than 1024px", testId: "view-table-btn" },
-              ]} />
-            ) : null}
+            <SegmentedControl label="View" collapseToSelect value={view} onChange={setView} options={[
+              { value: "cards", label: "Cards", testId: "view-cards-btn" },
+              { value: "list", label: "List", testId: "view-list-btn" },
+              { value: "table", label: "Table", testId: "view-table-btn" },
+            ]} />
             <ExportMenu say={say} nSel={nSel} total={vis.length} testId="export-trigger" />
             {viewer ? null : <Button variant="primary" data-testid="new-job" onClick={() => setDlg({ k: "newjob" })}>New job</Button>}
           </>
@@ -1003,14 +1001,23 @@ function JobsBoard() {
             count={nSel} filteredTotal={vis.length} noun="filtered job" idleNote={idleNote}
             statusText={({ count, filteredTotal }) => `${count} selected of ${jobWord(filteredTotal)}.`}
             onSelectAll={() => dispatch({ t: "selectAll", refs: vis.map((j) => j.ref) })} onClear={() => dispatch({ t: "clearSelection" })}
+            compact={nSel > 0 ? {
+              // phones (under 640px): the count, ONE primary and a More menu; every action of the full bar is still reachable (Print Workshop Pack, the four Export formats, Select all, Clear selection)
+              primary: viewer
+                ? <Button size="sm" variant="secondary" data-testid="print-pack-compact" onClick={printPack}>Print Workshop Pack</Button>
+                : <Button size="sm" variant="primary" data-testid="finish-selected-compact" aria-disabled={!planBulkFinish(selectedVisible).targets.length || undefined} onClick={finishSelected}>Finish Selected ({nSel})</Button>,
+              more: [
+                ...(viewer ? [] : [{ id: "print-pack", label: "Print Workshop Pack", onSelect: printPack }]),
+                ...["CSV", "Excel", "Word", "PDF"].map((fmt) => ({ id: `export-${fmt}`, label: `Export ${fmt}`, onSelect: () => say.info(`${fmt} export is not generated in the preview. ${selectionScope(nSel, vis.length)}`) })),
+              ],
+            } : undefined}
           >
             {nSel > 0 ? (
               <>
-                <Button size="sm" variant="secondary" data-testid="print-pack" onClick={() => say.info(`The workshop pack for ${nSel} job${nSel === 1 ? "" : "s"} is not opened in the preview.`)}>Print Workshop Pack</Button>
+                <Button size="sm" variant="secondary" data-testid="print-pack" onClick={printPack}>Print Workshop Pack</Button>
                 <ExportMenu say={say} nSel={nSel} total={vis.length} testId="export-selected-trigger" />
                 {viewer ? null : (
-                  <Button size="sm" variant="primary" data-testid="finish-selected" aria-disabled={!planBulkFinish(selectedVisible).targets.length || undefined}
-                    onClick={() => { if (!planBulkFinish(selectedVisible).targets.length) { say.fail("None of the selected jobs can be finished."); return; } setDlg({ k: "bulk" }); }}>Finish Selected ({nSel})</Button>
+                  <Button size="sm" variant="primary" data-testid="finish-selected" aria-disabled={!planBulkFinish(selectedVisible).targets.length || undefined} onClick={finishSelected}>Finish Selected ({nSel})</Button>
                 )}
               </>
             ) : null}

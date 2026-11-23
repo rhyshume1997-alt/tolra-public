@@ -1,7 +1,7 @@
 /*
  * BOUNDARY (Jobs module 2, PREVIEW ONLY, v2 on the shared premium set). Inputs: class names used by components/jobs/preview/JobsPreview.tsx. Output: layout and the Job Board table
  * arrangement only. Every control, colour, type size and surface comes from components/ui/premium (tokens, type scale, elevation, motion); this file holds only what the shared set does not
- * cover: the page flow, the 14-column table (sticky Job No after the checkbox cell, fixed-width Actions), the card grid made of the shared StackedRows, and small content layouts.
+ * cover: the page flow, the 14-column table (desktop only: sticky Job No after the checkbox cell, fixed column widths and Actions width; at 1024px and under the shared ScrollTable stacks it), the card grid made of the shared StackedRows, and small content layouts.
  * Must not change: no global selectors, nothing outside this module, no business rules, no colours of its own beyond the two row tints used for flash. Row controls keep a 48px hit area (e2e rule).
  */
 
@@ -20,37 +20,44 @@
 /* ---------- filter toolbar ---------- */
 .fbar { display: flex; flex-direction: column; gap: 12px; }
 .fRow { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 20px; }
-.fGroup { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.fGroup { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; min-width: 0; max-width: 100%; }
 .chipRow { display: flex; flex-wrap: wrap; gap: 16px 8px; margin: 0; padding: 0; list-style: none; }
-.filterBody { display: grid; gap: 14px; width: min(340px, 76vw); padding: 4px 0 8px; }
+.filterBody { display: grid; gap: 14px; width: min(340px, 100%); padding: 4px 0 8px; }
 .pField { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
-.colsBody { display: grid; gap: 2px; width: min(300px, 76vw); padding-bottom: 6px; }
+.colsBody { display: grid; gap: 2px; width: min(300px, 100%); padding-bottom: 6px; }
 .colsBody p { margin: 6px 0 0; }
-.dockBody { display: grid; gap: 12px; width: min(340px, 76vw); padding: 4px 0 8px; }
+.dockBody { display: grid; gap: 12px; width: min(340px, 100%); padding: 4px 0 8px; }
 .dockBody p { margin: 0; }
 
 /* ---------- table and list ---------- */
-.jt .cSel { width: 48px; min-width: 48px; padding: 0; }
-.isList .cSel { width: 96px; min-width: 96px; }
+.jt .cSel { padding: 0; }
 .jt th.cSel { padding: 0; }
 .selCell { display: flex; align-items: center; }
 .jt .expander { width: 48px; padding: 0; }
 .jt .expander svg { transition: transform var(--ui-t-base) var(--ui-ease-out); }
-.jt .stickyRef { position: sticky; z-index: 2; }
-.jt th.stickyRef { z-index: 4; }
-.isTable .stickyRef { left: 48px; }
-.isList .stickyRef { left: 96px; }
-.jt .stickyRef::after { content: ""; position: absolute; top: 0; right: -9px; bottom: 0; width: 9px; pointer-events: none; opacity: 0; background: linear-gradient(90deg, rgba(14, 23, 38, 0.1), transparent); transition: opacity var(--ui-t-base) var(--ui-ease-out); }
-[data-scrolled="true"] .jt .stickyRef::after { opacity: 1; }
 .jt .row[data-flash] { --row-bg: #fff1b8; }
 
-.jt .c_ref { min-width: 190px; } .jt .c_customer { min-width: 160px; } .jt .c_description { min-width: 200px; } .jt .c_specification { min-width: 240px; }
-.jt .c_drawings, .jt .c_attachments { min-width: 160px; } .jt .c_stage { min-width: 160px; } .jt .c_machine { min-width: 320px; }
-.jt .c_operator { min-width: 190px; } .jt .c_due { min-width: 210px; } .jt .c_started, .jt .c_finished { min-width: 160px; } .jt .c_inspection { min-width: 190px; }
-.jt .c_actions { width: 264px; min-width: 264px; white-space: nowrap; }
+/* NO SIDEWAYS SCROLLING: the sticky Job No column, the fixed column widths and the fixed Actions width exist ONLY above 1024px (desktop). At 1024px and under the shared ScrollTable reflows the same cells into stacked records. */
+@media (min-width: 1025px) {
+  .jt .cSel { width: 48px; min-width: 48px; }
+  .isList .cSel { width: 96px; min-width: 96px; }
+  .jt .stickyRef { position: sticky; z-index: 2; }
+  .jt th.stickyRef { z-index: 4; }
+  .isTable .stickyRef { left: 48px; }
+  .isList .stickyRef { left: 96px; }
+  .jt .stickyRef::after { content: ""; position: absolute; top: 0; right: -9px; bottom: 0; width: 9px; pointer-events: none; opacity: 0; background: linear-gradient(90deg, rgba(14, 23, 38, 0.1), transparent); transition: opacity var(--ui-t-base) var(--ui-ease-out); }
+  [data-scrolled="true"] .jt .stickyRef::after { opacity: 1; }
+
+  .jt .c_ref { min-width: 190px; } .jt .c_customer { min-width: 160px; } .jt .c_description { min-width: 200px; } .jt .c_specification { min-width: 240px; }
+  .jt .c_drawings, .jt .c_attachments { min-width: 160px; } .jt .c_stage { min-width: 160px; } .jt .c_machine { min-width: 320px; }
+  .jt .c_operator { min-width: 190px; } .jt .c_due { min-width: 210px; } .jt .c_started, .jt .c_finished { min-width: 160px; } .jt .c_inspection { min-width: 190px; }
+  .jt .c_actions { width: 264px; min-width: 264px; white-space: nowrap; }
+
+}
 
 .jt .groupCell { height: 40px; background: var(--ui-surface-3); box-shadow: inset 0 1px 0 var(--ui-line), inset 0 -1px 0 var(--ui-line); }
 .groupText { position: sticky; left: 14px; }
+@media (max-width: 1024px) { .groupText { position: static; } }
 .expandBody { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 20px; }
 
 /* ---------- cell content ---------- */
@@ -59,22 +66,26 @@
 .idState { display: inline-flex; flex-wrap: wrap; gap: 0 10px; }
 .jt .related, .cardGrid .related { margin: 0 0 8px -6px; padding: 0 6px; color: var(--ui-accent); text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px; }
 .dueCell { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 2px 0; }
+.stageCell { display: flex; flex-direction: column; align-items: flex-start; gap: 0; }
 .badges { display: flex; flex-wrap: wrap; gap: 4px 6px; }
 .file { color: var(--ui-accent); font-size: var(--ui-fs-secondary); overflow-wrap: anywhere; }
 .clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .machine, .operator { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
-.operator > select { width: 100%; min-width: 160px; }
+.operator > select { width: 100%; max-width: 100%; }
+@media (min-width: 1025px) { .operator > select { min-width: 160px; } }
 .inUse { display: flex; flex-direction: column; font-size: var(--ui-fs-secondary); line-height: 18px; color: var(--ui-ink-2); }
 .inUse b { color: #14532d; font-weight: 600; }
 .mCtl { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 8px; }
 
 /* ONE primary and More, a fixed width, never wrapping */
-.actions { display: flex; flex-wrap: nowrap; align-items: center; justify-content: flex-end; gap: 8px; }
-.primaryAct, .primarySlot { min-width: 132px; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 16px 8px; }
 .primarySlot { display: inline-block; }
+@media (min-width: 1025px) { .actions { flex-wrap: nowrap; gap: 8px; } .primaryAct, .primarySlot { min-width: 132px; } }
+/* stacked record (1024px and under): the primary action fills the row beside More */
+@media (max-width: 1024px) { .actions { flex-wrap: nowrap; justify-content: flex-start; gap: 8px; } .actions > .primaryAct, .actions > [data-testid="row-primary"] { flex: 1 1 auto; min-width: 0; } }
 
 /* ---------- cards: the shared StackedRows arranged in a grid ---------- */
-.cardGrid.cardGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 16px; overflow: visible; border-radius: 0; background: transparent; box-shadow: none; }
+.cardGrid.cardGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(330px, 100%), 1fr)); gap: 16px; overflow: visible; border-radius: 0; background: transparent; box-shadow: none; }
 .cardGrid.cardGrid > li { border-radius: var(--ui-radius-lg); background: var(--ui-surface); box-shadow: var(--ui-elev-raised); transition: background-color var(--ui-t-base) var(--ui-ease-out), box-shadow var(--ui-t-base) var(--ui-ease-out); }
 .cardGrid.cardGrid > li:has(input[type="checkbox"]:checked) { background: var(--ui-soft); box-shadow: 0 0 0 1.5px var(--ui-brand), var(--ui-shadow-1); }
 .cardGrid.cardGrid > li:has([data-flash]), .cardGrid.cardGrid > li[data-flash] { background: #fff1b8; }
@@ -88,7 +99,7 @@
 .dlgStack p { margin: 0; }
 .dlgNote { padding-top: 10px; box-shadow: inset 0 1px 0 var(--ui-line); }
 .kvList { display: grid; margin: 0; }
-.kv { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 12px; padding: 10px 0; box-shadow: inset 0 -1px 0 var(--ui-line); }
+.kv { display: grid; grid-template-columns: minmax(0, 130px) minmax(0, 1fr); gap: 12px; padding: 10px 0; box-shadow: inset 0 -1px 0 var(--ui-line); }
 .kv:last-child { box-shadow: none; }
 .kv dt { color: var(--ui-muted); font-size: var(--ui-fs-secondary); font-weight: 600; }
 .kv dd { margin: 0; overflow-wrap: anywhere; }

@@ -7,11 +7,13 @@
  * v2 (shared premium set, owner-approved structure): also pins the Filters popover and chips, the bulk bar that exists only with a selection, the one-primary-plus-More row split and that every control, action and filter is still reachable.
  * Written with createElement (no JSX) so it is a .test.ts file and runs under the existing vitest.config.ts include pattern.
  */
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import JobsPreview, { DEFAULT_FILTERS, JOBS_INTRO, DUE_NOTE, REWORK_NOTE, activeChips, isFiltered, popoverFilterCount, reachableActionLabels, splitRowActions, actionLine, actionsFor, applyOp, countsOf, initialJobs, initialState, machineGroups, planBulkFinish, primaryLabel, reduce, selectionScope, visibleJobs } from "@/components/jobs/preview/JobsPreview";
+import JobsPreview, { COLUMNS, DEFAULT_FILTERS, JOBS_INTRO, DUE_NOTE, REWORK_NOTE, activeChips, isFiltered, popoverFilterCount, reachableActionLabels, splitRowActions, STACK_ORDER, stackPriority, actionLine, actionsFor, applyOp, countsOf, initialJobs, initialState, machineGroups, planBulkFinish, primaryLabel, reduce, selectionScope, visibleJobs } from "@/components/jobs/preview/JobsPreview";
 import type { Role, ViewMode } from "@/components/jobs/preview/JobsPreview";
 
 const PARITY: Record<string, Record<string, { list: string; table: string }>> = {"J-0434":{"admin":{"list":"Pick a machine|Finish|Inspected (disabled)|Worksheet|Machines|Print|Send","table":"Pick a machine|Finish|Worksheet|Machines|Print|Send"},"office":{"list":"Pick a machine|Finish|Inspected (disabled)|Worksheet|Machines|Print|Send","table":"Pick a machine|Finish|Worksheet|Machines|Print|Send"},"workshop":{"list":"Pick a machine|Finish|Inspected (disabled)|Worksheet|Machines|Print","table":"Pick a machine|Finish|Worksheet|Machines|Print"},"viewer":{"list":"Worksheet|Print","table":"Worksheet|Print"}},"J-0433":{"admin":{"list":"Start|Finish|Inspected (disabled)|Worksheet|Machines|Print|Send","table":"Start|Finish|Worksheet|Machines|Print|Send"},"office":{"list":"Start|Finish|Inspected (disabled)|Worksheet|Machines|Print|Send","table":"Start|Finish|Worksheet|Machines|Print|Send"},"workshop":{"list":"Start|Finish|Inspected (disabled)|Worksheet|Machines|Print","table":"Start|Finish|Worksheet|Machines|Print"},"viewer":{"list":"Worksheet|Print","table":"Worksheet|Print"}},"J-0432":{"admin":{"list":"Pause|Finish|Inspected (disabled)|Worksheet|Machines|Print|Send","table":"Pause|Finish|Worksheet|Machines|Print|Send"},"office":{"list":"Pause|Finish|Inspected (disabled)|Worksheet|Machines|Print|Send","table":"Pause|Finish|Worksheet|Machines|Print|Send"},"workshop":{"list":"Pause|Finish|Inspected (disabled)|Worksheet|Machines|Print","table":"Pause|Finish|Worksheet|Machines|Print"},"viewer":{"list":"Worksheet|Print","table":"Worksheet|Print"}},"J-0431":{"admin":{"list":"Start|Finish|Inspected (disabled)|Worksheet|Machines|Print|Send","table":"Start|Finish|Worksheet|Machines|Print|Send"},"office":{"list":"Start|Finish|Inspected (disabled)|Worksheet|Machines|Print|Send","table":"Start|Finish|Worksheet|Machines|Print|Send"},"workshop":{"list":"Start|Finish|Inspected (disabled)|Worksheet|Machines|Print","table":"Start|Finish|Worksheet|Machines|Print"},"viewer":{"list":"Worksheet|Print","table":"Worksheet|Print"}},"J-0430":{"admin":{"list":"Pick a machine|Finish|Inspected (disabled)|Worksheet|Machines|Print|Send","table":"Pick a machine|Finish|Worksheet|Machines|Print|Send"},"office":{"list":"Pick a machine|Finish|Inspected (disabled)|Worksheet|Machines|Print|Send","table":"Pick a machine|Finish|Worksheet|Machines|Print|Send"},"workshop":{"list":"Pick a machine|Finish|Inspected (disabled)|Worksheet|Machines|Print","table":"Pick a machine|Finish|Worksheet|Machines|Print"},"viewer":{"list":"Worksheet|Print","table":"Worksheet|Print"}},"J-0429":{"admin":{"list":"Inspected|Rework|Worksheet|Machines|Print|Delivery note|Send","table":"Inspected|Release early|Rework|Worksheet|Machines|Print|Delivery note|Send"},"office":{"list":"Inspected (disabled)|Rework|Worksheet|Machines|Print|Delivery note|Send","table":"Rework|Worksheet|Machines|Print|Delivery note|Send"},"workshop":{"list":"Inspected (disabled)|Rework|Worksheet|Machines|Print","table":"Rework|Worksheet|Machines|Print"},"viewer":{"list":"Rework|Worksheet|Print","table":"Rework|Worksheet|Print"}},"J-0428":{"admin":{"list":"Pause|Finish|Inspected (disabled)|Worksheet|Machines|Print|Send","table":"Pause|Finish|Worksheet|Machines|Print|Send"},"office":{"list":"Pause|Finish|Inspected (disabled)|Worksheet|Machines|Print|Send","table":"Pause|Finish|Worksheet|Machines|Print|Send"},"workshop":{"list":"Pause|Finish|Inspected (disabled)|Worksheet|Machines|Print","table":"Pause|Finish|Worksheet|Machines|Print"},"viewer":{"list":"Worksheet|Print","table":"Worksheet|Print"}},"J-0427":{"admin":{"list":"Resume|Finish|Inspected (disabled)|Worksheet|Machines|Print|Send","table":"Resume|Finish|Worksheet|Machines|Print|Send"},"office":{"list":"Resume|Finish|Inspected (disabled)|Worksheet|Machines|Print|Send","table":"Resume|Finish|Worksheet|Machines|Print|Send"},"workshop":{"list":"Resume|Finish|Inspected (disabled)|Worksheet|Machines|Print","table":"Resume|Finish|Worksheet|Machines|Print"},"viewer":{"list":"Worksheet|Print","table":"Worksheet|Print"}},"J-0426":{"admin":{"list":"Pause|Finish|Inspected (disabled)|Worksheet|Machines|Print|Send","table":"Pause|Finish|Worksheet|Machines|Print|Send"},"office":{"list":"Pause|Finish|Inspected (disabled)|Worksheet|Machines|Print|Send","table":"Pause|Finish|Worksheet|Machines|Print|Send"},"workshop":{"list":"Pause|Finish|Inspected (disabled)|Worksheet|Machines|Print","table":"Pause|Finish|Worksheet|Machines|Print"},"viewer":{"list":"Worksheet|Print","table":"Worksheet|Print"}},"J-0425":{"admin":{"list":"Finished|Inspected|Reopen|Worksheet|Machines|Print|Delivery note|Send","table":"Finished|Inspected|Reopen|Release early|Worksheet|Machines|Print|Delivery note|Send"},"office":{"list":"Finished|Inspected|Reopen|Worksheet|Machines|Print|Delivery note|Send","table":"Finished|Inspected|Reopen|Worksheet|Machines|Print|Delivery note|Send"},"workshop":{"list":"Finished|Inspected|Worksheet|Machines|Print","table":"Finished|Inspected|Worksheet|Machines|Print"},"viewer":{"list":"Worksheet|Print","table":"Worksheet|Print"}},"J-0424":{"admin":{"list":"Finished|Inspected|Reopen|Worksheet|Machines|Print|Delivery note|Send","table":"Finished|Inspected|Reopen|Release early|Worksheet|Machines|Print|Delivery note|Send"},"office":{"list":"Finished|Inspected|Reopen|Worksheet|Machines|Print|Delivery note|Send","table":"Finished|Inspected|Reopen|Worksheet|Machines|Print|Delivery note|Send"},"workshop":{"list":"Finished|Inspected|Worksheet|Machines|Print","table":"Finished|Inspected|Worksheet|Machines|Print"},"viewer":{"list":"Worksheet|Print","table":"Worksheet|Print"}},"J-0423":{"admin":{"list":"Finished|Inspected|Reopen|Worksheet|Machines|Print|Delivery note|Send","table":"Finished|Inspected|Reopen|Release early|Worksheet|Machines|Print|Delivery note|Send"},"office":{"list":"Finished|Inspected|Reopen|Worksheet|Machines|Print|Delivery note|Send","table":"Finished|Inspected|Reopen|Worksheet|Machines|Print|Delivery note|Send"},"workshop":{"list":"Finished|Inspected|Worksheet|Machines|Print","table":"Finished|Inspected|Worksheet|Machines|Print"},"viewer":{"list":"Worksheet|Print","table":"Worksheet|Print"}},"J-0422":{"admin":{"list":"Start|Finish|Inspected (disabled)|Worksheet|Machines|Print|Send","table":"Start|Finish|Worksheet|Machines|Print|Send"},"office":{"list":"Start|Finish|Inspected (disabled)|Worksheet|Machines|Print|Send","table":"Start|Finish|Worksheet|Machines|Print|Send"},"workshop":{"list":"Start|Finish|Inspected (disabled)|Worksheet|Machines|Print","table":"Start|Finish|Worksheet|Machines|Print"},"viewer":{"list":"Worksheet|Print","table":"Worksheet|Print"}},"J-0421":{"admin":{"list":"Pick a machine|Finish|Inspected (disabled)|Worksheet|Machines|Print|Send","table":"Pick a machine|Finish|Worksheet|Machines|Print|Send"},"office":{"list":"Pick a machine|Finish|Inspected (disabled)|Worksheet|Machines|Print|Send","table":"Pick a machine|Finish|Worksheet|Machines|Print|Send"},"workshop":{"list":"Pick a machine|Finish|Inspected (disabled)|Worksheet|Machines|Print","table":"Pick a machine|Finish|Worksheet|Machines|Print"},"viewer":{"list":"Worksheet|Print","table":"Worksheet|Print"}},"J-0420":{"admin":{"list":"Start|Finish|Inspected (disabled)|Worksheet|Machines|Print|Send","table":"Start|Finish|Worksheet|Machines|Print|Send"},"office":{"list":"Start|Finish|Inspected (disabled)|Worksheet|Machines|Print|Send","table":"Start|Finish|Worksheet|Machines|Print|Send"},"workshop":{"list":"Start|Finish|Inspected (disabled)|Worksheet|Machines|Print","table":"Start|Finish|Worksheet|Machines|Print"},"viewer":{"list":"Worksheet|Print","table":"Worksheet|Print"}},"J-0419":{"admin":{"list":"Start timer|Finish|Inspected (disabled)|Worksheet|Machines|Print|Send","table":"Start timer|Finish|Worksheet|Machines|Print|Send"},"office":{"list":"Start timer|Finish|Inspected (disabled)|Worksheet|Machines|Print|Send","table":"Start timer|Finish|Worksheet|Machines|Print|Send"},"workshop":{"list":"Start timer|Finish|Inspected (disabled)|Worksheet|Machines|Print","table":"Start timer|Finish|Worksheet|Machines|Print"},"viewer":{"list":"Worksheet|Print","table":"Worksheet|Print"}},"J-0418":{"admin":{"list":"Pause|Finish|Inspected (disabled)|Worksheet|Machines|Print|Send","table":"Pause|Finish|Worksheet|Machines|Print|Send"},"office":{"list":"Pause|Finish|Inspected (disabled)|Worksheet|Machines|Print|Send","table":"Pause|Finish|Worksheet|Machines|Print|Send"},"workshop":{"list":"Pause|Finish|Inspected (disabled)|Worksheet|Machines|Print","table":"Pause|Finish|Worksheet|Machines|Print"},"viewer":{"list":"Worksheet|Print","table":"Worksheet|Print"}},"J-0415":{"admin":{"list":"Pause|Finish|Inspected (disabled)|Worksheet|Machines|Print|Send","table":"Pause|Finish|Worksheet|Machines|Print|Send"},"office":{"list":"Pause|Finish|Inspected (disabled)|Worksheet|Machines|Print|Send","table":"Pause|Finish|Worksheet|Machines|Print|Send"},"workshop":{"list":"Pause|Finish|Inspected (disabled)|Worksheet|Machines|Print","table":"Pause|Finish|Worksheet|Machines|Print"},"viewer":{"list":"Worksheet|Print","table":"Worksheet|Print"}},"J-0412":{"admin":{"list":"Pause|Finish|Inspected (disabled)|Worksheet|Machines|Print|Send","table":"Pause|Finish|Worksheet|Machines|Print|Send"},"office":{"list":"Pause|Finish|Inspected (disabled)|Worksheet|Machines|Print|Send","table":"Pause|Finish|Worksheet|Machines|Print|Send"},"workshop":{"list":"Pause|Finish|Inspected (disabled)|Worksheet|Machines|Print","table":"Pause|Finish|Worksheet|Machines|Print"},"viewer":{"list":"Worksheet|Print","table":"Worksheet|Print"}},"J-0411":{"admin":{"list":"Finished|Inspected (disabled)|Reopen|Worksheet|Machines|Print|Delivery note|Send","table":"Finished|Reopen|Worksheet|Machines|Print|Delivery note|Send|Archive"},"office":{"list":"Finished|Inspected (disabled)|Reopen|Worksheet|Machines|Print|Delivery note|Send","table":"Finished|Reopen|Worksheet|Machines|Print|Delivery note|Send|Archive"},"workshop":{"list":"Finished|Inspected (disabled)|Worksheet|Machines|Print","table":"Finished|Worksheet|Machines|Print"},"viewer":{"list":"Worksheet|Print","table":"Worksheet|Print"}},"J-0410":{"admin":{"list":"Finished|Inspected (disabled)|Reopen|Worksheet|Machines|Print|Delivery note|Send","table":"Finished|Reopen|Worksheet|Machines|Print|Delivery note|Send|Archive"},"office":{"list":"Finished|Inspected (disabled)|Reopen|Worksheet|Machines|Print|Delivery note|Send","table":"Finished|Reopen|Worksheet|Machines|Print|Delivery note|Send|Archive"},"workshop":{"list":"Finished|Inspected (disabled)|Worksheet|Machines|Print","table":"Finished|Worksheet|Machines|Print"},"viewer":{"list":"Worksheet|Print","table":"Worksheet|Print"}},"J-0409":{"admin":{"list":"Finished|Inspected (disabled)|Reopen|Worksheet|Machines|Print|Delivery note|Send","table":"Finished|Reopen|Worksheet|Machines|Print|Delivery note|Send|Archive"},"office":{"list":"Finished|Inspected (disabled)|Reopen|Worksheet|Machines|Print|Delivery note|Send","table":"Finished|Reopen|Worksheet|Machines|Print|Delivery note|Send|Archive"},"workshop":{"list":"Finished|Inspected (disabled)|Worksheet|Machines|Print","table":"Finished|Worksheet|Machines|Print"},"viewer":{"list":"Worksheet|Print","table":"Worksheet|Print"}},"J-0408":{"admin":{"list":"Finished|Inspected (disabled)|Reopen|Worksheet|Machines|Print|Delivery note|Send","table":"Finished|Reopen|Worksheet|Machines|Print|Delivery note|Send|Archive"},"office":{"list":"Finished|Inspected (disabled)|Reopen|Worksheet|Machines|Print|Delivery note|Send","table":"Finished|Reopen|Worksheet|Machines|Print|Delivery note|Send|Archive"},"workshop":{"list":"Finished|Inspected (disabled)|Worksheet|Machines|Print","table":"Finished|Worksheet|Machines|Print"},"viewer":{"list":"Worksheet|Print","table":"Worksheet|Print"}},"J-0398":{"admin":{"list":"Inspected|Rework|Worksheet|Machines|Print|Delivery note|Send","table":"Inspected|Release early|Rework|Worksheet|Machines|Print|Delivery note|Send"},"office":{"list":"Inspected (disabled)|Rework|Worksheet|Machines|Print|Delivery note|Send","table":"Rework|Worksheet|Machines|Print|Delivery note|Send"},"workshop":{"list":"Inspected (disabled)|Rework|Worksheet|Machines|Print","table":"Rework|Worksheet|Machines|Print"},"viewer":{"list":"Rework|Worksheet|Print","table":"Rework|Worksheet|Print"}}};
@@ -271,6 +273,98 @@ describe("jobs preview v2: rendering", () => {
     await act(async () => { host.querySelector<HTMLElement>("tr[data-job='J-0433'] [data-action=Start]")!.click(); });
     expect(document.body.textContent).toContain("J-0433 started on Press brake.");
     expect(document.body.textContent).toContain("Preview only, nothing was saved.");
+    await act(async () => { root.unmount(); });
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// v3: NO SIDEWAYS SCROLLING on a phone or tablet (<= 1024 px). Scans this preview's own stylesheet and TSX.
+// ---------------------------------------------------------------------------------------------------------------------
+const ROOT = path.resolve(__dirname, "../..");
+const PREVIEW_CSS = readFileSync(path.join(ROOT, "components/jobs/preview/JobsPreview.module.css"), "utf8");
+const PREVIEW_TSX = readFileSync(path.join(ROOT, "components/jobs/preview/JobsPreview.tsx"), "utf8");
+const DESKTOP = "@media (min-width: 1025px)";
+
+interface Rule { selector: string; body: string; media: string[] }
+function readRules(src: string): Rule[] {
+  const text = src.replace(/\/\*[\s\S]*?\*\//g, "");
+  const out: Rule[] = [];
+  const stack: Array<{ head: string; at: boolean }> = [];
+  let buf = "";
+  let bodyStart = -1;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === "{") { const head = buf.trim(); buf = ""; const at = head.startsWith("@"); stack.push({ head, at }); if (!at) bodyStart = i + 1; }
+    else if (ch === "}") { const top = stack.pop(); if (top && !top.at) out.push({ selector: top.head, body: text.slice(bodyStart, i), media: stack.filter((x) => x.at).map((x) => x.head) }); buf = ""; }
+    else buf += ch;
+  }
+  return out;
+}
+const RULES = readRules(PREVIEW_CSS);
+const decls = (body: string, prop: string) => Array.from(body.matchAll(new RegExp(`(?:^|[;\\s])${prop}\\s*:\\s*([^;]+)`, "g"))).map((m) => m[1].trim());
+
+describe("jobs preview v3: no sideways scrolling at 1024 px and under (stylesheet and markup scan)", () => {
+  it("the reader finds the rules (sanity) and the desktop-only block exists", () => {
+    expect(RULES.length).toBeGreaterThan(40);
+    expect(RULES.some((r) => r.media.includes(DESKTOP))).toBe(true);
+  });
+  it("no overflow-x or overflow auto|scroll|overlay anywhere in the preview stylesheet unless inside @media (min-width: 1025px)", () => {
+    for (const r of RULES) {
+      const bad = decls(r.body, "overflow-x").some((v) => /^(auto|scroll|overlay)$/.test(v)) || decls(r.body, "overflow").some((v) => /(^|\s)(auto|scroll|overlay)(\s|$)/.test(v));
+      if (bad) expect(r.media, `${r.selector} scrolls sideways`).toContain(DESKTOP);
+    }
+  });
+  it("no inline overflowX auto|scroll (or overflow auto|scroll) in the preview markup", () => {
+    expect(PREVIEW_TSX).not.toMatch(/overflowX\s*:\s*["'](auto|scroll|overlay)["']/);
+    expect(PREVIEW_TSX).not.toMatch(/overflow\s*:\s*["'](auto|scroll|overlay)["']/);
+    expect(PREVIEW_TSX).not.toMatch(/style=\{\{[^}]*min-?[wW]idth/);
+  });
+  it("fixed column widths, the fixed Actions width, the sticky Job No column and nowrap cells exist only inside @media (min-width: 1025px)", () => {
+    const cols = /(\.c_[a-z]+|\.cSel|\.stickyRef|\.c_actions|\.primaryAct|\.primarySlot)/;
+    for (const r of RULES) {
+      if (!cols.test(r.selector)) continue;
+      const fixed = decls(r.body, "min-width").some((v) => /^\d+px$/.test(v)) || decls(r.body, "width").some((v) => /^\d+px$/.test(v)) || decls(r.body, "position").includes("sticky") || decls(r.body, "white-space").includes("nowrap");
+      if (fixed) expect(r.media, `${r.selector} is a fixed table width or pin`).toContain(DESKTOP);
+    }
+    for (const sel of [".c_ref", ".c_machine", ".c_specification", ".c_actions"]) {
+      const hit = RULES.filter((r) => r.selector.split(",").some((x) => x.trim().endsWith(sel)));
+      expect(hit.length, sel).toBeGreaterThan(0);
+      for (const r of hit) expect(r.media, sel).toContain(DESKTOP);
+    }
+  });
+  it("grids never use a bare px minimum (minmax(Npx, ...) must sit inside min(Npx, 100%)) and no layer is wider than its container", () => {
+    for (const r of RULES) {
+      for (const m of r.body.matchAll(/minmax\(\s*(\d+px)/g)) throw new Error(`${r.selector} has minmax(${m[1]}, ...) with a bare px minimum`);
+      for (const m of r.body.matchAll(/(?:^|[;\s])width:\s*min\(\s*\d+px,\s*(\d+)vw\)/g)) throw new Error(`${r.selector} uses ${m[0]}`);
+    }
+    expect(PREVIEW_CSS).toContain("minmax(min(330px, 100%), 1fr)");
+    expect(PREVIEW_CSS).toMatch(/\.fGroup \{[^}]*min-width: 0; max-width: 100%/);
+  });
+  it("the stacked record order: Job No is the title, then Customer, Description, Specification, Stage, Machine, Operator, Due; Actions last (indexes shift by the checkbox column)", () => {
+    expect(STACK_ORDER.slice(0, 7)).toEqual(["customer", "description", "specification", "stage", "machine", "operator", "due"]);
+    const all = COLUMNS.filter((c) => c.key !== "ref" && c.key !== "actions").map((c) => c.key).sort();
+    expect([...STACK_ORDER].sort()).toEqual(all);
+    expect(stackPriority(COLUMNS)).toEqual([2, 3, 4, 7, 8, 9, 10, 13, 11, 12, 5, 6]);
+    expect(stackPriority(COLUMNS.filter((c) => c.key !== "specification" && c.key !== "machine"))).toEqual([2, 3, 6, 7, 8, 11, 9, 10, 4, 5]);
+  });
+});
+
+describe("jobs preview v3: every view works at every width", () => {
+  let host: HTMLDivElement;
+  beforeEach(() => { host = document.createElement("div"); document.body.appendChild(host); });
+  afterEach(() => { host.remove(); document.body.innerHTML = ""; });
+  it("the View switch offers Cards, List and Table, none disabled, and the table markup carries the Select label and the Actions column the shared stacked mode reads", async () => {
+    const root = createRoot(host);
+    await act(async () => { root.render(createElement(JobsPreview)); });
+    for (const id of ["view-cards-btn", "view-list-btn", "view-table-btn"]) {
+      const b = host.querySelector(`[data-testid="${id}"]`);
+      expect(b, id).not.toBeNull();
+      expect(b?.getAttribute("aria-disabled")).not.toBe("true");
+    }
+    expect(host.querySelector('[data-testid="view-list"] th[data-ui-label="Select"]')).not.toBeNull();
+    const heads = Array.from(host.querySelectorAll('[data-testid="view-list"] thead th')).map((h) => h.textContent?.trim());
+    expect(heads[heads.length - 1]).toBe("Actions");
+    expect(heads[1]).toBe("Job No");
     await act(async () => { root.unmount(); });
   });
 });
