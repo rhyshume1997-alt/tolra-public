@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 const AREAS: Array<{ name: string; css: string; tsx: string; table: boolean }> = [
   { name: "quotes", css: "components/quotes/preview/QuotesPreview.module.css", tsx: "components/quotes/preview/QuotesPreview.tsx", table: true },
   { name: "rfq", css: "components/rfq/preview/RfqPreview.module.css", tsx: "components/rfq/preview/RfqPreview.tsx", table: false },
+  { name: "sales-orders", css: "components/sales-orders/preview/SalesOrdersPreview.module.css", tsx: "components/sales-orders/preview/SalesOrdersPreview.tsx", table: true },
 ];
 
 type Hit = { selector: string; decl: string };

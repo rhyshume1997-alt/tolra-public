@@ -19,7 +19,7 @@
  * "Machines" sheets are drawn from the real dialogs; the real Activity trail needs the audit log and is drawn here with sample entries only. Delete the four preview files to remove it completely.
  */
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   Button, Checkbox, ChipGroup, EmptyState, FailedState, Field, FilterChip, Input, LoadingState, Menu, PageHeader, Popover, PreviewBar, SegmentedControl, SelectionBar, Select, Sheet, StatTile, StatTiles,
   StatusBadge, Switch, Textarea, ToastProvider, cx, premiumTokens, srOnly, tabularNumbers, typeScale, useToast, ScrollTable,
@@ -33,7 +33,6 @@ import { type OrderTerms, type QuoteLineRow, orderTermsFromQuote } from "@/lib/o
 import { quoteAcceptBlock } from "@/lib/quote-status";
 import { canDespatch, editBlockedReason, isConverted, ordersToConvert, ordersToDespatch } from "@/lib/sales-order-convert";
 import { SALES_ORDER_OPEN_CARD_NOTE, SALES_ORDER_OPEN_CARD_STATUSES, countPhases, salesOrderCardCounts } from "@/lib/list-card-counts";
-import { DESK_QUERY, effectiveViewMode } from "@/lib/shell-status";
 import { MAX_MACHINES, MAX_MACHINE_HOURS, type OrderPlanRow, describeMachines, formatHours, sumMachineHours, totalHours } from "@/lib/so-machines";
 import { exportScopeTitle } from "@/lib/spreadsheet";
 import { STATUS_MAP, salesOrderStatusKey } from "@/lib/status-colours";
@@ -277,14 +276,6 @@ const VIEW_KEY = "sales-orders-preview:view";
 const ROLES: Array<{ value: Role; label: string }> = [{ value: "admin", label: "Admin" }, { value: "office", label: "Office" }, { value: "workshop", label: "Workshop" }, { value: "viewer", label: "Viewer" }];
 const SCREENS: Array<{ v: Screen; label: string }> = [{ v: "ready", label: "Normal" }, { v: "loading", label: "Loading" }, { v: "error", label: "Failed to load" }, { v: "empty", label: "No sales orders yet" }];
 
-function useMedia(query: string, fallback: boolean): boolean {
-  return useSyncExternalStore(
-    (cb) => { const m = window.matchMedia(query); m.addEventListener("change", cb); return () => m.removeEventListener("change", cb); },
-    () => window.matchMedia(query).matches,
-    () => fallback,
-  );
-}
-
 function StatusPill({ status, mode = "pill" }: { status: string; mode?: StatusMode }) {
   return <StatusBadge mode={mode} tone={statusTone(status)} plain={statusTone(status) === "neutral" && status === "closed"}><span className={s.cap}>{statusLabel(status)}</span></StatusBadge>;
 }
@@ -320,13 +311,12 @@ function Inner() {
   const setDlg = useCallback((d: Dlg | null) => { setDlgState(d); if (d) toast.clear(); }, [toast]);
   useEffect(() => () => { timers.current.forEach((t) => window.clearTimeout(t)); }, []);
   const later = (fn: () => void, ms: number) => { timers.current.push(window.setTimeout(fn, ms)); };
-  const wide = useMedia(DESK_QUERY, true);
-  const notPhone = useMedia("(min-width: 768px)", true);
   useEffect(() => {
     try { const v = window.localStorage.getItem(VIEW_KEY); if (v === "cards" || v === "list" || v === "table") setViewState(v); } catch { /* storage unavailable: Table stays */ }
   }, []);
   const setView = (v: ViewMode) => { setViewState(v); try { window.localStorage.setItem(VIEW_KEY, v); } catch { /* ignore */ } };
-  const shownView: ViewMode = notPhone ? effectiveViewMode(view, wide, false) : "cards";
+  /* v4: Table and List are stacked records at 1024 px and under (the shared ScrollTable reflows them), so every view works at every width. */
+  const shownView: ViewMode = view;
 
   const seed = SEED_ORDERS;
   const byId = useMemo(() => new Map(seed.map((o) => [o.id, o])), [seed]);
@@ -338,6 +328,9 @@ function Inner() {
   const counts = useMemo(() => salesOrderCardCounts(data, (o) => phaseFor(o)), [data]);
   const selectedOrders = useMemo(() => data.filter((o) => selected.includes(keyOf(o))), [data, selected]);
   const inView = (c: ColumnKey) => !hidden.includes(c);
+  /* v4: the stacked record (1024 px and under) shows Customer, Status, Value, Expected delivery, then Order date under the SO ref; the indexes follow the visible columns. */
+  const tableCols = COLUMNS.filter((c) => inView(c.key)).map((c) => c.key);
+  const stackPriority = (["customer", "status", "value", "delivery", "date"] as ColumnKey[]).filter((k) => tableCols.includes(k)).map((k) => tableCols.indexOf(k));
   const nSel = selected.length;
   const preview = useCallback((detail: string) => toast.show({ title: "Preview only", detail: `${detail} Nothing was saved.` }), [toast]);
   const denied = !canUseSalesOrders(role);
@@ -430,13 +423,11 @@ function Inner() {
                 <p className={typeScale.caption}>Changes apply to everyone in this company. In this preview they change this screen only.</p>
               </div>
             </Popover>
-            {notPhone ? (
-              <SegmentedControl label="View" value={shownView} onChange={setView} options={[
-                { value: "cards", label: "Cards", testId: "view-cards-btn" },
-                { value: "list", label: "List", testId: "view-list-btn" },
-                { value: "table", label: "Table", disabled: !wide, disabledReason: wide ? undefined : "Needs a screen wider than 1024px", testId: "view-table-btn" },
-              ]} />
-            ) : null}
+            <SegmentedControl label="View" value={shownView} onChange={setView} options={[
+              { value: "cards", label: "Cards", testId: "view-cards-btn" },
+              { value: "list", label: "List", testId: "view-list-btn" },
+              { value: "table", label: "Table", testId: "view-table-btn" },
+            ]} />
             <ExportMenu nSel={nSel} total={visible.length} onExport={exportAs} testId="export-trigger" />
             <Button variant="primary" data-testid="new-order" onClick={() => setDlg({ k: "create" })}>New sales order</Button>
           </>
@@ -462,7 +453,7 @@ function Inner() {
             <div className={s.fRow}>
               <div className={s.fGroup}>
                 <span className={typeScale.label} aria-hidden="true">Show</span>
-                <SegmentedControl label="Show" value={filters.phase} disabled={loading} onChange={(v) => setFilters((f) => ({ ...f, phase: v }))} options={[
+                <SegmentedControl label="Show" collapseToSelect value={filters.phase} disabled={loading} onChange={(v) => setFilters((f) => ({ ...f, phase: v }))} options={[
                   { value: "open", label: `Open (${n(phaseCounts.open)})`, testId: "show-open" }, { value: "done", label: `Done (${n(phaseCounts.done)})`, testId: "show-done" },
                   { value: "archived", label: `Archived (${n(phaseCounts.archived)})`, testId: "show-archived" }, { value: "all", label: "All", testId: "show-all" },
                 ]} />
@@ -491,6 +482,15 @@ function Inner() {
           </section>
 
           <SelectionBar count={nSel} filteredTotal={visible.length} noun="sales order" idleNote={idleNote}
+            compact={{
+              primary: <Button size="sm" variant="primary" disabled={!ordersToConvert(selectedOrders).length} title={convertReason(selectedOrders, nSel)} data-testid="convert-selected-compact" onClick={() => convert(ordersToConvert(selectedOrders))}>Convert Selected to Jobs</Button>,
+              more: [
+                { id: "print", label: "Print Selected", title: printReason(nSel), disabled: !nSel, onSelect: () => preview(`A print pack for ${nSel} sales order${nSel === 1 ? "" : "s"} would open in a new tab.`) },
+                { id: "despatch", label: "Despatch Selected", title: despatchReason(selectedOrders, nSel), disabled: !ordersToDespatch(selectedOrders).length, onSelect: () => despatch(ordersToDespatch(selectedOrders)) },
+                { id: "export-csv", label: "Export selected as CSV", onSelect: () => exportAs("CSV") },
+                { id: "export-excel", label: "Export selected as Excel", onSelect: () => exportAs("Excel") },
+              ],
+            }}
             onSelectAll={() => setSelected(visible.map(keyOf))} onClear={() => setSelected([])}
             statusText={({ count }) => `${count} selected of ${visible.length} filtered ${visible.length === 1 ? "record" : "records"}`}>
             {nSel > 0 ? (
@@ -532,12 +532,12 @@ function Inner() {
                 })}
               </div>
             ) : (
-              <ScrollTable label="Sales orders" pinLast>
+              <ScrollTable label="Sales orders" pinLast primary={0} columnPriority={stackPriority}>
                 <thead>
                   <tr>
                     <th className={s.thFirst}>
                       <span className={s.firstCell}>
-                        <Checkbox aria-label={`Select all ${visible.length} filtered orders`} checked={allSelected} onChange={(e) => setSelected(e.target.checked ? visible.map(keyOf) : [])} />
+                        <span className={s.selectAll}><Checkbox aria-label={`Select all ${visible.length} filtered orders`} checked={allSelected} onChange={(e) => setSelected(e.target.checked ? visible.map(keyOf) : [])} /></span>
                         SO Ref
                       </span>
                     </th>

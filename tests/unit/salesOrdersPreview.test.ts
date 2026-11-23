@@ -243,7 +243,7 @@ describe("sales orders preview: it is only a picture", () => {
     const imports = PREVIEW_SRC.match(/from "[^"]+"/g) ?? [];
     expect([...new Set(imports)].sort()).toEqual([
       'from "./SalesOrdersPreview.module.css"', 'from "@/components/ui/premium"', 'from "@/lib/accept-quote"', 'from "@/lib/dates"', 'from "@/lib/empty-hints"', 'from "@/lib/list-card-counts"', 'from "@/lib/money"', 'from "@/lib/order-from-quote"',
-      'from "@/lib/quote-status"', 'from "@/lib/sales-order-convert"', 'from "@/lib/shell-status"', 'from "@/lib/so-machines"', 'from "@/lib/spreadsheet"', 'from "@/lib/status-colours"', 'from "@/lib/vat"', 'from "react"',
+      'from "@/lib/quote-status"', 'from "@/lib/sales-order-convert"', 'from "@/lib/so-machines"', 'from "@/lib/spreadsheet"', 'from "@/lib/status-colours"', 'from "@/lib/vat"', 'from "react"',
     ].sort());
     expect(PREVIEW_SRC).not.toMatch(/supabase|fetch\(|XMLHttpRequest|window\.open|window\.location|downloadPdf|openPrintPack|exportSpreadsheet|next\/navigation|useRouter|\.rpc\(/);
   });

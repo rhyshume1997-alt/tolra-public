@@ -33,7 +33,7 @@
 .root .tiles3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
 /* ---------- cards ---------- */
-.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); gap: 12px; }
 .card {
   display: flex; flex-direction: column; gap: 10px; padding: 8px 16px 14px 8px; border-radius: var(--ui-radius-lg); background: var(--ui-surface);
   box-shadow: var(--ui-elev-raised); transition: box-shadow var(--ui-t-base) var(--ui-ease-out), background-color var(--ui-t-base) var(--ui-ease-out);
@@ -58,10 +58,22 @@
 .firstCell { display: inline-flex; align-items: center; gap: 2px; }
 .refCell { display: flex; flex-direction: column; min-width: 0; }
 /* ONE primary and More, a fixed width, never wrapping */
-.actions { display: flex; flex-wrap: nowrap; align-items: center; justify-content: flex-end; gap: 8px; }
-.primarySlot { display: inline-block; min-width: 132px; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.primarySlot { display: inline-block; }
 .primarySlot > button { width: 100%; }
-.root th.cActions, .root td.cActions { width: 232px; min-width: 232px; white-space: nowrap; }
+.selectAll { display: inline-flex; }
+@media (min-width: 1025px) {
+  .actions { flex-wrap: nowrap; }
+  .primarySlot { min-width: 132px; }
+  .root th.cActions, .root td.cActions { width: 232px; min-width: 232px; white-space: nowrap; }
+}
+/* v4: 1024 px and under the table is stacked records (shared ScrollTable): the header row is not shown, so its select-all checkbox leaves the tab order (Select all lives in the selection bar); the clamp shows the whole text */
+@media (max-width: 1024px) {
+  .selectAll { display: none; }
+  .clamp { display: block; min-width: 0; max-width: none; overflow: visible; -webkit-line-clamp: unset; }
+  .root td.right { text-align: left; }
+  .actions { justify-content: flex-start; }
+}
 .money { font-weight: 600; white-space: nowrap; }
 .clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; min-width: 8rem; max-width: 19ch; line-height: 20px; }
 
