@@ -1,0 +1,107 @@
+J N R Engineering Ltd
+INVOICE
+Invoice No.
+INV-1234
+Date
+22/11/2026
+Tax Point
+20/11/2026
+Less credit notes
+£25.25
+Terms
+30 
+days
+Our Quote No.
+QUO-0042
+Customer PO
+PO-778
+JNR Engineering 
+Ltd
+Invoice To:
+Acme Fabrications Ltd
+1 
+Example Road
+Sheffield
+S1 1AA
+Deliver To:
+Acme Goods In
+Unit 4
+Rotherham
+S60 1AA
+Description
+Qty
+Each
+VAT%
+Total
+CNC machined bracket, mild steel, as drawing JNR-1001 rev C
+25.00
+14.37
+20
+359.25
+Powder coat, RAL 7016, per bracket
+25.00
+2.10
+5
+52.50
+Export certificate (outside the scope of VAT)
+1.00
+45.00
+Exempt
+45.00
+Delivered in two lots; the second follows within the week.
+Long description line that has to wrap across the width of the description 
+column so that the row grows and the table fills correctly on the page
+3.00
+99.99
+20
+299.97
+Customer Message
+Part invoice, balance to follow.
+Payment is due within 30 days of the invoice date.
+Please quote the invoice number as your payment reference.
+Thank you for your business.
+Payment details
+Account name
+JNR Engineering Ltd
+Bank
+Example Bank
+Sort code
+12-34-56
+Account number
+12345678
+IBAN
+GB00EXAM12345612345678
+BIC
+EXAMGB2L
+Subtotal:
+£756.72
+Carriage:
+£12.50
+VAT 20%
+:
+£134.34
+VAT 5%
+:
+£2.63
+Invoice total
+:
+£906.19
+Paid
+:
+£100.00
+Balance due
+:
+£780.94
+J N R Engineering Ltd
+Unit 1
+Example Industrial Estate
+Northfield
+ML3 1AA
+Tel/ Fax:
+01698 000 0000/ 01698 000 0001
+Email:
+info@jnr.example
+Website:
+www.jnrengineering.co.uk
+VAT:
+GB000000000

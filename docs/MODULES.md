@@ -87,6 +87,11 @@ Break work into these. Agents own one module at a time. Cross-module changes req
 
 Future-proof: Each module exposes a small set of functions. Other modules call them; they never import internals.
 
+## 15. Document templates (module J)
+- Allowed: `components/pdf/templates/**`, `components/document-templates/**`, `lib/document-templates/**`, `docs/DOCUMENT_TEMPLATES.md`, `tests/unit/document-template-*`, `tests/support/document-template-fixtures.ts`, `tests/fixtures/document-templates/**`.
+- Goal: each company picks one printed design per document type (quote, invoice, purchase order, delivery note). Off by default (company setting `documentTemplates.enabled`). Default `classic` is today's layout exactly (black and white); brand colours on Modern and Minimal are a separate per-company switch, off by default; issued documents keep the design they were created with; figures, VAT, totals, bank details, payment wording and numbering are identical in every design.
+- Call-site only edits elsewhere: `components/pdf/*PDF.tsx` pass the design through, `lib/company.ts` (parse and keep the stored value), `lib/document-snapshot.ts` (stamp the snapshot date), `app/(dashboard)/settings/page.tsx` (mount the card), purchase-order and delivery-note pages (issue date). The job worksheet print layout is NOT part of this module.
+
 ## 13. Company look (installed app)
 - Allowed: `lib/company-look/**`, `components/company-look/**`, `app/manifest.webmanifest/route.ts`, `app/api/pwa-icon/route.tsx`, `tests/unit/company-look-*`; plus the small wiring in `app/login/page.tsx`, `app/login/login-form.tsx` and `app/layout.tsx` (manifest link).
 - Goal: each company's installed app (name, theme colour, icon) shows only that company's own look, taken from the same public sign-in branding; neutral Tolra otherwise.

@@ -1,0 +1,66 @@
+J N R Engineering Ltd
+PURCHASE ORDER
+PO No.
+PO-0310
+Date
+22/11/2026
+Required By
+29/11/2026
+JNR Engineering 
+Ltd
+Supplier:
+Steel Supplies plc
+2 
+Mill Lane
+Leeds
+LS1 1AA
+Deliver To:
+J N R Engineering Ltd
+Unit 1
+Example Industrial Estate
+Northfield
+ML3 1AA
+Description
+Qty
+Each
+VAT%
+Total
+CNC machined bracket, mild steel, as drawing JNR-1001 rev C
+25.00
+14.37
+20
+359.25
+Powder coat, RAL 7016, per bracket
+25.00
+2.10
+5
+52.50
+Notes
+Please quote the PO number on all delivery notes and invoices.
+Deliver to goods in, 7am to 4pm.
+Subtotal:
+£411.75
+Carriage:
+£0.00
+VAT 20%
+:
+£71.85
+VAT 5%
+:
+£2.63
+Total
+:
+£486.23
+J N R Engineering Ltd
+Unit 1
+Example Industrial Estate
+Northfield
+ML3 1AA
+Tel/ Fax:
+01698 000 0000/ 01698 000 0001
+Email:
+info@jnr.example
+Website:
+www.jnrengineering.co.uk
+VAT:
+GB000000000
