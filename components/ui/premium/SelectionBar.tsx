@@ -6,17 +6,17 @@
  * v2: selectAll and clear say WHEN each button shows ("active" default = only while something is selected, "always" = also at idle, "never"); idle Clear is disabled at 0, idle Select all is hidden when
  * there is nothing to select; statusText replaces the active line (a string or a function of {count, filteredTotal, noun}). Defaults draw exactly what v1 drew.
  * v3: when the bar wraps (narrow screens) its rows are 16 px apart, so the 48 px hit areas of buttons on different rows never overlap.
- * v5 phones (640 px and under): an active bar is ONE row (it used to wrap to 120 to 190 px). By default the actions scroll sideways inside the row, 16 px apart, and a focused action scrolls into view, so every action stays reachable by keyboard and touch.
- * Optional compact={{ primary, more, moreLabel? }}: under 640 px the row is the count, your ONE primary action and a "More" menu that holds Select all, Clear selection and your `more` items (the full set of children is hidden there, so repeat any action you still want in `more`).
- * Above 640 px compact changes nothing. Defaults draw v4 above 640 px.
- * Must not change: actions are the caller's and decide their own disabled state from count; this bar never selects, deletes or finishes anything.
+ * v5 phones: optional compact={{ primary, more, moreLabel? }}: under 640 px the row is the count, your ONE primary action and a "More" menu that holds Select all, Clear selection and your `more` items (the full set of children is hidden there, so repeat any action you still want in `more`).
+ * Above 640 px compact changes nothing.
+ * v6 NO SIDEWAYS SCROLLING: the v5 phone default that scrolled the actions inside a one-row bar is gone. Without compact, an active bar under 640 px WRAPS: the count on the first line, the actions below it (16 px between rows, so 48 px hit areas never overlap).
+ * Use compact (primary + More) when you want the bar to stay one row on a phone. A long count text or a long primary label wraps inside the bar; nothing is wider than the screen.
+  * Must not change: actions are the caller's and decide their own disabled state from count; this bar never selects, deletes or finishes anything.
  */
 import type { ReactNode } from "react";
 import styles from "./premium.module.css";
 import { Button, OnDarkContext } from "./Button";
 import { Menu, type MenuItem } from "./Menu";
 import { cx, premiumTokens, tabularNumbers } from "./tokens";
-import { revealInRow } from "./revealInRow";
 
 export interface SelectionBarProps {
   count: number;
@@ -66,7 +66,7 @@ export function SelectionBar({ count, filteredTotal, noun = "row", onSelectAll, 
           {on ? (typeof statusText === "function" ? statusText({ count, filteredTotal, noun }) : statusText ?? `${plural(count)} selected`) : idleNote ?? `Nothing selected. Tick rows to use bulk actions.`}
         </span>
         <span className={styles.barSpacer} />
-        <div className={styles.barActions} onFocusCapture={(e) => revealInRow(e.currentTarget, e.target as HTMLElement)}>
+        <div className={styles.barActions}>
           {ctl.showSelectAll ? <Button size="sm" variant="quiet" onClick={onSelectAll}>Select all {filteredTotal} filtered</Button> : null}
           {ctl.showClear ? <Button size="sm" variant="quiet" onClick={onClear} disabled={ctl.clearDisabled}>Clear selection</Button> : null}
           {children}
