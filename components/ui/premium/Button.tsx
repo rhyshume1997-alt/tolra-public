@@ -4,6 +4,7 @@
  * confirm, dangerQuiet = red text for a row action), size (sm 32 | md 40 | lg 48), loading, onDark, fullWidth (v3: block, 100% wide; use size lg + primary for a full-width form action),
  * and every native button attribute. Output: a <button> with a 48 px hit area (a pseudo element reaches 48 px tall on sm and md). v3: aria-pressed="true" on secondary or quiet draws the
  * navy pressed look from the stylesheet itself (no override needed).
+ * v5: size "icon" is the 48 x 48 px icon-only button (an expander, a close): a square with no padding that is its own 48 px hit area; it needs an aria-label (the icon says nothing to a screen reader) and works with every variant (quiet is the usual one).
  * Must not change: the three heights are the whole system, the non-destructive variants stay primary, secondary, quiet (danger is for destroying or removing only). It never performs an
  * action itself and never shows success: the caller's onClick decides. Inside a SelectionBar the on-dark look is picked up from OnDarkContext. Defaults are exactly v1/v2.
  */
@@ -12,7 +13,7 @@ import styles from "./premium.module.css";
 import { cx, premiumTokens } from "./tokens";
 
 export type ButtonVariant = "primary" | "secondary" | "quiet" | "danger" | "dangerSolid" | "dangerQuiet";
-export type ButtonSize = "sm" | "md" | "lg";
+export type ButtonSize = "sm" | "md" | "lg" | "icon";
 
 /** Set by SelectionBar so buttons placed on the navy bar read correctly. */
 export const OnDarkContext = createContext(false);
@@ -27,7 +28,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   fullWidth?: boolean;
 }
 
-const sizeClass: Record<ButtonSize, string> = { sm: styles.sizeSm, md: styles.sizeMd, lg: styles.sizeLg };
+const sizeClass: Record<ButtonSize, string> = { sm: styles.sizeSm, md: styles.sizeMd, lg: styles.sizeLg, icon: styles.sizeIcon };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   { variant = "secondary", size = "md", loading = false, onDark, fullWidth, className, children, disabled, type = "button", ...rest },

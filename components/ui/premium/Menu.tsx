@@ -8,15 +8,31 @@
  * v4: the layer scales in from the trigger (transform origin from the placement) and fades out in 120 ms; opened or closed with the keyboard (Enter, Space, arrows, Escape) it does not animate at all. Hover only on a fine pointer.
  * It runs no action itself: onSelect is the caller's, and a disabled item says so by aria-disabled and stays out of the arrow order.
  * v3 (all optional, defaults unchanged): the trigger takes aria-label (name it for what it acts on, e.g. "More actions for Tomas Whitcombe"; keep the visible text inside it), fullWidth and className;
+ * v5 (optional per item, defaults unchanged): danger (red words and a red tint on hover and focus; the LABEL must say what is destroyed, "Delete job J-0431", because colour is never the only signal; a screen reader also hears "destructive"; a separator is drawn before the first danger item unless one is already there),
+ * testId (data-testid on the item button) and elementId (the DOM id of the item button; the item's own `id` stays its key and the base of its hint id).
  * an item takes hint (words shown under the label and read as its description: use it to say WHY an item is disabled) and title (a tooltip). The layer is named by aria-label when given.
  */
 import { useCallback, useId, useRef, useState, type ReactNode } from "react";
 import styles from "./premium.module.css";
 import { Button, type ButtonVariant } from "./Button";
-import { cx, premiumTokens } from "./tokens";
+import { cx, premiumTokens, srOnly } from "./tokens";
 import { layerOriginStyle, useAnchoredLayer } from "./useAnchoredLayer";
 
-export interface MenuItem { id: string; label: string; onSelect: () => void; disabled?: boolean; separatorBefore?: boolean; /** v3: visible reason or detail under the label. */ hint?: string; /** v3: tooltip. */ title?: string }
+export interface MenuItem {
+  id: string; label: string; onSelect: () => void; disabled?: boolean; separatorBefore?: boolean;
+  /** v3: visible reason or detail under the label. */ hint?: string;
+  /** v3: tooltip. */ title?: string;
+  /** v5: a destructive item (delete, remove, archive for good): red words, red tint on hover and focus, read as destructive. The label must say what is destroyed. */ danger?: boolean;
+  /** v5: data-testid on the item button. */ testId?: string;
+  /** v5: DOM id of the item button. */ elementId?: string;
+}
+
+/** Pure (v5): the items with a separator before the first danger item when it does not already have one and is not first (exported for tests). */
+export function withDangerSeparator(items: MenuItem[]): MenuItem[] {
+  const first = items.findIndex((i) => i.danger);
+  if (first <= 0 || items[first].separatorBefore || items[first - 1].danger) return items;
+  return items.map((it, i) => (i === first ? { ...it, separatorBefore: true } : it));
+}
 
 /** Pure roving index for menu keys (exported for tests). Returns the next enabled index, or -1 when there is none. */
 export function nextMenuIndex(current: number, disabled: boolean[], key: "ArrowDown" | "ArrowUp" | "Home" | "End"): number {
@@ -104,7 +120,7 @@ export function Menu({ label, items, variant = "secondary", size = "md", ...rest
             }
           }}
         >
-          {items.map((it) => (
+          {withDangerSeparator(items).map((it) => (
             <div key={it.id} role="none">
               {it.separatorBefore ? <div className={styles.menuSep} role="separator" /> : null}
               <button
@@ -114,10 +130,14 @@ export function Menu({ label, items, variant = "secondary", size = "md", ...rest
                 aria-disabled={it.disabled || undefined}
                 aria-describedby={it.hint ? `${id}-h-${it.id}` : undefined}
                 title={it.title}
-                className={styles.menuItem}
+                id={it.elementId}
+                data-testid={it.testId}
+                data-danger={it.danger ? "true" : undefined}
+                className={cx(styles.menuItem, it.danger && styles.menuItemDanger)}
                 onClick={() => { if (it.disabled) return; close(true); it.onSelect(); }}
               >
                 {it.hint ? <span className={styles.menuItemText}><span>{it.label}</span><span id={`${id}-h-${it.id}`} className={styles.menuHint}>{it.hint}</span></span> : it.label}
+                {it.danger ? <span className={srOnly}>, destructive</span> : null}
               </button>
             </div>
           ))}
