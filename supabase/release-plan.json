@@ -223,6 +223,10 @@
   ],
   "other_proposals": [
     {
+      "source": "supabase/proposals/p170_worksheet_custom.sql",
+      "disposition": "number 170 allocated (Rhys) to module K, the worksheet builder; not yet a numbered phase (release, rollback and verify files exist: supabase/release/170_worksheet_custom.release.sql, .rollback.sql, supabase/verify/worksheet_custom_170.sql, proved on plain PostgreSQL 16 by tests/postgres/worksheet-custom-170.proof.sql, but no preflight marker row, CI install step or plan phase yet); adds jobs.worksheet_custom jsonb (default {}) and a guard that refuses a browser session changing it once the job's current revision is signed off; needs release 045 only; not applied; the app works without it (custom fields then say they cannot be saved yet); needs Rhys's yes before it becomes a phase or is applied anywhere"
+    },
+    {
       "source": "supabase/proposals/builder2_chase_settings_atomic.sql",
       "disposition": "reviewed original of the function released as numbered phase 163 (canonical source now supabase/proposals/p163_chase_steps_atomic.sql, same function text); not applied directly on production; this file stays and its own test reads it"
     },
