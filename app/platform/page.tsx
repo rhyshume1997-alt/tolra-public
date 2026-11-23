@@ -3,6 +3,7 @@
 import { Building2, Plus, ShieldAlert } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+import { CompaniesPanel } from "@/components/platform/companies-panel";
 import { OwnerHomeGate } from "@/components/platform/owner-home";
 import { TolraAiControl } from "@/components/platform/tolra-ai-control";
 import { TolraAiCaps } from "@/components/platform/tolra-ai-caps";
@@ -133,6 +134,9 @@ function CompaniesPage() {
         ) : null}
 
         {error ? <p role="alert" className="mt-6 rounded-lg border border-red-200 bg-white px-4 py-3 text-sm text-red-700">{error}</p> : null}
+
+        {/* Owner Console: counts and Close or Reopen. Renders nothing unless PLATFORM_COMPANIES_ENABLED is "true" (components/platform/companies-panel.tsx). */}
+        <CompaniesPanel />
 
         <div className="mt-8 grid gap-4" data-testid="platform-list">
           {companies === null && !error ? <><Skeleton className="h-24 w-full" /><Skeleton className="h-24 w-full" /></> : null}
