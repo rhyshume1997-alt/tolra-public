@@ -10,6 +10,8 @@ import { loadCompanyProfile } from "@/lib/company";
 import { friendlyError } from "@/lib/friendly-error";
 import { type CompanyPrintLayout, type PrintLayout, PRINT_LAYOUT_OPTIONS, loadCompanyPrintLayout, parsePrintLayout, printLayoutLabel, saveCompanyPrintLayout } from "@/lib/print-layout";
 import { getCurrentOrganizationId } from "@/lib/supabase-business";
+import { customChoice, customChoiceId, liveLayouts, setActiveLayout } from "@/lib/worksheet-builder/layouts";
+import { type BuilderConfig, BUILDER_OFF, loadWorksheetBuilder, onBuilderChanged, updateWorksheetBuilderState } from "@/lib/worksheet-builder/store";
 
 /** What the card says about the current choice. */
 export function printLayoutStatus(company: CompanyPrintLayout): string {
@@ -22,14 +24,42 @@ export function printLayoutStatus(company: CompanyPrintLayout): string {
 export function PrintLayoutCard() {
   const [company, setCompany] = useState<CompanyPrintLayout | null>(null);
   const [saving, setSaving] = useState(false);
+  // The company's own worksheet layouts (module K): listed after Basic and JNR sheet only when the builder is on and there are some.
+  const [builder, setBuilder] = useState<BuilderConfig>(BUILDER_OFF);
   useEffect(() => {
     let active = true;
     void loadCompanyPrintLayout().then((value) => { if (active) setCompany(value); });
-    return () => { active = false; };
+    const reloadBuilder = () => { void loadWorksheetBuilder().then((value) => { if (active) setBuilder(value); }); };
+    reloadBuilder();
+    const stop = onBuilderChanged(reloadBuilder);
+    return () => { active = false; stop(); };
   }, []);
+  const customLayouts = builder.enabled ? liveLayouts(builder.state) : [];
+  const activeCustom = builder.enabled && customLayouts.some((layout) => layout.id === builder.state.activeId) ? builder.state.activeId : null;
+
+  /** Picks one of the company's own layouts, or (null) goes back to the Basic or JNR choice. */
+  async function changeCustom(id: string | null) {
+    setSaving(true);
+    try {
+      const organizationId = await getCurrentOrganizationId();
+      const state = await updateWorksheetBuilderState(organizationId, (current) => setActiveLayout(current, id));
+      setBuilder((current) => ({ ...current, state }));
+      void auditEvent({ action: "organization_settings.update", entityTable: "organization_settings", oldData: { worksheetLayout: activeCustom }, newData: { worksheetLayout: id }, metadata: { section: "print_layout" } });
+      toast.success(id ? `Worksheets now print in your ${customLayouts.find((layout) => layout.id === id)?.name ?? "own"} layout` : "Worksheets print in the Basic or JNR sheet layout again");
+    } catch (err) {
+      toast.error(friendlyError(err, "Couldn't save the print layout."));
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function change(next: PrintLayout) {
-    if (!company || (next === company.layout && company.source === "saved")) return;
+    if (!company) return;
+    if (activeCustom) {
+      // Leaving one of the company's own layouts for Basic or JNR sheet: the legacy choice is saved too.
+      await changeCustom(null);
+      if (next === company.layout && company.source === "saved") return;
+    } else if (next === company.layout && company.source === "saved") return;
     const before = company;
     setSaving(true);
     try {
@@ -61,13 +91,19 @@ export function PrintLayoutCard() {
                 data-testid="print-layout-setting"
                 className="h-10 rounded-md border border-input bg-background px-3 text-sm"
                 disabled={saving}
-                value={company.layout}
-                onChange={(event) => { const next = parsePrintLayout(event.target.value); if (next) void change(next); }}
+                value={activeCustom ? customChoice(activeCustom) : company.layout}
+                onChange={(event) => {
+                  const customId = customChoiceId(event.target.value);
+                  if (customId) return void changeCustom(customId);
+                  const next = parsePrintLayout(event.target.value);
+                  if (next) void change(next);
+                }}
               >
                 {PRINT_LAYOUT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                {customLayouts.map((layout) => <option key={layout.id} value={customChoice(layout.id)}>{layout.name}</option>)}
               </select>
             </div>
-            <p className="text-xs text-slate-500" data-print-layout-source={company.source}>{printLayoutStatus(company)}</p>
+            <p className="text-xs text-slate-500" data-print-layout-source={company.source}>{activeCustom ? `Your company prints your own ${customLayouts.find((layout) => layout.id === activeCustom)?.name ?? ""} layout. Anyone printing can still pick another layout on the print page.` : printLayoutStatus(company)}</p>
           </>
         )}
       </CardContent>

@@ -8,7 +8,9 @@ import type { BasicPackSheet } from "@/components/job-worksheet-basic-print";
 import { PrintLayoutPicker, WorksheetPackInLayout } from "@/components/print-layout-picker";
 import { Button } from "@/components/ui/button";
 import { listDrawings, loadWorksheet } from "@/lib/job-worksheet";
-import { type PrintLayout, chosenPrintLayout, useCompanyPrintLayout } from "@/lib/print-layout";
+import { printLayoutLabel, useCompanyPrintLayout } from "@/lib/print-layout";
+import { type PrintOverride, packLayoutOf, resolvePrintChoice } from "@/lib/worksheet-builder/print-choice";
+import { useWorksheetBuilder } from "@/lib/worksheet-builder/store";
 
 /** Workshop pack: ONE worksheet sheet (same form as the single worksheet) with every selected job on it, a row each. */
 function WorkshopPack() {
@@ -19,8 +21,11 @@ function WorkshopPack() {
   const [attempt, setAttempt] = useState(0);
   // The company's layout (Settings > Print layout), unless the person picks the other one for this print.
   const companyLayout = useCompanyPrintLayout();
-  const [override, setOverride] = useState<PrintLayout | null>(null);
-  const layout = chosenPrintLayout(companyLayout, override);
+  const [override, setOverride] = useState<PrintOverride>(null);
+  // A company's own worksheet layout (module K) has no workshop-pack form: the pack prints in that layout's Basic or JNR base.
+  const builder = useWorksheetBuilder();
+  const choice = resolvePrintChoice({ company: companyLayout, override, builder });
+  const layout = choice ? packLayoutOf(choice) : null;
 
   const load = useCallback(async () => {
     setError(null);
@@ -51,7 +56,7 @@ function WorkshopPack() {
       <div className="no-print mx-auto mb-4 flex w-[297mm] max-w-full items-center justify-between">
         <p className="text-sm text-slate-500">Workshop pack: {ids.length} job{ids.length === 1 ? "" : "s"} on one A4 landscape worksheet.</p>
         <div className="flex items-center gap-3">
-          <PrintLayoutPicker company={companyLayout} value={override} onChange={setOverride} />
+          <PrintLayoutPicker company={companyLayout} value={override} onChange={setOverride} companyLabel={choice?.kind === "custom" && !override ? `Company setting (${printLayoutLabel(packLayoutOf(choice))}, from ${choice.layout.name})` : undefined} />
           <Button className="bg-[#1E3472] text-white" disabled={!sheets || !layout} onClick={() => window.print()}><Printer className="size-4" /> Print Now</Button>
         </div>
       </div>

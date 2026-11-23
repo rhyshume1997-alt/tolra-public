@@ -11,6 +11,9 @@
  * flag. Once seen, a small "Replay tour" button shows on the Dashboard only; replaying starts at step 1 and saves the flag again.
  * It POINTS only: the ring ignores the mouse, no app button is ever pressed, no dialog is opened, no form is touched. Moving to the
  * next page is plain navigation. It works with AI off and calls no API.
+ * Game look: when the company's third marker (tooly-game-tour:on) is also on, the same steps, notes, Skip and Replay are shown by
+ * tour-stage.tsx (full-screen dim, spotlight, Tooly and a speech bubble) instead of the small card; the target is scrolled into view
+ * (scrolling only). Without that marker the small card is used, unchanged.
  * Must not change: the "points, never clicks" rule, the off-by-default gate (tour-switch.ts), or that all 23 steps are mandatory
  * (Back, Next, the note toggle and Skip tour are offered; there is no skipping a single step). The Replay button lives here, never in
  * the float, the sidebar or the middleware.
@@ -20,7 +23,9 @@ import { usePathname, useRouter } from "next/navigation";
 
 import { type PlannedStep, planTour } from "@/components/tooly/tour/tour-plan";
 import { tourNoteFor } from "@/components/tooly/tour/tour-notes";
-import { toolyTourEnabledFor } from "@/components/tooly/tour/tour-switch";
+import { poseForStep } from "@/components/tooly/tour/tour-poses";
+import { TourStage } from "@/components/tooly/tour/tour-stage";
+import { toolyGameTourOn, toolyTourEnabledFor } from "@/components/tooly/tour/tour-switch";
 import type { TourTarget } from "@/components/tooly/tour/tour-steps";
 import { isTourDone, markTourDone } from "@/lib/auth/tour-flag";
 import { useOrgSettings } from "@/lib/org-settings";
@@ -46,16 +51,25 @@ export function findTourTarget(doc: Document, target: TourTarget): Element | nul
 
 type Box = { top: number; left: number; width: number; height: number };
 
-function useTargetBox(planned: PlannedStep | undefined, pathname: string): Box | null {
+function useTargetBox(planned: PlannedStep | undefined, pathname: string, scrollTo: boolean): Box | null {
   const [box, setBox] = useState<Box | null>(null);
   useEffect(() => {
     setBox(null);
     if (!planned || planned.route !== pathname || planned.target.kind === "none") return;
     const target = planned.target;
     let tries = 0;
+    let scrolled = false;
     const measure = () => {
       const el = findTourTarget(document, target);
       if (!el) return false;
+      if (scrollTo && !scrolled) {
+        scrolled = true;
+        // Scrolling only (never a click or focus). Smooth unless the person asked for reduced motion.
+        if (typeof el.scrollIntoView === "function") {
+          const calm = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+          el.scrollIntoView({ block: "center", behavior: calm ? "auto" : "smooth" });
+        }
+      }
       const r = el.getBoundingClientRect();
       if (r.width === 0 && r.height === 0) return false;
       setBox({ top: r.top, left: r.left, width: r.width, height: r.height });
@@ -68,7 +82,7 @@ function useTargetBox(planned: PlannedStep | undefined, pathname: string): Box |
     window.addEventListener("resize", again);
     window.addEventListener("scroll", again, true);
     return () => { window.clearInterval(timer); window.removeEventListener("resize", again); window.removeEventListener("scroll", again, true); };
-  }, [planned, pathname]);
+  }, [planned, pathname, scrollTo]);
   return box;
 }
 
@@ -91,7 +105,8 @@ export function AdminTour({ envOn }: { envOn: boolean }) {
   );
   const planned = plan[Math.min(index, Math.max(plan.length - 1, 0))];
   const active = enabled && (!done || replay) && !closed && plan.length > 0;
-  const box = useTargetBox(active ? planned : undefined, pathname);
+  const game = toolyGameTourOn(hiddenNav);
+  const box = useTargetBox(active ? planned : undefined, pathname, game);
 
   // Moving to the step's page is navigation only.
   useEffect(() => {
@@ -117,6 +132,27 @@ export function AdminTour({ envOn }: { envOn: boolean }) {
     setReplay(false);
     void markTourDone(supabase, user?.id);
   };
+
+  if (game) {
+    return (
+      <TourStage
+        number={planned.number}
+        of={planned.of}
+        text={planned.text}
+        pose={poseForStep(planned.step.id, planned.target.kind !== "none" && !planned.closed)}
+        box={box}
+        phone={!wide}
+        note={note}
+        noteOpen={noteOpen}
+        canBack={index > 0}
+        last={last}
+        onToggleNote={() => setNoteOpen((o) => !o)}
+        onBack={() => setIndex((i) => Math.max(0, i - 1))}
+        onNext={last ? finish : () => setIndex((i) => i + 1)}
+        onSkip={finish}
+      />
+    );
+  }
 
   return (
     <div className="print:hidden" data-testid="tooly-tour" data-step={planned.number}>

@@ -27,7 +27,7 @@ vi.mock("@/lib/supabase", () => ({ supabase: {} }));
 vi.mock("@/lib/auth/tour-flag", () => ({ isTourDone: () => state.done, markTourDone: (...args: unknown[]) => markDone(...args) }));
 
 import { AdminTour } from "@/components/tooly/tour/admin-tour";
-import { TOOLY_OFFICE_TOUR_ON_MARKER, TOOLY_TOUR_ON_MARKER, TOOLY_WORKSHOP_TOUR_ON_MARKER } from "@/components/tooly/tour/tour-switch";
+import { TOOLY_GAME_TOUR_ON_MARKER, TOOLY_OFFICE_TOUR_ON_MARKER, TOOLY_TOUR_ON_MARKER, TOOLY_WORKSHOP_TOUR_ON_MARKER } from "@/components/tooly/tour/tour-switch";
 
 let host: HTMLDivElement;
 let root: Root;
@@ -202,5 +202,52 @@ describe("walking through it", () => {
     for (let i = 0; i < 16; i += 1) await press("tooly-tour-next");
     expect(count()).toBe("Step 17 of 17");
     expect(pressed).toBe(0);
+  });
+});
+
+describe("the game look", () => {
+  it("is not used unless its own marker is on: the small card shows", async () => {
+    state.hiddenNav = [TOOLY_OFFICE_TOUR_ON_MARKER];
+    await show(true);
+    expect(card()?.getAttribute("data-mode")).toBeNull();
+    expect(host.querySelector('[data-testid="tooly-tour-bubble"]')).toBeNull();
+  });
+  it("does not make a tour appear by itself: the game marker alone shows nothing", async () => {
+    state.hiddenNav = [TOOLY_GAME_TOUR_ON_MARKER];
+    await show(true);
+    expect(card()).toBeNull();
+    state.hiddenNav = [TOOLY_OFFICE_TOUR_ON_MARKER, TOOLY_GAME_TOUR_ON_MARKER];
+    await show(false);
+    expect(card()).toBeNull();
+  });
+  it("with both markers: the full-screen stage, the same steps, notes, Skip and seen flag", async () => {
+    state.hiddenNav = [TOOLY_OFFICE_TOUR_ON_MARKER, TOOLY_GAME_TOUR_ON_MARKER];
+    await show(true);
+    expect(card()?.getAttribute("data-mode")).toBe("game");
+    expect(count()).toBe("Step 1 of 17");
+    expect(host.querySelector('[data-testid="tooly-face"]')?.getAttribute("data-pose")).toBe("wave");
+    await press("tooly-tour-note-toggle");
+    expect(host.querySelector('[data-testid="tooly-tour-note"]')).not.toBeNull();
+    await press("tooly-tour-next");
+    expect(count()).toBe("Step 2 of 17");
+    expect(host.querySelector('[data-testid="tooly-tour-note"]')).toBeNull();
+    await press("tooly-tour-stop");
+    expect(markDone).toHaveBeenCalledTimes(1);
+    expect(card()).toBeNull();
+  });
+  it("never presses a button on the page behind it, first step to last", async () => {
+    state.hiddenNav = [TOOLY_OFFICE_TOUR_ON_MARKER, TOOLY_GAME_TOUR_ON_MARKER];
+    await show(true);
+    for (let i = 0; i < 16; i += 1) await press("tooly-tour-next");
+    expect(count()).toBe("Step 17 of 17");
+    expect(pressed).toBe(0);
+  });
+  it("Replay still works after it has been seen", async () => {
+    state.hiddenNav = [TOOLY_OFFICE_TOUR_ON_MARKER, TOOLY_GAME_TOUR_ON_MARKER];
+    state.done = true;
+    await show(true);
+    await press("tooly-tour-replay");
+    expect(card()?.getAttribute("data-mode")).toBe("game");
+    expect(count()).toBe("Step 1 of 17");
   });
 });

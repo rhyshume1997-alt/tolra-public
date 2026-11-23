@@ -10,7 +10,10 @@ import { listCustomerPos } from "@/lib/job-files";
 import { Button } from "@/components/ui/button";
 import { DEMO_MODE } from "@/lib/demo";
 import { type JobWorksheet, type WorksheetJobInfo, listDrawings, loadWorksheet } from "@/lib/job-worksheet";
-import { type PrintLayout, chosenPrintLayout, useCompanyPrintLayout } from "@/lib/print-layout";
+import { useCompanyPrintLayout } from "@/lib/print-layout";
+import { type CustomValues, EMPTY_CUSTOM_VALUES, parseCustomValues } from "@/lib/worksheet-builder/custom-values";
+import { type PrintOverride, packLayoutOf, resolvePrintChoice } from "@/lib/worksheet-builder/print-choice";
+import { useWorksheetBuilder } from "@/lib/worksheet-builder/store";
 
 /** The A4 sheet's width in CSS px (210 mm). */
 const A4_PX = (210 * 96) / 25.4;
@@ -47,8 +50,12 @@ export default function JobSheetPrintPage() {
   const [attempt, setAttempt] = useState(0);
   // The company's layout (Settings > Print layout), unless the person picks the other one for this print.
   const companyLayout = useCompanyPrintLayout();
-  const [override, setOverride] = useState<PrintLayout | null>(null);
-  const layout = chosenPrintLayout(companyLayout, override);
+  const [override, setOverride] = useState<PrintOverride>(null);
+  // The company's own worksheet layouts (module K): only when the builder is on; otherwise exactly the company's Basic or JNR choice.
+  const builder = useWorksheetBuilder();
+  const [customValues, setCustomValues] = useState<CustomValues>(EMPTY_CUSTOM_VALUES);
+  const choice = resolvePrintChoice({ company: companyLayout, override, builder });
+  const layout = choice ? packLayoutOf(choice) : null;
   // On a screen narrower than A4 the sheet is shrunk to fit, so the page never pans sideways on a phone (Rhys, 1 Nov). Print is full size.
   const sheetBox = useRef<HTMLDivElement>(null);
   const [fit, setFit] = useState(1);
@@ -73,6 +80,7 @@ export default function JobSheetPrintPage() {
     }
     setWorksheet(loaded.worksheet);
     setTraceable(loaded.row?.traceable === true);
+    setCustomValues(parseCustomValues(loaded.row?.worksheet_custom));
     const stored = loaded.demo ? null : await listDrawings(id);
     setDrawings(stored ? stored.map((file) => (file.revision ? `${file.name} (Rev ${file.revision})` : file.name)) : demo.drawings);
     setCustomerPos(loaded.demo ? [] : (await listCustomerPos(id).catch(() => [])).map((file) => file.file_name));
@@ -98,7 +106,7 @@ export default function JobSheetPrintPage() {
         <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-slate-500">A4 portrait worksheet. Blank cells are left for handwriting.</p>
           <div className="flex flex-wrap items-center gap-3">
-            <PrintLayoutPicker company={companyLayout} value={override} onChange={setOverride} />
+            <PrintLayoutPicker company={companyLayout} value={override} onChange={setOverride} customLayouts={builder?.enabled ? builder.state.layouts : []} companyLabel={choice?.kind === "custom" && !override ? `Company setting (${choice.layout.name})` : undefined} />
             <Button className="bg-[#1E3472] text-white" disabled={!worksheet || !layout} onClick={() => window.print()}><Printer className="size-4" /> Print Now</Button>
           </div>
         </div>
@@ -112,7 +120,7 @@ export default function JobSheetPrintPage() {
       ) : worksheet && layout ? (
         <div ref={sheetBox} data-testid="print-sheet">
           <div className="sheet-fit" style={{ zoom: fit }}>
-            <WorksheetInLayout layout={layout} worksheet={worksheet} jobNo={worksheet.job_no} drawings={drawings} customerPos={customerPos} traceable={traceable} />
+            <WorksheetInLayout layout={layout} worksheet={worksheet} jobNo={worksheet.job_no} drawings={drawings} customerPos={customerPos} traceable={traceable} custom={choice?.kind === "custom" && builder ? { layout: choice.layout, requirements: builder.requirements, jobId: id, customValues } : undefined} />
           </div>
         </div>
       ) : (

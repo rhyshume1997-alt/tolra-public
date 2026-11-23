@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const SETUP_STEPS = [
   { id: "company", label: "Company details", hint: "Add the name, address and VAT details for your documents.", href: "/settings#setup-company" },
-  { id: "branding", label: "Logo and colours", hint: "Add your logo and choose your company colours.", href: "/settings#setup-company" },
+  { id: "branding", label: "Logo and colours", hint: "Add your logo, choose your company colours and pick how your documents look.", href: "/settings#setup-company" },
   { id: "hours", label: "Working hours", hint: "Choose the days and hours your workshop works.", href: "/settings#setup-company" },
   { id: "breaks", label: "Paid or unpaid breaks", hint: "Check whether breaks are paid and how long they last.", href: "/settings#setup-breaks" },
   { id: "people", label: "People and roles", hint: "Add your team and choose what each person can see and change.", href: "/admin/users" },

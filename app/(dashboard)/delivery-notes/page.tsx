@@ -486,6 +486,8 @@ export default function DeliveryNotesPage() {
       <DeliveryNotePDF
         data={{
           number: note.ref,
+          // Design in force when it was issued (module J); a draft prints in the current design.
+          issuedAt: note.status.toLowerCase() === "draft" ? undefined : note.date,
           taxDate: fmtDate(note.taxDate || shipDate),
           shipDate: fmtDate(shipDate),
           shipVia: note.shipVia,

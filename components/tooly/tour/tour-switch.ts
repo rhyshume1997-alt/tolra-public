@@ -61,3 +61,19 @@ export function toolyTourSwitchChangeFor(role: TourRole, on: boolean): { add: st
   const marker = toolyTourMarkerFor(role) as string;
   return on ? { add: [marker], remove: [] } : { add: [], remove: [marker] };
 }
+
+/**
+ * The "game tutorial" look (full-screen dim, spotlight, Tooly and a speech bubble: tour-stage.tsx). A third, separate switch: it only
+ * changes how the tour LOOKS, never whether it shows. The tour itself still needs the env flag and its view's marker (above). Without this
+ * marker the small card is used. Off by default. Marker text is stored in companies' settings and must not change.
+ */
+export const TOOLY_GAME_TOUR_ON_MARKER = "tooly-game-tour:on";
+
+export function toolyGameTourOn(hiddenNav?: readonly string[] | null): boolean {
+  return Boolean(hiddenNav?.includes(TOOLY_GAME_TOUR_ON_MARKER));
+}
+
+/** The hidden_nav change that switches the game look on or off for a company. */
+export function toolyGameTourSwitchChange(on: boolean): { add: string[]; remove: string[] } {
+  return on ? { add: [TOOLY_GAME_TOUR_ON_MARKER], remove: [] } : { add: [], remove: [TOOLY_GAME_TOUR_ON_MARKER] };
+}
