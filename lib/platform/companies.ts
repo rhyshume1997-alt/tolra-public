@@ -1,4 +1,4 @@
-// Platform owner Companies panel (Owner Console, module 12). Inputs: the raw rows release 164's platform_company_overview() returns, the raw
+// Platform owner Companies panel (Owner console, module 15). Inputs: the raw rows release 164's platform_company_overview() returns, the raw
 // JSON body of POST /api/platform/companies/status, and the error release 164's platform_set_organization_status() returned. Outputs: numbers
 // parsed from the database's bigint strings, a checked input, and fixed-wording refusals. Must not change: nothing here deletes anything (Close
 // only sets a company's status), no database message is ever shown to the caller, the panel is OFF unless PLATFORM_COMPANIES_ENABLED is exactly

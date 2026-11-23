@@ -1,6 +1,6 @@
 "use client";
 
-// Platform owner Companies panel (Owner Console, module 12): every company with its people, jobs and invoices, and Close or Reopen for each.
+// Platform owner Companies panel (Owner console, module 15): every company with its people, jobs and invoices, and Close or Reopen for each.
 // Inputs: GET /api/platform/companies (counts) and POST /api/platform/companies/status (the route and release 164 do every check). It renders
 // NOTHING when the panel is switched off (the route answers 404 to the owner unless PLATFORM_COMPANIES_ENABLED is exactly "true"). Must not change: it never
 // deletes anything; Close needs the company's exact name typed, a reason and a fresh authenticator code (the shared code dialog); the screen
