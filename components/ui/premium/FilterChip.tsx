@@ -1,8 +1,8 @@
 "use client";
 /*
  * BOUNDARY (module 7, shared UI, NEW). Inputs: selected, onToggle, children (the label), count?, disabled?. Output: a 32 px toggle button
- * (aria-pressed) with a 44 px hit area; selected = navy fill plus a check mark, so selection never relies on colour alone.
- * Must not change: ChipGroup rows use a 12 px row gap so neighbouring hit areas never overlap. It filters nothing itself.
+ * (aria-pressed) with a 48 px hit area (v3: was 44); selected = navy fill plus a check mark, so selection never relies on colour alone.
+ * Must not change: ChipGroup rows use a 16 px row gap (v3: was 12) so wrapped rows' 48 px hit areas never overlap. It filters nothing itself.
  */
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import styles from "./premium.module.css";

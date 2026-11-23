@@ -5,6 +5,10 @@
  * root AND every portal layer (menu, popover, dialog, toast) so a portal never loses them. Control sizes are a three step scale
  * (32, 40, 48 px) and the hit area of every control is at least 44 px (buttons 48 px) by pseudo element, so the look can stay refined.
  * Motion: 120 to 200 ms, transform and opacity and colour only, all of it off under prefers-reduced-motion.
+ * Added (v2): segmented control, sheet, form fields, stat tile, toast placement. Fields draw their 48 px hit area as a transparent 4 px top and bottom border (the visible control is 40 px).
+ * Added (v3, everything after the segmented control block is v3 and must stay gradient free): danger and pressed buttons, menu hints, table variants (dense, totals, clickable, pinned last column, record
+ * groups), panel, callout, disclosure, list rows, form group, error summary, date range, link tile, large fields, compact empty state. v3 also changed three defaults on purpose: chip hit area 48 (was 44) with a 16 px
+ * wrapped row gap, selection bar wrapped rows 16 px apart, and the segmented control wraps (visible overflow) instead of scrolling under 640 px. Nothing else moved.
  * Forbidden here: gradients, backdrop-filter or blur (no glass), decorative icons, oversized cards.
  */
 
@@ -48,6 +52,12 @@
   --ui-h-sm: 32px;
   --ui-h-md: 40px;
   --ui-h-lg: 48px;
+  --ui-hit: 48px;
+  --ui-sheet-sm: 520px;
+  --ui-sheet-md: 680px;
+  --ui-sheet-lg: 860px;
+  --ui-toast-top: 76px;
+  --ui-toast-edge: 16px;
   --ui-font: var(--font-archivo, "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif);
   color: var(--ui-ink);
   font-family: var(--ui-font);
@@ -110,8 +120,8 @@
   box-shadow: inset 0 1px 2px rgba(14, 23, 38, 0.28), inset 0 0 0 1px rgba(14, 23, 38, 0.1);
   transition: background-color var(--ui-t-base) var(--ui-ease), box-shadow var(--ui-t-base) var(--ui-ease);
 }
-/* the whole row is the 48 px hit area; the button itself also reaches 48 px tall */
-.switch::after { content: ""; position: absolute; inset: -12px -4px; }
+/* the whole row is the 48 px hit area; the button itself also reaches 48 px tall (v3: no sideways reach, it made the page scroll 2 px at 390) */
+.switch::after { content: ""; position: absolute; inset: -12px 0; }
 .switch[aria-checked="true"] { background: var(--ui-brand); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3), inset 0 0 0 1px rgba(0, 0, 0, 0.18); }
 .switchRow:hover .switch:not([disabled]):not([aria-checked="true"]) { background: #7a8499; }
 .switchRow:hover .switch[aria-checked="true"]:not([disabled]) { background: color-mix(in srgb, var(--ui-brand) 88%, #000); }
@@ -132,14 +142,14 @@
 .check:disabled { cursor: not-allowed; opacity: 0.5; }
 
 /* ---------- filter chip ---------- */
-.chips { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 6px; }
+.chips { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 6px; }
 .chip {
   position: relative; display: inline-flex; align-items: center; gap: 6px; height: var(--ui-h-sm); padding: 0 11px; border: 0; border-radius: var(--ui-radius-sm);
   background: #fff; color: #2b3445; font-size: 13px; font-weight: 500; white-space: nowrap;
   box-shadow: inset 0 1px 0 #fff, inset 0 0 0 1px var(--ui-line-strong), 0 1px 1px rgba(14, 23, 38, 0.05);
   transition: background-color var(--ui-t-base) var(--ui-ease), box-shadow var(--ui-t-base) var(--ui-ease), transform var(--ui-t-fast) var(--ui-ease), color var(--ui-t-base) var(--ui-ease);
 }
-.chip::after { content: ""; position: absolute; inset: -6px 0; }
+.chip::after { content: ""; position: absolute; inset: -8px 0; }
 .chip:hover:not([disabled]) { background: var(--ui-surface-2); box-shadow: inset 0 1px 0 #fff, inset 0 0 0 1px var(--ui-line-hover), 0 1px 2px rgba(14, 23, 38, 0.07); }
 .chip:active:not([disabled]) { transform: translateY(1px); }
 .chip[aria-pressed="true"] { background: var(--ui-brand); color: var(--ui-on-brand); font-weight: 600; box-shadow: var(--ui-inset-light), var(--ui-inset-dark), 0 1px 2px rgba(14, 23, 38, 0.25); }
@@ -184,10 +194,16 @@
 .dialogActions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 22px; }
 
 /* ---------- toast: neutral, one layer ---------- */
-.toastRegion { position: fixed; top: 76px; right: 16px; z-index: 100; width: min(380px, calc(100vw - 32px)); pointer-events: none; }
+.toastRegion { position: fixed; top: var(--ui-toast-top); right: var(--ui-toast-edge); z-index: 100; width: min(380px, calc(100vw - 32px)); pointer-events: none; }
+/* placement: top-right is the default above; the others only move the same layer (inline top or bottom comes from the provider's offset) */
+.toastBottom { top: auto; bottom: var(--ui-toast-edge); }
+.toastLeft { right: auto; left: var(--ui-toast-edge); }
+.toastCentre { right: auto; left: 50%; transform: translateX(-50%); }
 .toast { pointer-events: auto; display: flex; align-items: flex-start; gap: 8px; padding: 10px 8px 10px 14px; border-radius: var(--ui-radius-md); background: #fff; color: var(--ui-ink); box-shadow: inset 3px 0 0 var(--ui-brand), var(--ui-shadow-pop); animation: toastIn var(--ui-t-base) var(--ui-ease); }
 .toastError { box-shadow: inset 3px 0 0 var(--ui-danger), var(--ui-shadow-pop); }
 @keyframes toastIn { from { opacity: 0; transform: translateY(-6px); } }
+.toastRegion[data-placement^="bottom"] .toast { animation-name: toastInUp; }
+@keyframes toastInUp { from { opacity: 0; transform: translateY(6px); } }
 .toastText { flex: 1; min-width: 0; font-size: 13px; line-height: 19px; }
 .toastTitle { margin: 0; font-weight: 650; }
 .toastDetail { margin: 0; color: var(--ui-ink-2); }
@@ -196,14 +212,14 @@
 .toastClose:hover { background: var(--ui-surface-3); color: var(--ui-ink); }
 
 /* ---------- selection bar ---------- */
-.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; min-height: 48px; padding: 0 8px 0 4px; border-radius: var(--ui-radius-md); transition: background-color var(--ui-t-base) var(--ui-ease), box-shadow var(--ui-t-base) var(--ui-ease), color var(--ui-t-base) var(--ui-ease); }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 10px; min-height: 48px; padding: 0 8px 0 4px; border-radius: var(--ui-radius-md); transition: background-color var(--ui-t-base) var(--ui-ease), box-shadow var(--ui-t-base) var(--ui-ease), color var(--ui-t-base) var(--ui-ease); }
 .barIdle { color: var(--ui-muted); background: transparent; }
 .barOn { position: sticky; top: 4rem; z-index: 20; padding: 8px 12px; background: var(--ui-brand); color: var(--ui-on-brand); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2), 0 10px 24px -10px rgba(14, 23, 38, 0.5); }
 .barCount { font-size: 14px; font-weight: 650; }
 .barNote { font-size: 12.5px; opacity: 0.9; }
 .barIdle .barCount { font-size: 13px; font-weight: 500; }
 .barSpacer { flex: 1; }
-.barActions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.barActions { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 8px; }
 
 /* ---------- table finish ---------- */
 .tableWrap { position: relative; border-radius: var(--ui-radius-lg); background: var(--ui-surface); box-shadow: 0 0 0 1px var(--ui-line), var(--ui-shadow-1); overflow: hidden; }
@@ -236,9 +252,242 @@
 .skelRow { display: block; height: 12px; border-radius: 6px; background: linear-gradient(90deg, #e6e9f0 0%, #eef1f6 50%, #e6e9f0 100%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
 @keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 
+/* ---------- segmented control: one choice of a few (view switch, role switch, filter). 40 px track with 32 px segments, or 32 with 24 ---------- */
+.seg { width: fit-content; max-width: 100%; display: inline-flex; flex-wrap: wrap; align-items: center; gap: 16px 2px; height: auto; min-height: var(--ui-h-md); padding: 4px; border-radius: var(--ui-radius-md); background: var(--ui-surface-3); box-shadow: inset 0 1px 2px rgba(14, 23, 38, 0.1), inset 0 0 0 1px var(--ui-line); }
+.segSm { height: auto; min-height: var(--ui-h-sm); border-radius: var(--ui-radius-sm); }
+.segBtn {
+  position: relative; height: 32px; padding: 0 12px; border: 0; border-radius: 7px; background: transparent; color: var(--ui-ink-2); font-size: 13px; font-weight: 550; white-space: nowrap;
+  transition: background-color var(--ui-t-base) var(--ui-ease), color var(--ui-t-base) var(--ui-ease), box-shadow var(--ui-t-base) var(--ui-ease), transform var(--ui-t-fast) var(--ui-ease);
+}
+.segSm .segBtn { height: 24px; padding: 0 10px; border-radius: 5px; font-size: 12.5px; }
+/* 48 px hit area: 32 + 16 on the 40 track, 24 + 24 on the 32 track */
+.segBtn::after { content: ""; position: absolute; inset: -8px -1px; }
+.segSm .segBtn::after { inset: -12px -1px; }
+.segBtn:hover:not([aria-checked="true"]):not([aria-selected="true"]):not([aria-disabled="true"]):not([disabled]) { background: rgba(255, 255, 255, 0.75); color: var(--ui-ink); }
+.segBtn:active:not([aria-disabled="true"]):not([disabled]) { transform: translateY(1px); }
+.segBtn[aria-checked="true"], .segBtn[aria-selected="true"] { background: var(--ui-brand); color: var(--ui-on-brand); font-weight: 600; box-shadow: var(--ui-inset-light), var(--ui-inset-dark), 0 1px 2px rgba(14, 23, 38, 0.25); }
+.segBtn:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 1px; }
+.segBtn[aria-disabled="true"], .segBtn[disabled] { opacity: 0.5; cursor: not-allowed; }
+.segBtn[aria-checked="true"][aria-disabled="true"], .segBtn[aria-selected="true"][aria-disabled="true"], .segBtn[aria-checked="true"][disabled] { opacity: 0.7; }
+/* v3: no horizontal scroll box under 640 px (it clipped the 48 px hit area); long options wrap onto a second row 16 px lower so hit areas never overlap */
+
+/* ---------- sheet: wide modal on the native dialog, header + scrolling body + custom footer ---------- */
+.sheet { position: fixed; inset: 0; margin: auto; padding: 0; border: 0; border-radius: var(--ui-radius-lg); background: #fff; color: var(--ui-ink); box-shadow: var(--ui-shadow-dialog); max-height: calc(100dvh - 32px); overflow: hidden; }
+.sheet_sm { width: min(var(--ui-sheet-sm), calc(100vw - 32px)); }
+.sheet_md { width: min(var(--ui-sheet-md), calc(100vw - 32px)); }
+.sheet_lg { width: min(var(--ui-sheet-lg), calc(100vw - 32px)); }
+.sheet[open] { animation: sheetIn var(--ui-t-slow) var(--ui-ease); }
+.sheet::backdrop { background: rgba(14, 23, 38, 0.45); animation: fadeIn var(--ui-t-base) ease-out; }
+@keyframes sheetIn { from { opacity: 0; transform: translateY(6px) scale(0.985); } }
+.sheetInner { display: flex; flex-direction: column; max-height: calc(100dvh - 32px); }
+.sheetHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 20px 20px 14px 24px; box-shadow: inset 0 -1px 0 var(--ui-line); }
+.sheetHeadText { min-width: 0; }
+.sheetTitle { margin: 0; font-size: 18px; line-height: 24px; font-weight: 600; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.sheetDesc { margin: 4px 0 0; color: var(--ui-ink-2); font-size: 14px; line-height: 20px; }
+.sheetBody { display: flex; flex-direction: column; gap: 16px; padding: 18px 24px; overflow-y: auto; overscroll-behavior: contain; }
+.sheetBody:focus-visible { outline-offset: -2px; }
+.sheetFoot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 14px 24px 16px; background: var(--ui-surface-2); box-shadow: inset 0 1px 0 var(--ui-line); }
+@media (max-width: 640px) { .sheetHead, .sheetBody, .sheetFoot { padding-left: 16px; padding-right: 16px; } }
+
+/* ---------- form fields: label, hint, error; 40 px visible control inside a 48 px box (a 4 px transparent border is the hit area) ---------- */
+.field { display: flex; flex-direction: column; min-width: 0; }
+.fieldLabel { padding-bottom: 0; color: var(--ui-ink-2); font-size: 12.5px; font-weight: 600; line-height: 17px; }
+.fieldNote { font-weight: 500; color: var(--ui-muted); }
+.fieldHint { margin: 0; color: var(--ui-muted); font-size: 12.5px; line-height: 17px; }
+.fieldError { margin: 0; color: #8f1f1f; font-size: 12.5px; font-weight: 550; line-height: 17px; }
+.input {
+  display: block; width: 100%; min-width: 0; height: var(--ui-hit); margin: 0; padding: 0 12px; border: 0 solid transparent; border-block-width: 4px; border-radius: var(--ui-radius-sm);
+  background-color: #fff; background-clip: padding-box; color: var(--ui-ink); font-size: 14px; line-height: 20px;
+  box-shadow: inset 0 1px 2px rgba(14, 23, 38, 0.06), inset 0 0 0 1px var(--ui-line-strong);
+  transition: box-shadow var(--ui-t-base) var(--ui-ease), background-color var(--ui-t-base) var(--ui-ease);
+}
+.input::placeholder { color: #6b7385; opacity: 1; }
+.input:hover:not(:disabled):not([aria-invalid="true"]) { box-shadow: inset 0 1px 2px rgba(14, 23, 38, 0.06), inset 0 0 0 1px var(--ui-line-hover); }
+.input:focus-visible { outline: 2px solid transparent; outline-offset: -2px; box-shadow: inset 0 0 0 2px var(--ui-accent); }
+.input[aria-invalid="true"]:focus-visible { box-shadow: inset 0 0 0 2px var(--ui-accent), inset 0 0 0 4px var(--ui-danger-soft); }
+.input[aria-invalid="true"] { box-shadow: inset 0 0 0 1.5px var(--ui-danger), inset 3px 0 0 var(--ui-danger); background-color: var(--ui-danger-soft); }
+.input:disabled { background-color: var(--ui-surface-2); color: var(--ui-muted); opacity: 0.75; cursor: not-allowed; }
+.inputArea { height: auto; min-height: 92px; padding-top: 8px; padding-bottom: 8px; resize: vertical; }
+.inputSelect { padding-right: 32px; appearance: none; -webkit-appearance: none; cursor: pointer; background-repeat: no-repeat; background-position: right 10px center; background-size: 10px 10px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10' fill='none'%3E%3Cpath d='M2 3.6 5 6.6 8 3.6' stroke='%233b4559' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+.inputSelect:disabled { cursor: not-allowed; }
+
+/* ---------- stat tile: a label, one tabular figure, an optional hint and delta word. No chart, no icon ---------- */
+.tiles { display: grid; grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr)); gap: 12px; }
+.tile {
+  position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 80px; padding: 12px 16px 10px; border: 0; border-radius: var(--ui-radius-md); background: #fff; color: var(--ui-ink); text-align: left;
+  box-shadow: 0 0 0 1px var(--ui-line), var(--ui-shadow-1), inset 0 1px 0 #fff;
+  transition: box-shadow var(--ui-t-base) var(--ui-ease), background-color var(--ui-t-base) var(--ui-ease), transform var(--ui-t-fast) var(--ui-ease);
+}
+.tilePress:hover:not([disabled]) { box-shadow: 0 0 0 1px var(--ui-line-hover), 0 2px 4px rgba(14, 23, 38, 0.08), 0 8px 18px -10px rgba(14, 23, 38, 0.2), inset 0 1px 0 #fff; }
+.tilePress:active:not([disabled]) { transform: translateY(1px); }
+.tilePress[aria-pressed="true"] { background: var(--ui-soft); box-shadow: 0 0 0 1.5px var(--ui-brand), var(--ui-shadow-1); }
+.tilePress[disabled] { cursor: default; }
+.tileLabel { color: var(--ui-ink-2); font-size: 12.5px; font-weight: 600; letter-spacing: 0.004em; }
+.tileValue { margin-top: 4px; font-size: 28px; line-height: 32px; font-weight: 650; letter-spacing: -0.015em; color: var(--ui-ink); }
+.tileHint { color: var(--ui-muted); font-size: 12.5px; line-height: 17px; }
+.tileDelta { font-size: 12.5px; line-height: 17px; font-weight: 600; color: var(--ui-ink-2); }
+.tileDelta_ok { color: #14532d; }
+.tileDelta_warn { color: #6b4300; }
+.tileDelta_danger { color: #8f1f1f; }
+@media (max-width: 1100px) { .tiles { grid-template-columns: repeat(min(var(--cols, 4), 2), minmax(0, 1fr)); } }
+@media (max-width: 640px) { .tiles { gap: 8px; } .tile { min-height: 80px; padding: 12px; } .tileValue { font-size: 24px; line-height: 28px; } }
+
+/* ====================================================================================================================
+   v3 additions. Everything below is additive, gradient free and token driven.
+   ==================================================================================================================== */
+
+/* ---------- button: danger (outline for the first step, solid for the final confirm, quiet for a row action) and a real pressed look ---------- */
+.btnBlock { display: flex; width: 100%; }
+.danger { background: #fff; color: var(--ui-danger); box-shadow: inset 0 1px 0 #fff, inset 0 0 0 1px rgba(179, 45, 45, 0.55), 0 1px 1px rgba(14, 23, 38, 0.06); }
+.danger:hover:not([disabled]):not([aria-disabled="true"]) { background: var(--ui-danger-soft); box-shadow: inset 0 0 0 1px var(--ui-danger), 0 1px 2px rgba(14, 23, 38, 0.1); }
+.danger:active:not([disabled]):not([aria-disabled="true"]) { background: #fbe3e3; box-shadow: inset 0 0 0 1px var(--ui-danger), inset 0 1px 2px rgba(14, 23, 38, 0.14); }
+.dangerSolid { background: var(--ui-danger); color: #fff; box-shadow: var(--ui-inset-light), var(--ui-inset-dark), 0 1px 2px rgba(14, 23, 38, 0.28); }
+.dangerSolid:hover:not([disabled]):not([aria-disabled="true"]) { background: color-mix(in srgb, var(--ui-danger) 88%, #000); }
+.dangerSolid:active:not([disabled]):not([aria-disabled="true"]) { box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35), 0 1px 1px rgba(14, 23, 38, 0.2); }
+.dangerQuiet { background: transparent; color: var(--ui-danger); box-shadow: none; }
+.dangerQuiet:hover:not([disabled]):not([aria-disabled="true"]) { background: var(--ui-danger-soft); box-shadow: inset 0 0 0 1px rgba(179, 45, 45, 0.28); }
+.dangerQuiet:active:not([disabled]):not([aria-disabled="true"]) { background: #fbe3e3; }
+.onDark.dangerQuiet { background: #fff; }
+/* pressed (aria-pressed="true") on secondary and quiet: navy fill, same as a selected chip or segment. Selectors are heavier than the hover rules, so a consumer never needs an override. */
+.btn[aria-pressed="true"]:is(.secondary, .quiet) { background: var(--ui-brand); color: var(--ui-on-brand); font-weight: 600; box-shadow: var(--ui-inset-light), var(--ui-inset-dark), 0 1px 2px rgba(14, 23, 38, 0.25); }
+.btn[aria-pressed="true"]:is(.secondary, .quiet):is(:hover, :active):not([disabled]):not([aria-disabled="true"]) { background: color-mix(in srgb, var(--ui-brand) 88%, #000); color: var(--ui-on-brand); box-shadow: var(--ui-inset-light), var(--ui-inset-dark), 0 1px 2px rgba(14, 23, 38, 0.25); }
+.onDark.btn[aria-pressed="true"]:is(.secondary, .quiet) { background: #fff; color: var(--ui-brand); box-shadow: inset 0 -1px 0 rgba(14, 23, 38, 0.14), 0 1px 2px rgba(0, 0, 0, 0.3); }
+.onDark.btn[aria-pressed="true"]:is(.secondary, .quiet):is(:hover, :active):not([disabled]):not([aria-disabled="true"]) { background: #eef2fb; color: var(--ui-brand); }
+
+/* ---------- menu: full width trigger, a reason under a disabled item ---------- */
+.menuBlock { justify-content: space-between; }
+.menuItemText { display: flex; flex-direction: column; align-items: flex-start; padding: 5px 0; min-width: 0; }
+.menuHint { max-width: 260px; color: var(--ui-muted); font-size: 12px; line-height: 16px; font-weight: 400; }
+.menuItem:has(.menuHint) { min-height: 44px; }
+
+/* ---------- table variants ---------- */
+/* dense rows: 48 px (a 48 px checkbox or a 32 px button with its 48 px hit area still fits without neighbours overlapping) */
+.tableDense td { height: 48px; padding-top: 4px; padding-bottom: 4px; }
+.tableDense th { height: 40px; }
+/* totals row */
+.table tfoot tr { --row-bg: #f7f8fb; }
+.table tfoot td { height: 52px; padding: 8px 14px; background: var(--row-bg); font-weight: 650; box-shadow: inset 0 1px 0 var(--ui-line-strong); }
+/* a row header (th scope="row") in the body or the footer is a plain cell, not a sticky column header */
+.table :is(tbody, tfoot) th { top: auto; height: auto; padding: 8px 14px; background: var(--row-bg, #fff); color: var(--ui-ink); font-size: 14px; font-weight: 600; box-shadow: inset 0 -1px 0 var(--ui-line); }
+.table :is(tbody, tfoot) th:not(:first-child) { position: static; }
+.table tfoot th { box-shadow: inset 0 1px 0 var(--ui-line-strong); font-weight: 650; }
+.table tbody tr:last-child th { box-shadow: none; }
+/* clickable rows: the pointer is a convenience, the row must still hold a real link or button for the keyboard */
+.table tbody tr[data-clickable="true"] { cursor: pointer; }
+.table tbody tr[data-clickable="true"]:active { --row-bg: #eef1f6; }
+.table tbody tr[data-clickable="true"]:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: -2px; }
+/* the first-column shadow must never leak from a full-width (colspan) cell: it sat 9 px outside the table and made it scroll sideways */
+.table td[colspan]:first-child::after, .table th[colspan]:first-child::after { content: none; }
+/* pinned last column (Actions): stays in view, with a shadow on its left edge while columns are hidden to the right of the viewport */
+.tableWrap[data-pin-last="true"] .table :is(th, td):last-child:not([colspan]) { position: sticky; right: 0; z-index: 2; }
+.tableWrap[data-pin-last="true"] .table th:last-child:not([colspan]) { z-index: 4; }
+.tableWrap[data-pin-last="true"] .table :is(th, td):last-child:not([colspan])::before { content: ""; position: absolute; top: 0; right: 100%; bottom: 0; width: 10px; pointer-events: none; opacity: 0; box-shadow: inset -8px 0 8px -8px rgba(14, 23, 38, 0.2); transition: opacity var(--ui-t-base) var(--ui-ease); }
+.tableWrap[data-pin-last="true"][data-more="true"] .table :is(th, td):last-child:not([colspan])::before { opacity: 1; }
+.tableWrap[data-pin-last="true"] .edgeFade { display: none; }
+/* one tbody per record (a main row plus sub-rows): the whole record hovers, selects and is separated as one */
+.table tbody[data-record="true"] tr:not(:last-child) td, .table tbody[data-record="true"] tr:not(:last-child) th { box-shadow: none; }
+.table tbody[data-record="true"] tr:last-child td { box-shadow: inset 0 -1px 0 var(--ui-line); }
+.table tbody[data-record="true"]:last-of-type tr:last-child td { box-shadow: none; }
+.table tbody[data-record="true"]:hover tr { --row-bg: #f6f8fb; }
+.table tbody[data-record="true"][data-selected="true"] tr { --row-bg: #eef2fb; }
+.table tbody[data-record="true"][data-selected="true"] td:first-child { box-shadow: inset 3px 0 0 var(--ui-brand); }
+.table tbody[data-record="true"][data-selected="true"]:not(:last-of-type) tr:last-child td:first-child { box-shadow: inset 3px 0 0 var(--ui-brand), inset 0 -1px 0 var(--ui-line); }
+.table tr[data-sub="true"] td { height: auto; padding-top: 0; padding-bottom: 10px; }
+/* a full-width note under a record: pinned to the left edge of the scroll area and never wider than what is visible */
+.table tr[data-sub="true"] td[colspan] > * { position: sticky; left: 14px; max-width: calc(var(--ui-scroll-w, 100%) - 28px); white-space: normal; }
+
+/* ---------- panel ---------- */
+.panel { min-width: 0; border-radius: var(--ui-radius-lg); background: var(--ui-surface); box-shadow: 0 0 0 1px var(--ui-line), var(--ui-shadow-1); }
+.panelHead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 14px 20px 0; }
+.panelTitle { margin: 0; font-size: 15px; line-height: 22px; font-weight: 650; letter-spacing: -0.003em; }
+.panelBody { padding: 12px 20px 16px; }
+.panelBare .panelBody { padding: 0; }
+.panelBare .panelHead { padding-bottom: 12px; }
+.panelNoTitle .panelBody { padding-top: 16px; }
+.panelBare.panelNoTitle .panelBody { padding: 0; }
+@media (max-width: 640px) { .panelHead { padding-left: 16px; padding-right: 16px; } .panelBody { padding-left: 16px; padding-right: 16px; } }
+
+/* ---------- callout: a left bar AND words (a lead word, or your own text), no icon ---------- */
+.callout { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 10px 12px 10px 14px; border-radius: var(--ui-radius-sm); background: var(--tone-bg); color: var(--ui-ink); font-size: 13.5px; line-height: 20px; box-shadow: inset 3px 0 0 var(--tone-bar), inset 0 0 0 1px var(--tone-rim); }
+.callout_neutral { --tone-bg: var(--ui-surface-2); --tone-bar: var(--ui-neutral); --tone-rim: var(--ui-line); }
+.callout_info { --tone-bg: var(--ui-surface-2); --tone-bar: var(--ui-brand); --tone-rim: var(--ui-line); }
+.callout_warn { --tone-bg: var(--ui-warn-soft); --tone-bar: #d99a06; --tone-rim: rgba(217, 154, 6, 0.4); }
+.callout_error { --tone-bg: var(--ui-danger-soft); --tone-bar: var(--ui-danger); --tone-rim: rgba(179, 45, 45, 0.18); }
+.calloutText { flex: 1 1 0; min-width: min(100%, 14rem); }
+.calloutText > :first-child { margin-top: 0; }
+.calloutText > :last-child { margin-bottom: 0; }
+.calloutLead { font-weight: 650; }
+.calloutAction { flex: none; }
+
+/* ---------- disclosure (native details and summary) ---------- */
+.disc { border-radius: var(--ui-radius-md); background: var(--ui-surface); box-shadow: 0 0 0 1px var(--ui-line); }
+.discSummary { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 14px; border-radius: var(--ui-radius-md); font-size: 14px; font-weight: 600; cursor: pointer; list-style: none; user-select: none; transition: background-color var(--ui-t-fast) var(--ui-ease); }
+.discSummary::-webkit-details-marker { display: none; }
+.discSummary::marker { content: ""; }
+.discSummary:hover { background: var(--ui-surface-2); }
+.discSummary:focus-visible { outline-offset: -2px; }
+.discText { flex: 1; min-width: 0; }
+.discChevron { flex: none; color: var(--ui-ink-2); transition: transform var(--ui-t-base) var(--ui-ease); }
+.disc[open] > .discSummary .discChevron { transform: rotate(180deg); }
+.disc[open] > .discSummary { border-bottom-left-radius: 0; border-bottom-right-radius: 0; box-shadow: inset 0 -1px 0 var(--ui-line); }
+.discBody { padding: 12px 14px 14px; }
+
+/* ---------- list and row ---------- */
+.list { margin: 0; padding: 0; list-style: none; overflow: hidden; border-radius: var(--ui-radius-lg); background: var(--ui-surface); box-shadow: 0 0 0 1px var(--ui-line), var(--ui-shadow-1); }
+.listPlain { border-radius: 0; background: transparent; box-shadow: none; overflow: visible; }
+.listRow { position: relative; display: flex; align-items: center; gap: 4px 12px; min-height: 56px; padding: 8px 16px; box-shadow: inset 0 -1px 0 var(--ui-line); transition: background-color var(--ui-t-fast) var(--ui-ease); }
+.listRow:last-child { box-shadow: none; }
+.listDense .listRow { min-height: 48px; padding-top: 4px; padding-bottom: 4px; }
+.listRow[data-link="true"]:hover { background: var(--ui-surface-2); }
+.rowLead { flex: none; }
+.rowMain { display: flex; flex: 1 1 0; flex-direction: column; min-width: 0; }
+.rowTitle { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.rowMeta { color: var(--ui-muted); font-size: 12.5px; line-height: 17px; }
+.rowTrailing { position: relative; z-index: 1; display: flex; flex: none; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 16px 8px; }
+.rowLink { color: inherit; text-decoration: none; }
+.rowLink::after { content: ""; position: absolute; inset: 0; }
+.rowLink:focus-visible { outline: none; }
+.rowLink:focus-visible::after { outline: 2px solid var(--ui-accent); outline-offset: -2px; border-radius: 2px; }
+@media (max-width: 480px) { .listRow { flex-wrap: wrap; } .rowTrailing { justify-content: flex-start; } }
+
+/* ---------- form group (a titled set of related fields) and error summary ---------- */
+.group { display: flex; flex-direction: column; gap: 10px; min-width: 0; margin: 0; padding: 14px 0 0; border: 0; box-shadow: inset 0 1px 0 var(--ui-line); }
+.groupTitle { margin: 0; padding: 0; font-size: 14px; line-height: 20px; font-weight: 650; }
+.group > legend.groupTitle { float: left; width: 100%; }
+.group > legend.groupTitle + * { clear: both; }
+.groupHint { margin: -6px 0 0; color: var(--ui-muted); font-size: 12.5px; line-height: 17px; }
+.groupBody { display: grid; grid-template-columns: repeat(var(--cols, 1), minmax(0, 1fr)); gap: 12px 16px; }
+@media (max-width: 640px) { .groupBody { grid-template-columns: minmax(0, 1fr); } }
+.errTitle { margin: 0; font-size: 14px; line-height: 20px; font-weight: 650; }
+.errList { display: flex; flex-direction: column; margin: 2px 0 0; padding: 0; list-style: none; }
+.errLink { display: flex; align-items: center; min-height: 48px; color: #8f1f1f; font-weight: 550; text-decoration: underline; text-underline-offset: 2px; }
+.errLink:hover { text-decoration-thickness: 2px; }
+.errLabel { font-weight: 650; }
+
+/* ---------- date range: From, To, Apply, one error for the pair ---------- */
+.range { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.rangeRow { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 16px; }
+.rangeRow > .field { flex: 1 1 11rem; max-width: 16rem; }
+.rangeApply { flex: none; padding-bottom: 4px; }
+.rangeError { margin: 0; color: #8f1f1f; font-size: 12.5px; font-weight: 550; line-height: 17px; }
+
+/* ---------- stat tile as a link: a status word and a definition ---------- */
+.tileLink { text-decoration: none; color: inherit; }
+.tileStatus { margin-top: 2px; }
+
+/* ---------- large field: 16 px text (no iOS zoom on focus) and a 48 px visible control ---------- */
+.inputLg { height: var(--ui-h-lg); padding-left: 14px; padding-right: 14px; border-block-width: 0; font-size: 16px; line-height: 24px; }
+.inputSelect.inputLg { padding-right: 34px; background-position: right 12px center; }
+.inputArea.inputLg { height: auto; min-height: 96px; padding-top: 10px; padding-bottom: 10px; }
+
+/* ---------- compact empty state ---------- */
+.stateCompact { min-height: 0; padding: 16px 20px; }
+
 /* ---------- reduced motion: everything is instant ---------- */
 @media (prefers-reduced-motion: reduce) {
-  .tokens, .tokens *, .tokens *::before, .tokens *::after, .layer, .dialog, .dialog::backdrop, .toast { animation: none !important; transition: none !important; }
-  .btn:active, .chip:active { transform: none; }
+  .tokens, .tokens *, .tokens *::before, .tokens *::after, .layer, .dialog, .dialog::backdrop, .sheet::backdrop, .toast { animation: none !important; transition: none !important; }
+  .btn:active, .chip:active, .segBtn:active, .tilePress:active { transform: none; }
+  .discChevron, .listRow, .discSummary { transition: none !important; }
+  .disc[open] > .discSummary .discChevron { transform: rotate(180deg); }
   .skelRow { background: #e6e9f0; }
 }

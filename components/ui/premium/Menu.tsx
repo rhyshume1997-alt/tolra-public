@@ -4,7 +4,10 @@
  * Output: a trigger button plus a layer in a portal. Menu is role="menu": arrows, Home/End, Escape (focus returns to the trigger), Tab closes.
  * Popover is a non-modal role="dialog" panel for controls such as a list of Switches: Escape or an outside press closes, focus returns.
  * Must not change: 32 px items (44 px on touch), 190 px minimum width, never taller than 420 px or the viewport, token class on the layer.
+ * v2: a Popover puts first focus on the first ENABLED control (a disabled Switch or button is skipped; with none, the panel itself), and its Tab wrap uses the same list.
  * It runs no action itself: onSelect is the caller's, and a disabled item says so by aria-disabled and stays out of the arrow order.
+ * v3 (all optional, defaults unchanged): the trigger takes aria-label (name it for what it acts on, e.g. "More actions for Tomas Whitcombe"; keep the visible text inside it), fullWidth and className;
+ * an item takes hint (words shown under the label and read as its description: use it to say WHY an item is disabled) and title (a tooltip). The layer is named by aria-label when given.
  */
 import { useCallback, useId, useRef, useState, type ReactNode } from "react";
 import styles from "./premium.module.css";
@@ -12,7 +15,7 @@ import { Button, type ButtonVariant } from "./Button";
 import { cx, premiumTokens } from "./tokens";
 import { useAnchoredLayer } from "./useAnchoredLayer";
 
-export interface MenuItem { id: string; label: string; onSelect: () => void; disabled?: boolean; separatorBefore?: boolean }
+export interface MenuItem { id: string; label: string; onSelect: () => void; disabled?: boolean; separatorBefore?: boolean; /** v3: visible reason or detail under the label. */ hint?: string; /** v3: tooltip. */ title?: string }
 
 /** Pure roving index for menu keys (exported for tests). Returns the next enabled index, or -1 when there is none. */
 export function nextMenuIndex(current: number, disabled: boolean[], key: "ArrowDown" | "ArrowUp" | "Home" | "End"): number {
@@ -26,7 +29,19 @@ export function nextMenuIndex(current: number, disabled: boolean[], key: "ArrowD
   return -1;
 }
 
-interface TriggerProps { label: string; variant?: ButtonVariant; size?: "sm" | "md" | "lg"; "data-testid"?: string }
+const POP_FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
+/** Pure: the first element that is neither disabled nor aria-disabled (exported for tests; takes anything with the two attributes). */
+export function pickFirstEnabled<E extends { disabled?: boolean; getAttribute(name: string): string | null }>(els: ArrayLike<E>): E | null {
+  for (let i = 0; i < els.length; i++) {
+    const e = els[i];
+    if (!e.disabled && e.getAttribute("aria-disabled") !== "true") return e;
+  }
+  return null;
+}
+const enabledIn = (root: ParentNode | null) => Array.from(root?.querySelectorAll<HTMLElement>(POP_FOCUSABLE) ?? []).filter((e) => pickFirstEnabled([e as HTMLElement & { disabled?: boolean }]));
+
+interface TriggerProps { label: string; variant?: ButtonVariant; size?: "sm" | "md" | "lg"; "data-testid"?: string; "aria-label"?: string; fullWidth?: boolean; className?: string }
 
 export function Menu({ label, items, variant = "secondary", size = "md", ...rest }: TriggerProps & { items: MenuItem[] }) {
   const [open, setOpen] = useState(false);
@@ -54,6 +69,9 @@ export function Menu({ label, items, variant = "secondary", size = "md", ...rest
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? id : undefined}
+        aria-label={rest["aria-label"]}
+        fullWidth={rest.fullWidth}
+        className={cx(rest.fullWidth && styles.menuBlock, rest.className)}
         data-testid={rest["data-testid"]}
         onClick={() => (open ? close() : openAndFocus("first"))}
         onKeyDown={(e) => {
@@ -69,7 +87,7 @@ export function Menu({ label, items, variant = "secondary", size = "md", ...rest
           ref={layer}
           id={id}
           role="menu"
-          aria-label={label}
+          aria-label={rest["aria-label"] ?? label}
           className={cx(premiumTokens, styles.layer)}
           style={{ top: pos?.top ?? 0, left: pos?.left ?? 0, maxHeight: pos?.maxHeight, visibility: pos ? "visible" : "hidden", ["--origin" as string]: pos?.origin }}
           onKeyDown={(e) => {
@@ -90,10 +108,12 @@ export function Menu({ label, items, variant = "secondary", size = "md", ...rest
                 role="menuitem"
                 tabIndex={-1}
                 aria-disabled={it.disabled || undefined}
+                aria-describedby={it.hint ? `${id}-h-${it.id}` : undefined}
+                title={it.title}
                 className={styles.menuItem}
                 onClick={() => { if (it.disabled) return; close(true); it.onSelect(); }}
               >
-                {it.label}
+                {it.hint ? <span className={styles.menuItemText}><span>{it.label}</span><span id={`${id}-h-${it.id}`} className={styles.menuHint}>{it.hint}</span></span> : it.label}
               </button>
             </div>
           ))}
@@ -120,11 +140,14 @@ export function Popover({ label, title, children, variant = "secondary", size = 
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? id : undefined}
+        aria-label={rest["aria-label"]}
+        fullWidth={rest.fullWidth}
+        className={cx(rest.fullWidth && styles.menuBlock, rest.className)}
         data-testid={rest["data-testid"]}
         onClick={() => {
           if (open) { setOpen(false); return; }
           setOpen(true);
-          requestAnimationFrame(() => requestAnimationFrame(() => layer.current?.querySelector<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')?.focus()));
+          requestAnimationFrame(() => requestAnimationFrame(() => { (enabledIn(layer.current)[0] ?? layer.current)?.focus(); }));
         }}
       >
         {label}
@@ -136,11 +159,12 @@ export function Popover({ label, title, children, variant = "secondary", size = 
           id={id}
           role="dialog"
           aria-label={title}
+          tabIndex={-1}
           className={cx(premiumTokens, styles.layer, styles.popPanel)}
           style={{ top: pos?.top ?? 0, left: pos?.left ?? 0, maxHeight: pos?.maxHeight, visibility: pos ? "visible" : "hidden", ["--origin" as string]: pos?.origin }}
           onKeyDown={(e) => {
             if (e.key !== "Tab") return;
-            const f = Array.from(layer.current?.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select, textarea, [href]') ?? []);
+            const f = enabledIn(layer.current);
             const first = f[0];
             const last = f[f.length - 1];
             if (e.shiftKey && document.activeElement === first) { e.preventDefault(); close(); }
