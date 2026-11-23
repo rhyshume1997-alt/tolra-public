@@ -369,3 +369,55 @@ td[data-label]::before {
   [data-view="table"] td[data-label]::before, [data-tablet-cards] td[data-label]::before { display: block; }
   [data-view="table"] td[data-label], [data-tablet-cards] td[data-label], [data-tablet-cards] td[data-actions] { overflow-wrap: anywhere; }
 }
+
+/*
+ * FEEL: motion tokens and the press move (crisp tone: for a work tool used all day).
+ * Inputs: none. Output: the --feel-* tokens and a press response on every shared <Button> (data-slot="button").
+ * Tune the whole app's feel here and nowhere else; never type a raw duration or curve in a component.
+ * Must not change: this block stays OUTSIDE any @layer, so it wins over Tailwind utilities on the same element
+ * (that is how the button's transition list is replaced). Only transform-type properties move; nothing here
+ * changes layout, handlers or text.
+ */
+:root {
+  --feel-press: 0.97;
+  --feel-fast: 100ms;
+  --feel-base: 180ms;
+  --feel-slow: 260ms;
+  --feel-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --feel-in: cubic-bezier(0.4, 0, 1, 1);
+}
+
+/* Press: sinks the instant the pointer lands (fast, ease-out); lets go a little slower. Links in text and menu triggers don't sink. */
+[data-slot="button"]:not([data-variant="link"], [aria-haspopup]) {
+  transition:
+    scale var(--feel-base) var(--feel-out),
+    background-color var(--feel-fast) var(--feel-out),
+    border-color var(--feel-fast) var(--feel-out),
+    color var(--feel-fast) var(--feel-out),
+    box-shadow var(--feel-fast) var(--feel-out);
+}
+[data-slot="button"]:not([data-variant="link"], [aria-haspopup]):active:not(:disabled, [aria-disabled="true"]) {
+  scale: var(--feel-press);
+  transition:
+    scale var(--feel-fast) var(--feel-out),
+    background-color var(--feel-fast) var(--feel-out),
+    border-color var(--feel-fast) var(--feel-out),
+    color var(--feel-fast) var(--feel-out),
+    box-shadow var(--feel-fast) var(--feel-out);
+}
+
+/* Reduce motion: no sinking; the press dims instead, so the feedback stays. */
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="button"]:not([data-variant="link"], [aria-haspopup]) {
+    transition:
+      opacity var(--feel-fast) var(--feel-out),
+      background-color var(--feel-fast) var(--feel-out),
+      border-color var(--feel-fast) var(--feel-out),
+      color var(--feel-fast) var(--feel-out),
+      box-shadow var(--feel-fast) var(--feel-out);
+  }
+  [data-slot="button"]:not([data-variant="link"], [aria-haspopup]):active:not(:disabled, [aria-disabled="true"]) {
+    scale: none;
+    opacity: 0.7;
+  }
+}
