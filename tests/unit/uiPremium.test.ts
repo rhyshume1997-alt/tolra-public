@@ -1,4 +1,4 @@
-// BOUNDARY (module 7, shared UI, NEW; v2 adds the segmented control, sheet, form fields, stat tile and the option checks; v3 adds the danger and pressed buttons, menu hints, table variants, panel, callout, disclosure, list, form group, error summary, date range, link tile, large fields and nesting). Inputs: the files in components/ui/premium. Output: checks on their pure helpers, their server-rendered
+// BOUNDARY (module 7, shared UI, NEW; v4 adds the craft-pass checks at the end (type scale, elevation, motion rules scanned from the stylesheet, PageHeader, Tabs, PreviewBar, StackedRows, status modes); v2 adds the segmented control, sheet, form fields, stat tile and the option checks; v3 adds the danger and pressed buttons, menu hints, table variants, panel, callout, disclosure, list, form group, error summary, date range, link tile, large fields and nesting). Inputs: the files in components/ui/premium. Output: checks on their pure helpers, their server-rendered
 // markup (roles, aria, names) and on the stylesheet's rules (sizes, no glass, reduced motion). Must not change: it reads no database and calls
 // no network; loosening a rule here (hit areas, no gradients or blur, reduced motion) needs the same PM approval as changing the rule itself.
 import fs from "node:fs";
@@ -11,6 +11,7 @@ import {
   ScrollTable, SegmentedControl, Select, SelectionBar, Sheet, StatTile, StatTiles, StatusBadge, Switch, Textarea,
   TOKEN_NAMES, calloutLead, cx, dataAttributes, fieldDescribedBy, nextMenuIndex, nextSegmentIndex, pickFirstEnabled, pickInvalidTarget, placeLayer, rangeError, rowClickIsForRow, scrollEdges, selectionControls,
   tabStopIndex, toastRegionStyle,
+  PageHeader, PreviewBar, StackedRows, TabPanel, Tabs, isTabKey, layerOriginStyle, toneClassKey, typeScale, PREVIEW_LABEL, EXIT_MS,
 } from "@/components/ui/premium";
 
 const dir = path.resolve(__dirname, "../../components/ui/premium");
@@ -674,7 +675,8 @@ describe("v3 stylesheet rules", () => {
   });
   it("pressed buttons are styled by the stylesheet with a selector heavier than the hover rules (no !important for consumers)", () => {
     expect(v3css).toContain('.btn[aria-pressed="true"]:is(.secondary, .quiet)');
-    expect(v3css).toContain('.btn[aria-pressed="true"]:is(.secondary, .quiet):is(:hover, :active)');
+    expect(v3css).toContain('.btn[aria-pressed="true"]:is(.secondary, .quiet):hover:not([disabled])'); // v4: the hover half sits in the hover-gated block
+    expect(v3css).toContain('.btn[aria-pressed="true"]:is(.secondary, .quiet):active:not([disabled])');
     expect(v3css).toContain(".onDark.btn[aria-pressed=");
   });
   it("hit areas: chips 48 with 16 px wrapped gap, segmented rows 16 px apart and no scroll box, selection bar rows 16 px apart", () => {
@@ -734,5 +736,305 @@ describe("v3 nesting and focus (source level: the browser run proves the behavio
   });
   it("every v3 file carries a boundary comment", () => {
     for (const f of ["Surface.tsx", "Disclosure.tsx", "List.tsx", "FormParts.tsx"]) expect(fs.readFileSync(path.join(dir, f), "utf8"), f).toMatch(/BOUNDARY/);
+  });
+});
+
+/* ---------------- v4 additions (craft pass) ---------------- */
+
+const rules = css.replace(/\/\*[\s\S]*?\*\//g, "");
+
+/** Splits a stylesheet into its top-level statements (rules and at-rules) by brace depth. */
+function topLevel(src: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i];
+    if (c === "{") depth++;
+    else if (c === "}") { depth--; if (depth === 0) { out.push(src.slice(start, i + 1).trim()); start = i + 1; } }
+  }
+  return out.filter(Boolean);
+}
+const GATE = "@media (hover: hover) and (pointer: fine)";
+
+describe("v4 motion rules (scanned from premium.module.css)", () => {
+  it("no `transition: all` anywhere", () => {
+    expect(rules).not.toMatch(/transition(-property)?:\s*all\b/);
+  });
+  it("no ease-in curve (ease-out and ease-in-out only), and the two custom curves are tokens", () => {
+    expect(rules).not.toMatch(/\bease-in\b(?!-out)/);
+    expect(rules).not.toMatch(/cubic-bezier\(\s*0?\.4\d*\s*,\s*0\s*,\s*1\s*,\s*1\s*\)/);
+    expect(css).toContain("--ui-ease-out: cubic-bezier(0.23, 1, 0.32, 1)");
+    expect(css).toContain("--ui-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1)");
+    expect(css).toMatch(/--ui-ease: var\(--ui-ease-out\)/);
+  });
+  it("nothing scales from zero (entrances start at 0.95, presses are 0.97)", () => {
+    expect(rules).not.toMatch(/scale\(\s*0\s*[,)]/);
+    expect(rules).not.toMatch(/scale\(\s*0?\.[0-4]\d*\s*[,)]/); // nothing below 0.5 (0.95 for layers, 0.6 for the check mark)
+    expect(css).toContain("--ui-press: 0.97");
+  });
+  it("every :hover rule sits inside @media (hover: hover) and (pointer: fine)", () => {
+    const bad: string[] = [];
+    for (const st of topLevel(rules)) {
+      if (st.startsWith(GATE)) continue;
+      if (st.includes(":hover")) bad.push(st.slice(0, 90));
+    }
+    expect(bad).toEqual([]);
+    expect(topLevel(rules).filter((st) => st.startsWith(GATE)).length).toBeGreaterThan(10);
+  });
+  it("UI durations are 120 to 200 ms (dialog 200, sheet 240), exits 120, and only the spinner and the skeleton run longer", () => {
+    for (const m of ["--ui-t-fast: 120ms", "--ui-t-base: 160ms", "--ui-t-slow: 200ms", "--ui-t-sheet: 240ms", "--ui-t-exit: 120ms"]) expect(css).toContain(m);
+    for (const line of rules.split("\n")) {
+      if (line.includes("infinite")) continue; // busyDot (700 ms spin) and skelRow (1.4 s shimmer) are functional loops
+      for (const m of line.matchAll(/(\d+(?:\.\d+)?)(ms|s)\b/g)) {
+        const ms = m[2] === "s" ? Number(m[1]) * 1000 : Number(m[1]);
+        expect(ms, line.trim().slice(0, 80)).toBeLessThanOrEqual(240);
+      }
+    }
+    expect(EXIT_MS).toBe(120);
+  });
+  it("press feedback is a scale on buttons, chips, switch rows, segments and tiles", () => {
+    for (const re of [/\.btn:active \{ transform: scale\(var\(--ui-press\)\)/, /\.chip:active:not\(\[disabled\]\) \{ transform: scale\(var\(--ui-press\)\)/, /\.switchRow:active:not\(\[data-disabled="true"\]\) \.switch \{ transform: scale\(var\(--ui-press\)\)/,
+      /\.segBtn:active:not\(\[aria-disabled="true"\]\):not\(\[disabled\]\) \{ transform: scale\(var\(--ui-press\)\)/, /\.tilePress:active:not\(\[disabled\]\) \{ transform: scale\(var\(--ui-press-lg\)\)/]) expect(css).toMatch(re);
+  });
+  it("layers, dialog, sheet and toast animate by transition with a closed state (not keyframes), centred modals, 0.95 entrance, faster exit", () => {
+    for (const sel of [".layer", ".dialog", ".sheet", ".toast"]) {
+      expect(css, sel).toContain(`${sel}[data-state="closed"]`);
+    }
+    expect(css).toMatch(/\.layer\[data-state="closed"\] \{ opacity: 0; transform: scale\(0\.95\)/);
+    expect(css).toMatch(/\.dialog\[data-state="closed"\] \{ opacity: 0; transform: scale\(0\.95\); transition-duration: var\(--ui-t-exit\)/);
+    expect(css).toMatch(/\.sheet\[data-state="closed"\] \{ opacity: 0; transform: scale\(0\.95\); transition-duration: var\(--ui-t-exit\)/);
+    expect(css).toContain('.layer[data-instant="true"] { transition: none; }'); // keyboard open: no animation
+    expect(css).toMatch(/\.layer \{[^}]*transform-origin: var\(--origin-x, 0px\) var\(--origin-y, 0%\)/);
+    expect(rules).not.toMatch(/@keyframes (layerIn|dialogIn|sheetIn|toastIn|toastInUp|fadeIn)/);
+    expect(css).toMatch(/\.dialog \{[^}]*inset: 0; margin: auto/);
+    expect(css).toMatch(/\.sheet \{[^}]*inset: 0; margin: auto/);
+  });
+  it("reduced motion removes movement and keeps only a short opacity fade on the layers", () => {
+    const rm = css.slice(css.indexOf("@media (prefers-reduced-motion: reduce)"));
+    expect(rm).toContain("animation: none !important");
+    expect(rm).toMatch(/\.layer, \.dialog, \.sheet, \.toast[^{]*\{ transform: none !important; transition: opacity var\(--ui-t-exit\) linear !important; \}/);
+    expect(rm).toContain(".switchRow:active .switch");
+    expect(rm).toContain(".tabBar");
+  });
+  it("the presence hooks and layers carry the state the CSS needs", () => {
+    const layer = fs.readFileSync(path.join(dir, "useAnchoredLayer.tsx"), "utf8");
+    const menu = fs.readFileSync(path.join(dir, "Menu.tsx"), "utf8");
+    expect(layer).toContain("usePresence");
+    expect(menu).toContain('data-state={state}');
+    expect(menu).toContain("e.detail === 0"); // a keyboard click has detail 0: no animation
+    const dialog = fs.readFileSync(path.join(dir, "Dialog.tsx"), "utf8");
+    expect(dialog).toContain("useModalPresence");
+    expect(dialog).toContain("data-state={state}");
+    expect(fs.readFileSync(path.join(dir, "Toast.tsx"), "utf8")).toContain("data-state=");
+  });
+});
+
+describe("v4 type scale", () => {
+  const block = css.slice(css.indexOf(".tokens {"), css.indexOf("}", css.indexOf(".tokens {")));
+  it("defines the nine styles with size, line height and weight tokens", () => {
+    for (const t of ["--ui-fs-page: 26px", "--ui-lh-page: 32px", "--ui-fw-page: 650", "--ui-fs-section: 18px", "--ui-fw-section: 600", "--ui-fs-card: 15px", "--ui-lh-card: 22px", "--ui-fw-card: 600",
+      "--ui-fs-label: 13px", "--ui-fs-body: 14px", "--ui-lh-body: 20px", "--ui-fw-body: 400", "--ui-fs-secondary: 13px", "--ui-fw-secondary: 400", "--ui-fs-caption: 12px", "--ui-fw-caption: 500",
+      "--ui-fs-thead: 12px", "--ui-fw-thead: 600", "--ui-ls-thead: 0.04em", "--ui-fs-numeral: 28px", "--ui-fw-numeral: 600", "--ui-fw-name: 600"]) expect(block, t).toContain(t);
+  });
+  it("body and secondary text are never under 13 px; 12 px is only the table header, caption and badge styles", () => {
+    expect(css).not.toMatch(/font-size: 1[01](\.\d+)?px/);
+    expect(css).not.toMatch(/font-size: 12\.5px/);
+    const lines = rules.split("\n").filter((l) => /font-size: (12px|var\(--ui-fs-caption\)|var\(--ui-fs-thead\))/.test(l));
+    const allowed = [".tCaption", ".tTableHead", ".badge ", ".switchState", ".menuHint", ".table th", ".pbar", "--ui-fs-caption", "--ui-fs-thead"];
+    for (const l of lines) expect(allowed.some((a) => l.includes(a)), l.trim().slice(0, 80)).toBe(true);
+  });
+  it("table headers are 12 px uppercase, tracked, weight 600; body cells are weight 400; a row header is a plain name", () => {
+    expect(css).toMatch(/\.table th \{[^}]*font-size: var\(--ui-fs-thead\)[^}]*text-transform: uppercase[^}]*\}/);
+    expect(css).toMatch(/\.table th \{[^}]*letter-spacing: var\(--ui-ls-thead\)/);
+    expect(css).toMatch(/\.table \{[^}]*font-weight: 400/);
+    expect(css).toMatch(/\.table :is\(tbody, tfoot\) th \{[^}]*text-transform: none/);
+  });
+  it("is applied across the components: titles use the section, card and name tokens, hints the secondary token, the KPI the numeral token", () => {
+    for (const re of [/\.panelTitle \{[^}]*var\(--ui-fs-card\)[^}]*var\(--ui-fw-card\)/, /\.dialogTitle \{[^}]*var\(--ui-fs-section\)/, /\.sheetTitle \{[^}]*var\(--ui-fs-section\)/, /\.stateTitle \{[^}]*var\(--ui-fs-card\)/,
+      /\.tileValue \{[^}]*var\(--ui-fs-numeral\)[^}]*var\(--ui-fw-numeral\)/, /\.fieldLabel \{[^}]*var\(--ui-fs-label\)/, /\.fieldHint \{[^}]*var\(--ui-fs-secondary\)/, /\.rowTitle \{[^}]*var\(--ui-fw-name\)/,
+      /\.callout \{[^}]*var\(--ui-fs-body\)/, /\.phTitle \{[^}]*var\(--ui-fs-page\)/]) expect(css).toMatch(re);
+  });
+  it("the classes are exported for a screen's own text, and the page size shrinks under 640 px", () => {
+    for (const k of ["page", "section", "card", "label", "body", "name", "secondary", "caption", "tableHead", "numeral"] as const) expect(typeof typeScale[k], k).toBe("string");
+    expect(css).toMatch(/@media \(max-width: 640px\) \{ \.tokens \{ --ui-fs-page: 22px/);
+  });
+});
+
+describe("v4 font tokens", () => {
+  it("the family is defined once in the tokens: --ui-font (Archivo by default), --ui-font-heading and --ui-font-numeric follow it, each with an optional override variable", () => {
+    expect(css).toMatch(/--ui-font: var\(--ui-font-override, var\(--font-archivo, "Archivo"/);
+    expect(css).toContain("--ui-font-heading: var(--ui-font-heading-override, var(--ui-font));");
+    expect(css).toContain("--ui-font-numeric: var(--ui-font-numeric-override, var(--ui-font));");
+    expect(css).toContain('--ui-numeric-features: "tnum" 1, "lnum" 1;');
+    for (const t of ["--ui-font-heading", "--ui-font-numeric", "--ui-numeric-features"]) expect(TOKEN_NAMES).toContain(t);
+  });
+  it("no component names a font family of its own: every font-family comes from a token", () => {
+    const fams = rules.split("\n").filter((l) => /font-family:/.test(l) && !/^\s*--ui-font/.test(l));
+    for (const l of fams) expect(l, l.trim().slice(0, 80)).toMatch(/font-family: var\(--ui-font(-heading|-numeric)?\)/);
+    expect(fams.length).toBeGreaterThan(8);
+  });
+  it("numerals use the numeric font and the shared tabular feature setting; titles use the heading font", () => {
+    expect(css).toMatch(/\.num \{ font-family: var\(--ui-font-numeric\)[^}]*var\(--ui-numeric-features\)/);
+    expect(css).toMatch(/\.tileValue \{ font-family: var\(--ui-font-numeric\)/);
+    expect(css).toMatch(/\.phTitle \{ font-family: var\(--ui-font-heading\)/);
+    expect(css).toMatch(/\.dialogTitle \{ font-family: var\(--ui-font-heading\)/);
+  });
+});
+
+describe("v4 elevation", () => {
+  it("defines four levels with a soft shadow and an inner highlight (flat has the hairline only)", () => {
+    for (const t of ["--ui-elev-flat:", "--ui-elev-raised:", "--ui-elev-overlay:", "--ui-elev-modal:"]) expect(css).toContain(t);
+    expect(css).toMatch(/--ui-elev-raised:[^;]*inset 0 1px 0 rgba\(255, 255, 255/);
+    expect(css).toMatch(/--ui-elev-flat: 0 0 0 1px var\(--ui-line\);/);
+  });
+  it("applies them consistently: cards raised, menus and toasts overlay, dialogs and sheets modal", () => {
+    for (const re of [/\.panel \{[^}]*var\(--ui-elev-raised\)/, /\.tile \{[^}]*var\(--ui-elev-raised\)/, /\.tableWrap \{[^}]*var\(--ui-elev-raised\)/, /\.list \{[^}]*var\(--ui-elev-raised\)/, /\.state \{[^}]*var\(--ui-elev-raised\)/,
+      /\.layer \{[^}]*var\(--ui-elev-overlay\)/, /\.toast \{[^}]*var\(--ui-elev-overlay\)/, /\.dialog \{[^}]*var\(--ui-elev-modal\)/, /\.sheet \{[^}]*var\(--ui-elev-modal\)/]) expect(css).toMatch(re);
+  });
+  it("Panel: raised by default, flat or nested by prop; nested is no card (no background, no shadow beyond the hairline above)", () => {
+    const raised = html(createElement(Panel, { title: "A", children: "x" }));
+    expect(raised).not.toContain("panelFlat");
+    expect(raised).not.toContain("panelNested");
+    expect(html(createElement(Panel, { title: "A", variant: "flat", children: "x" }))).toContain("panelFlat");
+    expect(html(createElement(Panel, { title: "A", variant: "nested", children: "x" }))).toContain("panelNested");
+    expect(html(createElement(Panel, { title: "A", nested: true, children: "x" }))).toContain("panelNested");
+    expect(css).toMatch(/\.panelNested \{ border-radius: 0; background: transparent; box-shadow: inset 0 1px 0 var\(--ui-line\); \}/);
+  });
+  it("StatTile flat and ScrollTable flush are opt in; the defaults are the v3 markup", () => {
+    expect(html(createElement(StatTile, { label: "A", value: "1" }))).not.toContain("tileFlat");
+    expect(html(createElement(StatTile, { label: "A", value: "1", flat: true }))).toContain("tileFlat");
+    expect(html(createElement(ScrollTable, { label: "T", children: createElement("tbody") }))).not.toContain("tableFlush");
+    const flush = html(createElement(ScrollTable, { label: "T", flush: true, narrowHidden: true, children: createElement("tbody") }));
+    expect(flush).toContain("tableFlush");
+    expect(flush).toContain("tableNarrowHidden");
+  });
+});
+
+describe("v4 status grammar", () => {
+  it("info-neutral is its own tone (not the neutral grey, not green, not amber)", () => {
+    expect(toneClassKey("info-neutral")).toBe("t_infoNeutral");
+    expect(toneClassKey("warn")).toBe("t_warn");
+    const h = html(createElement(StatusBadge, { tone: "info-neutral", children: "3 linked" }));
+    expect(h).toContain("t_infoNeutral");
+    expect(h).toContain("3 linked");
+    expect(h).toContain('aria-hidden="true"');
+    expect(css).toMatch(/\.t_infoNeutral \{ --fg: #2d3f5e;/);
+    expect(css).toMatch(/\.t_infoNeutral \.badgeDot \{ background: transparent; box-shadow: inset 0 0 0 1\.5px var\(--dot\); \}/); // a ring, so it is not colour alone either
+  });
+  it("pill is the default; text mode drops the chip but keeps dot and word; the old plain prop still works", () => {
+    const pill = html(createElement(StatusBadge, { tone: "ok", children: "On time" }));
+    expect(pill).not.toContain("badgeText");
+    const text = html(createElement(StatusBadge, { tone: "ok", mode: "text", children: "On time" }));
+    expect(text).toContain("badgeText");
+    expect(text).toContain("badgeDot");
+    expect(text).toContain("On time");
+    expect(html(createElement(StatusBadge, { plain: true, children: "x" }))).toContain("badgePlain");
+    expect(css).toMatch(/\.badgeText \{[^}]*box-shadow: none[^}]*font-size: var\(--ui-fs-secondary\)/);
+  });
+});
+
+describe("v4 PageHeader, Tabs, PreviewBar, StackedRows", () => {
+  it("PageHeader: one h1 by default (the level is yours), a description paragraph and an actions slot only when given", () => {
+    const full = html(createElement(PageHeader, { title: "Quotes", description: "Prices we offered.", actions: createElement("button", null, "New") }));
+    expect(full).toContain("<h1");
+    expect(full).toContain("Quotes");
+    expect(full).toContain("<p");
+    expect(full).toContain("phActions");
+    const bare = html(createElement(PageHeader, { title: "Quotes", headingLevel: 2 }));
+    expect(bare).toContain("<h2");
+    expect(bare).not.toContain("<p");
+    expect(bare).not.toContain("phActions");
+    expect(bare.match(/<h\d/g)?.length).toBe(1);
+  });
+  it("Tabs: tablist with tab, aria-selected, aria-controls, one tab stop, disabled stays visible, counts tabular; only the horizontal keys", () => {
+    const h = html(createElement(Tabs, { label: "Sections", value: "b", onChange: noop, tabs: [{ value: "a", label: "Today", count: 29, controls: "pa", id: "ta" }, { value: "b", label: "Overdue", controls: "pb" }, { value: "c", label: "Old", disabled: true, disabledReason: "Not now" }] }));
+    expect(h).toContain('role="tablist"');
+    expect(h).toContain('aria-label="Sections"');
+    expect(h.match(/role="tab"/g)?.length).toBe(3);
+    expect(h).toContain('aria-selected="true"');
+    expect(h.match(/aria-selected="false"/g)?.length).toBe(2);
+    expect(h).toContain('aria-controls="pa"');
+    expect(h).toContain('id="ta"');
+    expect(h.match(/tabindex="0"/g)?.length).toBe(1);
+    expect(h).toContain('aria-disabled="true"');
+    expect(h).toContain('data-text="Today"');
+    expect(h).toContain(">29<");
+    for (const k of ["ArrowLeft", "ArrowRight", "Home", "End"]) expect(isTabKey(k)).toBe(true);
+    for (const k of ["ArrowUp", "ArrowDown", "Enter", "a"]) expect(isTabKey(k)).toBe(false);
+    const panel = html(createElement(TabPanel, { id: "pa", tabId: "ta", hidden: true, children: "x" }));
+    expect(panel).toContain('role="tabpanel"');
+    expect(panel).toContain('aria-labelledby="ta"');
+  });
+  it("Tabs CSS: 44 px, a 2 px navy bar, the first label on the content edge, 48 px hit area, bold width reserved, focus ring", () => {
+    expect(css).toMatch(/\.tab \{[^}]*height: 44px/);
+    expect(css).toMatch(/\.tabBar \{[^}]*height: 2px[^}]*background: var\(--ui-brand\)/);
+    expect(css).toMatch(/\.tab:first-child \{ padding-left: 0;/);
+    expect(css).toMatch(/\.tab::after \{ content: ""; position: absolute; inset: -2px 0; \}/);
+    expect(css).toMatch(/\.tabLabel::after \{ content: attr\(data-text\)[^}]*font-weight: 600/);
+    expect(css).toContain(".tab:focus-visible");
+  });
+  it("PreviewBar: one group with the preview words and an optional controls slot, 28 px, a button in the slot becomes a 24 px text button with a 48 px hit area", () => {
+    expect(PREVIEW_LABEL).toBe("Preview, sample data, nothing is saved");
+    const h = html(createElement(PreviewBar, { controls: createElement("button", null, "Preview controls") }));
+    expect(h).toContain('role="group"');
+    expect(h).toContain("Preview</span>, sample data, nothing is saved");
+    expect(h).toContain("Preview controls");
+    expect(html(createElement(PreviewBar, {}))).not.toContain("pbarSlot");
+    expect(css).toMatch(/\.pbar \{[^}]*height: 28px/);
+    expect(css).toMatch(/\.pbar \.btn \{ height: 24px/);
+    expect(css).toMatch(/\.pbar \.btn::after \{ inset: -12px 0; \}/);
+    expect(css).not.toMatch(/\.pbar[^{]*\{[^}]*(#fff6dd|--ui-warn)/); // not the yellow pill
+  });
+  it("StackedRows: a named list, one item per record, label and value pairs as a definition list, a link title with href, actions only when given", () => {
+    const h = html(createElement(StackedRows, { label: "Jobs", narrowOnly: true, rows: [
+      { id: "1", title: "J-0431", status: "Running", fields: [{ label: "Customer", value: "Hartley" }, { label: "Due", value: "Friday" }], actions: createElement("button", null, "View"), href: "/j/1" },
+      { id: "2", title: "J-0432", fields: [{ label: "Customer", value: "Calder" }] },
+    ] }));
+    expect(h).toContain('<ul aria-label="Jobs"');
+    expect(h.match(/<li/g)?.length).toBe(2);
+    expect(h).toContain("<dl");
+    expect(h.match(/<dt>/g)?.length).toBe(3);
+    expect(h.match(/<dd>/g)?.length).toBe(3);
+    expect(h).toContain('href="/j/1"');
+    expect(h.match(/stackActions/g)?.length).toBe(1);
+    expect(h).toContain("stackNarrow");
+    expect(html(createElement(StackedRows, { label: "Jobs", rows: [] }))).not.toContain("stackNarrow");
+    expect(css).toMatch(/@media \(max-width: 640px\) \{ \.stackNarrow \{ display: block; \} \.tableNarrowHidden \{ display: none; \} \}/);
+    expect(css).toMatch(/\.stackActions \{[^}]*gap: 16px 8px/);
+  });
+  it("layers scale from their trigger: placeLayer gives the trigger's centre as the origin, and the old origin string is unchanged", () => {
+    const below = placeLayer({ top: 100, bottom: 140, left: 50, right: 150 }, { width: 200, height: 150 }, { width: 1000, height: 800 });
+    expect(below.origin).toBe("top left");
+    expect(below.originY).toBe("0%");
+    expect(below.originX).toBe(100 - 50);
+    const above = placeLayer({ top: 600, bottom: 640, left: 50, right: 150 }, { width: 200, height: 300 }, { width: 1000, height: 800 });
+    expect(above.originY).toBe("100%");
+    const style = layerOriginStyle(below) as Record<string, unknown>;
+    expect(style["--origin-x"]).toBe("50px");
+    expect(style["--origin-y"]).toBe("0%");
+    expect(style["--origin"]).toBe("top left");
+  });
+  it("Dialog and Sheet render closed with data-state closed and no content (v3 markup plus the state)", () => {
+    const d = html(createElement(Dialog, { open: false, title: "T", confirmLabel: "OK", onConfirm: noop, onClose: noop }));
+    expect(d).toContain('data-state="closed"');
+    expect(d).not.toContain("<h2");
+  });
+});
+
+describe("v4 exports and boundaries", () => {
+  it("the v4 names exist and no v1 to v3 name went away", async () => {
+    const m = await import("@/components/ui/premium");
+    for (const n of ["PageHeader", "Tabs", "TabPanel", "PreviewBar", "StackedRows", "typeScale", "usePresence", "useEntered", "useModalPresence", "layerOriginStyle", "toneClassKey", "isTabKey",
+      "Button", "Switch", "Checkbox", "FilterChip", "ChipGroup", "StatusBadge", "Menu", "Popover", "Dialog", "ToastProvider", "useToast", "SelectionBar", "ScrollTable", "EmptyState", "LoadingState", "FailedState",
+      "SegmentedControl", "Sheet", "Field", "Input", "Textarea", "Select", "StatTile", "StatTiles", "Panel", "Callout", "Disclosure", "List", "ListRow", "FormGroup", "ErrorSummary", "DateRangeGroup", "placeLayer", "premiumTokens", "tabularNumbers", "srOnly", "TOKEN_NAMES", "cx"]) expect(m, n).toHaveProperty(n);
+  });
+  it("every v4 file carries a boundary comment and the old tokens are all still there", () => {
+    for (const f of ["usePresence.ts", "PageHeader.tsx", "Tabs.tsx", "PreviewBar.tsx", "StackedRows.tsx"]) expect(fs.readFileSync(path.join(dir, f), "utf8"), f).toMatch(/BOUNDARY/);
+    for (const t of ["--ui-shadow-1", "--ui-shadow-pop", "--ui-shadow-dialog", "--ui-ease", "--ui-t-fast", "--ui-t-base", "--ui-t-slow"]) expect(TOKEN_NAMES).toContain(t);
+  });
+  it("v4 CSS has no gradients, no glass and no global selectors", () => {
+    const added = css.slice(css.indexOf("v4 additions (craft pass)"));
+    expect(added).not.toMatch(/gradient\(|backdrop-filter|blur\(|:root|:global/);
   });
 });

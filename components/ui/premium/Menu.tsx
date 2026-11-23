@@ -5,6 +5,7 @@
  * Popover is a non-modal role="dialog" panel for controls such as a list of Switches: Escape or an outside press closes, focus returns.
  * Must not change: 32 px items (44 px on touch), 190 px minimum width, never taller than 420 px or the viewport, token class on the layer.
  * v2: a Popover puts first focus on the first ENABLED control (a disabled Switch or button is skipped; with none, the panel itself), and its Tab wrap uses the same list.
+ * v4: the layer scales in from the trigger (transform origin from the placement) and fades out in 120 ms; opened or closed with the keyboard (Enter, Space, arrows, Escape) it does not animate at all. Hover only on a fine pointer.
  * It runs no action itself: onSelect is the caller's, and a disabled item says so by aria-disabled and stays out of the arrow order.
  * v3 (all optional, defaults unchanged): the trigger takes aria-label (name it for what it acts on, e.g. "More actions for Tomas Whitcombe"; keep the visible text inside it), fullWidth and className;
  * an item takes hint (words shown under the label and read as its description: use it to say WHY an item is disabled) and title (a tooltip). The layer is named by aria-label when given.
@@ -13,7 +14,7 @@ import { useCallback, useId, useRef, useState, type ReactNode } from "react";
 import styles from "./premium.module.css";
 import { Button, type ButtonVariant } from "./Button";
 import { cx, premiumTokens } from "./tokens";
-import { useAnchoredLayer } from "./useAnchoredLayer";
+import { layerOriginStyle, useAnchoredLayer } from "./useAnchoredLayer";
 
 export interface MenuItem { id: string; label: string; onSelect: () => void; disabled?: boolean; separatorBefore?: boolean; /** v3: visible reason or detail under the label. */ hint?: string; /** v3: tooltip. */ title?: string }
 
@@ -49,13 +50,14 @@ export function Menu({ label, items, variant = "secondary", size = "md", ...rest
   const layer = useRef<HTMLDivElement>(null);
   const id = useId();
   const close = useCallback((refocus = false) => { setOpen(false); if (refocus) trigger.current?.focus(); }, []);
-  const { pos, portal } = useAnchoredLayer(open, trigger, layer, useCallback(() => close(true), [close]));
+  const { pos, portal, state, instant, markKeyboard } = useAnchoredLayer(open, trigger, layer, useCallback(() => close(true), [close]));
 
   const buttons = () => Array.from(layer.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? []);
   const focusAt = (i: number) => { if (i >= 0) buttons()[i]?.focus(); };
   const disabledFlags = items.map((i) => !!i.disabled);
 
-  const openAndFocus = (which: "first" | "last") => {
+  const openAndFocus = (which: "first" | "last", viaKeyboard = true) => {
+    markKeyboard(viaKeyboard);
     setOpen(true);
     requestAnimationFrame(() => requestAnimationFrame(() => focusAt(which === "first" ? nextMenuIndex(-1, disabledFlags, "Home") : nextMenuIndex(0, disabledFlags, "End"))));
   };
@@ -73,7 +75,7 @@ export function Menu({ label, items, variant = "secondary", size = "md", ...rest
         fullWidth={rest.fullWidth}
         className={cx(rest.fullWidth && styles.menuBlock, rest.className)}
         data-testid={rest["data-testid"]}
-        onClick={() => (open ? close() : openAndFocus("first"))}
+        onClick={(e) => (open ? close() : openAndFocus("first", e.detail === 0))}
         onKeyDown={(e) => {
           if (e.key === "ArrowDown") { e.preventDefault(); openAndFocus("first"); }
           if (e.key === "ArrowUp") { e.preventDefault(); openAndFocus("last"); }
@@ -89,7 +91,9 @@ export function Menu({ label, items, variant = "secondary", size = "md", ...rest
           role="menu"
           aria-label={rest["aria-label"] ?? label}
           className={cx(premiumTokens, styles.layer)}
-          style={{ top: pos?.top ?? 0, left: pos?.left ?? 0, maxHeight: pos?.maxHeight, visibility: pos ? "visible" : "hidden", ["--origin" as string]: pos?.origin }}
+          data-state={state}
+          data-instant={instant ? "true" : undefined}
+          style={{ top: pos?.top ?? 0, left: pos?.left ?? 0, maxHeight: pos?.maxHeight, visibility: pos ? "visible" : "hidden", ...layerOriginStyle(pos) }}
           onKeyDown={(e) => {
             const idx = buttons().indexOf(document.activeElement as HTMLButtonElement);
             if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Home" || e.key === "End") {
@@ -129,7 +133,7 @@ export function Popover({ label, title, children, variant = "secondary", size = 
   const layer = useRef<HTMLDivElement>(null);
   const id = useId();
   const close = useCallback(() => { setOpen(false); trigger.current?.focus(); }, []);
-  const { pos, portal } = useAnchoredLayer(open, trigger, layer, close);
+  const { pos, portal, state, instant, markKeyboard } = useAnchoredLayer(open, trigger, layer, close);
 
   return (
     <>
@@ -144,7 +148,8 @@ export function Popover({ label, title, children, variant = "secondary", size = 
         fullWidth={rest.fullWidth}
         className={cx(rest.fullWidth && styles.menuBlock, rest.className)}
         data-testid={rest["data-testid"]}
-        onClick={() => {
+        onClick={(e) => {
+          markKeyboard(e.detail === 0);
           if (open) { setOpen(false); return; }
           setOpen(true);
           requestAnimationFrame(() => requestAnimationFrame(() => { (enabledIn(layer.current)[0] ?? layer.current)?.focus(); }));
@@ -161,7 +166,9 @@ export function Popover({ label, title, children, variant = "secondary", size = 
           aria-label={title}
           tabIndex={-1}
           className={cx(premiumTokens, styles.layer, styles.popPanel)}
-          style={{ top: pos?.top ?? 0, left: pos?.left ?? 0, maxHeight: pos?.maxHeight, visibility: pos ? "visible" : "hidden", ["--origin" as string]: pos?.origin }}
+          data-state={state}
+          data-instant={instant ? "true" : undefined}
+          style={{ top: pos?.top ?? 0, left: pos?.left ?? 0, maxHeight: pos?.maxHeight, visibility: pos ? "visible" : "hidden", ...layerOriginStyle(pos) }}
           onKeyDown={(e) => {
             if (e.key !== "Tab") return;
             const f = enabledIn(layer.current);
