@@ -7,6 +7,7 @@ import { OwnerHomeGate } from "@/components/platform/owner-home";
 import { TolraAiControl } from "@/components/platform/tolra-ai-control";
 import { TolraAiCaps } from "@/components/platform/tolra-ai-caps";
 import { AppCredentialsCard } from "@/components/platform/app-credentials-card";
+import { OwnerToolsLinks } from "@/components/platform/owner-tools-links";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -214,6 +215,7 @@ function CompaniesPage() {
           </DialogContent>
         </Dialog>
 
+        <OwnerToolsLinks />
         <AppCredentialsCard />
         <TolraAiControl />
         <TolraAiCaps />
@@ -226,5 +228,5 @@ function CompaniesPage() {
 
 /** Owner Home (module 12): while PLATFORM_OWNER_HOME_ENABLED is off the page above is shown exactly as before. */
 export default function PlatformPage() {
-  return <OwnerHomeGate legacy={<CompaniesPage />}><AppCredentialsCard /><TolraAiControl /><TolraAiCaps /></OwnerHomeGate>;
+  return <OwnerHomeGate legacy={<CompaniesPage />}><OwnerToolsLinks /><AppCredentialsCard /><TolraAiControl /><TolraAiCaps /></OwnerHomeGate>;
 }

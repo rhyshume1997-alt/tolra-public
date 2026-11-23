@@ -2,8 +2,8 @@ import { expect, it, vi } from "vitest";
 import { preparePost144Fixture, storageObjectsDiagnosticSql } from "../support/post-144-release-fixture";
 import { releaseRank, post144ProofFiles } from "../support/db-release-sequencer";
 function fixture(initial=false) {
-  const calls:string[]=[];const states=[initial,initial,initial,initial,initial,initial,initial,initial,initial,initial,initial,initial,initial,initial,initial,initial,initial,initial];
-  const markers=["post-144 marker 145 company_setup","post-144 marker 146 tolra_provided_ai","post-144 marker 147 job_delivery_note","post-144 marker 148 job_profitability_actuals","post-144 marker 149 xero_launch_hold","post-144 marker 150 ai_cap_key_off","post-144 marker 151 xero_invite_hardening","post-144 marker 152 sliq_import_route","post-144 marker 153 document_customer_link","post-144 marker 154 customer_portal_signin","post-144 marker 156 invoice_ref_case","post-144 marker 157 jobs_integrity_guard","post-144 marker 158 machine_run_integrity","post-144 marker 159 drawings_update_roles","post-144 marker 160 legacy_reopen_revoke","post-144 marker 163 chase_steps_atomic","post-144 marker 164 platform_companies","post-144 marker 165 owner_issues"];
+  const calls:string[]=[];const states=[initial,initial,initial,initial,initial,initial,initial,initial,initial,initial,initial,initial,initial,initial,initial,initial,initial,initial,initial];
+  const markers=["post-144 marker 145 company_setup","post-144 marker 146 tolra_provided_ai","post-144 marker 147 job_delivery_note","post-144 marker 148 job_profitability_actuals","post-144 marker 149 xero_launch_hold","post-144 marker 150 ai_cap_key_off","post-144 marker 151 xero_invite_hardening","post-144 marker 152 sliq_import_route","post-144 marker 153 document_customer_link","post-144 marker 154 customer_portal_signin","post-144 marker 156 invoice_ref_case","post-144 marker 157 jobs_integrity_guard","post-144 marker 158 machine_run_integrity","post-144 marker 159 drawings_update_roles","post-144 marker 160 legacy_reopen_revoke","post-144 marker 163 chase_steps_atomic","post-144 marker 164 platform_companies","post-144 marker 165 owner_issues","post-144 marker 167 roadmap_rollouts"];
   return { calls, states, verify:async()=>{calls.push("identity");},query:async(sql:string)=>{
     calls.push(sql);
     if (sql.includes("AS check_name")) return {rows:[{ok:true,passed:true}]};
@@ -25,13 +25,14 @@ function fixture(initial=false) {
     if(sql.includes("-- Post-144 release step 163")) {expect(states[14]).toBe(true);states[15]=true;}
     if(sql.includes("-- Post-144 release step 164")) {expect(states[15]).toBe(true);states[16]=true;}
     if(sql.includes("-- Post-144 release step 165")) {expect(states[16]).toBe(true);states[17]=true;}
+    if(sql.includes("-- Post-144 release step 167")) {expect(states[17]).toBe(true);states[18]=true;}
     return {rows:states.map((v,i)=>({check:markers[i],value:v?"applied":"not applied"}))};
   }};
 }
 it("prepares 145 before 146 before 147 before 148 before 149 before 150 before 151 before 152 only after identity, verifies each and unlocks",async()=>{
  const f=fixture();await preparePost144Fixture(f);expect(f.calls[0]).toBe("identity");
  const a=f.calls.findIndex(s=>s.includes("-- Post-144 release step 145")),b=f.calls.findIndex(s=>s.includes("-- Post-144 release step 146")),c=f.calls.findIndex(s=>s.includes("-- Post-144 release step 147")),p=f.calls.findIndex(s=>s.includes("-- Post-144 release step 148")),d=f.calls.findIndex(s=>s.includes("-- Post-144 release step 149")),e=f.calls.findIndex(s=>s.includes("-- Post-144 release step 150")),g=f.calls.findIndex(s=>s.includes("-- Post-144 release step 151")),h=f.calls.findIndex(s=>s.includes("-- Post-144 release step 152"));
- expect(a).toBeGreaterThan(0);expect(b).toBeGreaterThan(a);expect(c).toBeGreaterThan(b);expect(p).toBeGreaterThan(c);expect(d).toBeGreaterThan(p);expect(e).toBeGreaterThan(d);expect(g).toBeGreaterThan(e);expect(h).toBeGreaterThan(g);expect(f.calls.at(-1)).toContain("pg_advisory_unlock");expect(f.states).toEqual([true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true]);
+ expect(a).toBeGreaterThan(0);expect(b).toBeGreaterThan(a);expect(c).toBeGreaterThan(b);expect(p).toBeGreaterThan(c);expect(d).toBeGreaterThan(p);expect(e).toBeGreaterThan(d);expect(g).toBeGreaterThan(e);expect(h).toBeGreaterThan(g);expect(f.calls.at(-1)).toContain("pg_advisory_unlock");expect(f.states).toEqual([true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true,true]);
 });
 it("does not reapply already verified releases",async()=>{const f=fixture(true);await preparePost144Fixture(f);expect(f.calls.some(s=>s.includes("-- Post-144 release step"))).toBe(false);});
 it("does not read or write SQL if backend identity refuses",async()=>{const f=fixture();f.verify=async()=>{throw new Error("foreign company");};await expect(preparePost144Fixture(f)).rejects.toThrow("foreign company");expect(f.calls).toEqual([]);});
@@ -62,7 +63,7 @@ it("sorts real sequencer input without dropping files, keeping 145, 146, the cap
 
 it("still runs every verification file when releases are already installed", async () => {
  const f=fixture(true);await preparePost144Fixture(f);
- expect(f.calls.filter(sql=>sql.includes("AS check_name"))).toHaveLength(18);
+ expect(f.calls.filter(sql=>sql.includes("AS check_name"))).toHaveLength(19);
  expect(f.calls.some(sql=>sql.includes("create_job_delivery_note is security definer with a pinned search path"))).toBe(true);
  expect(f.calls.some(sql=>sql.includes("private membership helper stays private"))).toBe(true);
  expect(f.calls.some(sql=>sql.includes("original reserve is not a public bypass"))).toBe(true);
@@ -92,7 +93,7 @@ it("CI has one release owner and retains the full database command and upgrade r
 
 it("an explicit148 financial target verifies all four dependencies without claiming149/150/151 proof",async()=>{
  const f=fixture();await preparePost144Fixture({...f,through:148});
- expect(f.states).toEqual([true,true,true,true,false,false,false,false,false,false,false,false,false,false,false,false,false,false]);
+ expect(f.states).toEqual([true,true,true,true,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false]);
  expect(f.calls.filter(sql=>sql.includes('AS check_name'))).toHaveLength(4);
  expect(f.calls.some(sql=>sql.includes('-- Post-144 release step 149'))).toBe(false);
  expect(f.calls.at(-1)).toContain('pg_advisory_unlock');
