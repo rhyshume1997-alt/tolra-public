@@ -5,17 +5,21 @@
  * lib/invoice-list-totals, lib/status-colours, lib/spreadsheet, lib/invoice-ref, lib/range-label). Output: pass/fail. Pins the preview's amounts, VAT, totals,
  * overdue and due logic, ageing, late payers, trends, Show counts, dashboard filters, archive rule, void / write-off offers, compact totals, export scope text,
  * and the role gate to the real functions over all 26 sample invoices, and checks by rendering that nothing reports success and the role gate holds.
+ * v2 adds: the structural items (money dashboard with one primary figure and quiet secondary ones, Filters (n) popover with removable chips, Export of all rows kept in the toolbar, bulk actions
+ * only once a row is ticked, one primary action plus More per row, the explainer sentence as a tooltip and a description, the PreviewBar, plausible sample names, no !important) and a proof that
+ * every real row control is still reachable.
  * Must not change: never loosen these to make a change pass. No network, no Supabase. Written with createElement (no JSX) so it is a .test.ts file and
  * runs under the existing vitest.config.ts include pattern.
  */
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
+import { readFileSync } from "node:fs";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import InvoicesPreview, {
-  AGING, DEFAULT_FILTERS, DRAFT_INVOICE_DAYS, SEED_INVOICES, TODAY, UNINVOICED, agingOf, amountNote, canUseInvoices, compactTotals, creditHeldOf, derive, draftCounts, dueWords,
+  AGING, CHIPS, CUSTOMER_ADDRESS, DEFAULT_FILTERS, INVOICE_TITLE_TIP, DRAFT_INVOICE_DAYS, SEED_INVOICES, TODAY, UNINVOICED, agingOf, amountNote, canUseInvoices, compactTotals, creditHeldOf, derive, draftCounts, dueWords,
   invoiceRows, latePayersOf, matchesListFilter, paymentsScope, payableOf, phaseCounts, phaseFor, phaseOf, scopeTitle, statusWords, termsDays, addDays, toneOf, totalOwed, totalsOfSeed,
-  totalsProblem, trendsOf, unpaidOf, visibleInvoices, voidOffered, writeOffOffered, isWrittenOff, WRITE_OFF_REASON_MIN, VOID_REASON_MAX,
+  allRowActions, rowActionPlan, totalsProblem, trendsOf, unpaidOf, visibleInvoices, voidOffered, writeOffOffered, isWrittenOff, WRITE_OFF_REASON_MIN, VOID_REASON_MAX,
 } from "@/components/invoices/preview/InvoicesPreview";
 import { phaseOf as realPhaseOf } from "@/lib/archive";
 import { DRAFT_INVOICE_DAYS as REAL_DRAFT_DAYS } from "@/lib/attention-items";
@@ -113,7 +117,7 @@ describe("invoices preview: money dashboard, ageing, late payers, trends", () =>
   it("late payer patterns are worst first, top three, CHRONIC over 60 days late", () => {
     const p = latePayersOf(rows);
     expect(p.length).toBeLessThanOrEqual(3);
-    expect(p[0]).toMatchObject({ customer: "Coldharbour Automation", label: "CHRONIC", late: "3/3 overdue" });
+    expect(p[0]).toMatchObject({ customer: "Carronside Automation", label: "CHRONIC", late: "3/3 overdue" });
     expect(p.map((x) => x.worst)).toEqual([...p.map((x) => x.worst)].sort((a, b) => b - a));
     expect(p.find((x) => x.label === "WATCH")).toBeTruthy();
   });
@@ -238,9 +242,10 @@ describe("invoices preview: rendered behaviour", () => {
   it("an ageing tile applies the same filter the real tile does (Current: Outstanding; late buckets: Overdue)", () => {
     const h = mount();
     click(h.querySelector('[data-testid="aging-1-30"]') ?? byText(h, '[role="group"] button', /1-30 days late/));
-    expect(h.querySelector('[data-testid="chip-overdue"]')?.getAttribute("aria-pressed")).toBe("true");
+    expect(h.querySelector('[data-active-chip="overdue"]')).not.toBeNull();
     click(byText(h, '[role="group"] button', /^Current/));
-    expect(h.querySelector('[data-testid="chip-outstanding"]')?.getAttribute("aria-pressed")).toBe("true");
+    expect(h.querySelector('[data-active-chip="outstanding"]')).not.toBeNull();
+    expect(h.querySelector('[data-active-chip="overdue"]')).toBeNull();
   });
   it("Record payment checks the amount and date with the real payment rules, then only answers with the neutral Preview-only toast, never a success", () => {
     const h = mount();
@@ -274,5 +279,113 @@ describe("invoices preview: rendered behaviour", () => {
     click(byText(document.body, '[role="radiogroup"][aria-label="Role"] [role="radio"], [role="group"][aria-label="Role"] button', "Viewer"));
     expect(h.querySelector('[data-testid="access-denied"]')?.textContent).toContain("Access Denied");
     expect(h.querySelector('[data-testid="money-total"]')).toBeNull();
+  });
+});
+
+describe("invoices preview v2: structure (owner-approved items 1, 2, 4, 7, 9, 10, 11)", () => {
+  it("every real row control stays reachable: one primary action, the rest in More, for every invoice", () => {
+    for (const r of rows) {
+      const plan = rowActionPlan(r);
+      const all = allRowActions(r);
+      expect([plan.primary.id, ...plan.more.map((a) => a.id)].sort(), r.reference).toEqual(all.map((a) => a.id).sort());
+      expect(plan.primary.disabled).toBeFalsy();
+      expect(all.some((a) => a.id === "view") && all.some((a) => a.id === "archive")).toBe(true);
+      expect(all.some((a) => a.id === "pay")).toBe(!paymentBlockedReason(r.rawStatus));
+      expect(all.find((a) => a.id === "pay")?.disabled ?? false).toBe(!paymentBlockedReason(r.rawStatus) && (r.status === "paid" || r.status === "closed"));
+    }
+    expect(rowActionPlan(rows.find((r) => r.reference === "INV-1048")!).primary.id).toBe("pay");
+    expect(rowActionPlan(rows.find((r) => r.status === "paid")!).primary.id).toBe("view");
+    expect(rowActionPlan(rows.find((r) => r.rawStatus === "draft")!).primary.id).toBe("view");
+  });
+  it("each table row shows exactly two buttons in its actions cell (the next step and More)", () => {
+    const h = mount();
+    const rowsEls = h.querySelectorAll("tbody tr[data-invoice]");
+    expect(rowsEls.length).toBeGreaterThan(5);
+    rowsEls.forEach((tr) => { expect(tr.querySelectorAll("td:last-child button")).toHaveLength(2); });
+  });
+  it("View, Record payment and Archive are all reachable from a payable row, and a settled row keeps Record payment disabled with a reason", () => {
+    const h = mount();
+    click(h.querySelector('tr[data-invoice="INV-1048"] [data-testid="more-trigger"]'));
+    expect(Array.from(document.querySelectorAll('[role="menuitem"]')).map((e) => e.textContent)).toEqual(["View", "Archive"]);
+    expect(h.querySelector('tr[data-invoice="INV-1048"] [data-action="Record payment"]')).not.toBeNull();
+    click(byText(document.body, '[role="menuitem"]', "View"));
+    expect(document.querySelector('[data-testid="dlg-view"]')?.textContent).toContain("INV-1048 invoice details");
+  });
+  it("one primary figure: the Total owed uses the numeral style; the four ageing figures and the three trend figures are the quiet size and flat inside their panels", () => {
+    const h = mount();
+    const money = h.querySelector('[data-testid="money-total"]')!;
+    expect(money.className).toMatch(/numeral|tNumeral/i);
+    const quiet = Array.from(h.querySelectorAll('[role="group"][aria-label="Ageing of money owed"] > *, [role="group"][aria-label="Invoicing trends"] > *'));
+    expect(quiet).toHaveLength(7);
+    for (const q of quiet) expect(q.className, q.textContent ?? "").toMatch(/quiet/);
+  });
+  it("no bulk bar at rest; Export of all rows stays in the toolbar; ticking a row shows the selection bar with Export, Pay Selected in Full, Select all and Clear", () => {
+    const h = mount();
+    expect(h.querySelector("[data-selection]")).toBeNull();
+    expect(byText(h, "button", "Pay Selected in Full")).toBeUndefined();
+    expect(h.querySelector('[data-testid="export-trigger"]')?.getAttribute("aria-label")).toBe(`Export. ${scopeTitle(0, visibleInvoices(rows, DEFAULT_FILTERS).length)}`);
+    click(h.querySelector('tr[data-invoice="INV-1048"] [data-testid="select-row"]'));
+    const bar = h.querySelector("[data-selection]")!;
+    expect(bar.textContent).toContain(`1 selected of ${visibleInvoices(rows, DEFAULT_FILTERS).length} filtered records`);
+    for (const label of ["Pay Selected in Full", "Clear selection"]) expect(byText(bar, "button", label), label).toBeTruthy();
+    expect(byText(bar, "button", /Select all \d+ filtered/)).toBeTruthy();
+    expect(bar.querySelector('[data-testid="export-trigger"]')?.getAttribute("aria-label")).toBe(`Export. ${scopeTitle(1, visibleInvoices(rows, DEFAULT_FILTERS).length)}`);
+    click(byText(bar, "button", "Pay Selected in Full"));
+    expect(document.querySelector("dialog[open]")?.textContent).toContain("Record 1 invoice as paid in full?");
+    click(byText(document.body, "dialog button", "Cancel"));
+    click(byText(bar, "button", "Clear selection"));
+    expect(h.querySelector("[data-selection]")).toBeNull();
+  });
+  it("Export menu keeps all six formats, at rest and with a selection", () => {
+    const h = mount();
+    click(h.querySelector('[data-testid="export-trigger"]'));
+    expect(Array.from(document.querySelectorAll('[role="menuitem"]')).map((e) => e.textContent?.replace(/Exports.*$/, ""))).toEqual(["CSV", "Excel", "Payments CSV", "Payments Excel", "Word", "PDF"]);
+  });
+  it("Filters (n) popover holds every status chip; active filters are removable chips; the ageing tile shows its filter as a chip", () => {
+    const h = mount();
+    const trigger = () => h.querySelector<HTMLElement>('[data-testid="filters-trigger"]')!;
+    expect(trigger().textContent?.trim()).toBe("Filters");
+    click(trigger());
+    for (const c of CHIPS) expect(document.querySelector(`[data-testid="chip-${c.v}"]`), c.label).not.toBeNull();
+    click(document.querySelector('[data-testid="chip-overdue"]'));
+    expect(trigger().textContent).toContain("Filters (1)");
+    click(h.querySelector('[aria-label="Remove filter Overdue"]'));
+    expect(h.querySelector('[data-testid="active-filters"]')).toBeNull();
+    click(h.querySelector('[data-testid="aging-1-30"]') ?? byText(h, '[role="group"] button', /1-30 days late/));
+    expect(h.querySelector('[data-testid="active-filters"]')?.textContent).toContain("Overdue");
+    click(h.querySelector('[data-testid="clear-filters"]'));
+    expect(h.querySelector('[data-testid="active-filters"]')).toBeNull();
+  });
+  it("the Show rule sentence stays reachable (title and the Filters popover); the generic explainer is a tooltip and a description of the title", () => {
+    const h = mount();
+    const holder = h.querySelector("h1 [title]")!;
+    expect(holder.getAttribute("title")).toBe(INVOICE_TITLE_TIP);
+    expect(document.getElementById(holder.getAttribute("aria-describedby") ?? "")?.textContent).toBe(INVOICE_TITLE_TIP);
+    expect(h.querySelector("h1")?.textContent).toBe("Invoicing");
+    expect(h.querySelector('[title^="Open: still to do"]')).not.toBeNull();
+    click(h.querySelector('[data-testid="filters-trigger"]'));
+    expect(document.querySelector('[role="dialog"][aria-label="Filters"]')?.textContent).toContain("Open: still to do (drafts, unpaid).");
+  });
+  it("one preview strip; the compact list, the trend range and Columns are all still reachable; plausible sample names; no !important", () => {
+    const h = mount();
+    expect(h.querySelector('[role="group"][aria-label="Preview information"] [data-testid="dock-toggle"]')).not.toBeNull();
+    click(h.querySelector('[data-testid="compact-toggle"]'));
+    expect(h.querySelectorAll('[data-testid="compact-invoice-row"]').length).toBeGreaterThan(5);
+    expect(h.querySelector('[data-testid="compact-invoice-totals"]')).not.toBeNull();
+    expect(h.querySelector('[role="group"][aria-label="Invoicing Trends date range"]')).not.toBeNull();
+    expect(h.querySelector('[data-testid="columns-trigger"]')).not.toBeNull();
+    expect(JSON.stringify(SEED_INVOICES) + Object.keys(CUSTOMER_ADDRESS).join()).not.toMatch(/placeholder|testfield|mockridge|sampleford|dummerby|exampleton/i);
+    expect(Object.keys(CUSTOMER_ADDRESS)).toContain("Kilbride Hydraulics");
+    for (const f of ["components/invoices/preview/InvoicesPreview.module.css", "components/invoices/preview/InvoicesPreview.tsx"]) expect(readFileSync(f, "utf8").replace(/\/\*[\s\S]*?\*\//g, ""), f).not.toMatch(/!important/);
+  });
+  it("Create Invoice: a failed save lists every problem in a summary and nothing is saved", () => {
+    const h = mount();
+    click(h.querySelector('[data-testid="new-invoice"]'));
+    click(byText(document.body, "dialog button", "Save Invoice"));
+    const text = document.querySelector("dialog[open]")?.textContent ?? "";
+    expect(text).toContain("Fix these before saving");
+    expect(text).toContain("Choose a customer.");
+    expect(text).toContain("Enter a unit price.");
+    expect(document.body.textContent).not.toMatch(/invoice created|saved successfully/i);
   });
 });
