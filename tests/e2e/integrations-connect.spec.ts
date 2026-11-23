@@ -11,7 +11,7 @@ import { expect, test, type APIRequestContext, type BrowserContext, type Page } 
 
 import { generatePassword } from "@/lib/password";
 
-import { adminClient, signedInClient, withDb, verifyBackendIdentity } from "../support/fixtures";
+import { adminClient, signedInClient, withDb, verifyBackendIdentity, SEEN_TOUR_METADATA } from "../support/fixtures";
 import { enrolTotp, totpCode } from "../support/totp";
 import { preparePost144Backend } from "../support/post-144-release-fixture";
 import { E2E_MOCK_PORT } from "./paths";
@@ -104,7 +104,7 @@ test.beforeAll(async ({ browser }) => {
   const w = world();
   const email = `integrations-owner.${w.runId}@example.test`;
   const password = generatePassword(14);
-  const { data, error } = await adminClient().auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name: "Integrations Owner" } });
+  const { data, error } = await adminClient().auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { ...SEEN_TOUR_METADATA, full_name: "Integrations Owner" } });
   if (error || !data.user) throw new Error(error?.message);
   owner = { id: data.user.id, email, password };
   // A platform owner is a signed-in person with a profile; here it comes from a viewer membership of one test company, as in platform-new-company.spec.ts.

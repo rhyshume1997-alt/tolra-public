@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { CompanySetupGuide } from "@/components/company-setup-guide";
 import { DisplayNamePrompt } from "@/components/display-name";
+import { RaiseIssueButton } from "@/components/issues/raise-issue-button";
 import { OfflineBanner } from "@/components/offline-banner";
 import { Sidebar } from "@/components/sidebar";
 import { SupportBanner } from "@/components/support-banner";
@@ -124,6 +125,8 @@ function ShellInner({ children, toolyTour }: { children: React.ReactNode; toolyT
         <main className="w-full px-4 py-6 md:px-6 md:py-8 desk:px-8 desk:py-8 print:p-0"><DisplayNamePrompt /><OfflineBanner /><CompanySetupGuide key={profile?.organization_id ?? "none"} />{children}</main>
       </div>
       <ToolyFloat />
+      {/* Raise an issue: every role; shows only while the company has the issues:on marker (components/issues). */}
+      <RaiseIssueButton />
       {/* First-login admin tour: shows nothing unless the server flag, the company marker and the admin role all agree (components/tooly/tour). */}
       <AdminTour envOn={toolyTour} />
     </div>

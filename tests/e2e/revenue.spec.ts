@@ -20,7 +20,7 @@ import { generatePassword } from "@/lib/password";
 import { REVENUE_SELECT } from "@/lib/reports/revenue/load-revenue";
 import { REVENUE_OFF_NOTICE, REVENUE_ON_MARKER } from "@/lib/reports/revenue/revenue-switch";
 
-import { adminClient, createSoloTenant, EMAIL_DOMAIN, withDb } from "../support/fixtures";
+import { adminClient, createSoloTenant, EMAIL_DOMAIN, withDb, SEEN_TOUR_METADATA } from "../support/fixtures";
 import { signIn, world } from "./helpers";
 
 const w = world();
@@ -363,7 +363,7 @@ test("a hidden Invoices section: one notice, no invoice figures, no invoice read
   const db = adminClient();
   const email = `revhide.${w.runId}@${EMAIL_DOMAIN}`;
   const password = generatePassword(16);
-  const created = await db.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name: "revhide" } });
+  const created = await db.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { ...SEEN_TOUR_METADATA, full_name: "revhide" } });
   if (created.error || !created.data.user) throw new Error(`createUser ${email}: ${created.error?.message}`);
   const userId = created.data.user.id;
   throwawayUserId = userId;

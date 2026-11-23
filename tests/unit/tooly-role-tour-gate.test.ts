@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * The tour card (components/tooly/tour/admin-tour.tsx) for the three views. Proves, with the real card and faked sign-in, company settings,
- * route and done flag: nothing shows unless the server flag AND the marker for the person's view are on; admin, office and workshop each
+ * route and done flag: the tour shows by default and nothing shows only when the server's emergency switch is off (company markers are not read); admin, office and workshop each
  * get their own first step and step count; a viewer and a person who has already finished see nothing; the card only offers Back, Next, the note
  * toggle and Skip tour; the note opens on request; a person who has seen it gets only a Replay button, on the Dashboard; and it never presses anything on the page behind it (a button on the page is not clicked while the tour moves through its steps).
  * Must not change: this file proves; the plan and switch rules are proved in tooly-role-tours.test.ts and tooly-tour.test.ts.
@@ -27,7 +27,7 @@ vi.mock("@/lib/supabase", () => ({ supabase: {} }));
 vi.mock("@/lib/auth/tour-flag", () => ({ isTourDone: () => state.done, markTourDone: (...args: unknown[]) => markDone(...args) }));
 
 import { AdminTour } from "@/components/tooly/tour/admin-tour";
-import { TOOLY_OFFICE_TOUR_ON_MARKER, TOOLY_TOUR_ON_MARKER, TOOLY_WORKSHOP_TOUR_ON_MARKER } from "@/components/tooly/tour/tour-switch";
+import { TOOLY_GAME_TOUR_ON_MARKER, TOOLY_OFFICE_TOUR_ON_MARKER, TOOLY_TOUR_ON_MARKER, TOOLY_WORKSHOP_TOUR_ON_MARKER } from "@/components/tooly/tour/tour-switch";
 
 let host: HTMLDivElement;
 let root: Root;
@@ -62,12 +62,14 @@ const text = () => host.querySelector('[data-testid="tooly-tour-text"]')?.textCo
 const press = async (id: string) => { await act(async () => { (host.querySelector(`[data-testid="${id}"]`) as HTMLButtonElement).click(); }); };
 
 describe("who sees which tour", () => {
-  it("nothing shows with the marker but no server flag, or the flag but no marker", async () => {
-    state.hiddenNav = [TOOLY_OFFICE_TOUR_ON_MARKER];
-    await show(false);
-    expect(card()).toBeNull();
+  it("shows with no company marker at all, and nothing shows when the server's emergency switch has turned it off", async () => {
     state.hiddenNav = [];
     await show(true);
+    expect(card()).not.toBeNull();
+    await show(false);
+    expect(card()).toBeNull();
+    state.hiddenNav = [TOOLY_OFFICE_TOUR_ON_MARKER];
+    await show(false);
     expect(card()).toBeNull();
   });
   it("office gets the 17 office steps from Tooly's hello, with its own marker", async () => {
@@ -90,12 +92,12 @@ describe("who sees which tour", () => {
     await show(true);
     expect(count()).toBe("Step 1 of 23");
   });
-  it("the admin marker alone shows nothing to office or workshop, and the office marker alone shows nothing to admin", async () => {
-    for (const [role, marker] of [["office", TOOLY_TOUR_ON_MARKER], ["workshop", TOOLY_TOUR_ON_MARKER], ["admin", TOOLY_OFFICE_TOUR_ON_MARKER], ["workshop", TOOLY_OFFICE_TOUR_ON_MARKER]] as const) {
+  it("each view gets its own tour whatever markers the company has", async () => {
+    for (const [role, marker, steps] of [["office", TOOLY_TOUR_ON_MARKER, 17], ["workshop", TOOLY_TOUR_ON_MARKER, 13], ["admin", TOOLY_OFFICE_TOUR_ON_MARKER, 23], ["workshop", TOOLY_OFFICE_TOUR_ON_MARKER, 13]] as const) {
       state.role = role;
       state.hiddenNav = [marker];
       await show(true);
-      expect(card(), `${role} with ${marker}`).toBeNull();
+      expect(count(), `${role} with ${marker}`).toBe(`Step 1 of ${steps}`);
     }
   });
   it("a viewer sees nothing even with every marker on", async () => {
@@ -200,5 +202,56 @@ describe("walking through it", () => {
     for (let i = 0; i < 16; i += 1) await press("tooly-tour-next");
     expect(count()).toBe("Step 17 of 17");
     expect(pressed).toBe(0);
+  });
+});
+
+describe("the game look", () => {
+  it("is not used unless its own marker is on: the small card shows", async () => {
+    state.hiddenNav = [TOOLY_OFFICE_TOUR_ON_MARKER];
+    await show(true);
+    expect(card()?.getAttribute("data-mode")).toBeNull();
+    expect(host.querySelector('[data-testid="tooly-tour-bubble"]')).toBeNull();
+  });
+  it("the game marker only changes the look: with it alone the tour still shows by default (as the game look), and the emergency switch still turns it off", async () => {
+    state.hiddenNav = [TOOLY_GAME_TOUR_ON_MARKER];
+    await show(true);
+    expect(card()).not.toBeNull();
+    expect(card()?.getAttribute("data-mode")).toBe("game");
+    expect(count()).toBe("Step 1 of 17");
+    await show(false);
+    expect(card()).toBeNull();
+    state.hiddenNav = [TOOLY_OFFICE_TOUR_ON_MARKER, TOOLY_GAME_TOUR_ON_MARKER];
+    await show(false);
+    expect(card()).toBeNull();
+  });
+  it("with both markers: the full-screen stage, the same steps, notes, Skip and seen flag", async () => {
+    state.hiddenNav = [TOOLY_OFFICE_TOUR_ON_MARKER, TOOLY_GAME_TOUR_ON_MARKER];
+    await show(true);
+    expect(card()?.getAttribute("data-mode")).toBe("game");
+    expect(count()).toBe("Step 1 of 17");
+    expect(host.querySelector('[data-testid="tooly-face"]')?.getAttribute("data-pose")).toBe("wave");
+    await press("tooly-tour-note-toggle");
+    expect(host.querySelector('[data-testid="tooly-tour-note"]')).not.toBeNull();
+    await press("tooly-tour-next");
+    expect(count()).toBe("Step 2 of 17");
+    expect(host.querySelector('[data-testid="tooly-tour-note"]')).toBeNull();
+    await press("tooly-tour-stop");
+    expect(markDone).toHaveBeenCalledTimes(1);
+    expect(card()).toBeNull();
+  });
+  it("never presses a button on the page behind it, first step to last", async () => {
+    state.hiddenNav = [TOOLY_OFFICE_TOUR_ON_MARKER, TOOLY_GAME_TOUR_ON_MARKER];
+    await show(true);
+    for (let i = 0; i < 16; i += 1) await press("tooly-tour-next");
+    expect(count()).toBe("Step 17 of 17");
+    expect(pressed).toBe(0);
+  });
+  it("Replay still works after it has been seen", async () => {
+    state.hiddenNav = [TOOLY_OFFICE_TOUR_ON_MARKER, TOOLY_GAME_TOUR_ON_MARKER];
+    state.done = true;
+    await show(true);
+    await press("tooly-tour-replay");
+    expect(card()?.getAttribute("data-mode")).toBe("game");
+    expect(count()).toBe("Step 1 of 17");
   });
 });

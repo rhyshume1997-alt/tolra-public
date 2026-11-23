@@ -25,6 +25,9 @@ const phases = [
   { number: 160, marker: "post-144 marker 160 legacy_reopen_revoke", file: "supabase/release/160_legacy_reopen_revoke.release.sql", verifyFile: "supabase/verify/legacy_reopen_revoke_160.sql" },
   { number: 163, marker: "post-144 marker 163 chase_steps_atomic", file: "supabase/release/163_chase_steps_atomic.release.sql", verifyFile: "supabase/verify/chase_steps_atomic_163.sql" },
   { number: 164, marker: "post-144 marker 164 platform_companies", file: "supabase/release/164_platform_companies.release.sql", verifyFile: "supabase/verify/platform_companies_164.sql" },
+  { number: 165, marker: "post-144 marker 165 owner_issues", file: "supabase/release/165_owner_issues.release.sql", verifyFile: "supabase/verify/owner_issues_165.sql" },
+  { number: 167, marker: "post-144 marker 167 roadmap_rollouts", file: "supabase/release/167_roadmap_rollouts.release.sql", verifyFile: "supabase/verify/roadmap_rollouts_167.sql" },
+  { number: 170, marker: "post-144 marker 170 worksheet_custom", file: "supabase/release/170_worksheet_custom.release.sql", verifyFile: "supabase/verify/worksheet_custom_170.sql" },
 ];
 /** Read-only (SELECT only): who owns storage.objects, who we are, our role membership and our privileges on it (release 159 policy question). */
 export const storageObjectsDiagnosticSql = `SELECT 'storage.objects owner' AS check, (SELECT pg_get_userbyid(c.relowner) FROM pg_class c WHERE c.oid = to_regclass('storage.objects')) AS value
@@ -47,7 +50,7 @@ export async function reportStorageDiagnostics(query: (sql: string) => Promise<{
   }
 }
 export async function preparePost144Fixture(deps: {
-  through?: 145 | 146 | 147 | 148 | 149 | 150 | 151 | 152 | 153 | 154 | 156 | 157 | 158 | 159 | 160 | 163 | 164;
+  through?: 145 | 146 | 147 | 148 | 149 | 150 | 151 | 152 | 153 | 154 | 156 | 157 | 158 | 159 | 160 | 163 | 164 | 165 | 167 | 170;
   verify: () => Promise<unknown>;
   query: (sql: string) => Promise<{ rows: Array<{ check?: string; value?: string; ok?: boolean; passed?: boolean }> }>;
 }) {
@@ -56,7 +59,7 @@ export async function preparePost144Fixture(deps: {
   await deps.query("SELECT pg_advisory_lock(144145146)");
   let failure: { original: unknown } | undefined;
   try {
-    for (const phase of phases.filter(p => p.number <= (deps.through ?? 164))) {
+    for (const phase of phases.filter(p => p.number <= (deps.through ?? 170))) {
       const state = (await deps.query(read("supabase/verify/release_preflight.sql"))).rows.find(row => row.check === phase.marker);
       if (!state) throw new Error(`Missing release preflight marker: ${phase.marker}`);
       if (state.value !== "applied") {

@@ -11,7 +11,7 @@
  */
 import { expect, test, type Page } from "@playwright/test";
 
-import { adminClient, createSoloTenant, EMAIL_DOMAIN, type SyntheticUser } from "../support/fixtures";
+import { adminClient, createSoloTenant, EMAIL_DOMAIN, type SyntheticUser, SEEN_TOUR_METADATA } from "../support/fixtures";
 import { generatePassword } from "@/lib/password";
 import { deviceContext, VIEWPORTS } from "../support/ui-pr1-screenshots";
 import { playJob, signIn, world } from "./helpers";
@@ -153,7 +153,7 @@ test("display names: a person with no name is prompted and saves their own; the 
   const solo = await createSoloTenant(w.runId, "names");
   const email = `nameless.names.${w.runId}@${EMAIL_DOMAIN}`;
   const password = generatePassword(16);
-  const created = await admin.auth.admin.createUser({ email, password, email_confirm: true });
+  const created = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: SEEN_TOUR_METADATA });
   expect(created.error).toBeNull();
   const workshop: SyntheticUser = { id: created.data.user!.id, email, password, role: "workshop" };
   const { data: added, error: addError } = await admin.rpc("add_member", { p_org: solo.id, p_email: email, p_role: "workshop" });

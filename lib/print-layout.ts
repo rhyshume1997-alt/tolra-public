@@ -119,11 +119,17 @@ export async function saveCompanyPrintLayout(layout: PrintLayout, organizationId
  * choice wins (Settings > Print layout owns it), else the profile's own, else none (the company's default applies).
  */
 export function withStoredPrintLayout<T extends { printLayout?: PrintLayout }>(next: T, storedProfile: unknown): T {
-  const raw = storedProfile && typeof storedProfile === "object" && !Array.isArray(storedProfile) ? (storedProfile as Record<string, unknown>)[PRINT_LAYOUT_KEY] : null;
+  const stored = storedProfile && typeof storedProfile === "object" && !Array.isArray(storedProfile) ? (storedProfile as Record<string, unknown>) : null;
+  const raw = stored ? stored[PRINT_LAYOUT_KEY] : null;
   const layout = parsePrintLayout(raw) ?? parsePrintLayout(next.printLayout);
   const { printLayout: _drop, ...rest } = next; // eslint-disable-line @typescript-eslint/no-unused-vars
-  return (layout ? { ...rest, [PRINT_LAYOUT_KEY]: layout } : rest) as T;
+  // Worksheet builder (module K): the company's own layouts live in the same jsonb and are kept as stored when Company details is saved.
+  const builder = stored && stored[WORKSHEET_BUILDER_STORED_KEY] !== undefined ? { [WORKSHEET_BUILDER_STORED_KEY]: stored[WORKSHEET_BUILDER_STORED_KEY] } : {};
+  return (layout ? { ...rest, [PRINT_LAYOUT_KEY]: layout, ...builder } : { ...rest, ...builder }) as T;
 }
+
+/** company_profile.worksheetBuilder (lib/worksheet-builder/layouts.ts WORKSHEET_BUILDER_KEY; repeated here so this file imports nothing new). */
+const WORKSHEET_BUILDER_STORED_KEY = "worksheetBuilder";
 
 /** The signed-in company's layout for the print pages: null while it loads. */
 export function useCompanyPrintLayout(): CompanyPrintLayout | null {

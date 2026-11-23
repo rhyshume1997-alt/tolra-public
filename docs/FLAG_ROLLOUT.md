@@ -6,7 +6,7 @@ Keep it in step with docs/MODULES.md. PR states were read from GitHub on 2026-11
 
 # Flag rollout checklist
 
-Every switch below is OFF by default. Nothing is turned on by this document. Turning one on is a separate, explicit step that needs the approval named under it.
+Every switch below is OFF by default, except the Tooly tour in section 6 (ON by default by Rhys's decision, with an emergency off switch). Nothing is turned on by this document. Turning one on is a separate, explicit step that needs the approval named under it.
 
 Approver: "Rhys" is the project owner and PM named in `docs/release/KNOWN-LIMITATIONS-AND-RECOVERY.md`. Where a company switch is involved, the company's own admin flips it, but only after Rhys's approval.
 
@@ -90,15 +90,24 @@ Common steps for every flag (do not skip):
 
 ## 6. Tooly tours (module 11)
 
-- **Current state:** OFF. Two switches, both needed: the server env flag `TOOLY_ADMIN_TOUR_ENABLED` (exactly "true"; one flag for all three views) and one per-company marker in `hidden_nav` for each view: `tooly-admin-tour:on`, `tooly-office-tour:on`, `tooly-workshop-tour:on` (`components/tooly/tour/tour-switch.ts`). A marker switches on only its own view, so a company that has the admin tour on does not get the other two. A viewer never gets a tour. There is no Settings screen for the markers yet.
+- **Current state:** ON by default for every company (Rhys's decision; the one switch in this document that is not off by default). No env var and no company marker is needed. The emergency off switch is the server env var `TOOLY_TOUR_DISABLED`, exactly `"true"` (`components/tooly/tour/tour-switch.ts`); set it in Vercel and redeploy to turn the tour off for everyone. The older `TOOLY_ADMIN_TOUR_ENABLED` and the three `tooly-*-tour:on` markers are no longer read. A viewer never gets a tour.
 - **What it is:** a fixed script of plain-words steps (admin 23, office 17, workshop 13) that points at screens and never clicks, saves or sends. No AI, no keys, no new table. It opens by itself the first time a person signs in. Each step has a note ("What happens here and how it gets produced") they can open. A person who skips or finishes it is not shown it again (the saved flag in `lib/auth/tour-flag.ts`), and can replay it from a small button on the Dashboard.
 - **Check on Preview:**
-  - Env flag unset or no marker: nothing shows for anyone.
-  - Env flag on and one marker: only that view sees its tour; the other two do not.
+  - Nothing set: an admin, an office user and a workshop user each see their own tour (23, 17 and 13 steps) the first time they sign in; a viewer sees none.
+  - `TOOLY_TOUR_DISABLED=true`: nothing shows for anyone.
   - Office and workshop: a page switched off for the person (Admin > Users > Page access, or the company menu) is skipped or named as off, never walked to.
   - Skip tour, then reload: the tour does not come back, and a Replay tour button shows on the Dashboard (only there). Replay starts at step 1.
   - Open the note on a step: it explains the step and closes again on the next step.
+- **Game look:** a third, separate company marker `tooly-game-tour:on` switches the full-screen look on (dimmed page, spotlight, Tooly and a speech bubble). It does not make a tour appear on its own. Check on Preview with the env flag, a view marker and this marker: the page is dimmed and a click on it does nothing, the spotlight follows each step, the bubble moves clear of the thing pointed at, Skip tour and Replay still work, and with the marker removed the small card comes back.
 - **Approve before on:** Rhys (the wording is staff-facing, and turning it on is a Vercel env change plus a company setting).
+
+## 7. Owner console: Companies (module 15)
+
+- **Current state:** OFF. One server flag, `PLATFORM_COMPANIES_ENABLED` (exactly "true"); with it off the two routes answer 404 (to a platform owner; anyone else is refused by the owner guard first) and the panel renders nothing. Platform owners only (the existing `/platform` guard).
+- **What it is:** a Companies card on `/platform`: every company with its people, jobs and invoices (issued ones separately), and Close or Reopen per company. Close needs the company's exact name typed, a reason and an authenticator code under 15 minutes old, and is refused for the company the owner is inside. Nothing is deleted; Reopen undoes a Close.
+- **Needs:** release 164 applied on that database (the panel shows "Couldn't load the company counts" until it is). Applying 164 on production needs Rhys's yes on the exact file after a fresh backup.
+- **Check on Preview:** flag unset: nothing shows and `/api/platform/companies` answers 404. Flag on, signed in as a platform owner at the second step: counts are right; Close with a wrong name is refused; Close then Reopen round-trips; a company admin cannot call either route.
+- **Approve before on:** Rhys (Close locks a live company's staff out at once).
 
 ---
 

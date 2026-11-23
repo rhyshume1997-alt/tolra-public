@@ -6,7 +6,7 @@ import { expect, test, type APIRequestContext, type Page } from "@playwright/tes
 
 import { generatePassword } from "@/lib/password";
 
-import { adminClient, signedInClient } from "../support/fixtures";
+import { adminClient, signedInClient, SEEN_TOUR_METADATA } from "../support/fixtures";
 import { aal2Admin, signIn, world } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
@@ -20,7 +20,7 @@ async function login(memberOf: ("alpha" | "beta")[], role = "office") {
   const email = `ident${n}.${w.runId}@example.test`;
   const password = generatePassword(14);
   const admin = adminClient();
-  const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true });
+  const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: SEEN_TOUR_METADATA });
   if (error || !data.user) throw new Error(error?.message);
   for (const tenant of memberOf) {
     const { error: addError } = await admin.rpc("add_member", { p_org: w.tenants[tenant].id, p_email: email, p_role: role });

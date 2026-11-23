@@ -53,3 +53,13 @@ describe("the session reads in every API guard are retried (go-live polish item 
     expect(calls).toBe(2);
   });
 });
+
+describe("the middleware's admin enrolment read is retried (CI 1692: a page answered 503 after one gateway 502)", () => {
+  it("my_mfa_enrolment_required is read-only and retried once on a gateway 502", async () => {
+    expect(isRetrySafe("http://x/rest/v1/rpc/my_mfa_enrolment_required", "POST")).toBe(true);
+    const { fn, calls } = fakeFetch([502, 200]);
+    const response = await withGatewayRetry(fn, 0)("http://x/rest/v1/rpc/my_mfa_enrolment_required", { method: "POST" });
+    expect(response.status).toBe(200);
+    expect(calls).toEqual(["POST http://x/rest/v1/rpc/my_mfa_enrolment_required", "POST http://x/rest/v1/rpc/my_mfa_enrolment_required"]);
+  });
+});

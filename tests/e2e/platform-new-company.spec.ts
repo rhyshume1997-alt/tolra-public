@@ -10,7 +10,7 @@ import { generatePassword } from "@/lib/password";
 import { slugFromName } from "@/lib/new-company";
 
 import { SYNTHETIC_SLUG_PREFIX } from "../support/isolation";
-import { adminClient, signedInClient, withDb } from "../support/fixtures";
+import { adminClient, signedInClient, withDb, SEEN_TOUR_METADATA } from "../support/fixtures";
 import { enrolTotp, totpCode } from "../support/totp";
 import { asSeparateDevice, signIn, world } from "./helpers";
 
@@ -25,7 +25,7 @@ let lastCode = "";
 async function makePerson(label: string): Promise<Person> {
   const email = `${label}.${world().runId}@example.test`;
   const password = generatePassword(14);
-  const { data, error } = await adminClient().auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name: `${label} Person` } });
+  const { data, error } = await adminClient().auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { ...SEEN_TOUR_METADATA, full_name: `${label} Person` } });
   if (error || !data.user) throw new Error(error?.message);
   return { id: data.user.id, email, password };
 }
