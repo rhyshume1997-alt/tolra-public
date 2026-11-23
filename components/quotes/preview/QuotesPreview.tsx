@@ -9,16 +9,17 @@
  * would send, accept, reject, revise, archive, save or export answers with the neutral "Preview only" toast, and nothing is saved.
  * The pure logic (first half) is exported and tests/unit/quotesPreview.test.ts pins it to the real lib/quote-status, lib/list-filter,
  * lib/quote-expiry, lib/money and lib/spreadsheet functions.
+ * v2: the local Segmented, Sheet and Field are gone. This file uses the shared SegmentedControl, Sheet, Field, Input, Select, Textarea, StatTile(s), Panel, Callout, the Button pressed style and
+ * the SelectionBar options from components/ui/premium. What stays local is only layout and quote-specific pieces: cards, the status legend, table cell finish, the quote sheet's facts and lines.
  * MUST NOT CHANGE: wording, defaults, column order, filter semantics and the role gate mirror today's Quote Generator
  * (app/(dashboard)/quotes/page.tsx: admin and office only, workshop and viewer see "Access Denied"). Do not wire this file to real data
  * or real actions, add no control the real page lacks (no search box, no sort), and keep row controls at a 48 px hit area.
  */
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import type { ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
-  Button, Checkbox, ChipGroup, Dialog, EmptyState, FailedState, FilterChip, LoadingState, Menu, Popover, SelectionBar, StatusBadge,
-  ScrollTable, Switch, ToastProvider, cx, premiumTokens, tabularNumbers, useToast,
+  Button, Callout, Checkbox, ChipGroup, Dialog, EmptyState, FailedState, Field, FilterChip, Input, LoadingState, Menu, Panel, Popover, ScrollTable, SegmentedControl, Select, SelectionBar,
+  Sheet, StatTile, StatTiles, StatusBadge, Switch, Textarea, ToastProvider, cx, premiumTokens, srOnly, tabularNumbers, useToast,
 } from "@/components/ui/premium";
 import type { StatusTone } from "@/components/ui/premium";
 import type { QuoteStatus } from "@/lib/quote-status";
@@ -256,11 +257,11 @@ export const customerPoBeside = (po: string) => (po.trim() ? `Customer PO ${po.t
 export function canUseQuotes(role: Role): boolean { return role === "admin" || role === "office"; }
 
 /* ================================================================== */
-/* 4. Small local pieces (gaps in the shared set, see the report)       */
+/* 4. Small local pieces                                               */
 /* ================================================================== */
 
 const VIEW_KEY = "quotes-preview:view";
-const ROLES: Array<{ v: Role; label: string }> = [{ v: "admin", label: "Admin" }, { v: "office", label: "Office" }, { v: "workshop", label: "Workshop" }, { v: "viewer", label: "Viewer" }];
+const ROLES: Array<{ value: Role; label: string }> = [{ value: "admin", label: "Admin" }, { value: "office", label: "Office" }, { value: "workshop", label: "Workshop" }, { value: "viewer", label: "Viewer" }];
 const SCREENS: Array<{ v: Screen | ListFilterKey; label: string }> = [
   { v: "ready", label: "Normal" }, { v: "loading", label: "Loading" }, { v: "error", label: "Failed to load" }, { v: "empty", label: "No quotes yet" },
   { v: "expired", label: "Dashboard link: Expired" }, { v: "no-decision", label: "Dashboard link: No decision" },
@@ -272,71 +273,6 @@ function useMedia(query: string, fallback: boolean): boolean {
     () => window.matchMedia(query).matches,
     () => fallback,
   );
-}
-
-/** Segmented control (gap in the shared set): a pressed-state button group, 32 px segments in a 40 px track, 48 px hit areas. */
-function Segmented<T extends string>({ label, value, options, onChange, disabled }: { label: string; value: T; options: Array<{ v: T; label: string; off?: string; testId?: string }>; onChange: (v: T) => void; disabled?: boolean }) {
-  return (
-    <div role="group" aria-label={label} className={s.seg}>
-      {options.map((o) => (
-        <button key={o.v} type="button" aria-pressed={value === o.v} aria-disabled={o.off || disabled ? true : undefined} title={o.off} data-testid={o.testId}
-          className={s.segBtn} onClick={() => { if (!o.off && !disabled) onChange(o.v); }}>{o.label}</button>
-      ))}
-    </div>
-  );
-}
-
-/** Wide modal on the native dialog element (gap in the shared set: custom footer, scrolling body). Focus is trapped; Escape asks to close. */
-function Sheet({ open, title, description, size = "md", children, footer, onClose, testId, closeButton = true }: { closeButton?: boolean; open: boolean; title: ReactNode; description?: string; size?: "sm" | "md" | "lg"; children: ReactNode; footer: ReactNode; onClose: () => void; testId?: string }) {
-  const ref = useRef<HTMLDialogElement>(null);
-  const uid = useId();
-  // Focus returns to whatever opened the sheet (the native dialog only does it when the element stays mounted). Declared before the
-  // showModal effect so the opener is read before focus moves into the dialog.
-  const openerRef = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    if (!open) return;
-    // Kept across the development double-run of effects (the first cleanup cannot focus through the modal, so the opener must survive it).
-    if (!openerRef.current || !openerRef.current.isConnected) openerRef.current = document.activeElement as HTMLElement | null;
-    return () => {
-      const o = openerRef.current;
-      if (o && o.isConnected) { o.focus(); if (document.activeElement === o) openerRef.current = null; }
-    };
-  }, [open]);
-  useEffect(() => {
-    const d = ref.current;
-    if (!d) return;
-    if (open && !d.open) d.showModal();
-    if (!open && d.open) d.close();
-  }, [open]);
-  return (
-    <dialog ref={ref} className={cx(premiumTokens, s.sheet, s[`sheet_${size}`])} aria-labelledby={`${uid}-t`} aria-describedby={description ? `${uid}-d` : undefined} data-testid={testId}
-      onCancel={(e) => { e.preventDefault(); onClose(); }}
-      onKeyDown={(e) => {
-        if (e.key !== "Tab") return;
-        const f = Array.from(ref.current?.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select, textarea, [href], [tabindex]:not([tabindex="-1"])') ?? []);
-        if (!f.length) return;
-        if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
-        else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
-      }}>
-      {open ? (
-        <div className={s.sheetInner}>
-          <header className={s.sheetHead}>
-            <div className={s.sheetHeadText}>
-              <h2 id={`${uid}-t`} className={s.sheetTitle}>{title}</h2>
-              {description ? <p id={`${uid}-d`} className={s.sheetDesc}>{description}</p> : null}
-            </div>
-            {closeButton ? <Button size="sm" variant="quiet" onClick={onClose}>Close</Button> : null}
-          </header>
-          <div className={s.sheetBody}>{children}</div>
-          <footer className={s.sheetFoot}>{footer}</footer>
-        </div>
-      ) : null}
-    </dialog>
-  );
-}
-
-function Field({ label, hint, children, wide }: { label: string; hint?: string; children: ReactNode; wide?: boolean }) {
-  return <label className={cx(s.field, wide && s.fieldWide)}><span className={s.fieldLabel}>{label}</span>{children}{hint ? <span className={s.fieldHint}>{hint}</span> : null}</label>;
 }
 
 function StatusPill({ status }: { status: QuoteStatus }) {
@@ -435,7 +371,6 @@ function Inner() {
   };
 
   const denied = !canUseQuotes(role);
-  const sel = nSel > 0;
 
   return (
     <div className={cx(premiumTokens, s.root)} data-testid="quotes-preview" data-role={role} data-pview={shownView}>
@@ -448,12 +383,12 @@ function Inner() {
               <div className={s.dock}>
                 <p className={s.dockNote}>Not part of Tolra. Sample data; states are simulated and no request is made.</p>
                 <p className={s.dockLabel}>Role</p>
-                <Segmented label="Role" value={role} options={ROLES} onChange={(v) => { setRole(v); toast.clear(); }} />
+                <SegmentedControl label="Role" value={role} options={ROLES} onChange={(v) => { setRole(v); toast.clear(); }} />
                 <p className={s.dockLabel}>Screen state</p>
                 <div className={s.dockStates} role="group" aria-label="Screen state">
                   {SCREENS.map((x) => {
                     const cur = filters.listFilter ?? screen;
-                    return <button key={x.v} type="button" aria-pressed={cur === x.v} className={s.dockBtn} onClick={() => pickScreen(x.v)}>{x.label}</button>;
+                    return <Button key={x.v} size="sm" variant="secondary" fullWidth aria-pressed={cur === x.v} className={s.dockBtn} onClick={() => pickScreen(x.v)}>{x.label}</Button>;
                   })}
                 </div>
                 <Button size="sm" variant="secondary" onClick={resetAll}>Reset preview</Button>
@@ -475,10 +410,10 @@ function Inner() {
               <div className={s.colReset}><Button size="sm" variant="secondary" disabled={!hidden.length} onClick={() => setHidden([])}>Reset to default (show all columns)</Button></div>
             </Popover>
             {notPhone ? (
-              <Segmented label="View" value={shownView} onChange={setView} options={[
-                { v: "cards", label: "Cards", testId: "view-cards-btn" },
-                { v: "list", label: "List", off: wide ? undefined : "Needs a screen wider than 1024px", testId: "view-list-btn" },
-                { v: "table", label: "Table", off: wide ? undefined : "Needs a screen wider than 1024px", testId: "view-table-btn" },
+              <SegmentedControl label="View" value={shownView} onChange={setView} options={[
+                { value: "cards", label: "Cards", testId: "view-cards-btn" },
+                { value: "list", label: "List", disabled: !wide, disabledReason: "Needs a screen wider than 1024px", testId: "view-list-btn" },
+                { value: "table", label: "Table", disabled: !wide, disabledReason: "Needs a screen wider than 1024px", testId: "view-table-btn" },
               ]} />
             ) : null}
             <Button variant="primary" data-testid="new-quote" onClick={() => setDlg({ k: "builder", mode: "new" })}>New quote</Button>
@@ -494,7 +429,7 @@ function Inner() {
         </section>
       ) : (
         <>
-          <div className={s.tiles} role="group" aria-label="Quote figures">
+          <StatTiles label="Quote figures" columns={4}>
             {([
               ["Open Quotes", String(figures.open.count), `${gbp(figures.open.value)} awaiting reply`, "sent", "info"],
               ["Drafts", String(figures.drafts.count), `${gbp(figures.drafts.value)} not yet sent`, "draft", "neutral"],
@@ -504,15 +439,11 @@ function Inner() {
               const active = filters.statuses.size === 1 && filters.statuses.has(status) && !filters.listFilter;
               const waiting = screen === "loading" || screen === "error";
               return (
-                <button key={label} type="button" aria-pressed={active} disabled={waiting} className={s.tile} data-testid={`tile-${label.split(" ")[0].toLowerCase()}`}
-                  onClick={() => setFilters((f) => ({ ...f, statuses: new Set([status]) }))}>
-                  <span className={s.tileLabel}><i className={cx(s.tileDot, s[`dot_${tone}`])} aria-hidden="true" />{label}</span>
-                  <span className={cx(s.tileValue, tabularNumbers)}>{waiting ? "—" : value}</span>
-                  <span className={s.tileSub}>{waiting ? " " : sub}</span>
-                </button>
+                <StatTile key={label} label={<span className={s.tileLabelRow}><i className={cx(s.tileDot, s[`dot_${tone}`])} aria-hidden="true" />{label}</span>} value={value} hint={sub} loading={waiting}
+                  pressed={active} onPress={() => setFilters((f) => ({ ...f, statuses: new Set([status]) }))} data-testid={`tile-${label.split(" ")[0].toLowerCase()}`} />
               );
             })}
-          </div>
+          </StatTiles>
 
           {scopeTotal && loaded ? (
             <div className={s.legendWrap} data-testid="legend">
@@ -526,18 +457,19 @@ function Inner() {
             </div>
           ) : null}
 
-          <section className={s.panel} aria-label="Filters" aria-busy={screen === "loading" || undefined}>
+          <Panel bare label="Filters" busy={screen === "loading"}>
+           <div className={s.panelInner}>
             {filters.listFilter ? (
-              <div className={s.notice} role="status" data-testid="list-filter-notice">
+              <Callout tone="info" lead="" role="status" className={s.noticeFull} data-testid="list-filter-notice"
+                action={<Button size="sm" variant="secondary" onClick={() => { setFilters((f) => ({ ...f, listFilter: null })); }}>Show everything</Button>}>
                 <p>Showing only: <strong>{QUOTE_FILTER_LABELS[filters.listFilter]}</strong></p>
-                <Button size="sm" variant="secondary" onClick={() => { setFilters((f) => ({ ...f, listFilter: null })); }}>Show everything</Button>
-              </div>
+              </Callout>
             ) : null}
             <div className={s.panelRow}>
               <span className={s.panelLabel}>Show</span>
-              <Segmented label="Show" value={filters.phase} disabled={!loaded && screen !== "empty"} onChange={(v) => setFilters((f) => ({ ...f, phase: v }))} options={[
-                { v: "open", label: `Open (${counts.open})`, testId: "show-open" }, { v: "done", label: `Done (${counts.done})`, testId: "show-done" },
-                { v: "archived", label: `Archived (${counts.archived})`, testId: "show-archived" }, { v: "all", label: "All", testId: "show-all" },
+              <SegmentedControl label="Show" value={filters.phase} disabled={!loaded && screen !== "empty"} onChange={(v) => setFilters((f) => ({ ...f, phase: v }))} options={[
+                { value: "open", label: `Open (${counts.open})`, testId: "show-open" }, { value: "done", label: `Done (${counts.done})`, testId: "show-done" },
+                { value: "archived", label: `Archived (${counts.archived})`, testId: "show-archived" }, { value: "all", label: "All", testId: "show-all" },
               ]} />
             </div>
             <div className={s.panelRow}>
@@ -548,17 +480,16 @@ function Inner() {
                 ))}
               </ChipGroup>
             </div>
-          </section>
+           </div>
+          </Panel>
 
-          <SelectionBar count={nSel} filteredTotal={visible.length} noun="quote" onSelectAll={() => setSelected(visible.map((q) => q.ref))} onClear={() => setSelected([])}
+          <SelectionBar count={nSel} filteredTotal={visible.length} noun="quote" selectAll="always" clear="always" onSelectAll={() => setSelected(visible.map((q) => q.ref))} onClear={() => setSelected([])}
             idleNote={`0 selected of ${visible.length} filtered ${visible.length === 1 ? "record" : "records"}. Export covers all ${visible.length}.`}>
-            {sel ? null : <Button size="sm" variant="secondary" disabled={!visible.length} data-testid="select-all" onClick={() => setSelected(visible.map((q) => q.ref))}>Select all {visible.length} filtered</Button>}
-            {sel ? null : <Button size="sm" variant="secondary" disabled data-testid="clear-selection">Clear selection</Button>}
             <Menu label="Export" size="sm" variant="secondary" data-testid="export-trigger" items={["CSV", "Excel", "Word", "PDF"].map((f) => ({ id: f, label: f, onSelect: () => exportAs(f) }))} />
           </SelectionBar>
 
           {/* The shared state panels use an h3: this keeps the heading order h1, h2, h3 on every screen state. */}
-          <h2 className={s.srOnly}>Quotes</h2>
+          <h2 className={srOnly}>Quotes</h2>
           {screen === "loading" ? <LoadingState label="Loading quotes" rows={6} />
             : screen === "error" ? <FailedState title="Couldn’t load quotes." detail="The list could not be fetched. This is a simulated failure: no request was made and nothing was lost." onRetry={retry} retryLabel="Retry" />
             : visible.length === 0 ? (
@@ -727,7 +658,7 @@ function Dialogs({ dlg, viewId, setViewId, close, setDlg, byId, preview, askToSe
         title={q ? `${q.customerPo ? "Change" : "Add"} the customer PO on ${q.ref}` : ""}
         description="The customer's order number, shown beside the quote number. If the quote is accepted, its job (until it is finished) and its draft invoice get it too; an invoice already issued keeps the PO it was issued with."
         onConfirm={() => finish(`The customer PO on ${q?.ref} would be ${po.trim() ? `set to ${po.trim()}` : "cleared"}.`)}>
-        <Field label="Customer PO"><input className={s.input} aria-label="Customer PO" placeholder="Customer order number (their PO)" maxLength={100} value={po} onChange={(e) => setPo(e.target.value)} /></Field>
+        <Field label="Customer PO"><Input placeholder="Customer order number (their PO)" maxLength={100} value={po} onChange={(e) => setPo(e.target.value)} /></Field>
       </Dialog>
 
       <Dialog open={dlg?.k === "decision" && !!q} onClose={close} confirmLabel={dlg?.k === "decision" && dlg.outcome === "accepted" ? "Confirm Accepted" : "Confirm Rejected"} confirmDisabled={!!acceptedBlock}
@@ -737,10 +668,10 @@ function Dialogs({ dlg, viewId, setViewId, close, setDlg, byId, preview, askToSe
         {dlg?.k === "decision" && dlg.outcome === "accepted" && q ? (
           <div className={s.form}>
             <Field label="Customer PO (optional)" hint="Not received yet? Leave it empty and add it on the quote when it arrives: it reaches the job and its draft invoice too.">
-              <input className={s.input} value={po} maxLength={100} placeholder="Customer order number (their PO)" onChange={(e) => setPo(e.target.value)} />
+              <Input value={po} maxLength={100} placeholder="Customer order number (their PO)" onChange={(e) => setPo(e.target.value)} />
             </Field>
             <Field label="Due date (optional)" hint="When the customer wants it by. It becomes the job's due date.">
-              <input className={s.input} type="date" aria-label="Due date" value={due} onChange={(e) => setDue(e.target.value)} />
+              <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} />
             </Field>
             {lines.length > 1 ? (
               <fieldset className={s.ticks} data-testid="accept-lines">
@@ -755,7 +686,7 @@ function Dialogs({ dlg, viewId, setViewId, close, setDlg, byId, preview, askToSe
                 <p className={cx(s.tickTotal, tabularNumbers)} data-testid="accept-lines-total">Ordered: {gbp(tickedSubtotal)} ex VAT{unticked.size ? ` (${lines.length - unticked.size} of ${lines.length} lines)` : ""}</p>
               </fieldset>
             ) : null}
-            {acceptedBlock ? <p role="alert" className={s.blockMsg}>{acceptedBlock}</p> : null}
+            {acceptedBlock ? <Callout tone="error" lead="">{acceptedBlock}</Callout> : null}
           </div>
         ) : null}
       </Dialog>
@@ -786,7 +717,7 @@ function ViewSheet({ q, versions, replacedBy, onClose, setDlg, setViewId, previe
             {canRecordDecision(q.rawStatus) && !replacedBy ? (<>
               <Button variant="secondary" onClick={() => setDlg({ k: "decision", id: q.id, outcome: "rejected" })}>Mark Rejected</Button>
               <Button variant="secondary" disabled={Boolean(block)} title={block ?? undefined} aria-describedby={block ? "accept-block-reason" : undefined} onClick={() => askToAccept(q)}>Mark Accepted</Button>
-              {block ? <span id="accept-block-reason" className={s.srOnly}>{block}</span> : null}
+              {block ? <span id="accept-block-reason" className={srOnly}>{block}</span> : null}
             </>) : null}
             <Button variant="secondary" onClick={() => setNote(`Preview only. The PDF for ${q.ref} is not generated. Nothing was saved.`)}>Download PDF</Button>
             {canOfferSend(q.rawStatus) ? <Button variant="primary" onClick={() => askToSend(q)}>Send to Customer</Button> : null}
@@ -804,10 +735,10 @@ function ViewSheet({ q, versions, replacedBy, onClose, setDlg, setViewId, previe
         {q.description.trim() ? <div className={s.factWide} data-testid="quote-description"><span className={s.factLabel}>Description</span><p>{q.description}</p></div> : null}
       </div>
       {q.rawStatus === "superseded" ? (
-        <div role="status" className={s.callout} data-testid="quote-superseded">
-          <span>Replaced by {replacedBy?.ref ?? "a newer version"}. This version is kept as it was sent, read only.</span>
-          {replacedBy ? <Button size="sm" variant="secondary" onClick={() => setViewId(replacedBy.id)}>View {replacedBy.ref}</Button> : null}
-        </div>
+        <Callout tone="neutral" role="status" data-testid="quote-superseded"
+          action={replacedBy ? <Button size="sm" variant="secondary" onClick={() => setViewId(replacedBy.id)}>View {replacedBy.ref}</Button> : undefined}>
+          Replaced by {replacedBy?.ref ?? "a newer version"}. This version is kept as it was sent, read only.
+        </Callout>
       ) : null}
       {versions.length > 1 ? (
         <div className={s.versions} data-testid="quote-versions"><span className={s.factLabel}>Versions</span>
@@ -852,20 +783,20 @@ function BuilderSheet({ mode, q, onClose, preview }: { mode: "new" | "edit" | "c
       footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button variant="primary" onClick={() => { onClose(); preview(`${mode === "edit" ? "The correction" : "The quote"} would be saved.`); }}>{mode === "edit" ? "Save Correction" : "Save Quote"}</Button></>}>
       <div className={s.form}>
         <div className={s.formGrid}>
-          <Field label="Customer"><select className={s.input} value={customer} onChange={(e) => setCustomer(e.target.value)} aria-label="Customer"><option value="">Choose a customer</option>{Object.keys(CUSTOMER_EMAIL).map((c) => <option key={c}>{c}</option>)}</select></Field>
-          <Field label="Valid until"><input className={s.input} type="date" defaultValue={mode === "edit" ? q?.validUntil : ""} aria-label="Valid until" /></Field>
-          <Field label="Terms"><input className={s.input} maxLength={200} placeholder="Valid for 30 days" defaultValue="" aria-label="Terms" /></Field>
-          <Field label="Customer PO (optional)"><input className={s.input} maxLength={100} placeholder="Customer order number (their PO)" defaultValue={mode === "edit" ? q?.customerPo : ""} aria-label="Customer PO" /></Field>
+          <Field label="Customer"><Select value={customer} onChange={(e) => setCustomer(e.target.value)}><option value="">Choose a customer</option>{Object.keys(CUSTOMER_EMAIL).map((c) => <option key={c}>{c}</option>)}</Select></Field>
+          <Field label="Valid until"><Input type="date" defaultValue={mode === "edit" ? q?.validUntil : ""} /></Field>
+          <Field label="Terms"><Input maxLength={200} placeholder="Valid for 30 days" defaultValue="" /></Field>
+          <Field label="Customer PO (optional)"><Input maxLength={100} placeholder="Customer order number (their PO)" defaultValue={mode === "edit" ? q?.customerPo : ""} /></Field>
         </div>
-        <Field label="Quote description" wide><textarea className={cx(s.input, s.area)} maxLength={2000} placeholder="Quote description" defaultValue={q?.description ?? ""} /></Field>
+        <Field label="Quote description" wide><Textarea maxLength={2000} placeholder="Quote description" defaultValue={q?.description ?? ""} /></Field>
         <div className={s.bLines}>
           <div className={cx(s.bRow, s.bHead)}><span>Description</span><span>Qty</span><span>Unit price</span><span>VAT</span><span className={s.right}>Line total</span><span /></div>
           {lines.map((l, i) => (
             <div key={i} className={s.bRow}>
-              <input className={s.input} aria-label="Description" maxLength={500} value={l.description} onChange={(e) => setLine(i, { description: e.target.value })} />
-              <input className={s.input} aria-label="Quantity" type="number" min="0" step="0.001" inputMode="decimal" value={l.qty} onChange={(e) => setLine(i, { qty: Number(e.target.value) })} />
-              <input className={s.input} aria-label="Unit price" type="number" min="0" step="0.01" inputMode="decimal" value={l.unit} onChange={(e) => setLine(i, { unit: Number(e.target.value) })} />
-              <select className={s.input} aria-label="VAT rate" disabled={!vatOn} value={l.vat} onChange={(e) => setLine(i, { vat: e.target.value as BuilderLine["vat"] })}><option value="20">20%</option><option value="5">5%</option><option value="0">0%</option><option value="exempt">Exempt</option></select>
+              <Input aria-label="Description" maxLength={500} value={l.description} onChange={(e) => setLine(i, { description: e.target.value })} />
+              <Input aria-label="Quantity" type="number" min="0" step="0.001" inputMode="decimal" value={l.qty} onChange={(e) => setLine(i, { qty: Number(e.target.value) })} />
+              <Input aria-label="Unit price" type="number" min="0" step="0.01" inputMode="decimal" value={l.unit} onChange={(e) => setLine(i, { unit: Number(e.target.value) })} />
+              <Select aria-label="VAT rate" disabled={!vatOn} value={l.vat} onChange={(e) => setLine(i, { vat: e.target.value as BuilderLine["vat"] })}><option value="20">20%</option><option value="5">5%</option><option value="0">0%</option><option value="exempt">Exempt</option></Select>
               <span className={cx(s.bTotal, tabularNumbers)}>{gbp(Math.round(l.qty * l.unit * 100) / 100)}</span>
               <Button size="sm" variant="quiet" aria-label="Remove line" onClick={() => setLines((rows) => rows.filter((_, j) => j !== i))}>Remove</Button>
             </div>
@@ -880,8 +811,8 @@ function BuilderSheet({ mode, q, onClose, preview }: { mode: "new" | "edit" | "c
             <div className={s.totalRow}><dt>Total</dt><dd>{gbp(sub + vatAmt)}</dd></div>
           </dl>
         </div>
-        <Field label="Notes for customer" wide><textarea className={cx(s.input, s.area)} maxLength={2000} placeholder="Shown on the quote sent to the customer" defaultValue={q?.customerNotes ?? ""} /></Field>
-        <Field label="Internal notes (not shown to customer)" wide><textarea className={cx(s.input, s.area, s.internal)} maxLength={2000} placeholder="Margins, supplier quotes, risks - for the team only" defaultValue={q?.internalNotes ?? ""} /></Field>
+        <Field label="Notes for customer" wide><Textarea maxLength={2000} placeholder="Shown on the quote sent to the customer" defaultValue={q?.customerNotes ?? ""} /></Field>
+        <Field label="Internal notes (not shown to customer)" wide><Textarea className={s.internal} maxLength={2000} placeholder="Margins, supplier quotes, risks - for the team only" defaultValue={q?.internalNotes ?? ""} /></Field>
       </div>
     </Sheet>
   );

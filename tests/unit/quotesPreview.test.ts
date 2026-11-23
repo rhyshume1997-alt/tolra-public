@@ -155,7 +155,8 @@ describe("quotes preview: rendered behaviour", () => {
   });
   it("Select all selects every filtered quote and the bar says how many", () => {
     const h = mount();
-    click(h.querySelector('[data-testid="select-all"]'));
+    // v2: the idle "Select all N filtered" button is now drawn by the shared SelectionBar (selectAll="always"), so it has no local test id: it is found by its words.
+    click(byText(h, "button", "Select all 7 filtered"));
     expect(h.querySelector("[data-selection]")?.getAttribute("data-selection")).toBe("active");
     expect(h.querySelector("[data-selection]")?.textContent).toContain("7 quotes selected");
   });
@@ -185,7 +186,8 @@ describe("quotes preview: rendered behaviour", () => {
   it("Workshop and Viewer get Access Denied, as the real page's role gate", () => {
     const h = mount();
     click(byText(document.body, "button", /Preview controls/));
-    click(byText(document.body, '[role="group"][aria-label="Role"] button', "Workshop"));
+    // v2: the Role switch is the shared SegmentedControl (a radiogroup of radios, was a group of pressed buttons).
+    click(byText(document.body, '[role="radiogroup"][aria-label="Role"] [role="radio"]', "Workshop"));
     expect(h.querySelector('[data-testid="access-denied"]')?.textContent).toContain("Access Denied");
     expect(h.querySelector('[role="group"][aria-label="Quote figures"]')).toBeNull();
   });
