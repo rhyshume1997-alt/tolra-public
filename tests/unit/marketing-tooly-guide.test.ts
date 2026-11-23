@@ -4,6 +4,8 @@
  * Hide Tooly control exists and swaps to Show Tooly, the placement search keeps him off headings, links and form fields, and the intro
  * timeline walks every real stage once. (Clicking and sessionStorage are checked in a real browser; this file is server-rendered markup and pure functions.)
  */
+import { readFileSync, statSync } from "node:fs";
+import path from "node:path";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -15,6 +17,7 @@ import { ToolyMenu } from "@/components/marketing/tooly-menu";
 import * as marketing from "@/lib/marketing";
 import { FLOW_STEPS } from "@/lib/marketing";
 import {
+  type FrameKey, FRAME_FILE, FRAME_SET, FRAME_SRC, WALK_FRAMES, frameLayout, leastCovered, lookForPose, walkFrameIndex,
   GUIDE_COPY_SOURCES, GUIDE_LABELS, GUIDE_STOPS, INTRO_DONE, INTRO_START, MENU_STAGES, activeStopId, choosePlacement, idealY, introSchedule,
   landSchedule, rectsOverlap, type Rect,
 } from "@/lib/marketing/tooly-guide";
@@ -28,7 +31,7 @@ const allCopy = (value: unknown, out: Set<string> = new Set()): Set<string> => {
 const ALLOWED = allCopy(marketing);
 
 const ctx = (over: Partial<GuideCtx> = {}): GuideCtx => ({
-  ready: true, motion: false, hidden: false, setHidden: () => {}, intro: INTRO_DONE, menuOpen: false, setMenuOpen: () => {}, skip: () => {}, ...over,
+  ready: true, motion: false, hidden: false, setHidden: () => {}, intro: INTRO_DONE, stage: false, menuOpen: false, setMenuOpen: () => {}, skip: () => {}, ...over,
 });
 const withCtx = (value: GuideCtx, child: ReturnType<typeof createElement>) => renderToStaticMarkup(createElement(GuideContext.Provider, { value }, child));
 
@@ -96,10 +99,11 @@ describe("captions", () => {
     expect(text).toMatch(/in pilot/);
   });
 
-  it("uses the poses the stops promise: point, think at the enquiry, celebrate at the invoice, wave to start", () => {
+  it("uses the poses the stops promise: point, the clipboard at the enquiry, think at the schedule, celebrate at the invoice, wave to start", () => {
     const pose = (id: string) => GUIDE_STOPS.find((s) => s.id === id)!.pose;
     expect(pose("hero")).toBe("wave");
-    expect(pose("handles")).toBe("think");
+    expect(pose("handles")).toBe("clipboard");
+    expect(pose("schedule")).toBe("think");
     expect(pose("invoices")).toBe("celebrate");
     expect(pose("one-place")).toBe("point");
   });
@@ -108,7 +112,8 @@ describe("captions", () => {
 describe("reduced motion", () => {
   it("renders the same captions with nothing moving: no walking, no drop, no clips, decorative images, a labelled region", () => {
     for (const stop of GUIDE_STOPS.filter((s) => s.caption)) {
-      const html = renderToStaticMarkup(createElement(ToolyGuideView, { stop, pose: stop.pose, bubble: "left", saysOpen: false, motion: false, size: 104, onHide: () => {}, onSays: () => {} }));
+      const look = lookForPose(stop.pose);
+      const html = renderToStaticMarkup(createElement(ToolyGuideView, { stop, pose: look, frames: new Set([look as FrameKey, "pointUpLeft" as FrameKey]), bubble: "left", saysOpen: false, motion: false, size: 104, onHide: () => {}, onSays: () => {} }));
       expect(html).toContain(stop.caption!.replace(/'/g, "&#x27;"));
       expect(html).toContain('data-motion="false"');
       expect(html).toContain('data-moving="false"');
@@ -216,5 +221,73 @@ describe("shared header", () => {
     const hero = html.slice(html.indexOf('aria-labelledby="hero-title"'), html.indexOf('aria-labelledby="one-place-title"'));
     expect(hero).not.toContain("width:200px;height:200px"); // the old 200 px hero mark (the traveller's small 72 px note mark is unchanged)
     expect(hero).toContain(marketing.PROOF_LINE);
+  });
+});
+
+describe("the on-model frames", () => {
+  const files = Object.entries(FRAME_SRC) as Array<[keyof typeof FRAME_SRC, string]>;
+  const webp = (src: string) => path.join(process.cwd(), "public", src);
+
+  it("are all there as WebP with alpha, at the size the layout expects, and light (under 60 KB each)", () => {
+    expect(files).toHaveLength(13);
+    for (const [key, src] of files) {
+      const buf = readFileSync(webp(src));
+      expect(buf.toString("ascii", 0, 4)).toBe("RIFF");
+      expect(buf.toString("ascii", 8, 12)).toBe("WEBP");
+      expect(buf.toString("ascii", 12, 16), key).toBe("VP8X"); // extended header: carries the alpha flag
+      expect(buf[20] & 0x10, `${key} alpha`).toBe(0x10);
+      const w = 1 + (buf[24] | (buf[25] << 8) | (buf[26] << 16));
+      const h = 1 + (buf[27] | (buf[28] << 8) | (buf[29] << 16));
+      expect([w, h], key).toEqual([FRAME_FILE[FRAME_SET[key]].w, FRAME_FILE[FRAME_SET[key]].h]);
+      expect(statSync(webp(src)).size, key).toBeLessThan(60 * 1024);
+    }
+  });
+
+  it("put his feet on one baseline whichever set a frame is from, so swapping never makes him jump", () => {
+    const S = 104;
+    const feet = (set: "pose" | "stamp") => { const l = frameLayout(S, set); return l.top + (set === "pose" ? 892 : 1092) * l.k; };
+    expect(feet("pose")).toBeCloseTo(1.193 * S, 5);
+    expect(feet("stamp")).toBeCloseTo(1.193 * S, 5);
+    for (const set of ["pose", "stamp"] as const) { const l = frameLayout(S, set); expect(l.left).toBeGreaterThan(-0.25 * S); expect(l.left + l.width).toBeLessThan(1.15 * S); }
+  });
+
+  it("the four walk frames step with his own travel: one frame per slice of his height, round and round, never negative", () => {
+    expect(WALK_FRAMES).toEqual(["walk1", "walk2", "walk3", "walk4"]);
+    const h = 128;
+    const step = 0.17 * h;
+    expect([0, step * 1.01, step * 2.01, step * 3.01, step * 4.01].map((t) => walkFrameIndex(t, h))).toEqual([0, 1, 2, 3, 0]);
+    expect(walkFrameIndex(-50, h)).toBe(0);
+  });
+
+  it("use the up-left point for point stops and the clipboard where a document is held; no stop needs a mirrored still", () => {
+    expect(lookForPose("point")).toBe("pointUpLeft");
+    expect(lookForPose("think")).toBe("think");
+    expect(GUIDE_STOPS.find((s) => s.id === "handles")!.pose).toBe("clipboard");
+    expect(lookForPose("clipboard")).toBe("clipboard");
+    const html = renderToStaticMarkup(createElement(ToolyGuideView, { stop: GUIDE_STOPS[1], pose: "pointUpLeft", bubble: "left", saysOpen: false, motion: false, size: 104, onHide: () => {}, onSays: () => {} }));
+    expect(html).not.toContain("scaleX(-1)");
+    expect(html).not.toContain("data-flip");
+    expect(html).toContain("/tooly/point-upleft.webp");
+  });
+
+  it("the intro uses the frames in order: air, land, spanner reach and heave (three times), rest, stamp up and down once per stage, then cheers", () => {
+    let st = INTRO_START;
+    const seen: string[] = [];
+    for (const ev of introSchedule()) { st = ev.patch(st); if (seen.at(-1) !== st.look) seen.push(st.look); }
+    expect(seen.slice(0, 3)).toEqual(["air", "land", "reach"]);
+    expect(seen.filter((l) => l === "heave")).toHaveLength(3);
+    expect(seen.indexOf("rest")).toBeGreaterThan(seen.lastIndexOf("heave"));
+    expect(seen.filter((l) => l === "stampDown")).toHaveLength(FLOW_STEPS.length);
+    expect(seen.indexOf("stampUp")).toBeGreaterThan(seen.indexOf("rest"));
+    expect(seen.at(-1)).toBe("wave");
+  });
+
+  it("falls back to standing where least is covered, a heading counting more than running text", () => {
+    const common = { idealY: 300, vh: 900, topMin: 8, x: 1330, figW: 104, figH: 128, controlsW: 104, controlsH: 36 };
+    const heading: Rect = { left: 1300, top: 100, right: 1440, bottom: 880 };
+    const text: Rect = { left: 1300, top: 100, right: 1440, bottom: 880, soft: true };
+    expect(leastCovered({ ...common, avoid: [] })).toBe(300);
+    const y = leastCovered({ ...common, avoid: [heading, { ...text, top: 500, bottom: 700 }] });
+    expect(Number.isFinite(y)).toBe(true);
   });
 });

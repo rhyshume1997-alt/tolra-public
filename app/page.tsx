@@ -13,7 +13,6 @@ import { SiteFooter } from "@/components/marketing/site-footer";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { ToolyGuide } from "@/components/marketing/tooly-guide";
 import { ToolyGuideProvider } from "@/components/marketing/tooly-guide-state";
-import { ToolyMark } from "@/components/marketing/tooly-mark";
 import { ToolyMenu } from "@/components/marketing/tooly-menu";
 import {
   CLOSE_CALL_LINE, CLOSE_TITLE, FAQ, FAQ_TITLE, FEATURES, FEATURES_TITLE, FOUNDER_LINK_LABEL, FOUNDER_NAME, FOUNDER_NOTE, FOUNDER_TITLE, FOUNDER_URL,
@@ -207,7 +206,6 @@ export default function Home() {
                 <h2 id="close-title" className="mk-display text-[clamp(2rem,3.8vw,3.25rem)] uppercase">{CLOSE_TITLE}</h2>
                 <div className="mt-8 flex items-end gap-6">
                   <BracketT size={56} bracket="#0b2a5b" ink="#0b2a5b" />
-                  <ToolyMark size={112} />
                 </div>
               </div>
               <div className="self-end lg:col-span-5">

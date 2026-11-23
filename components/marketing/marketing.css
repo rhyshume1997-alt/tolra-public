@@ -1234,12 +1234,9 @@ details[open] > summary .mk-plus {
 .tm-doc { position: absolute; left: 6px; top: 46px; opacity: 0; }
 .tm-doc[data-on="true"] { opacity: 1; }
 .tm-deck { position: absolute; left: -1px; right: -162px; bottom: -12px; height: 12px; background: var(--mk-ink); }
-.tm-cable { position: absolute; left: calc(100% + 23px); bottom: 54px; width: 2px; height: 900px; background: var(--mk-ink); }
+/* The cable hangs from the header to the bolt in his frames (the bolt stands 74 px into the 104 px figure that stands at +54 px). */
+.tm-cable { position: absolute; left: calc(100% + 127px); bottom: 0; width: 2px; height: 900px; background: var(--mk-ink); }
 .tm-floor { position: absolute; left: calc(100% + 54px); bottom: 0; width: 104px; height: 1px; }
-.tm-stud { position: absolute; left: calc(100% + 18px); bottom: 0; width: 12px; height: 54px; }
-.tm-nut { position: absolute; left: calc(100% + 9px); bottom: 39px; }
-.tm-spanner { position: absolute; left: calc(100% + 12px); bottom: 42px; width: 80px; height: 24px; transform-origin: 12px 12px; }
-.tm-spanner svg { display: block; width: 80px; height: 24px; }
 
 @media (prefers-reduced-motion: no-preference) {
   .tm-stage[data-scene="true"] { animation: tm-appear 160ms ease-out both; }
@@ -1250,16 +1247,8 @@ details[open] > summary .mk-plus {
   .tm-stage[data-scene="true"][data-phase="lift"] .tm-panel { transition: transform 520ms cubic-bezier(0.6, 0, 0.4, 1); }
   .tm-doc { transition: transform 300ms cubic-bezier(0.3, 0.8, 0.3, 1), opacity 120ms; }
   .tm-stage[data-scene="true"] .tm-stamp[data-on="true"] { animation: mk-stamp-hit 300ms cubic-bezier(0.16, 1, 0.3, 1) both; }
-  .tm-stage[data-phase="pull"][data-swing="a"] .tm-spanner { animation: tm-swing-a 340ms ease-in-out; }
-  .tm-stage[data-phase="pull"][data-swing="b"] .tm-spanner { animation: tm-swing-b 340ms ease-in-out; }
-  .tm-stage[data-phase="carry"][data-swing="a"] .tm-spanner { animation: tm-ratchet-a 260ms ease-in-out; }
-  .tm-stage[data-phase="carry"][data-swing="b"] .tm-spanner { animation: tm-ratchet-b 260ms ease-in-out; }
 }
 @keyframes tm-appear { from { opacity: 0; } to { opacity: 1; } }
-@keyframes tm-swing-a { 0%, 100% { transform: rotate(0); } 45% { transform: rotate(-34deg); } }
-@keyframes tm-swing-b { 0%, 100% { transform: rotate(0); } 45% { transform: rotate(-34deg); } }
-@keyframes tm-ratchet-a { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-16deg); } }
-@keyframes tm-ratchet-b { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-16deg); } }
 
 /* Tooly down the right-hand edge. His box is a crop of the 768 px stills (he fills x 195..625, y 212..742), so --fw is his width. */
 .tg {
@@ -1275,11 +1264,14 @@ details[open] > summary .mk-plus {
   position: relative;
   width: var(--fw);
   height: calc(var(--fw) * 1.2326);
-  overflow: hidden;
+  overflow: visible; /* the newer frames are wider than the box (his stamping arm, the paper), and they carry no hidden margins */
   transform-origin: 50% 100%;
 }
 .tg-flip, .tg-body { position: absolute; inset: 0; }
 .tg-flip[data-flip="true"] { transform: scaleX(-1); }
+.tg-frame, .tg-walk-frame { position: absolute; max-width: none; user-select: none; opacity: 0; }
+.tg-walk { position: absolute; inset: 0; }
+.tg[data-walking="true"] .tg-body { opacity: 0; transition: none; }
 .tg-img {
   position: absolute;
   left: calc(var(--fw) * -0.4535);
@@ -1346,40 +1338,16 @@ details[open] > summary .mk-plus {
   .tg[data-paused="true"] * { animation-play-state: paused !important; }
   .tg[data-quiet="false"][data-phase="done"][data-arrive="a"] .tg-fig { animation: tg-arrive-a 440ms both; }
   .tg[data-quiet="false"][data-phase="done"][data-arrive="b"] .tg-fig { animation: tg-arrive-b 440ms both; }
-  .tg[data-phase="drop"] .tg-fig,
-  .tg[data-phase="land"] .tg-fig { animation: tg-drop 700ms both; }
-  .tg[data-phase="pull"][data-swing="a"] .tg-fig { animation: tg-lean-a 340ms ease-in-out; }
-  .tg[data-phase="pull"][data-swing="b"] .tg-fig { animation: tg-lean-b 340ms ease-in-out; }
-  .tg[data-phase="carry"][data-swing="a"] .tg-fig { animation: tg-nudge-a 260ms ease-in-out; }
-  .tg[data-phase="carry"][data-swing="b"] .tg-fig { animation: tg-nudge-b 260ms ease-in-out; }
+  .tg[data-phase="drop"] .tg-fig { animation: tg-fall 420ms cubic-bezier(0.55, 0, 1, 0.45) both; }
+  .tg[data-phase="land"] .tg-fig { animation: tg-settle 380ms ease-out both; }
   .tg[data-phase="cheer"] .tg-fig { animation: tg-cheer 640ms ease-in-out 1; }
-  .tg[data-moving="true"][data-phase="done"] .tg-fig { animation: tg-waddle 560ms linear infinite; }
   .tg-bubble { transition: opacity 180ms ease-out; }
+  .tg-body { transition: opacity 90ms linear; }
 }
-@keyframes tg-drop {
-  0% { transform: translateY(-300px); animation-timing-function: cubic-bezier(0.55, 0, 1, 0.45); }
-  58% { transform: translateY(0); animation-timing-function: ease-out; }
-  64% { transform: scale(1.1, 0.86); animation-timing-function: ease-out; }
-  78% { transform: translateY(-16px) scale(0.97, 1.03); animation-timing-function: ease-in; }
-  90% { transform: scale(1.03, 0.97); animation-timing-function: ease-out; }
-  100% { transform: none; }
-}
-@keyframes tg-lean-a { 0%, 100% { transform: none; } 45% { transform: translateX(-4px) rotate(-3deg); } }
-@keyframes tg-lean-b { 0%, 100% { transform: none; } 45% { transform: translateX(-4px) rotate(-3deg); } }
-@keyframes tg-nudge-a { 0%, 100% { transform: none; } 50% { transform: translateX(-2px) rotate(-1.5deg); } }
-@keyframes tg-nudge-b { 0%, 100% { transform: none; } 50% { transform: translateX(-2px) rotate(-1.5deg); } }
-@keyframes tg-cheer { 0%, 100% { transform: none; } 25% { transform: translateY(-10px); } 50% { transform: none; } 75% { transform: translateY(-6px); } }
+.tg[data-walking="true"] .tg-body { transition: none; }
+/* The drop: the "air" frame falls from above the window; the "land" frame (already squashed) lands and settles. */
+@keyframes tg-fall { 0% { transform: translateY(-320px); } 100% { transform: translateY(0); } }
+@keyframes tg-settle { 0% { transform: translateY(-10px); animation-timing-function: ease-in; } 45% { transform: translateY(0) scale(1.02, 0.98); animation-timing-function: ease-out; } 100% { transform: none; } }
 @keyframes tg-arrive-a { 0% { transform: translateY(-9px) scale(0.97, 1.04); animation-timing-function: ease-in; } 45% { transform: scale(1.06, 0.92); animation-timing-function: ease-out; } 100% { transform: none; } }
 @keyframes tg-arrive-b { 0% { transform: translateY(-9px) scale(0.97, 1.04); animation-timing-function: ease-in; } 45% { transform: scale(1.06, 0.92); animation-timing-function: ease-out; } 100% { transform: none; } }
-/* The waddle: his front-facing still rocks from foot to foot, lifts a little and lands with a small squash on each step (transform only). */
-@keyframes tg-waddle {
-  0% { transform: translate(0, 0) rotate(0) scale(1, 1); animation-timing-function: ease-out; }
-  12% { transform: translate(-2px, -6px) rotate(-5deg) scale(0.98, 1.03); animation-timing-function: ease-in; }
-  25% { transform: translate(-3px, 0) rotate(-4deg) scale(1.05, 0.93); animation-timing-function: ease-out; }
-  37% { transform: translate(-1px, -1px) rotate(-1deg) scale(1, 1); animation-timing-function: ease-in-out; }
-  50% { transform: translate(0, 0) rotate(0) scale(1, 1); animation-timing-function: ease-out; }
-  62% { transform: translate(2px, -6px) rotate(5deg) scale(0.98, 1.03); animation-timing-function: ease-in; }
-  75% { transform: translate(3px, 0) rotate(4deg) scale(1.05, 0.93); animation-timing-function: ease-out; }
-  87% { transform: translate(1px, -1px) rotate(1deg) scale(1, 1); animation-timing-function: ease-in-out; }
-  100% { transform: translate(0, 0) rotate(0) scale(1, 1); }
-}
+@keyframes tg-cheer { 0%, 100% { transform: none; } 30% { transform: translateY(-9px); } 55% { transform: none; } 78% { transform: translateY(-5px); } }

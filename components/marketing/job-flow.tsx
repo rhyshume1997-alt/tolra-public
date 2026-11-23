@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 
-import { ToolyMark } from "@/components/marketing/tooly-mark";
 import { FLOW_HINT, FLOW_JOB, FLOW_STEPS, FLOW_TITLE, ILLUSTRATION_LABEL, SHEET_LABELS, TOOLY_FLOW_NOTES } from "@/lib/marketing";
 
 const COUNT = FLOW_STEPS.length;
@@ -14,8 +13,8 @@ const STAMP_EVERY_MS = 420;
  * view the stages are stamped one after another; selecting a stage (click, tap or arrow keys) stamps it and every stage before it, and
  * shows what happens at it below. Someone who asks for reduced motion sees every stamp at once and nothing moves (the CSS shows all
  * stamps too, so this holds before the script runs).
- * Boundary: reads the traveller copy in lib/marketing.ts and, for the enquiry and invoice stages, TOOLY_FLOW_NOTES (a small Tooly note, shown only
- * where the optional AI helper applies). Must not change: the ARIA tabs pattern and the seven stages (tests/unit/marketing-home.test.ts).
+ * Boundary: reads the traveller copy in lib/marketing.ts and, for the enquiry and invoice stages, TOOLY_FLOW_NOTES (a short note, shown only
+ * where the optional AI helper applies; the one Tooly on the page is the animated guide, so the note carries no picture of him). Must not change: the ARIA tabs pattern and the seven stages (tests/unit/marketing-home.test.ts).
  *
  * The rows are ARIA tabs (roving tabindex; arrows, Home and End) controlling one tab panel.
  */
@@ -151,8 +150,7 @@ export function JobFlow() {
           ))}
         </dl>
         {TOOLY_FLOW_NOTES[step.id] ? (
-          <div className="flex items-center gap-3 border border-dashed border-[#0b2a5b]/50 p-2.5 pr-3">
-            <ToolyMark pose="point" poses={["point"]} size={72} />
+          <div className="border border-dashed border-[#0b2a5b]/50 p-2.5 pr-3">
             <p className="text-sm leading-snug">{TOOLY_FLOW_NOTES[step.id]}</p>
           </div>
         ) : null}

@@ -16,6 +16,8 @@ type Ctx = {
   hidden: boolean;
   setHidden: (value: boolean) => void;
   intro: IntroState;
+  /** True when the intro is the full menu show (wide screens); false for the plain drop on phones and tablets. */
+  stage: boolean;
   menuOpen: boolean;
   setMenuOpen: (value: boolean) => void;
   skip: () => void;
@@ -34,6 +36,7 @@ export function ToolyGuideProvider({ children }: { children: ReactNode }) {
   const [hidden, setHiddenState] = useState(false);
   const [intro, setIntro] = useState<IntroState>(INTRO_START);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [stage, setStage] = useState(false);
   const finished = useRef(false);
 
   useEffect(() => {
@@ -58,6 +61,7 @@ export function ToolyGuideProvider({ children }: { children: ReactNode }) {
     const wide = document.documentElement.clientWidth >= STAGE_MIN_WIDTH;
     if (window.scrollY > 8 || read(GUIDE_INTRO_KEY) === "1") { finished.current = true; setIntro(INTRO_DONE); return; }
     setIntro(INTRO_WAIT);
+    setStage(wide);
     const events = wide ? introSchedule() : landSchedule();
     let next = 0;
     let t = 0;
@@ -90,6 +94,6 @@ export function ToolyGuideProvider({ children }: { children: ReactNode }) {
     };
   }, [canPlay, skip]);
 
-  const value = useMemo<Ctx>(() => ({ ready, motion, hidden, setHidden, intro, menuOpen, setMenuOpen, skip }), [ready, motion, hidden, setHidden, intro, menuOpen, skip]);
+  const value = useMemo<Ctx>(() => ({ ready, motion, hidden, setHidden, intro, stage, menuOpen, setMenuOpen, skip }), [ready, motion, hidden, setHidden, intro, stage, menuOpen, skip]);
   return <GuideContext.Provider value={value}>{children}</GuideContext.Provider>;
 }
