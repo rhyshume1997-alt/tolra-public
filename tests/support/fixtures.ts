@@ -10,6 +10,7 @@ import { randomBytes } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { Client } from "pg";
 
+import { TOUR_DONE_META_KEY } from "@/lib/auth/tour-flag";
 import { generatePassword } from "@/lib/password";
 
 import { type IsolatedBackend, IsolationError, SYNTHETIC_SLUG_PREFIX, gitSha, isolatedBackend } from "./isolation";
@@ -106,8 +107,15 @@ export async function verifyBackendIdentity(backend: IsolatedBackend = isolatedB
   }, backend);
 }
 
+/**
+ * The Tooly tour is ON by default and opens by itself (and navigates to its first step) for any admin/office/workshop person who has not
+ * seen it. Browser-suite users are created already having seen it, so the tour never opens over a spec's page. The key is the real "seen" flag
+ * (lib/auth/tour-flag.ts), so no test or app behaviour is weakened; the tour's own unit tests cover the tour itself.
+ */
+export const SEEN_TOUR_METADATA = { [TOUR_DONE_META_KEY]: true } as const;
+
 async function createUser(admin: SupabaseClient, email: string, password: string, fullName: string) {
-  const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name: fullName } });
+  const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { ...SEEN_TOUR_METADATA, full_name: fullName } });
   if (error || !data.user) throw new Error(`createUser ${email}: ${error?.message}`);
   return data.user.id;
 }

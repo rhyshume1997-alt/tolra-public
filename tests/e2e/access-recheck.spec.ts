@@ -11,7 +11,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { generatePassword } from "@/lib/password";
 import type { HeldEntry, OutboxEntry, PhotoOp } from "@/lib/offline/outbox";
 
-import { adminClient } from "../support/fixtures";
+import { adminClient, SEEN_TOUR_METADATA } from "../support/fixtures";
 import { signIn, world } from "./helpers";
 
 const w = world();
@@ -23,7 +23,7 @@ async function newOfficeLogin() {
   const email = `recheck${n}.${randomUUID().slice(0, 8)}.${w.runId}@example.test`;
   const password = generatePassword(14);
   const admin = adminClient();
-  const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true });
+  const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: SEEN_TOUR_METADATA });
   if (error || !data.user) throw new Error(error?.message);
   const { error: addError } = await admin.rpc("add_member", { p_org: w.tenants.beta.id, p_email: email, p_role: "office" });
   if (addError) throw new Error(addError.message);

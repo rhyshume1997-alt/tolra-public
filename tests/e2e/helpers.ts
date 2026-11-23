@@ -65,7 +65,7 @@ let aal2Count = 0;
  * page is dropped first, or /login would send the browser straight back to the dashboard. Returns the page's request context.
  */
 export async function aal2Admin(page: Page, tenant: "alpha" | "beta" = "alpha") {
-  const { adminClient, signedInClient } = await import("../support/fixtures");
+  const { adminClient, signedInClient, SEEN_TOUR_METADATA } = await import("../support/fixtures");
   const { enrolTotp, totpCode } = await import("../support/totp");
   const { generatePassword } = await import("@/lib/password");
   aal2Count += 1;
@@ -73,7 +73,7 @@ export async function aal2Admin(page: Page, tenant: "alpha" | "beta" = "alpha") 
   const email = `aal2admin${aal2Count}-${test.info().workerIndex}.${world().runId}@example.test`;
   const password = generatePassword(14);
   const admin = adminClient();
-  const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true });
+  const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: SEEN_TOUR_METADATA });
   if (error || !data.user) throw new Error(error?.message);
   const { error: addError } = await admin.rpc("add_member", { p_org: world().tenants[tenant].id, p_email: email, p_role: "admin" });
   if (addError) throw new Error(addError.message);
