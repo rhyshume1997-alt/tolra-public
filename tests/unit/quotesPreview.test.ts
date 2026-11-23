@@ -6,6 +6,8 @@
  * today's Quote Generator: shown status, tile figures, Show counts, the status legend, the dashboard filters, the archive rule, export scope
  * text, accept block, expiry question, line references. Also checks the role gate, that the sample has no live records, and a few
  * interaction rules (nothing reports success, select all, status chips) by rendering the preview.
+ * v3 (owner-approved structure): also pins the Filters popover with its count and removable chips, the bulk bar that exists only with a selection, Export in the toolbar, the one-primary-plus-More
+ * row split (and that every real row action is still reachable), the title tooltip that replaced the generic sentence, and that the sample names are plausible rather than placeholder-sounding.
  * Must not change: never loosen these to make a change pass. No network, no Supabase. Written with createElement (no JSX) so it is a
  * .test.ts file and runs under the existing vitest.config.ts include pattern.
  */
@@ -16,7 +18,7 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import QuotesPreview, {
   ARCHIVE_MONTHS, CUSTOMER_EMAIL, DEFAULT_FILTERS, QUOTE_FILTER_LABELS, SEED_QUOTES, STATUS_ORDER, TODAY, acceptBlock, canOfferSend, canRecordDecision, canUseQuotes,
   customerPoBeside, effectiveStatus, expiredMessage, figuresOf, groupsOf, legendOf, lineReference, matchesListFilter, newestFirst, phaseCounts, phaseOf, quoteRows,
-  scopeTitle, totalsOf, visibleQuotes,
+  scopeTitle, totalsOf, visibleQuotes, QUOTES_INTRO, WIN_RATE_NOTE, STATUS_CHIPS, activeChips, isFiltered, popoverFilterCount, rowActionPlan, toggleStatusIn,
 } from "@/components/quotes/preview/QuotesPreview";
 import { phaseOf as realPhaseOf } from "@/lib/archive";
 import { DEFAULT_QUOTE_VALIDITY_DAYS, canOfferSend as realCanOfferSend, canRecordDecision as realCanRecord, effectiveQuoteStatus, newestFirst as realNewest, quoteAcceptBlock, quoteFigures, statusCounts } from "@/lib/quote-status";
@@ -153,16 +155,19 @@ describe("quotes preview: rendered behaviour", () => {
     expect(h.querySelectorAll("article[data-quote]")).toHaveLength(5);
     expect(h.querySelector('[data-testid="tile-open"]')?.getAttribute("aria-pressed")).toBe("true");
   });
-  it("Select all selects every filtered quote and the bar says how many", () => {
+  it("Select all (in the bar, once a row is ticked) selects every filtered quote and the bar says how many", () => {
     const h = mount();
-    // v2: the idle "Select all N filtered" button is now drawn by the shared SelectionBar (selectAll="always"), so it has no local test id: it is found by its words.
-    click(byText(h, "button", "Select all 7 filtered"));
+    expect(h.querySelector("[data-selection]")?.getAttribute("data-selection")).toBe("idle");
+    click(h.querySelector('article[data-quote="QUO-0438"] [data-testid="select-row"]'));
     expect(h.querySelector("[data-selection]")?.getAttribute("data-selection")).toBe("active");
-    expect(h.querySelector("[data-selection]")?.textContent).toContain("7 quotes selected");
+    click(byText(h, "button", "Select all 7 filtered"));
+    expect(h.querySelector("[data-selection]")?.textContent).toContain("7 selected of 7 filtered records");
+    click(byText(h, "button", "Clear selection"));
+    expect(h.querySelector("[data-selection]")?.getAttribute("data-selection")).toBe("idle");
   });
   it("Send asks first, then asks whether it went, and only ever answers with the neutral Preview-only toast, never a success", () => {
     const h = mount();
-    click(h.querySelector('article[data-quote="QUO-0438"] [data-action="Send"]'));
+    click(h.querySelector('article[data-quote="QUO-0438"] [data-testid="row-primary"]'));
     expect(document.querySelector('[data-testid="dlg-send"]')?.textContent).toContain("Send QUO-0438 to purchasing@marlow-hydraulics.example?");
     click(byText(document.body, "dialog button", "Yes, send"));
     expect(document.body.textContent).toContain("Has QUO-0438 gone to the customer?");
@@ -190,5 +195,146 @@ describe("quotes preview: rendered behaviour", () => {
     click(byText(document.body, '[role="radiogroup"][aria-label="Role"] [role="radio"]', "Workshop"));
     expect(h.querySelector('[data-testid="access-denied"]')?.textContent).toContain("Access Denied");
     expect(h.querySelector('[role="group"][aria-label="Quote figures"]')).toBeNull();
+  });
+});
+
+/* ---------------- v3 structure (owner-approved items 1, 2, 4, 7, 9, 10, 11) ---------------- */
+
+describe("quotes preview v3: pure structure rules", () => {
+  it("Filters (n) counts only the status chips; Show is not a chip; Clear filters shows only off the default", () => {
+    expect(activeChips(DEFAULT_FILTERS)).toEqual([]);
+    expect(popoverFilterCount({ ...DEFAULT_FILTERS, statuses: new Set(["sent", "draft"]) })).toBe(2);
+    expect(activeChips({ ...DEFAULT_FILTERS, statuses: new Set(["expired", "draft"]) }).map((c) => c.label)).toEqual(["Status: Draft", "Status: Expired"]);
+    expect(popoverFilterCount({ ...DEFAULT_FILTERS, phase: "done" })).toBe(0);
+    expect(isFiltered(DEFAULT_FILTERS)).toBe(false);
+    expect(isFiltered({ ...DEFAULT_FILTERS, phase: "all" })).toBe(true);
+    expect(isFiltered({ ...DEFAULT_FILTERS, statuses: new Set(["sent"]) })).toBe(true);
+    expect(isFiltered({ ...DEFAULT_FILTERS, listFilter: "expired" })).toBe(true);
+  });
+  it("the status chips keep the real wording and order, and toggle as the real page does", () => {
+    expect(STATUS_CHIPS.map(([, label]) => label)).toEqual(["All", "Draft", "Sent", "Accepted", "Rejected", "Expired", "Superseded"]);
+    expect([...toggleStatusIn(new Set(["all"]), "sent")]).toEqual(["sent"]);
+    expect([...toggleStatusIn(new Set(["sent"]), "draft")].sort()).toEqual(["draft", "sent"]);
+    expect([...toggleStatusIn(new Set(["sent"]), "sent")]).toEqual(["all"]);
+    expect([...toggleStatusIn(new Set(["sent", "draft"]), "all")]).toEqual(["all"]);
+  });
+  it("one primary per row and every real action still reachable in More, in the real order", () => {
+    const by = (ref: string) => rows.find((q) => q.ref === ref)!;
+    expect(rowActionPlan(by("QUO-0438"))).toEqual({ primary: "send", more: ["view", "pdf", "archive"] });
+    expect(rowActionPlan(by("QUO-0436"))).toEqual({ primary: "view", more: ["send", "pdf", "archive"] });
+    for (const q of rows) {
+      const plan = rowActionPlan(q);
+      expect([plan.primary, ...plan.more].sort()).toEqual([...(canOfferSend(q.rawStatus) ? ["send"] : []), "view", "pdf", "archive"].sort());
+    }
+    // superseded and rejected quotes are never offered Send (the real canOfferSend)
+    expect(rowActionPlan(by("QUO-0412"))).toEqual({ primary: "view", more: ["pdf", "archive"] });
+  });
+  it("the generic sentence moved to the title tooltip and a screen-reader description, and the Win Rate wording to a definition", () => {
+    expect(QUOTES_INTRO).toBe("A quote is the price we offer a customer. Make, send and follow up quotes here.");
+    expect(WIN_RATE_NOTE).toBe("Accepted of sent quotes decided or expired");
+  });
+  it("sample names are plausible, not placeholder-sounding", () => {
+    const text = JSON.stringify(SEED_QUOTES) + JSON.stringify(CUSTOMER_EMAIL);
+    expect(text).not.toMatch(/placeholder|testfield|mockridge|sampleford|dummerby|exampleton/i);
+  });
+});
+
+describe("quotes preview v3: rendered structure", () => {
+  const rowIn = (h: ParentNode, ref: string) => h.querySelector<HTMLElement>(`article[data-quote="${ref}"]`)!;
+  it("one PreviewBar strip, the title carries the sentence as a tooltip, and no sentence sits under it", () => {
+    const h = mount();
+    expect(h.querySelector('[data-testid="preview-bar"]')?.textContent).toContain("Preview, sample data, nothing is saved");
+    expect(h.querySelector('[data-testid="quotes-title"]')?.getAttribute("title")).toBe(QUOTES_INTRO);
+    expect(h.querySelectorAll("h1")).toHaveLength(1);
+    expect(h.textContent).not.toContain("Not part of Tolra");
+  });
+  it("the filter toolbar is one row: Show inline, a Filters popover with the real status chips, the count, removable chips and one Clear filters", () => {
+    const h = mount();
+    const trigger = h.querySelector<HTMLElement>('[data-testid="filters-trigger"]')!;
+    expect(trigger.textContent?.trim()).toBe("Filters");
+    expect(h.querySelector('[data-testid="clear-filters"]')).toBeNull();
+    expect(h.querySelector('[data-testid="active-chips"]')).toBeNull();
+    expect(h.querySelector('[data-testid="chip-sent"]')).toBeNull();
+    click(trigger);
+    expect(Array.from(document.querySelectorAll('[role="dialog"][aria-label="Filters"] [aria-pressed]')).map((b) => b.textContent)).toEqual(["All", "Draft", "Sent", "Accepted", "Rejected", "Expired", "Superseded"]);
+    click(document.querySelector('[data-testid="chip-sent"]'));
+    click(document.querySelector('[data-testid="chip-draft"]'));
+    expect(trigger.textContent?.trim()).toBe("Filters (2)");
+    expect(Array.from(h.querySelectorAll('[data-testid="active-chips"] button')).map((b) => b.getAttribute("aria-label"))).toEqual(["Remove filter Status: Draft", "Remove filter Status: Sent"]);
+    expect(h.querySelectorAll("article[data-quote]")).toHaveLength(7);
+    click(h.querySelector('[data-chip="sent"]'));
+    expect(trigger.textContent?.trim()).toBe("Filters (1)");
+    expect(h.querySelectorAll("article[data-quote]")).toHaveLength(2);
+    click(h.querySelector('[data-testid="clear-filters"]'));
+    expect(trigger.textContent?.trim()).toBe("Filters");
+    expect(h.querySelector('[data-testid="clear-filters"]')).toBeNull();
+    expect(h.querySelectorAll("article[data-quote]")).toHaveLength(7);
+  });
+  it("Show stays inline and a tile press shows as a removable chip", () => {
+    const h = mount();
+    click(h.querySelector('[data-testid="tile-accepted"]'));
+    expect(h.querySelector('[data-testid="filters-trigger"]')?.textContent?.trim()).toBe("Filters (1)");
+    expect(h.querySelector('[data-testid="show-done"]')).not.toBeNull();
+  });
+  it("the bulk bar is a quiet count line until a row is ticked; Export of all rows is a toolbar menu and Export of the selection is in the bar", () => {
+    const h = mount();
+    const bar = () => h.querySelector("[data-selection]")!;
+    expect(bar().getAttribute("data-selection")).toBe("idle");
+    expect(bar().textContent).toContain("7 quotes shown");
+    expect(bar().querySelectorAll("button")).toHaveLength(0);
+    click(h.querySelector('[data-testid="export-trigger"]'));
+    expect(h.querySelector('[data-testid="export-trigger"]')?.getAttribute("aria-label")).toBe("Export. Exports all 7 quotes in the current filter (nothing is selected)");
+    expect(Array.from(document.querySelectorAll('[role="menuitem"]')).map((e) => e.textContent)).toEqual(["CSV", "Excel", "Word", "PDF"]);
+    click(byText(document.body, '[role="menuitem"]', "Excel"));
+    expect(document.body.textContent).toContain("The Excel export would cover all 7 quotes in the current filter. No file was downloaded. Nothing was saved.");
+    click(h.querySelector('article[data-quote="QUO-0438"] [data-testid="select-row"]'));
+    expect(bar().getAttribute("data-selection")).toBe("active");
+    expect(bar().textContent).toContain("1 selected of 7 filtered records");
+    expect(bar().querySelector('[data-testid="export-selected-trigger"]')?.getAttribute("aria-label")).toBe("Export. Exports the 1 quote selected");
+  });
+  it("each row shows one primary action and a More menu holding every other real action", () => {
+    const h = mount();
+    const draft = rowIn(h, "QUO-0438");
+    expect(draft.querySelectorAll('[data-testid="row-primary"]')).toHaveLength(1);
+    expect(draft.querySelector('[data-testid="row-primary"]')?.textContent).toBe("Send");
+    click(draft.querySelector('[data-testid="row-more"]'));
+    expect(document.querySelector('[role="menu"]')?.getAttribute("aria-label")).toBe("More actions for QUO-0438");
+    expect(Array.from(document.querySelectorAll('[role="menuitem"]')).map((e) => e.textContent)).toEqual(["View", "Download PDF", "Archive"]);
+    click(byText(document.body, '[role="menuitem"]', "Download PDF"));
+    expect(document.body.textContent).toContain("The PDF for QUO-0438 is not generated. Nothing was saved.");
+    const sent = rowIn(h, "QUO-0436");
+    expect(sent.querySelector('[data-testid="row-primary"]')?.textContent).toBe("View");
+    click(sent.querySelector('[data-testid="row-more"]'));
+    const menu = document.querySelector('[role="menu"][aria-label="More actions for QUO-0436"]')!;
+    expect(Array.from(menu.querySelectorAll('[role="menuitem"]')).map((e) => e.textContent)).toEqual(["Resend", "Download PDF", "Archive"]);
+    click(byText(menu, '[role="menuitem"]', "Resend"));
+    expect(document.querySelector('[data-testid="dlg-send"]')?.textContent).toContain("Send QUO-0436 to supply@ashby-rail.example?");
+  });
+  it("View from the primary button and from More both open the quote's sheet; Table view keeps a Select-all checkbox and the same row split", () => {
+    const h = mount();
+    click(rowIn(h, "QUO-0436").querySelector('[data-testid="row-primary"]'));
+    expect(document.querySelector('[data-testid="dlg-view"]')?.textContent).toContain("QUO-0436");
+    click(byText(document.body, "dialog button", "Close"));
+    click(h.querySelector('[data-testid="view-table-btn"]'));
+    expect(h.querySelectorAll("tbody tr[data-quote]")).toHaveLength(7);
+    const header = h.querySelector<HTMLInputElement>('thead input[type="checkbox"]')!;
+    click(header);
+    expect(h.querySelector("[data-selection]")?.textContent).toContain("7 selected of 7 filtered records");
+    expect(h.querySelectorAll('tbody tr [data-testid="row-primary"]')).toHaveLength(7);
+    expect(h.querySelectorAll('tbody tr [data-testid="row-more"]')).toHaveLength(7);
+  });
+  it("Columns still hide a column and keep Quote", () => {
+    const h = mount();
+    click(h.querySelector('[data-testid="view-table-btn"]'));
+    click(h.querySelector('[data-testid="columns-trigger"]'));
+    expect(document.querySelector('[data-testid="col-ref"]')?.textContent).toContain("Always shown");
+    click(document.querySelector('[data-testid="col-valid"]'));
+    expect(Array.from(h.querySelectorAll("thead th")).map((x) => x.textContent?.trim())).not.toContain("Valid until");
+  });
+  it("a Show count is an em dash while the list loads, never a stale number", () => {
+    const h = mount();
+    click(byText(document.body, "button", /Preview controls/));
+    click(byText(document.body, '[role="dialog"][aria-label="Preview controls"] [aria-pressed]', "Loading"));
+    expect(h.querySelector('[data-testid="show-open"]')?.textContent).toMatch(/\(—\)$/);
   });
 });

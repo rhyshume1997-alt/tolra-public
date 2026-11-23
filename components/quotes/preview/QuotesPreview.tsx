@@ -1,27 +1,26 @@
 "use client";
 
 /**
- * BOUNDARY (Quotes module 3, PREVIEW ONLY). Inputs: none from the server. Everything shown is fictional sample data (22 quotes, as of
- * 20/11/2026) held in this file, plus the person's clicks. Outputs: a Quote Generator list look-and-feel prototype (stat tiles, status
- * legend, Show and status filters, selection and Export, Cards / List / Table, Columns, row actions and the real confirmation dialogs)
- * whose only state is LOCAL UI state (filters, selection, view, columns). It never reads or writes Supabase, calls no server action or
- * API route, imports no lib/ business module at run time (type imports only), and no action ever reports success: every action that
- * would send, accept, reject, revise, archive, save or export answers with the neutral "Preview only" toast, and nothing is saved.
- * The pure logic (first half) is exported and tests/unit/quotesPreview.test.ts pins it to the real lib/quote-status, lib/list-filter,
- * lib/quote-expiry, lib/money and lib/spreadsheet functions.
- * v2: the local Segmented, Sheet and Field are gone. This file uses the shared SegmentedControl, Sheet, Field, Input, Select, Textarea, StatTile(s), Panel, Callout, the Button pressed style and
- * the SelectionBar options from components/ui/premium. What stays local is only layout and quote-specific pieces: cards, the status legend, table cell finish, the quote sheet's facts and lines.
- * MUST NOT CHANGE: wording, defaults, column order, filter semantics and the role gate mirror today's Quote Generator
- * (app/(dashboard)/quotes/page.tsx: admin and office only, workshop and viewer see "Access Denied"). Do not wire this file to real data
- * or real actions, add no control the real page lacks (no search box, no sort), and keep row controls at a 48 px hit area.
+ * BOUNDARY (Quotes module 3, PREVIEW ONLY, v3 on the shared premium set v4). Inputs: none from the server. Everything shown is fictional sample data (22 quotes, as of
+ * 20/11/2026) held in this file, plus the person's clicks. Outputs: a Quote Generator list look-and-feel prototype (stat tiles, status legend, Show and status filters,
+ * selection and Export, Cards / List / Table, Columns, row actions and the real confirmation dialogs) whose only state is LOCAL UI state (filters, selection, view, columns). It
+ * never reads or writes Supabase, calls no server action or API route, imports no lib/ business module at run time (type imports only), and no action ever reports success: every
+ * action that would send, accept, reject, revise, archive, save or export answers with the neutral "Preview only" toast, and nothing is saved.
+ * The pure logic (first half) is exported and tests/unit/quotesPreview.test.ts pins it to the real lib/quote-status, lib/list-filter, lib/quote-expiry, lib/money and lib/spreadsheet functions.
+ * v3 (owner-approved structural items 1, 2, 4, 7, 10, 11 of STRUCTURAL-CHANGES-BRIEF): Show is the inline quick filter and the status chips live under one "Filters (n)" popover with removable
+ * chips and one "Clear filters"; the bulk bar (Select all, Clear, Export of the selection) shows only while a row is ticked, and Export of all rows is a toolbar menu; every row has ONE primary action
+ * and a "More" menu holding the rest; one PreviewBar strip replaces the yellow tag; the generic page sentence is a tooltip and a screen-reader description of the title; the v4 type scale is used.
+ * MUST NOT CHANGE: wording, defaults (Cards view, Show Open, status All), column order, filter semantics and the role gate mirror today's Quote Generator (app/(dashboard)/quotes/page.tsx: admin
+ * and office only, workshop and viewer see "Access Denied"). Do not wire this file to real data or real actions, add no control the real page lacks (no search box, no sort), and keep row controls
+ * at a 48 px hit area.
  */
 
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
-  Button, Callout, Checkbox, ChipGroup, Dialog, EmptyState, FailedState, Field, FilterChip, Input, LoadingState, Menu, Panel, Popover, ScrollTable, SegmentedControl, Select, SelectionBar,
-  Sheet, StatTile, StatTiles, StatusBadge, Switch, Textarea, ToastProvider, cx, premiumTokens, srOnly, tabularNumbers, useToast,
+  Button, Callout, Checkbox, ChipGroup, Dialog, EmptyState, FailedState, Field, FilterChip, Input, LoadingState, Menu, PageHeader, Popover, PreviewBar, ScrollTable, SegmentedControl, Select,
+  SelectionBar, Sheet, StatTile, StatTiles, StatusBadge, Switch, Textarea, ToastProvider, cx, premiumTokens, srOnly, tabularNumbers, typeScale, useToast,
 } from "@/components/ui/premium";
-import type { StatusTone } from "@/components/ui/premium";
+import type { StatusMode, StatusTone } from "@/components/ui/premium";
 import type { QuoteStatus } from "@/lib/quote-status";
 
 import s from "./QuotesPreview.module.css";
@@ -52,6 +51,11 @@ export const COLUMNS: Array<{ key: ColumnKey; label: string; locked?: boolean }>
   { key: "ref", label: "Quote", locked: true }, { key: "date", label: "Date" }, { key: "customer", label: "Customer" }, { key: "description", label: "Description" },
   { key: "status", label: "Status" }, { key: "value", label: "Value" }, { key: "valid", label: "Valid until" },
 ];
+
+/** The status chips (the real page's FilterBar options), in order: [value, label]. */
+export const STATUS_CHIPS: Array<[string, string]> = [["all", "All"], ["draft", "Draft"], ["sent", "Sent"], ["accepted", "Accepted"], ["rejected", "Rejected"], ["expired", "Expired"], ["superseded", "Superseded"]];
+/** The Win Rate tile's definition (was its hint line; now a tooltip and a screen-reader description). */
+export const WIN_RATE_NOTE = "Accepted of sent quotes decided or expired";
 
 export const QUOTE_FILTER_LABELS: Record<ListFilterKey, string> = { expired: "Draft or sent quotes past their valid-until date", "no-decision": "Sent quotes with no decision" };
 
@@ -256,6 +260,37 @@ export const customerPoBeside = (po: string) => (po.trim() ? `Customer PO ${po.t
 /** What each role sees (lib/auth/hasAccess + RoleGate): the Quote Generator is for admin and office only. */
 export function canUseQuotes(role: Role): boolean { return role === "admin" || role === "office"; }
 
+/* ---------- v3 structure (owner-approved items 1, 2, 4, 7): pure so the tests can pin it ---------- */
+
+/** The one-line explainer that moved from under the page title to a tooltip and a screen-reader description on it (item 4). */
+export const QUOTES_INTRO = "A quote is the price we offer a customer. Make, send and follow up quotes here.";
+export const PREVIEW_ONLY = "Preview only, nothing was saved.";
+
+export type ActiveChip = { id: string; label: string };
+/** The status filters that live under "Filters (n)" and are active right now, each removable. Show is always visible, so it is not a chip. */
+export function activeChips(f: Filters): ActiveChip[] {
+  if (f.statuses.has("all")) return [];
+  return STATUS_ORDER.filter((k) => f.statuses.has(k)).map((k) => ({ id: k, label: `Status: ${STATUS_LABEL[k]}` }));
+}
+/** The n in "Filters (n)". */
+export const popoverFilterCount = (f: Filters) => activeChips(f).length;
+/** True when anything differs from the default view (Show Open, status All, no dashboard link): then, and only then, "Clear filters" shows. */
+export const isFiltered = (f: Filters) => f.phase !== "open" || !f.statuses.has("all") || f.listFilter !== null;
+/** The status chip rule of the real page: All clears the rest, picking one drops All, and an empty choice goes back to All. */
+export function toggleStatusIn(current: ReadonlySet<string>, value: string): Set<string> {
+  const next = new Set(current);
+  if (value === "all") { next.clear(); next.add("all"); } else { next.delete("all"); if (next.has(value)) next.delete(value); else next.add(value); if (next.size === 0) next.add("all"); }
+  return next;
+}
+
+export type RowActionId = "view" | "send" | "pdf" | "archive";
+/** One primary per row (Send on a draft, otherwise View) and everything else in the row's More menu, in the real order (View, Send or Resend, PDF, Archive). */
+export function rowActionPlan(q: Pick<QuoteRow, "rawStatus" | "status" | "validUntil" | "date" | "manual">): { primary: RowActionId; more: RowActionId[] } {
+  const all: RowActionId[] = ["view", ...(canOfferSend(q.rawStatus) ? (["send"] as const) : []), "pdf", "archive"];
+  const primary: RowActionId = q.rawStatus === "draft" && canOfferSend(q.rawStatus) ? "send" : "view";
+  return { primary, more: all.filter((a) => a !== primary) };
+}
+
 /* ================================================================== */
 /* 4. Small local pieces                                               */
 /* ================================================================== */
@@ -275,8 +310,8 @@ function useMedia(query: string, fallback: boolean): boolean {
   );
 }
 
-function StatusPill({ status }: { status: QuoteStatus }) {
-  return <StatusBadge tone={STATUS_TONE[status]} plain={status === "superseded"} className={status === "superseded" ? s.superseded : undefined}>{STATUS_LABEL[status]}</StatusBadge>;
+function StatusPill({ status, mode = "pill" }: { status: QuoteStatus; mode?: StatusMode }) {
+  return <StatusBadge mode={mode} tone={STATUS_TONE[status]} plain={status === "superseded"} className={status === "superseded" ? s.superseded : undefined}>{STATUS_LABEL[status]}</StatusBadge>;
 }
 
 /* ================================================================== */
@@ -350,11 +385,7 @@ function Inner() {
     const t = window.setTimeout(() => { setScreen("ready"); toast.show({ title: "Preview only", detail: "Sample quotes shown again. No server was contacted." }); }, 700);
     setReloadTimer(t);
   };
-  const toggleStatus = (value: string) => setFilters((f) => {
-    const next = new Set(f.statuses);
-    if (value === "all") { next.clear(); next.add("all"); } else { next.delete("all"); if (next.has(value)) next.delete(value); else next.add(value); if (next.size === 0) next.add("all"); }
-    return { ...f, statuses: next };
-  });
+  const toggleStatus = (value: string) => setFilters((f) => ({ ...f, statuses: toggleStatusIn(f.statuses, value) }));
   const toggleSel = (ref: string) => setSelected((c) => (c.includes(ref) ? c.filter((r) => r !== ref) : [...c, ref]));
 
   /* ---------- row actions: every one is a preview ---------- */
@@ -370,44 +401,63 @@ function Inner() {
     preview(`The ${fmt} export would cover ${nSel ? `the ${nSel} selected quote${nSel === 1 ? "" : "s"}` : `all ${visible.length} quote${visible.length === 1 ? "" : "s"} in the current filter`}. No file was downloaded.`);
   };
 
+  const rowActions = (q: QuoteRow) => {
+    const plan = rowActionPlan(q);
+    const archived = phaseOf(q) === "archived";
+    const label: Record<RowActionId, string> = { view: "View", send: q.rawStatus === "draft" ? "Send" : "Resend", pdf: "Download PDF", archive: archived ? "Unarchive" : "Archive" };
+    const run: Record<RowActionId, () => void> = {
+      view: () => setViewId(q.id), send: () => askToSend(q), pdf: () => preview(`The PDF for ${q.ref} is not generated.`),
+      archive: () => preview(`${q.ref} would be ${archived ? "moved out of the archive" : "archived"}.`),
+    };
+    const aria: Record<RowActionId, string> = { view: `View ${q.ref}`, send: `${q.rawStatus === "draft" ? "Send" : "Resend"} ${q.ref} to the customer`, pdf: `Download ${q.ref} as PDF`, archive: `${archived ? "Unarchive" : "Archive"} ${q.ref}` };
+    return (
+      <div className={s.actions}>
+        <span className={s.primarySlot}>
+          <Button size="sm" variant={plan.primary === "send" ? "primary" : "secondary"} data-testid="row-primary" data-action={label[plan.primary]} aria-label={aria[plan.primary]} onClick={run[plan.primary]}>{label[plan.primary]}</Button>
+        </span>
+        <Menu label="More" size="sm" variant="quiet" aria-label={`More actions for ${q.ref}`} data-testid="row-more" items={plan.more.map((id) => ({ id, label: label[id], onSelect: run[id] }))} />
+      </div>
+    );
+  };
+
   const denied = !canUseQuotes(role);
+  const chips = activeChips(filters);
+  /** A count is an em dash while the list is loading or failed, never a stale number. */
+  const n = (v: number) => (screen === "loading" || screen === "error" ? "—" : v);
+  const recordWord = (n: number) => `${n} filtered ${n === 1 ? "record" : "records"}`;
+  const idleNote = screen === "loading" ? "Loading quotes" : `${visible.length} quote${visible.length === 1 ? "" : "s"} shown`;
 
   return (
     <div className={cx(premiumTokens, s.root)} data-testid="quotes-preview" data-role={role} data-pview={shownView}>
-      <header className={s.head}>
-        <div className={s.titleBlock}>
-          <div className={s.titleLine}>
-            <h1 className={s.title}>Quote Generator</h1>
-            <span className={s.previewTag} title="Everything on this screen is fictional sample data. Nothing is read from or saved to your account.">Preview, sample data, nothing is saved</span>
-            <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
-              <div className={s.dock}>
-                <p className={s.dockNote}>Not part of Tolra. Sample data; states are simulated and no request is made.</p>
-                <p className={s.dockLabel}>Role</p>
-                <SegmentedControl label="Role" value={role} options={ROLES} onChange={(v) => { setRole(v); toast.clear(); }} />
-                <p className={s.dockLabel}>Screen state</p>
-                <div className={s.dockStates} role="group" aria-label="Screen state">
-                  {SCREENS.map((x) => {
-                    const cur = filters.listFilter ?? screen;
-                    return <Button key={x.v} size="sm" variant="secondary" fullWidth aria-pressed={cur === x.v} className={s.dockBtn} onClick={() => pickScreen(x.v)}>{x.label}</Button>;
-                  })}
-                </div>
-                <Button size="sm" variant="secondary" onClick={resetAll}>Reset preview</Button>
-              </div>
-            </Popover>
+      <PreviewBar data-testid="preview-bar" controls={
+        <Popover label="Preview controls" title="Preview controls" size="sm" data-testid="dock-toggle">
+          <div className={s.dock}>
+            <SegmentedControl size="sm" label="Role" value={role} options={ROLES} onChange={(v) => { setRole(v); toast.clear(); }} />
+            <p className={typeScale.label}>Screen state</p>
+            <ChipGroup label="Screen state">
+              {SCREENS.map((x) => <FilterChip key={x.v} selected={(filters.listFilter ?? screen) === x.v} onToggle={() => pickScreen(x.v)}>{x.label}</FilterChip>)}
+            </ChipGroup>
+            <Button variant="secondary" onClick={resetAll}>Reset preview data</Button>
+            <p className={typeScale.caption}>Sample data. States are simulated; no request is made.</p>
           </div>
-          <p className={s.subtitle}>A quote is the price we offer a customer. Make, send and follow up quotes here.</p>
-        </div>
-        {denied ? null : (
-          <div className={s.headControls}>
-            <Popover label="Columns" title="Quotes columns" size="md" data-testid="columns-trigger">
-              <p className={s.colScope}>Changes apply to everyone in this company. In this preview they change this screen only.</p>
-              {COLUMNS.map((c) => (c.locked ? (
-                <p key={c.key} className={s.colLocked} data-testid={`col-${c.key}`}><span>{c.label}</span><span>Always shown</span></p>
-              ) : (
-                <Switch key={c.key} label={c.label} checked={inView(c.key)}
-                  onChange={(on) => setHidden((h) => (on ? h.filter((k) => k !== c.key) : [...h, c.key]))} data-testid={`col-${c.key}`} />
-              )))}
-              <div className={s.colReset}><Button size="sm" variant="secondary" disabled={!hidden.length} onClick={() => setHidden([])}>Reset to default (show all columns)</Button></div>
+        </Popover>
+      } />
+      <PageHeader
+        title={<span title={QUOTES_INTRO} data-testid="quotes-title">Quote Generator</span>}
+        description={<span className={srOnly}>{QUOTES_INTRO}</span>}
+        actions={denied ? undefined : (
+          <>
+            <Popover label="Columns" title="Quotes columns" data-testid="columns-trigger">
+              <div className={s.colsBody}>
+                {COLUMNS.map((c) => (c.locked ? (
+                  <p key={c.key} className={s.colLocked} data-testid={`col-${c.key}`}><span>{c.label}</span><span>Always shown</span></p>
+                ) : (
+                  <Switch key={c.key} label={c.label} checked={inView(c.key)}
+                    onChange={(on) => setHidden((h) => (on ? h.filter((k) => k !== c.key) : [...h, c.key]))} data-testid={`col-${c.key}`} />
+                )))}
+                <Button variant="quiet" disabled={!hidden.length} onClick={() => setHidden([])}>Reset to default (show all columns)</Button>
+                <p className={typeScale.caption}>Changes apply to everyone in this company. In this preview they change this screen only.</p>
+              </div>
             </Popover>
             {notPhone ? (
               <SegmentedControl label="View" value={shownView} onChange={setView} options={[
@@ -416,30 +466,31 @@ function Inner() {
                 { value: "table", label: "Table", disabled: !wide, disabledReason: "Needs a screen wider than 1024px", testId: "view-table-btn" },
               ]} />
             ) : null}
+            <ExportMenu nSel={nSel} total={visible.length} onExport={exportAs} testId="export-trigger" />
             <Button variant="primary" data-testid="new-quote" onClick={() => setDlg({ k: "builder", mode: "new" })}>New quote</Button>
-          </div>
+          </>
         )}
-      </header>
+      />
 
       {denied ? (
         <section className={s.denied} data-testid="access-denied">
-          <h2 className={s.deniedTitle}>Access Denied</h2>
-          <p className={s.deniedText}>Redirecting you back to the dashboard.</p>
-          <p className={s.deniedNote}>Preview only: no redirect happens here. The real Quote Generator is for Admin and Office; Workshop and Viewer cannot open it.</p>
+          <h2 className={typeScale.section}>Access Denied</h2>
+          <p className={typeScale.body}>Redirecting you back to the dashboard.</p>
+          <p className={cx(typeScale.caption, s.deniedNote)}>Preview only: no redirect happens here. The real Quote Generator is for Admin and Office; Workshop and Viewer cannot open it.</p>
         </section>
       ) : (
         <>
           <StatTiles label="Quote figures" columns={4}>
             {([
-              ["Open Quotes", String(figures.open.count), `${gbp(figures.open.value)} awaiting reply`, "sent", "info"],
-              ["Drafts", String(figures.drafts.count), `${gbp(figures.drafts.value)} not yet sent`, "draft", "neutral"],
-              ["Accepted Quotes", String(figures.accepted.count), `${gbp(figures.accepted.value)} won`, "accepted", "ok"],
-              ["Win Rate", figures.winRate === null ? "-" : `${figures.winRate}%`, "Accepted of sent quotes decided or expired", "accepted", "ok"],
-            ] as const).map(([label, value, sub, status, tone]) => {
+              ["Open Quotes", String(figures.open.count), `${gbp(figures.open.value)} awaiting reply`, "sent", "info", undefined],
+              ["Drafts", String(figures.drafts.count), `${gbp(figures.drafts.value)} not yet sent`, "draft", "neutral", undefined],
+              ["Accepted Quotes", String(figures.accepted.count), `${gbp(figures.accepted.value)} won`, "accepted", "ok", undefined],
+              ["Win Rate", figures.winRate === null ? "-" : `${figures.winRate}%`, undefined, "accepted", "ok", WIN_RATE_NOTE],
+            ] as const).map(([label, value, sub, status, tone, definition]) => {
               const active = filters.statuses.size === 1 && filters.statuses.has(status) && !filters.listFilter;
               const waiting = screen === "loading" || screen === "error";
               return (
-                <StatTile key={label} label={<span className={s.tileLabelRow}><i className={cx(s.tileDot, s[`dot_${tone}`])} aria-hidden="true" />{label}</span>} value={value} hint={sub} loading={waiting}
+                <StatTile key={label} label={<span className={s.tileLabelRow}><i className={cx(s.tileDot, s[`dot_${tone}`])} aria-hidden="true" />{label}</span>} value={value} hint={sub} definition={definition} loading={waiting}
                   pressed={active} onPress={() => setFilters((f) => ({ ...f, statuses: new Set([status]) }))} data-testid={`tile-${label.split(" ")[0].toLowerCase()}`} />
               );
             })}
@@ -450,42 +501,58 @@ function Inner() {
               <div className={s.statusBar} role="img" aria-label="Quotes by status">
                 {STATUS_ORDER.filter((k) => legend.counts[k]).map((k) => <span key={k} title={`${STATUS_LABEL[k]}: ${legend.counts[k]}`} className={cx(s.barSeg, s[`seg_${k}`])} style={{ flexGrow: legend.counts[k] }} />)}
               </div>
-              <p className={s.legend}>
+              <p className={cx(typeScale.secondary, s.legend)}>
                 <b>{legend.scope}{!filters.listFilter && filters.phase === "open" ? " (expired quotes are under Done)" : ""}:</b>
                 {STATUS_ORDER.map((k) => <span key={k} className={s.legendItem}><i className={cx(s.legendDot, s[`seg_${k}`])} aria-hidden="true" />{STATUS_LABEL[k]} <span className={tabularNumbers}>({legend.counts[k]})</span></span>)}
               </p>
             </div>
           ) : null}
 
-          <Panel bare label="Filters" busy={screen === "loading"}>
-           <div className={s.panelInner}>
-            {filters.listFilter ? (
-              <Callout tone="info" lead="" role="status" className={s.noticeFull} data-testid="list-filter-notice"
-                action={<Button size="sm" variant="secondary" onClick={() => { setFilters((f) => ({ ...f, listFilter: null })); }}>Show everything</Button>}>
-                <p>Showing only: <strong>{QUOTE_FILTER_LABELS[filters.listFilter]}</strong></p>
-              </Callout>
-            ) : null}
-            <div className={s.panelRow}>
-              <span className={s.panelLabel}>Show</span>
-              <SegmentedControl label="Show" value={filters.phase} disabled={!loaded && screen !== "empty"} onChange={(v) => setFilters((f) => ({ ...f, phase: v }))} options={[
-                { value: "open", label: `Open (${counts.open})`, testId: "show-open" }, { value: "done", label: `Done (${counts.done})`, testId: "show-done" },
-                { value: "archived", label: `Archived (${counts.archived})`, testId: "show-archived" }, { value: "all", label: "All", testId: "show-all" },
-              ]} />
-            </div>
-            <div className={s.panelRow}>
-              <span className={s.panelLabel}>Filters</span>
-              <ChipGroup label="Filters">
-                {[["all", "All"], ["draft", "Draft"], ["sent", "Sent"], ["accepted", "Accepted"], ["rejected", "Rejected"], ["expired", "Expired"], ["superseded", "Superseded"]].map(([v, label]) => (
-                  <FilterChip key={v} selected={filters.statuses.has(v)} disabled={screen === "loading"} onToggle={() => toggleStatus(v)} data-testid={`chip-${v}`}>{label}</FilterChip>
-                ))}
-              </ChipGroup>
-            </div>
-           </div>
-          </Panel>
+          {filters.listFilter ? (
+            <Callout tone="info" lead="" role="status" data-testid="list-filter-notice"
+              action={<Button size="sm" variant="secondary" onClick={() => { setFilters((f) => ({ ...f, listFilter: null })); }}>Show everything</Button>}>
+              Showing only: <strong>{QUOTE_FILTER_LABELS[filters.listFilter]}</strong>
+            </Callout>
+          ) : null}
 
-          <SelectionBar count={nSel} filteredTotal={visible.length} noun="quote" selectAll="always" clear="always" onSelectAll={() => setSelected(visible.map((q) => q.ref))} onClear={() => setSelected([])}
-            idleNote={`0 selected of ${visible.length} filtered ${visible.length === 1 ? "record" : "records"}. Export covers all ${visible.length}.`}>
-            <Menu label="Export" size="sm" variant="secondary" data-testid="export-trigger" items={["CSV", "Excel", "Word", "PDF"].map((f) => ({ id: f, label: f, onSelect: () => exportAs(f) }))} />
+          <section className={s.fbar} aria-label="Filters" aria-busy={screen === "loading" || undefined} data-testid="filters">
+            <div className={s.fRow}>
+              <div className={s.fGroup}>
+                <span className={typeScale.label} aria-hidden="true">Show</span>
+                <SegmentedControl label="Show" value={filters.phase} disabled={!loaded && screen !== "empty"} onChange={(v) => setFilters((f) => ({ ...f, phase: v }))} options={[
+                  { value: "open", label: `Open (${n(counts.open)})`, testId: "show-open" }, { value: "done", label: `Done (${n(counts.done)})`, testId: "show-done" },
+                  { value: "archived", label: `Archived (${n(counts.archived)})`, testId: "show-archived" }, { value: "all", label: "All", testId: "show-all" },
+                ]} />
+              </div>
+              <Popover label={chips.length ? `Filters (${chips.length})` : "Filters"} title="Filters" data-testid="filters-trigger">
+                <div className={s.filterBody} data-testid="filters-panel">
+                  <ChipGroup label="Filters">
+                    {STATUS_CHIPS.map(([v, label]) => (
+                      <FilterChip key={v} selected={filters.statuses.has(v)} disabled={screen === "loading"} onToggle={() => toggleStatus(v)} data-testid={`chip-${v}`}>{label}</FilterChip>
+                    ))}
+                  </ChipGroup>
+                </div>
+              </Popover>
+              {isFiltered(filters) ? <Button variant="quiet" data-testid="clear-filters" onClick={() => { setFilters(DEFAULT_FILTERS); }}>Clear filters</Button> : null}
+            </div>
+            {chips.length ? (
+              <ul className={s.chipRow} aria-label="Active filters" data-testid="active-chips">
+                {chips.map((c) => (
+                  <li key={c.id}>
+                    <Button size="sm" variant="secondary" aria-label={`Remove filter ${c.label}`} data-chip={c.id} onClick={() => toggleStatus(c.id)}>
+                      {c.label}
+                      <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M3 3 9 9M9 3 3 9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </section>
+
+          <SelectionBar count={nSel} filteredTotal={visible.length} noun="quote" idleNote={idleNote}
+            statusText={({ count, filteredTotal }) => `${count} selected of ${recordWord(filteredTotal)}`}
+            onSelectAll={() => setSelected(visible.map((q) => q.ref))} onClear={() => setSelected([])}>
+            {nSel > 0 ? <ExportMenu nSel={nSel} total={visible.length} onExport={exportAs} testId="export-selected-trigger" size="sm" /> : null}
           </SelectionBar>
 
           {/* The shared state panels use an h3: this keeps the heading order h1, h2, h3 on every screen state. */}
@@ -494,24 +561,22 @@ function Inner() {
             : screen === "error" ? <FailedState title="Couldn’t load quotes." detail="The list could not be fetched. This is a simulated failure: no request was made and nothing was lost." onRetry={retry} retryLabel="Retry" />
             : visible.length === 0 ? (
               <EmptyState title={data.length ? "No quotes match this filter" : "No quotes yet"} detail={data.length ? "Try a different filter." : EMPTY_HINT}
-                action={data.length ? <Button variant="secondary" onClick={() => setFilters((f) => ({ ...f, statuses: new Set(["all"]), phase: f.phase }))}>Show all</Button> : <Button variant="primary" onClick={() => setDlg({ k: "builder", mode: "new" })}>New quote</Button>} />
+                action={data.length ? (isFiltered(filters) ? <Button variant="secondary" onClick={() => setFilters(DEFAULT_FILTERS)}>Clear filters</Button> : undefined) : <Button variant="primary" onClick={() => setDlg({ k: "builder", mode: "new" })}>New quote</Button>} />
             ) : shownView === "cards" ? (
               <div className={s.groups} data-testid="view-cards">
                 {groups.map((g) => (
                   <section key={g.status} aria-label={`${STATUS_LABEL[g.status]} quotes`}>
-                    <h2 className={s.groupHead}><i className={cx(s.legendDot, s[`seg_${g.status}`])} aria-hidden="true" />{GROUP_HEAD[g.status]} <span className={tabularNumbers}>({g.items.length})</span></h2>
+                    <h2 className={cx(typeScale.card, s.groupHead)}><i className={cx(s.legendDot, s[`seg_${g.status}`])} aria-hidden="true" />{GROUP_HEAD[g.status]} <span className={tabularNumbers}>({g.items.length})</span></h2>
                     <div className={s.cards}>
                       {g.items.map((q) => (
-                        <QuoteCard key={q.id} q={q} selected={selected.includes(q.ref)} inView={inView} onSelect={() => toggleSel(q.ref)}
-                          onView={() => setViewId(q.id)} onSend={() => askToSend(q)}
-                          onPdf={() => preview(`The PDF for ${q.ref} is not generated.`)} onArchive={() => preview(`${q.ref} would be ${phaseOf(q) === "archived" ? "moved out of the archive" : "archived"}.`)} />
+                        <QuoteCard key={q.id} q={q} selected={selected.includes(q.ref)} inView={inView} onSelect={() => toggleSel(q.ref)} actions={rowActions(q)} />
                       ))}
                     </div>
                   </section>
                 ))}
               </div>
             ) : (
-              <ScrollTable label="Quotes">
+              <ScrollTable label="Quotes" pinLast>
                 <thead>
                   <tr>
                     <th className={s.thFirst}>
@@ -526,7 +591,7 @@ function Inner() {
                     {inView("status") ? <th>Status</th> : null}
                     {inView("value") ? <th className={s.right}>Value</th> : null}
                     {inView("valid") ? <th>Valid until</th> : null}
-                    <th className={s.right}>Actions</th>
+                    <th className={cx(s.right, s.cActions)}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -535,22 +600,16 @@ function Inner() {
                       <td className={s.tdFirst}>
                         <span className={s.firstCell}>
                           <Checkbox aria-label={`Select ${q.ref}`} data-testid="select-row" checked={selected.includes(q.ref)} onChange={() => toggleSel(q.ref)} />
-                          <span className={s.refCell}><span className={cx(s.ref, tabularNumbers)}>{q.ref}</span>{q.customerPo ? <span className={s.po} data-testid="quote-customer-po">{customerPoBeside(q.customerPo)}</span> : null}</span>
+                          <span className={s.refCell}><span className={cx(typeScale.name, s.ref, tabularNumbers)}>{q.ref}</span>{q.customerPo ? <span className={typeScale.caption} data-testid="quote-customer-po">{customerPoBeside(q.customerPo)}</span> : null}</span>
                         </span>
                       </td>
                       {inView("date") ? <td className={cx(s.nowrap, tabularNumbers)}>{fmtDate(q.date)}</td> : null}
                       {inView("customer") ? <td><span className={s.clamp} title={q.customer}>{q.customer}</span></td> : null}
                       {inView("description") ? <td><span className={cx(s.clamp, s.desc)}>{q.description}</span></td> : null}
-                      {inView("status") ? <td><StatusPill status={q.status} /></td> : null}
+                      {inView("status") ? <td><StatusPill status={q.status} mode="text" /></td> : null}
                       {inView("value") ? <td className={cx(s.right, s.money, tabularNumbers)}>{gbp(q.value)}</td> : null}
                       {inView("valid") ? <td className={cx(s.nowrap, tabularNumbers)}>{q.validUntil ? fmtDate(q.validUntil) : "—"}</td> : null}
-                      <td className={s.right}>
-                        <div className={s.rowActions}>
-                          <Button size="sm" variant="secondary" aria-label={`View ${q.ref}`} data-action="View" onClick={() => setViewId(q.id)}>View</Button>
-                          {canOfferSend(q.rawStatus) ? <Button size="sm" variant={q.rawStatus === "draft" ? "primary" : "quiet"} data-action="Send" aria-label={`${q.rawStatus === "draft" ? "Send" : "Resend"} ${q.ref} to the customer`} onClick={() => askToSend(q)}>{q.rawStatus === "draft" ? "Send" : "Resend"}</Button> : null}
-                          <Button size="sm" variant="quiet" aria-label={`Download ${q.ref} as PDF`} data-action="PDF" onClick={() => preview(`The PDF for ${q.ref} is not generated.`)}>PDF</Button>
-                        </div>
-                      </td>
+                      <td className={cx(s.right, s.cActions)}>{rowActions(q)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -564,35 +623,32 @@ function Inner() {
   );
 }
 
+/* ---------------- toolbar Export (all rows) and the same menu inside the selection bar ---------------- */
+
+function ExportMenu({ nSel, total, onExport, testId, size }: { nSel: number; total: number; onExport: (fmt: string) => void; testId: string; size?: "sm" | "md" }) {
+  return <Menu label="Export" size={size} aria-label={`Export. ${scopeTitle(nSel, total)}`} data-testid={testId} items={["CSV", "Excel", "Word", "PDF"].map((f) => ({ id: f, label: f, onSelect: () => onExport(f) }))} />;
+}
+
 /* ---------------- card ---------------- */
 
-function QuoteCard({ q, selected, inView, onSelect, onView, onSend, onPdf, onArchive }: {
-  q: QuoteRow; selected: boolean; inView: (c: ColumnKey) => boolean; onSelect: () => void; onView: () => void; onSend: () => void; onPdf: () => void; onArchive: () => void;
-}) {
+function QuoteCard({ q, selected, inView, onSelect, actions }: { q: QuoteRow; selected: boolean; inView: (c: ColumnKey) => boolean; onSelect: () => void; actions: ReactNode }) {
   const passed = q.rawStatus === "draft" && q.validUntil && q.validUntil < TODAY;
   return (
     <article className={s.card} data-quote={q.ref} data-selected={selected || undefined} aria-label={q.ref}>
       <div className={s.cardTop}>
         <Checkbox aria-label={`Select ${q.ref} for export`} title="Select for export" data-testid="select-row" checked={selected} onChange={onSelect} />
-        <div className={s.cardRef}><span className={cx(s.ref, tabularNumbers)}>{q.ref}</span>{q.customerPo ? <span className={s.po} data-testid="quote-customer-po">{customerPoBeside(q.customerPo)}</span> : null}</div>
+        <div className={s.cardRef}><span className={cx(typeScale.card, tabularNumbers)}>{q.ref}</span>{q.customerPo ? <span className={typeScale.caption} data-testid="quote-customer-po">{customerPoBeside(q.customerPo)}</span> : null}</div>
         {inView("status") ? <StatusPill status={q.status} /> : null}
       </div>
       <dl className={s.dl}>
-        {inView("customer") ? <div className={s.dlWide}><dt>Customer</dt><dd className={s.dlStrong}>{q.customer}</dd></div> : null}
+        {inView("customer") ? <div className={s.dlWide}><dt>Customer</dt><dd className={typeScale.name}>{q.customer}</dd></div> : null}
         {inView("description") ? <div className={s.dlWide}><dt>Description</dt><dd className={cx(s.desc, s.clamp3)} data-testid="quote-card-description">{q.description || "—"}</dd></div> : null}
         {inView("date") ? <div><dt>Date</dt><dd className={tabularNumbers}>{q.date ? fmtDate(q.date) : "—"}</dd></div> : null}
         {inView("valid") ? <div><dt>Valid until</dt><dd className={tabularNumbers}>{q.validUntil ? fmtDate(q.validUntil) : "No expiry date"}</dd></div> : null}
         {inView("value") ? <div className={s.dlValue}><dt>Value</dt><dd className={cx(s.cardValue, tabularNumbers)}>{gbp(q.value)}</dd></div> : null}
       </dl>
       {passed ? <p className={s.passed}>Date has passed: edit before sending</p> : null}
-      <div className={s.cardActions}>
-        <Button size="sm" variant="secondary" data-action="View" aria-label={`View ${q.ref}`} onClick={onView}>View</Button>
-        {canOfferSend(q.rawStatus) ? <Button size="sm" variant={q.rawStatus === "draft" ? "primary" : "quiet"} data-action="Send" aria-label={`${q.rawStatus === "draft" ? "Send" : "Resend"} ${q.ref} to the customer`} onClick={onSend}>{q.rawStatus === "draft" ? "Send" : "Resend"}</Button> : null}
-        <span className={s.cardQuiet}>
-        <Button size="sm" variant="quiet" data-action="PDF" aria-label={`Download ${q.ref} as PDF`} onClick={onPdf}>PDF</Button>
-        <Button size="sm" variant="quiet" data-action="Archive" aria-label={`${phaseOf(q) === "archived" ? "Unarchive" : "Archive"} ${q.ref}`} onClick={onArchive}>{phaseOf(q) === "archived" ? "Unarchive" : "Archive"}</Button>
-        </span>
-      </div>
+      <div className={s.cardActions}>{actions}</div>
     </article>
   );
 }

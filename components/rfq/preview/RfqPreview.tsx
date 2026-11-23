@@ -1,26 +1,28 @@
 "use client";
 
 /**
- * BOUNDARY (RFQ, Quotes / RFQ / Sales Orders module 3, PREVIEW ONLY). Inputs: none from the server. Everything shown is fictional sample data (made-up
- * companies on reserved ".example" addresses, as of 23/11/2026) held in this file, plus the person's clicks. Outputs: an RFQ Control Centre look-and-feel
- * prototype (the three intake tiles, Show by stage, status chips, the card list with its Columns picker, New RFQ, View, Clarify, Reply and Forward,
- * the e-mail link panels and the stored-e-mail viewer, Check inbox) whose only state is LOCAL UI state. It reads and writes no Supabase table, calls no
- * server action or API route, opens no e-mail app, reads no mailbox, and no action ever reports success: everything that would save, send, link or log
- * answers with the neutral "Preview only ... Nothing was saved." toast (or an inline preview note while a sheet is open) and nothing changes.
- * Run-time imports from lib/ are pure leaf modules only (rfq-stage, rfq-display, money, dates, empty-hints) and types. The stage, figures, spec and card-field
- * rules are the REAL functions, not copies. The few rules that live inline in app/(dashboard)/rfq/page.tsx (the list filter, which button a card shows, the
- * Reply / Forward and Check inbox gates, the clarification texts, the form's choices) are mirrored here and pinned to that source text by tests/unit/rfqPreview.test.ts.
- * Microsoft 365 inbox check and Reply / Forward are off by default on the real page (they need a connected mailbox): the "Inbox check" control in Preview controls
- * draws them as the real page does when connected; it connects nothing.
- * MUST NOT CHANGE: wording, defaults, field order, filter semantics and the role gate mirror today's RFQ Control Centre (admin and office only; workshop and
- * viewer see "Access Denied"; Reply and Forward admin only). Do not wire this file to real data or real actions, do not add a control the real page lacks
- * (no search box, no sort, no icons), and keep row controls at a 48 px hit area. Delete the four preview files to remove it completely.
+ * BOUNDARY (RFQ, Quotes / RFQ / Sales Orders module 3, PREVIEW ONLY, v3 on the shared premium set v4). Inputs: none from the server. Everything shown is fictional sample data (made-up
+ * companies on reserved ".example" addresses, as of 23/11/2026) held in this file, plus the person's clicks. Outputs: an RFQ Control Centre look-and-feel prototype (the three intake tiles,
+ * Show by stage, the status filters, the list with its Columns picker, New RFQ, View, Clarify, Reply and Forward, the e-mail link panels and the stored-e-mail viewer, Check inbox) whose only
+ * state is LOCAL UI state. It reads and writes no Supabase table, calls no server action or API route, opens no e-mail app, reads no mailbox, and no action ever reports success: everything that
+ * would save, send, link or log answers with the neutral "Preview only ... Nothing was saved." toast (or an inline preview note while a sheet is open) and nothing changes.
+ * Run-time imports from lib/ are pure leaf modules only (rfq-stage, rfq-display, money, dates, empty-hints) and types. The stage, figures, spec and card-field rules are the REAL functions, not
+ * copies. The few rules that live inline in app/(dashboard)/rfq/page.tsx (the list filter, which button a card shows, the Reply / Forward and Check inbox gates, the clarification texts, the form's
+ * choices) are mirrored here and pinned to that source text by tests/unit/rfqPreview.test.ts. Microsoft 365 inbox check and Reply / Forward are off by default on the real page (they need a
+ * connected mailbox): the "Inbox check" control in Preview controls draws them as the real page does when connected; it connects nothing.
+ * v3 (owner-approved structural items 1, 4, 7, 9, 10, 11 of STRUCTURAL-CHANGES-BRIEF): Show is the inline quick filter and the status chips live under one "Filters (n)" popover with removable chips
+ * and one "Clear filters"; every row has ONE primary action (Clarify, Open QUO-x or Quote) and a "More" menu holding View, Reply and Forward; one PreviewBar strip; the generic page sentence is a tooltip
+ * and a screen-reader description of the title; the v4 type scale; the sample company is Fernhill Engineering Ltd and phone numbers sit on the Ofcom drama ranges. The real page has no row
+ * selection and no export, so item 2 does not apply here.
+ * MUST NOT CHANGE: wording, defaults (Show Outstanding, status All), field order, filter semantics and the role gate mirror today's RFQ Control Centre (admin and office only; workshop and viewer see
+ * "Access Denied"; Reply and Forward admin only). Do not wire this file to real data or real actions, do not add a control the real page lacks (no search box, no sort, no icons), and keep row
+ * controls at a 48 px hit area. Delete the four preview files to remove it completely.
  */
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
-  Button, ChipGroup, EmptyState, Field, FailedState, FilterChip, Input, LoadingState, Popover, SegmentedControl, Select, Sheet, StatTile, StatTiles, StatusBadge, Switch,
-  Textarea, ToastProvider, cx, premiumTokens, tabularNumbers, useToast,
+  Button, Callout, ChipGroup, EmptyState, Field, FailedState, FilterChip, Input, LoadingState, Menu, PageHeader, Popover, PreviewBar, SegmentedControl, Select, Sheet, StatTile, StatTiles,
+  StatusBadge, Switch, Textarea, ToastProvider, cx, premiumTokens, srOnly, tabularNumbers, typeScale, useToast,
 } from "@/components/ui/premium";
 import type { StatusTone } from "@/components/ui/premium";
 import { fmtDate as realFmtDate } from "@/lib/dates";
@@ -44,7 +46,7 @@ export type IntakeStatus = "new" | "clarification" | "ready" | "quoted";
 export type StageFilter = RfqStage | "all";
 
 export const SAMPLE_DATE = "2026-11-23";
-export const COMPANY_NAME = "Example Engineering Ltd";
+export const COMPANY_NAME = "Fernhill Engineering Ltd";
 export const STAGES: Array<Exclude<StageFilter, "all">> = ["outstanding", "quoted", "won", "lost"];
 export const STAGE_LABEL: Record<RfqStage, string> = { outstanding: "Outstanding", quoted: "Quoted", won: "Won", lost: "Lost" };
 const STAGE_TONE: Record<RfqStage, StatusTone> = { outstanding: "neutral", quoted: "info", won: "ok", lost: "danger" };
@@ -76,20 +78,20 @@ export type SeedEmail = {
 /* ================================================================== */
 
 export const SEED_RFQS: SeedRfq[] = [
-  { id: "r14", customer: "Halden Precision", email: "procurement@halden-precision.example", phone: "01698 555 0141", description: "Ground and lapped calibration fixtures, run of 6", value: 5400, quantity: 6, material: "Stainless Steel 316", status: "new", received: "2026-11-21", notes: "Drawing D-3002 rev C attached. Flatness 0.002 mm." },
-  { id: "r13", customer: "Kestrel Components", email: "buyer@kestrel.example", phone: "01698 555 0112", description: "Sensor housings, anodised aluminium", value: 3500, quantity: 250, material: "Aluminium 6082", status: "ready", received: "2026-11-20", notes: "Black anodise. Drawing SH-310 attached." },
-  { id: "r12", customer: "Marlow Hydraulics", email: "purchasing@marlow-hydraulics.example", phone: "01698 555 0178", description: "Hydraulic manifold blocks, 6061-T6, run of 40", value: 3460, quantity: 40, material: "Aluminium 6082", status: "ready", received: "2026-11-18", notes: "First-off inspection report wanted." },
-  { id: "r11", customer: "Tern Marine Engineering", email: "orders@tern-marine.example", phone: "01698 555 0166", description: "Stainless deck cleats, 316, with backing plates", value: 2300, quantity: 24, material: "Stainless Steel 316", status: "new", received: "2026-11-17", notes: "" },
-  { id: "r10", customer: "Pemberton Packaging", email: "", phone: "01698 555 0190", description: "Sealing jaw bars, tool steel", value: 1500, quantity: 16, material: "", status: "clarification", received: "2026-11-16", notes: "Material grade not specified. No email address given, phone only." },
-  { id: "r09", customer: "Brightwell Valves", email: "buying@brightwell.example", phone: "01698 555 0123", description: "Ball valve bodies, 316 stainless, investment cast, finish machined", value: 4200, quantity: 80, material: "Stainless Steel 316", status: "clarification", received: "2026-11-14", notes: "Casting supplied free issue? Not stated." },
-  { id: "r08", customer: "Ashby Rail Services", email: "supply@ashby-rail.example", phone: "01698 555 0105", description: "Brake bracket weldments, batch of 120", value: 5100, quantity: 120, material: "Mild Steel", status: "ready", received: "2026-11-13", notes: "RAL 7016 paint." },
-  { id: "r07", customer: "Wren & Calder", email: "projects@wren-calder.example", phone: "01698 555 0134", description: "Conveyor idler rollers, galvanised, with bearing sets", value: 4200, quantity: 90, material: "Mild Steel", status: "new", received: "2026-11-12", notes: "" },
-  { id: "r06", customer: "Northgate Fabrication", email: "orders@northgate-fab.example", phone: "01698 555 0150", description: "Guard frames for packing line", value: 3700, quantity: 8, material: "Mild Steel", status: "ready", received: "2026-11-10", notes: "" },
-  { id: "r05", customer: "Coldharbour Automation", email: "buyer@coldharbour.example", phone: "01698 555 0187", description: "Linear actuator end caps", value: 1360, quantity: 200, material: "Aluminium 6082", status: "ready", received: "2026-10-30", notes: "" },
-  { id: "r04", customer: "Kestrel Components", email: "buyer@kestrel.example", phone: "01698 555 0112", description: "Gimbal brackets, 7075, revised quantity", value: 4770, quantity: 150, material: "Other", status: "quoted", received: "2026-10-04", notes: "Quoted by phone before the system was used for this customer." },
+  { id: "r14", customer: "Halden Precision", email: "procurement@halden-precision.example", phone: "0141 496 0141", description: "Ground and lapped calibration fixtures, run of 6", value: 5400, quantity: 6, material: "Stainless Steel 316", status: "new", received: "2026-11-21", notes: "Drawing D-3002 rev C attached. Flatness 0.002 mm." },
+  { id: "r13", customer: "Kestrel Components", email: "buyer@kestrel.example", phone: "0141 496 0112", description: "Sensor housings, anodised aluminium", value: 3500, quantity: 250, material: "Aluminium 6082", status: "ready", received: "2026-11-20", notes: "Black anodise. Drawing SH-310 attached." },
+  { id: "r12", customer: "Marlow Hydraulics", email: "purchasing@marlow-hydraulics.example", phone: "0141 496 0178", description: "Hydraulic manifold blocks, 6061-T6, run of 40", value: 3460, quantity: 40, material: "Aluminium 6082", status: "ready", received: "2026-11-18", notes: "First-off inspection report wanted." },
+  { id: "r11", customer: "Tern Marine Engineering", email: "orders@tern-marine.example", phone: "0141 496 0166", description: "Stainless deck cleats, 316, with backing plates", value: 2300, quantity: 24, material: "Stainless Steel 316", status: "new", received: "2026-11-17", notes: "" },
+  { id: "r10", customer: "Pemberton Packaging", email: "", phone: "0141 496 0190", description: "Sealing jaw bars, tool steel", value: 1500, quantity: 16, material: "", status: "clarification", received: "2026-11-16", notes: "Material grade not specified. No email address given, phone only." },
+  { id: "r09", customer: "Brightwell Valves", email: "buying@brightwell.example", phone: "0141 496 0123", description: "Ball valve bodies, 316 stainless, investment cast, finish machined", value: 4200, quantity: 80, material: "Stainless Steel 316", status: "clarification", received: "2026-11-14", notes: "Casting supplied free issue? Not stated." },
+  { id: "r08", customer: "Ashby Rail Services", email: "supply@ashby-rail.example", phone: "0141 496 0105", description: "Brake bracket weldments, batch of 120", value: 5100, quantity: 120, material: "Mild Steel", status: "ready", received: "2026-11-13", notes: "RAL 7016 paint." },
+  { id: "r07", customer: "Wren & Calder", email: "projects@wren-calder.example", phone: "0141 496 0134", description: "Conveyor idler rollers, galvanised, with bearing sets", value: 4200, quantity: 90, material: "Mild Steel", status: "new", received: "2026-11-12", notes: "" },
+  { id: "r06", customer: "Northgate Fabrication", email: "orders@northgate-fab.example", phone: "0141 496 0150", description: "Guard frames for packing line", value: 3700, quantity: 8, material: "Mild Steel", status: "ready", received: "2026-11-10", notes: "" },
+  { id: "r05", customer: "Coldharbour Automation", email: "buyer@coldharbour.example", phone: "0141 496 0187", description: "Linear actuator end caps", value: 1360, quantity: 200, material: "Aluminium 6082", status: "ready", received: "2026-10-30", notes: "" },
+  { id: "r04", customer: "Kestrel Components", email: "buyer@kestrel.example", phone: "0141 496 0112", description: "Gimbal brackets, 7075, revised quantity", value: 4770, quantity: 150, material: "Other", status: "quoted", received: "2026-10-04", notes: "Quoted by phone before the system was used for this customer." },
   { id: "r03", customer: "Meridian Subsea Components and Associated Group Holdings (UK) Limited", email: "tenders@meridian-subsea.example", phone: "", description: "Subsea connector bodies, super duplex, with full material traceability, hydrostatic test certificates and third party witnessed inspection to the customer specification, supplied in three call-off batches over twelve months", value: 18400, quantity: 300, material: "Other", status: "new", received: "2026-10-02", notes: "Specification MS-QA-114 issue 6 applies." },
-  { id: "r02", customer: "Wren & Calder", email: "projects@wren-calder.example", phone: "01698 555 0134", description: "Idler roller spares", value: 900, status: "new", received: "2026-09-18", notes: "" },
-  { id: "r01", customer: "Brightwell Valves", email: "buying@brightwell.example", phone: "01698 555 0123", description: "Valve test blocks", value: 640, quantity: 4, material: "Stainless Steel 304", status: "ready", received: "2026-09-02", notes: "" },
+  { id: "r02", customer: "Wren & Calder", email: "projects@wren-calder.example", phone: "0141 496 0134", description: "Idler roller spares", value: 900, status: "new", received: "2026-09-18", notes: "" },
+  { id: "r01", customer: "Brightwell Valves", email: "buying@brightwell.example", phone: "0141 496 0123", description: "Valve test blocks", value: 640, quantity: 4, material: "Stainless Steel 304", status: "ready", received: "2026-09-02", notes: "" },
 ];
 
 /** The quotes made for RFQs (quotes.rfq_id). r12 has a draft and a sent one: the sent one speaks for it (lib/rfq-stage linkedQuotes). */
@@ -162,6 +164,34 @@ export function cardMain(rfq: Pick<RfqRow, "status">, stage: RfqStage, quote: Li
 
 /** The status shown on a card: the intake status while outstanding, else Quoted (rfq page: statusMeta[showsStatusBadge(stage) ? rfq.status : "quoted"]). */
 export const shownStatus = (rfq: Pick<RfqRow, "status">, stage: RfqStage): IntakeStatus => (showsStatusBadge(stage) ? rfq.status : "quoted");
+
+/* ---------- v3 structure (owner-approved items 1, 4, 7): pure so the tests can pin it ---------- */
+
+/** The one-line explainer that moved from under the page title to a tooltip and a screen-reader description on it (item 4). */
+export const RFQ_INTRO = "RFQ means request for quote: a customer asking us for a price.";
+
+export type ActiveChip = { id: string; label: string };
+/** The status filters that live under "Filters (n)" and are active right now, each removable. Show is always visible, so it is not a chip. */
+export function activeChips(f: Filters): ActiveChip[] {
+  if (f.statuses.has("all")) return [];
+  return STATUS_CHIPS.filter((c) => c.value !== "all" && f.statuses.has(c.value)).map((c) => ({ id: c.value, label: `Status: ${c.label}` }));
+}
+/** The n in "Filters (n)". */
+export const popoverFilterCount = (f: Filters) => activeChips(f).length;
+/** True when anything differs from the default view (Show Outstanding, status All, no dashboard link): then, and only then, "Clear filters" shows. */
+export const isFiltered = (f: Filters) => f.stage !== "outstanding" || !f.statuses.has("all") || f.listFilter !== null;
+/** The status chip rule of the real page: All clears the rest, picking one drops All, and an empty choice goes back to All. */
+export function toggleStatusIn(current: ReadonlySet<string>, value: string): Set<string> {
+  const next = new Set(current);
+  if (value === "all") { next.clear(); next.add("all"); } else { next.delete("all"); if (next.has(value)) next.delete(value); else next.add(value); if (next.size === 0) next.add("all"); }
+  return next;
+}
+
+export type RfqMoreId = "view" | "reply" | "forward";
+/** One primary per row (the card's main button: Clarify, Open QUO-x or Quote) and a More menu with View, then Reply and Forward when the role and the e-mail allow them. */
+export function rfqRowPlan(role: Role, hasInbound: boolean): { more: RfqMoreId[] } {
+  return { more: ["view", ...(canReplyForward(role, hasInbound) ? (["reply", "forward"] as const) : [])] };
+}
 
 /** The clarification texts (rfq page TEMPLATES): the three quick fills, each with its own subject. */
 export const TEMPLATES: Record<string, { subject: string; body: (company: string) => string }> = {
@@ -286,11 +316,7 @@ function Inner() {
     setScreen("loading"); setMailFailed(false);
     later(() => { setScreen("ready"); toast.show({ title: "Preview only", detail: "Sample RFQs shown again. No server was contacted." }); }, 700);
   };
-  const toggleStatus = (value: string) => setFilters((f) => {
-    const next = new Set(f.statuses);
-    if (value === "all") { next.clear(); next.add("all"); } else { next.delete("all"); if (next.has(value)) next.delete(value); else next.add(value); if (next.size === 0) next.add("all"); }
-    return { ...f, statuses: next };
-  });
+  const toggleStatus = (value: string) => setFilters((f) => ({ ...f, statuses: toggleStatusIn(f.statuses, value) }));
   const checkInbox = () => {
     setChecking(true); toast.clear();
     later(() => { setChecking(false); preview("The inbox was not read. No request was made."); }, 900);
@@ -299,97 +325,131 @@ function Inner() {
   const openLink = (ref: string, quoteId?: string) => preview(`This opens ${ref} in the Quote Generator${quoteId ? ` (/quotes?quote=${quoteId})` : ""}.`);
 
   const stageOptions = [
-    ...STAGES.map((value) => ({ value, label: `${STAGE_LABEL[value]} (${figures[value]})`, testId: `show-${value}` })),
+    ...STAGES.map((value) => ({ value, label: `${STAGE_LABEL[value]} (${loading || failed ? "—" : figures[value]})`, testId: `show-${value}` })),
     { value: "all" as const, label: "All", testId: "show-all" },
   ];
 
+  const chips = activeChips(filters);
+  const rowActions = (r: RfqRow, main: CardMain, inbound: boolean) => {
+    const plan = rfqRowPlan(role, inbound);
+    const run: Record<RfqMoreId, () => void> = {
+      view: () => setDlg({ k: "view", id: r.id }), reply: () => setDlg({ k: "mail", id: r.id, mode: "reply" }), forward: () => setDlg({ k: "mail", id: r.id, mode: "forward" }),
+    };
+    const label: Record<RfqMoreId, string> = { view: "View", reply: "Reply", forward: "Forward" };
+    return (
+      <div className={s.rowActions} data-rfq-field="actions">
+        <span className={s.primarySlot}>
+          {main.kind === "clarify" ? <Button size="sm" variant="secondary" aria-label={`Clarify ${r.customer}`} data-testid="row-primary" data-action="Clarify" onClick={() => setDlg({ k: "clarify", id: r.id })}>Clarify</Button>
+            : main.kind === "open" ? <Button size="sm" variant="secondary" aria-label={`Open ${main.ref}`} data-testid="row-primary" data-action="Open" onClick={() => openLink(main.ref, main.quoteId)}>Open {main.ref}</Button>
+            : <Button size="sm" variant="secondary" aria-label={`Make a quote for ${r.customer}`} data-testid="row-primary" data-action="Quote" onClick={() => quoteLink(r)}>Quote</Button>}
+        </span>
+        <Menu label="More" size="sm" variant="quiet" aria-label={`More actions for ${r.customer}`} data-testid="row-more"
+          items={plan.more.map((id) => ({ id, label: label[id], onSelect: run[id] }))} />
+      </div>
+    );
+  };
+
   return (
     <div className={cx(premiumTokens, s.root)} data-testid="rfq-preview" data-role={role}>
-      <header className={s.head}>
-        <div className={s.titleBlock}>
-          <div className={s.titleLine}>
-            <h1 className={s.title}>RFQ Control Centre</h1>
-            <span className={s.previewTag} title="Everything on this screen is fictional sample data. Nothing is read from or saved to your account.">Preview, sample data, nothing is saved</span>
-            <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
-              <div className={s.dock}>
-                <p className={s.dockNote}>Not part of Tolra. Sample data; states are simulated and no request is made.</p>
-                <p className={s.dockLabel}>Role</p>
-                <SegmentedControl label="Role" value={role} options={ROLES} size="sm" onChange={(v) => { setRole(v); toast.clear(); }} />
-                <p className={s.dockLabel}>Inbox check (Microsoft 365)</p>
-                <SegmentedControl label="Inbox check" value={inbox} options={INBOX} size="sm" onChange={(v) => { setInbox(v); toast.clear(); }} />
-                <p className={s.dockLabel}>Screen state</p>
-                <div className={s.dockStates} role="group" aria-label="Screen state">
-                  {SCREENS.map((x) => {
-                    const cur: ScreenPick = filters.listFilter ? "clarification" : mailFailed ? "mailfail" : screen;
-                    return <button key={x.v} type="button" aria-pressed={cur === x.v} className={s.dockBtn} onClick={() => pickScreen(x.v)}>{x.label}</button>;
-                  })}
-                </div>
-                <Button size="sm" variant="secondary" onClick={resetAll}>Reset preview</Button>
-              </div>
-            </Popover>
+      <PreviewBar data-testid="preview-bar" controls={
+        <Popover label="Preview controls" title="Preview controls" size="sm" data-testid="dock-toggle">
+          <div className={s.dock}>
+            <SegmentedControl label="Role" value={role} options={ROLES} size="sm" onChange={(v) => { setRole(v); toast.clear(); }} />
+            <p className={typeScale.label}>Inbox check (Microsoft 365)</p>
+            <SegmentedControl label="Inbox check" value={inbox} options={INBOX} size="sm" onChange={(v) => { setInbox(v); toast.clear(); }} />
+            <p className={typeScale.label}>Screen state</p>
+            <ChipGroup label="Screen state">
+              {SCREENS.map((x) => {
+                const cur: ScreenPick = filters.listFilter ? "clarification" : mailFailed ? "mailfail" : screen;
+                return <FilterChip key={x.v} selected={cur === x.v} onToggle={() => pickScreen(x.v)}>{x.label}</FilterChip>;
+              })}
+            </ChipGroup>
+            <Button variant="secondary" onClick={resetAll}>Reset preview data</Button>
+            <p className={typeScale.caption}>Sample data. States are simulated; no request is made.</p>
           </div>
-          <p className={s.subtitle}>RFQ means request for quote: a customer asking us for a price.</p>
-        </div>
-        {denied ? null : (
-          <div className={s.headControls}>
-            <Popover label="Columns" title="RFQ columns" size="md" data-testid="columns-trigger">
-              <p className={s.colScope}>Changes apply to everyone in this company. In this preview they change this screen only.</p>
-              {RFQ_CARD_FIELDS.map((f) => (f.locked ? (
-                <p key={f.key} className={s.colLocked} data-testid={`col-${f.key}`}><span>{f.label}</span><span>Always shown</span></p>
-              ) : (
-                <Switch key={f.key} label={f.label} checked={!hidden.includes(f.key)} data-testid={`col-${f.key}`}
-                  onChange={(on) => setHidden((h) => (on ? h.filter((k) => k !== f.key) : [...h, f.key]))} />
-              )))}
-              <div className={s.colReset}><Button size="sm" variant="secondary" disabled={!hidden.length} onClick={() => setHidden([])}>Reset to default (show all columns)</Button></div>
+        </Popover>
+      } />
+      <PageHeader
+        title={<span title={RFQ_INTRO} data-testid="rfq-title">RFQ Control Centre</span>}
+        description={<span className={srOnly}>{RFQ_INTRO}</span>}
+        actions={denied ? undefined : (
+          <>
+            <Popover label="Columns" title="RFQ columns" data-testid="columns-trigger">
+              <div className={s.colsBody}>
+                {RFQ_CARD_FIELDS.map((f) => (f.locked ? (
+                  <p key={f.key} className={s.colLocked} data-testid={`col-${f.key}`}><span>{f.label}</span><span>Always shown</span></p>
+                ) : (
+                  <Switch key={f.key} label={f.label} checked={!hidden.includes(f.key)} data-testid={`col-${f.key}`}
+                    onChange={(on) => setHidden((h) => (on ? h.filter((k) => k !== f.key) : [...h, f.key]))} />
+                )))}
+                <Button variant="quiet" disabled={!hidden.length} onClick={() => setHidden([])}>Reset to default (show all columns)</Button>
+                <p className={typeScale.caption}>Changes apply to everyone in this company. In this preview they change this screen only.</p>
+              </div>
             </Popover>
             {showsCheckInbox(role, inbox) ? <Button variant="secondary" disabled={checking} data-testid="check-inbox" onClick={checkInbox}>{checking ? "Checking…" : "Check inbox"}</Button> : null}
             <Button variant="primary" data-testid="new-rfq" onClick={() => setDlg({ k: "create" })}>New RFQ</Button>
-          </div>
+          </>
         )}
-      </header>
+      />
 
       {denied ? (
         <section className={s.denied} data-testid="access-denied">
-          <h2 className={s.deniedTitle}>Access Denied</h2>
-          <p className={s.deniedText}>Redirecting you back to the dashboard.</p>
-          <p className={s.deniedNote}>Preview only: no redirect happens here. The real RFQ Control Centre is for Admin and Office; Workshop and Viewer cannot open it.</p>
+          <h2 className={typeScale.section}>Access Denied</h2>
+          <p className={typeScale.body}>Redirecting you back to the dashboard.</p>
+          <p className={cx(typeScale.caption, s.deniedNote)}>Preview only: no redirect happens here. The real RFQ Control Centre is for Admin and Office; Workshop and Viewer cannot open it.</p>
         </section>
       ) : (
         <>
           <StatTiles label="RFQ figures" columns={3} className={s.tiles3}>
             {TILES.map((t) => (
-              <StatTile key={t.label} label={t.label} value={tileCount(loading, failed, figures[t.status])} loading={loading || failed} data-testid={`tile-${t.status}`} className={s.tileFlat}
+              <StatTile key={t.label} label={t.label} value={tileCount(loading, failed, figures[t.status])} loading={loading || failed} data-testid={`tile-${t.status}`}
                 pressed={filters.statuses.size === 1 && filters.statuses.has(t.status)} onPress={() => setFilters((f) => ({ ...f, statuses: new Set([t.status]) }))} />
             ))}
           </StatTiles>
 
-          <section className={s.panel} aria-label="Filters" aria-busy={loading || undefined}>
-            {filters.listFilter ? (
-              <div className={s.notice} role="status" data-testid="list-filter-notice">
-                <p>Showing only: <strong>{LIST_FILTER_LABEL}</strong></p>
-                <Button size="sm" variant="secondary" onClick={() => setFilters((f) => ({ ...f, listFilter: null }))}>Show everything</Button>
+          {filters.listFilter ? (
+            <Callout tone="info" lead="" role="status" data-testid="list-filter-notice"
+              action={<Button size="sm" variant="secondary" onClick={() => setFilters((f) => ({ ...f, listFilter: null }))}>Show everything</Button>}>
+              Showing only: <strong>{LIST_FILTER_LABEL}</strong>
+            </Callout>
+          ) : null}
+
+          <section className={s.fbar} aria-label="Filters" aria-busy={loading || undefined} data-testid="filters">
+            <div className={s.fRow}>
+              <div className={s.fGroup}>
+                <span className={typeScale.label} aria-hidden="true">Show</span>
+                <SegmentedControl label="Show" value={filters.stage} options={stageOptions} disabled={loading} onChange={(v) => setFilters((f) => ({ ...f, stage: v }))} />
               </div>
+              <Popover label={chips.length ? `Filters (${chips.length})` : "Filters"} title="Filters" data-testid="filters-trigger">
+                <div className={s.filterBody} data-testid="filters-panel">
+                  <ChipGroup label="Filters">
+                    {STATUS_CHIPS.map((c) => <FilterChip key={c.value} selected={filters.statuses.has(c.value)} disabled={loading} onToggle={() => toggleStatus(c.value)} data-testid={`chip-${c.value}`}>{c.label}</FilterChip>)}
+                  </ChipGroup>
+                </div>
+              </Popover>
+              {isFiltered(filters) ? <Button variant="quiet" data-testid="clear-filters" onClick={() => setFilters(DEFAULT_FILTERS)}>Clear filters</Button> : null}
+            </div>
+            {chips.length ? (
+              <ul className={s.chipRow} aria-label="Active filters" data-testid="active-chips">
+                {chips.map((c) => (
+                  <li key={c.id}>
+                    <Button size="sm" variant="secondary" aria-label={`Remove filter ${c.label}`} data-chip={c.id} onClick={() => toggleStatus(c.id)}>
+                      {c.label}
+                      <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M3 3 9 9M9 3 3 9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+                    </Button>
+                  </li>
+                ))}
+              </ul>
             ) : null}
-            <div className={s.panelRow}>
-              <span className={s.panelLabel} id="show-label">Show</span>
-              <SegmentedControl label="Show" value={filters.stage} options={stageOptions} disabled={loading} className={s.segFlow} onChange={(v) => setFilters((f) => ({ ...f, stage: v }))} />
-            </div>
-            <div className={s.panelRow}>
-              <span className={s.panelLabel}>Filters</span>
-              <ChipGroup label="Filters">
-                {STATUS_CHIPS.map((c) => <FilterChip key={c.value} selected={filters.statuses.has(c.value)} disabled={loading} onToggle={() => toggleStatus(c.value)} data-testid={`chip-${c.value}`}>{c.label}</FilterChip>)}
-              </ChipGroup>
-            </div>
           </section>
 
           {mailFailed && !failed ? (
-            <div className={s.warnNote} role="status" data-testid="mail-links-failed">
-              <p>Couldn&apos;t check which RFQs came from an email, so Reply and Forward may be missing.</p>
-              <Button size="sm" variant="secondary" onClick={() => setMailFailed(false)}>Retry</Button>
-            </div>
+            <Callout tone="warn" lead="" role="status" data-testid="mail-links-failed" action={<Button size="sm" variant="secondary" onClick={() => setMailFailed(false)}>Retry</Button>}>
+              Couldn&apos;t check which RFQs came from an email, so Reply and Forward may be missing.
+            </Callout>
           ) : null}
 
-          <h2 className={s.srOnly}>RFQs</h2>
+          <h2 className={srOnly}>RFQs</h2>
           {loading ? <LoadingState label="Loading RFQs" rows={5} />
             : failed ? <FailedState title="Couldn’t load RFQs." detail="The list could not be fetched. This is a simulated failure: no request was made and nothing was lost." onRetry={retry} retryLabel="Retry" />
             : visible.length === 0 ? (
@@ -408,28 +468,19 @@ function Inner() {
                     <li key={r.id} className={s.row} data-rfq={r.customer} data-stage={stage} data-status={r.status}>
                       <div className={s.rowMain}>
                         <div className={s.rowTitle}>
-                          <h3 className={s.customer} data-rfq-field="customer">{r.customer}</h3>
+                          <h3 className={cx(typeScale.card, s.customer)} data-rfq-field="customer">{r.customer}</h3>
                           {has("status") && showsStatusBadge(stage) ? <span data-rfq-field="status"><StatusBadge tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</StatusBadge></span> : null}
                           {has("stage") ? <span data-rfq-field="stage"><StatusBadge tone={STAGE_TONE[stage]} plain={stage === "outstanding"}>{rfqStageLabel(stage, q)}{q ? <> {"·"} <b className={tabularNumbers}>{q.ref}</b></> : null}</StatusBadge></span> : null}
                         </div>
-                        {has("description") ? <p className={s.desc} data-rfq-field="description" title={r.description}>{r.description}</p> : null}
+                        {has("description") ? <p className={cx(typeScale.body, s.desc)} data-rfq-field="description" title={r.description}>{r.description}</p> : null}
                         {has("value") || has("received") ? (
-                          <p className={s.meta}>
+                          <p className={cx(typeScale.secondary, s.meta)}>
                             {has("value") ? <span data-rfq-field="value"><span className={s.metaLabel}>Value</span> <b className={tabularNumbers}>{money(r.value)}</b></span> : null}
                             {has("received") ? <span data-rfq-field="received"><span className={s.metaLabel}>Received</span> <span className={tabularNumbers}>{fmtDate(r.received)}</span></span> : null}
                           </p>
                         ) : null}
                       </div>
-                      <div className={s.rowActions} data-rfq-field="actions">
-                        <Button size="sm" variant="secondary" aria-label={`View ${r.customer}`} data-action="View" onClick={() => setDlg({ k: "view", id: r.id })}>View</Button>
-                        {canReplyForward(role, inbound) ? (<>
-                          <Button size="sm" variant="quiet" aria-label={`Reply to the email from ${r.customer}`} data-action="Reply" onClick={() => setDlg({ k: "mail", id: r.id, mode: "reply" })}>Reply</Button>
-                          <Button size="sm" variant="quiet" aria-label={`Forward the email from ${r.customer}`} data-action="Forward" onClick={() => setDlg({ k: "mail", id: r.id, mode: "forward" })}>Forward</Button>
-                        </>) : null}
-                        {main.kind === "clarify" ? <Button size="sm" variant="primary" aria-label={`Clarify ${r.customer}`} data-action="Clarify" onClick={() => setDlg({ k: "clarify", id: r.id })}>Clarify</Button>
-                          : main.kind === "open" ? <Button size="sm" variant="secondary" aria-label={`Open ${main.ref}`} data-action="Open" onClick={() => openLink(main.ref, main.quoteId)}>Open {main.ref}</Button>
-                          : <Button size="sm" variant="primary" aria-label={`Make a quote for ${r.customer}`} data-action="Quote" onClick={() => quoteLink(r)}>Quote</Button>}
-                      </div>
+                      {rowActions(r, main, inbound)}
                       {email ? <div className={s.rowEmail}><EmailLinkPanel email={email} onView={() => setDlg({ k: "email", id: email.id })} onLink={(ref) => preview(`This e-mail would be linked to ${ref}.`)} onOpen={openLink} /></div> : null}
                     </li>
                   );

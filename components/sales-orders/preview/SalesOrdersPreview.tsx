@@ -1,30 +1,30 @@
 "use client";
 
 /**
- * BOUNDARY (Sales Orders, Quotes / RFQ / Sales Orders module 3, PREVIEW ONLY). Inputs: none from the server. Everything shown is fictional sample data (made-up
- * companies, as of 23/11/2026) held in this file, plus the person's clicks. Outputs: a Sales Orders list look-and-feel prototype (the three tiles, Show by phase,
- * status chips, selection with Print and Export, Convert Selected to Jobs and Despatch Selected, Cards / List / Table, Columns, the row actions, and the real
- * sheets: order detail, New sales order, Edit, Add customer PO and Machines) whose only state is LOCAL UI state. It reads and writes no Supabase table, calls no
- * server action, RPC or API route, makes no job, prints and downloads nothing, and no action ever reports success: everything that would save, convert, despatch,
- * archive or export answers with the neutral "Preview only ... Nothing was saved." toast (or an inline preview note while a sheet is open) and nothing changes.
- * Run-time imports from lib/ are pure leaf modules only (sales-order-convert, list-card-counts, accept-quote, so-machines, order-from-quote, quote-status,
- * status-colours, spreadsheet, money, vat, dates, shell-status, empty-hints) and types: the convert, despatch, edit-block, card-count, machine-sum, order-terms and
- * status-colour rules are the REAL functions. The rules that live inline in app/(dashboard)/sales-orders/page.tsx or in lib/archive.ts (which pulls in the browser
- * client and so cannot be imported here), the open-phase rule, the list filter, the toolbar's disabled reasons and the form's checks, are mirrored here and pinned
- * by tests/unit/salesOrdersPreview.test.ts (to the real functions where they exist, to the page's source text where they do not).
- * MUST NOT CHANGE: wording, defaults, column order, filter semantics, the role gate (admin and office only) and which action each row offers mirror today's
- * Sales Orders page. Do not wire this file to real data or real actions, add no control the real page lacks (no search box, no sort, no icons), and keep row
- * controls at a 48 px hit area. The "Add customer PO" and "Machines" sheets are drawn from the real dialogs; the real Activity trail needs the audit log and is
- * drawn here with sample entries only. Delete the four preview files to remove it completely.
+ * BOUNDARY (Sales Orders, Quotes / RFQ / Sales Orders module 3, PREVIEW ONLY, v3 on the shared premium set v4). Inputs: none from the server. Everything shown is fictional sample data (made-up
+ * companies, as of 23/11/2026) held in this file, plus the person's clicks. Outputs: a Sales Orders list look-and-feel prototype (the three tiles, Show by phase, status filters, selection with Print
+ * and Export, Convert Selected to Jobs and Despatch Selected, Cards / List / Table, Columns, the row actions, and the real sheets: order detail, New sales order, Edit, Add customer PO and Machines)
+ * whose only state is LOCAL UI state. It reads and writes no Supabase table, calls no server action, RPC or API route, makes no job, prints and downloads nothing, and no action ever reports success:
+ * everything that would save, convert, despatch, archive or export answers with the neutral "Preview only ... Nothing was saved." toast (or an inline preview note while a sheet is open) and nothing changes.
+ * Run-time imports from lib/ are pure leaf modules only (sales-order-convert, list-card-counts, accept-quote, so-machines, order-from-quote, quote-status, status-colours, spreadsheet, money, vat, dates,
+ * shell-status, empty-hints) and types: the convert, despatch, edit-block, card-count, machine-sum, order-terms and status-colour rules are the REAL functions. The rules that live inline in
+ * app/(dashboard)/sales-orders/page.tsx or in lib/archive.ts (which pulls in the browser client and so cannot be imported here), the open-phase rule, the list filter, the toolbar's disabled reasons and the
+ * form's checks, are mirrored here and pinned by tests/unit/salesOrdersPreview.test.ts (to the real functions where they exist, to the page's source text where they do not).
+ * v3 (owner-approved structural items 1, 2, 4, 7, 10, 11 of STRUCTURAL-CHANGES-BRIEF): Show is the inline quick filter and the status chips live under one "Filters (n)" popover with removable chips and one
+ * "Clear filters"; the bulk bar (Select all, Clear, Print Selected, Export, Convert Selected to Jobs, Despatch Selected) shows only while a row is ticked, and Export of all rows is a toolbar menu; every row has
+ * ONE primary action (Convert to Job, otherwise View) and a shared "More" menu holding the rest; one PreviewBar strip; the generic page sentence is a tooltip and a screen-reader description of the title;
+ * the v4 type scale. The local row menu is gone: the shared Menu now names its trigger and shows a disabled item's reason.
+ * MUST NOT CHANGE: wording, defaults (Table view, Show Open, status All), column order, filter semantics, the role gate (admin and office only) and which action each row offers mirror today's Sales Orders
+ * page. Do not wire this file to real data or real actions, add no control the real page lacks (no search box, no sort, no icons), and keep row controls at a 48 px hit area. The "Add customer PO" and
+ * "Machines" sheets are drawn from the real dialogs; the real Activity trail needs the audit log and is drawn here with sample entries only. Delete the four preview files to remove it completely.
  */
 
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { createPortal } from "react-dom";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
-  Button, Checkbox, ChipGroup, EmptyState, FailedState, Field, FilterChip, Input, LoadingState, Menu, Popover, SegmentedControl, SelectionBar, Select, Sheet, StatTile, StatTiles,
-  StatusBadge, Switch, Textarea, ToastProvider, cx, nextMenuIndex, placeLayer, premiumTokens, tabularNumbers, useToast, ScrollTable,
+  Button, Checkbox, ChipGroup, EmptyState, FailedState, Field, FilterChip, Input, LoadingState, Menu, PageHeader, Popover, PreviewBar, SegmentedControl, SelectionBar, Select, Sheet, StatTile, StatTiles,
+  StatusBadge, Switch, Textarea, ToastProvider, cx, premiumTokens, srOnly, tabularNumbers, typeScale, useToast, ScrollTable,
 } from "@/components/ui/premium";
-import type { LayerPosition, StatusTone } from "@/components/ui/premium";
+import type { StatusMode, StatusTone } from "@/components/ui/premium";
 import { awaitsCustomerPo, customerPoInput } from "@/lib/accept-quote";
 import { fmtDate as realFmtDate } from "@/lib/dates";
 import { salesOrdersEmptyHint } from "@/lib/empty-hints";
@@ -181,6 +181,42 @@ export function statusTone(status: string): StatusTone {
 }
 export const keyOf = (o: Pick<SeedOrder, "id" | "ref">) => o.id ?? o.ref;
 
+/* ---------- v3 structure (owner-approved items 1, 2, 4, 7): pure so the tests can pin it ---------- */
+
+/** The one-line explainer that moved from under the page title to a tooltip and a screen-reader description on it (item 4). */
+export const SO_INTRO = "A sales order is a customer's confirmed order. Turn it into a job when work starts.";
+
+export type ActiveChip = { id: string; label: string };
+/** The status filters that live under "Filters (n)" and are active right now, each removable. Show is always visible, so it is not a chip. */
+export function activeChips(f: Filters): ActiveChip[] {
+  if (f.statuses.has("all")) return [];
+  return STATUS_CHIPS.filter((c) => c.value !== "all" && f.statuses.has(c.value)).map((c) => ({ id: c.value, label: `Status: ${c.label}` }));
+}
+/** The n in "Filters (n)". */
+export const popoverFilterCount = (f: Filters) => activeChips(f).length;
+/** True when anything differs from the default view (Show Open, status All): then, and only then, "Clear filters" shows. */
+export const isFiltered = (f: Filters) => f.phase !== "open" || !f.statuses.has("all");
+/** The status chip rule of the real page: All clears the rest, picking one drops All, and an empty choice goes back to All. */
+export function toggleStatusIn(current: ReadonlySet<string>, value: string): Set<string> {
+  const next = new Set(current);
+  if (value === "all") { next.clear(); next.add("all"); } else { next.delete("all"); if (next.has(value)) next.delete(value); else next.add(value); if (next.size === 0) next.add("all"); }
+  return next;
+}
+
+export type SoActionId = "view" | "convert" | "despatch" | "edit" | "po" | "machines" | "archive";
+/**
+ * Every real row control, split into the ONE visible button and the More menu. Convert to Job is the next step while the order has no job; otherwise View. The rest keep the real order
+ * (View, Despatch, Edit, Add customer PO, Machines, Archive).
+ */
+export function rowActionPlan(o: SeedOrder, role: Role): { primary: SoActionId; more: SoActionId[] } {
+  const all: SoActionId[] = [
+    "view", ...(isConverted(o) ? [] : (["convert"] as const)), ...(canDespatch(o) ? (["despatch"] as const) : []), "edit",
+    ...(o.id && !o.customerPo ? (["po"] as const) : []), ...(o.id ? (["machines"] as const) : []), ...(canArchive(role) && o.id ? (["archive"] as const) : []),
+  ];
+  const primary: SoActionId = isConverted(o) ? "view" : "convert";
+  return { primary, more: all.filter((a) => a !== primary) };
+}
+
 /** The toolbar's disabled reasons (page: title on Convert Selected, Despatch Selected, Print Selected). */
 export function convertReason(selected: readonly SeedOrder[], keys: number): string | undefined {
   return ordersToConvert(selected).length ? undefined : keys ? "The selected orders already have jobs" : "Select at least one sales order";
@@ -249,71 +285,8 @@ function useMedia(query: string, fallback: boolean): boolean {
   );
 }
 
-function StatusPill({ status }: { status: string }) {
-  return <StatusBadge tone={statusTone(status)} plain={statusTone(status) === "neutral" && status === "closed"}><span className={s.cap}>{statusLabel(status)}</span></StatusBadge>;
-}
-
-/** A per-row menu named for its order (a gap in the shared Menu: its aria-label is its visible text; items keep their reason as visible text). */
-type RowMenuItem = { id: string; label: string; hint?: string; disabled?: boolean; onSelect: () => void };
-function RowMenu({ label, items }: { label: string; items: RowMenuItem[] }) {
-  const [open, setOpen] = useState(false);
-  const [pos, setPos] = useState<LayerPosition | null>(null);
-  const [mounted, setMounted] = useState(false);
-  const trigger = useRef<HTMLButtonElement>(null);
-  const layer = useRef<HTMLDivElement>(null);
-  const id = useId();
-  useEffect(() => { setMounted(true); }, []);
-  const close = useCallback((refocus = false) => { setOpen(false); setPos(null); if (refocus) trigger.current?.focus(); }, []);
-  const measure = useCallback(() => {
-    const a = trigger.current; const l = layer.current;
-    if (!a || !l) return;
-    setPos(placeLayer(a.getBoundingClientRect(), { width: l.offsetWidth, height: l.scrollHeight + 10 }, { width: window.innerWidth, height: window.innerHeight }));
-  }, []);
-  useLayoutEffect(() => { if (open) measure(); }, [open, measure]);
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: PointerEvent) => { const t = e.target as Node; if (layer.current?.contains(t) || trigger.current?.contains(t)) return; close(); };
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopPropagation(); close(true); } };
-    window.addEventListener("pointerdown", onDown, true); window.addEventListener("keydown", onKey, true);
-    window.addEventListener("resize", measure); window.addEventListener("scroll", measure, true);
-    return () => { window.removeEventListener("pointerdown", onDown, true); window.removeEventListener("keydown", onKey, true); window.removeEventListener("resize", measure); window.removeEventListener("scroll", measure, true); };
-  }, [open, close, measure]);
-  const buttons = () => Array.from(layer.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? []);
-  const flags = items.map((i) => !!i.disabled);
-  const openAndFocus = (which: "first" | "last") => {
-    setOpen(true);
-    requestAnimationFrame(() => requestAnimationFrame(() => { const i = which === "first" ? nextMenuIndex(-1, flags, "Home") : nextMenuIndex(0, flags, "End"); if (i >= 0) buttons()[i]?.focus(); }));
-  };
-  return (
-    <>
-      <Button ref={trigger} size="sm" variant="secondary" aria-label={label} aria-haspopup="menu" aria-expanded={open} aria-controls={open ? id : undefined} data-action="More"
-        onClick={() => (open ? close() : openAndFocus("first"))}
-        onKeyDown={(e) => { if (e.key === "ArrowDown") { e.preventDefault(); openAndFocus("first"); } if (e.key === "ArrowUp") { e.preventDefault(); openAndFocus("last"); } }}>
-        More
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M2 3.6 5 6.6 8 3.6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-      </Button>
-      {mounted && open ? createPortal(
-        <div ref={layer} id={id} role="menu" aria-label={label} className={cx(premiumTokens, s.menu)}
-          style={{ top: pos?.top ?? 0, left: pos?.left ?? 0, maxHeight: pos?.maxHeight, visibility: pos ? "visible" : "hidden", ["--origin" as string]: pos?.origin }}
-          onKeyDown={(e) => {
-            const idx = buttons().indexOf(document.activeElement as HTMLButtonElement);
-            if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Home" || e.key === "End") { e.preventDefault(); const n = nextMenuIndex(idx, flags, e.key); if (n >= 0) buttons()[n]?.focus(); }
-            if (e.key === "Tab") close(true);
-          }}>
-          {items.map((it) => (
-            <div key={it.id} role="none">
-              <button type="button" role="menuitem" tabIndex={-1} aria-disabled={it.disabled || undefined} aria-describedby={it.hint ? `${id}-${it.id}` : undefined} data-action={it.label}
-                className={s.menuItem} onClick={() => { if (it.disabled) return; close(true); it.onSelect(); }}>
-                <span>{it.label}</span>
-                {it.hint ? <span id={`${id}-${it.id}`} className={s.menuHint}>{it.hint}</span> : null}
-              </button>
-            </div>
-          ))}
-        </div>,
-        trigger.current?.closest("main") ?? document.body,
-      ) : null}
-    </>
-  );
+function StatusPill({ status, mode = "pill" }: { status: string; mode?: StatusMode }) {
+  return <StatusBadge mode={mode} tone={statusTone(status)} plain={statusTone(status) === "neutral" && status === "closed"}><span className={s.cap}>{statusLabel(status)}</span></StatusBadge>;
 }
 
 type Dlg =
@@ -375,11 +348,7 @@ function Inner() {
     setScreen("loading");
     later(() => { setScreen("ready"); toast.show({ title: "Preview only", detail: "Sample sales orders shown again. No server was contacted." }); }, 700);
   };
-  const toggleStatus = (value: string) => setFilters((f) => {
-    const next = new Set(f.statuses);
-    if (value === "all") { next.clear(); next.add("all"); } else { next.delete("all"); if (next.has(value)) next.delete(value); else next.add(value); if (next.size === 0) next.add("all"); }
-    return { ...f, statuses: next };
-  });
+  const toggleStatus = (value: string) => setFilters((f) => ({ ...f, statuses: toggleStatusIn(f.statuses, value) }));
   const toggleSel = (key: string) => setSelected((c) => (c.includes(key) ? c.filter((k) => k !== key) : [...c, key]));
   const tilePressed = (f: "open" | "confirmed" | "despatched") => (f === "open" ? filters.phase === "open" && filters.statuses.size === OPEN_CARD_FILTER.size && [...OPEN_CARD_FILTER].every((x) => filters.statuses.has(x)) : filters.statuses.size === 1 && filters.statuses.has(f));
   const pressTile = (f: "open" | "confirmed" | "despatched") => setFilters((c) => (f === "open" ? { phase: "open", statuses: OPEN_CARD_FILTER } : { ...c, statuses: new Set([f]) }));
@@ -396,118 +365,145 @@ function Inner() {
 
   const rowActions = (o: SeedOrder) => {
     const blocked = editBlockedReason(o);
-    const items: RowMenuItem[] = [
-      { id: "edit", label: "Edit", hint: blocked ?? undefined, disabled: Boolean(blocked), onSelect: () => setDlg({ k: "edit", id: o.id }) },
-      ...(o.id && !o.customerPo ? [{ id: "po", label: "Add customer PO", onSelect: () => setDlg({ k: "po", id: o.id }) }] : []),
-      ...(o.id ? [{ id: "machines", label: "Machines", onSelect: () => setDlg({ k: "machines", id: o.id }) }] : []),
-      ...(canArchive(role) && o.id ? [{ id: "archive", label: phaseFor(o) === "archived" ? "Unarchive" : "Archive", onSelect: () => archive(o) }] : []),
-    ];
+    const plan = rowActionPlan(o, role);
+    const archived = phaseFor(o) === "archived";
+    const label: Record<SoActionId, string> = { view: "View", convert: "Convert to Job", despatch: "Despatch", edit: "Edit", po: "Add customer PO", machines: "Machines", archive: archived ? "Unarchive" : "Archive" };
+    const aria: Partial<Record<SoActionId, string>> = { view: `View ${o.ref}`, convert: `Convert to Job: ${o.ref}`, despatch: `Despatch ${o.ref}` };
+    const run: Record<SoActionId, () => void> = {
+      view: () => setDlg({ k: "view", id: o.id }), convert: () => convert([o]), despatch: () => despatch([o]), edit: () => setDlg({ k: "edit", id: o.id }),
+      po: () => setDlg({ k: "po", id: o.id }), machines: () => setDlg({ k: "machines", id: o.id }), archive: () => archive(o),
+    };
     return (
-      <div className={s.rowActions}>
-        <Button size="sm" variant="secondary" aria-label={`View ${o.ref}`} data-action="View" onClick={() => setDlg({ k: "view", id: o.id })}>View</Button>
-        {isConverted(o) ? null : <Button size="sm" variant={o.status === "open" ? "secondary" : "primary"} aria-label={`Convert to Job: ${o.ref}`} data-action="Convert to Job" onClick={() => convert([o])}>Convert to Job</Button>}
-        {canDespatch(o) ? <Button size="sm" variant="secondary" aria-label={`Despatch ${o.ref}`} data-action="Despatch" onClick={() => despatch([o])}>Despatch</Button> : null}
-        <RowMenu label={`More actions for ${o.ref}`} items={items} />
+      <div className={s.actions}>
+        <span className={s.primarySlot}>
+          <Button size="sm" variant="secondary" aria-label={aria[plan.primary] ?? label[plan.primary]} data-testid="row-primary" data-action={label[plan.primary]} onClick={run[plan.primary]}>{label[plan.primary]}</Button>
+        </span>
+        {plan.more.length ? (
+          <Menu label="More" size="sm" variant="quiet" aria-label={`More actions for ${o.ref}`} data-testid="row-more"
+            items={plan.more.map((id) => ({ id, label: label[id], onSelect: run[id], ...(id === "edit" && blocked ? { disabled: true, hint: blocked } : {}) }))} />
+        ) : null}
       </div>
     );
   };
 
   const allSelected = visible.length > 0 && visible.every((o) => selected.includes(keyOf(o)));
   const noMatch = data.length > 0 && visible.length === 0;
+  const chips = activeChips(filters);
+  /** A count is an em dash while the list is loading or failed, never a stale number. */
+  const n = (v: number) => (loading || failed ? "—" : v);
+  const idleNote = loading ? "Loading sales orders" : `${visible.length} sales order${visible.length === 1 ? "" : "s"} shown`;
 
   return (
     <div className={cx(premiumTokens, s.root)} data-testid="sales-orders-preview" data-role={role} data-pview={shownView}>
-      <header className={s.head}>
-        <div className={s.titleBlock}>
-          <div className={s.titleLine}>
-            <h1 className={s.title}>Sales Orders</h1>
-            <span className={s.previewTag} title="Everything on this screen is fictional sample data. Nothing is read from or saved to your account.">Preview, sample data, nothing is saved</span>
-            <Popover label="Preview controls" title="Preview controls" variant="quiet" size="sm" data-testid="dock-toggle">
-              <div className={s.dock}>
-                <p className={s.dockNote}>Not part of Tolra. Sample data; states are simulated and no request is made.</p>
-                <p className={s.dockLabel}>Role</p>
-                <SegmentedControl label="Role" value={role} options={ROLES} size="sm" onChange={(v) => { setRole(v); toast.clear(); }} />
-                <p className={s.dockLabel}>Screen state</p>
-                <div className={s.dockStates} role="group" aria-label="Screen state">
-                  {SCREENS.map((x) => <button key={x.v} type="button" aria-pressed={screen === x.v} className={s.dockBtn} onClick={() => pickScreen(x.v)}>{x.label}</button>)}
-                </div>
-                <p className={s.dockLabel}>Company VAT</p>
-                <SegmentedControl label="Company VAT" value={vatRegistered ? "yes" : "no"} size="sm" onChange={(v) => setVatRegistered(v === "yes")} options={[{ value: "yes", label: "Registered" }, { value: "no", label: "Not registered" }]} />
-                <p className={s.dockLabel}>New order: customer list</p>
-                <SegmentedControl label="Customer list" value={customersFail ? "fail" : "ok"} size="sm" onChange={(v) => setCustomersFail(v === "fail")} options={[{ value: "ok", label: "Loads" }, { value: "fail", label: "Fails" }]} />
-                <p className={s.dockLabel}>New order: accepted quotes</p>
-                <SegmentedControl label="Accepted quotes" value={quotesMode} size="sm" onChange={setQuotesMode} options={[{ value: "ok", label: "Load" }, { value: "list", label: "List fails" }, { value: "lines", label: "Lines fail" }]} />
-                <Button size="sm" variant="secondary" onClick={resetAll}>Reset preview</Button>
+      <PreviewBar data-testid="preview-bar" controls={
+        <Popover label="Preview controls" title="Preview controls" size="sm" data-testid="dock-toggle">
+          <div className={s.dock}>
+            <SegmentedControl label="Role" value={role} options={ROLES} size="sm" onChange={(v) => { setRole(v); toast.clear(); }} />
+            <p className={typeScale.label}>Screen state</p>
+            <ChipGroup label="Screen state">
+              {SCREENS.map((x) => <FilterChip key={x.v} selected={screen === x.v} onToggle={() => pickScreen(x.v)}>{x.label}</FilterChip>)}
+            </ChipGroup>
+            <p className={typeScale.label}>Company VAT</p>
+            <SegmentedControl label="Company VAT" value={vatRegistered ? "yes" : "no"} size="sm" onChange={(v) => setVatRegistered(v === "yes")} options={[{ value: "yes", label: "Registered" }, { value: "no", label: "Not registered" }]} />
+            <p className={typeScale.label}>New order: customer list</p>
+            <SegmentedControl label="Customer list" value={customersFail ? "fail" : "ok"} size="sm" onChange={(v) => setCustomersFail(v === "fail")} options={[{ value: "ok", label: "Loads" }, { value: "fail", label: "Fails" }]} />
+            <p className={typeScale.label}>New order: accepted quotes</p>
+            <SegmentedControl label="Accepted quotes" value={quotesMode} size="sm" onChange={setQuotesMode} options={[{ value: "ok", label: "Load" }, { value: "list", label: "List fails" }, { value: "lines", label: "Lines fail" }]} />
+            <Button variant="secondary" onClick={resetAll}>Reset preview data</Button>
+            <p className={typeScale.caption}>Sample data. States are simulated; no request is made.</p>
+          </div>
+        </Popover>
+      } />
+      <PageHeader
+        title={<span title={SO_INTRO} data-testid="so-title">Sales Orders</span>}
+        description={<span className={srOnly}>{SO_INTRO}</span>}
+        actions={denied ? undefined : (
+          <>
+            <Popover label="Columns" title="Sales Orders columns" data-testid="columns-trigger">
+              <div className={s.colsBody}>
+                {COLUMNS.map((c) => (c.locked ? (
+                  <p key={c.key} className={s.colLocked} data-testid={`col-${c.key}`}><span>{c.label}</span><span>Always shown</span></p>
+                ) : (
+                  <Switch key={c.key} label={c.label} checked={inView(c.key)} data-testid={`col-${c.key}`} onChange={(on) => setHidden((h) => (on ? h.filter((k) => k !== c.key) : [...h, c.key]))} />
+                )))}
+                <Button variant="quiet" disabled={!hidden.length} onClick={() => setHidden([])}>Reset to default (show all columns)</Button>
+                <p className={typeScale.caption}>Changes apply to everyone in this company. In this preview they change this screen only.</p>
               </div>
             </Popover>
-          </div>
-          <p className={s.subtitle}>A sales order is a customer&apos;s confirmed order. Turn it into a job when work starts.</p>
-        </div>
-        {denied ? null : (
-          <div className={s.headControls}>
-            <Popover label="Columns" title="Sales Orders columns" size="md" data-testid="columns-trigger">
-              <p className={s.colScope}>Changes apply to everyone in this company. In this preview they change this screen only.</p>
-              {COLUMNS.map((c) => (c.locked ? (
-                <p key={c.key} className={s.colLocked} data-testid={`col-${c.key}`}><span>{c.label}</span><span>Always shown</span></p>
-              ) : (
-                <Switch key={c.key} label={c.label} checked={inView(c.key)} data-testid={`col-${c.key}`} onChange={(on) => setHidden((h) => (on ? h.filter((k) => k !== c.key) : [...h, c.key]))} />
-              )))}
-              <div className={s.colReset}><Button size="sm" variant="secondary" disabled={!hidden.length} onClick={() => setHidden([])}>Reset to default (show all columns)</Button></div>
-            </Popover>
             {notPhone ? (
-              <SegmentedControl label="View" value={shownView} onChange={setView} className={s.segFlow} options={[
+              <SegmentedControl label="View" value={shownView} onChange={setView} options={[
                 { value: "cards", label: "Cards", testId: "view-cards-btn" },
                 { value: "list", label: "List", testId: "view-list-btn" },
                 { value: "table", label: "Table", disabled: !wide, disabledReason: wide ? undefined : "Needs a screen wider than 1024px", testId: "view-table-btn" },
               ]} />
             ) : null}
+            <ExportMenu nSel={nSel} total={visible.length} onExport={exportAs} testId="export-trigger" />
             <Button variant="primary" data-testid="new-order" onClick={() => setDlg({ k: "create" })}>New sales order</Button>
-          </div>
+          </>
         )}
-      </header>
+      />
 
       {denied ? (
         <section className={s.denied} data-testid="access-denied">
-          <h2 className={s.deniedTitle}>Access Denied</h2>
-          <p className={s.deniedText}>Redirecting you back to the dashboard.</p>
-          <p className={s.deniedNote}>Preview only: no redirect happens here. The real Sales Orders screen is for Admin and Office; Workshop and Viewer cannot open it.</p>
+          <h2 className={typeScale.section}>Access Denied</h2>
+          <p className={typeScale.body}>Redirecting you back to the dashboard.</p>
+          <p className={cx(typeScale.caption, s.deniedNote)}>Preview only: no redirect happens here. The real Sales Orders screen is for Admin and Office; Workshop and Viewer cannot open it.</p>
         </section>
       ) : (
         <>
           <StatTiles label="Sales order figures" columns={3} className={s.tiles3}>
             {TILES.map((t) => (
-              <StatTile key={t.label} label={t.label} value={loading || failed ? "—" : String(counts[t.filter])} loading={loading || failed} className={s.tileFlat}
+              <StatTile key={t.label} label={t.label} value={loading || failed ? "—" : String(counts[t.filter])} loading={loading || failed}
                 hint={t.filter === "open" ? NOTE_OPEN_CARD : undefined} data-testid={`tile-${t.filter}`} pressed={tilePressed(t.filter)} onPress={() => pressTile(t.filter)} />
             ))}
           </StatTiles>
 
-          <section className={s.panel} aria-label="Filters" aria-busy={loading || undefined}>
-            <div className={s.panelRow}>
-              <span className={s.panelLabel}>Show</span>
-              <SegmentedControl label="Show" value={filters.phase} disabled={loading} className={s.segFlow} onChange={(v) => setFilters((f) => ({ ...f, phase: v }))} options={[
-                { value: "open", label: `Open (${phaseCounts.open})`, testId: "show-open" }, { value: "done", label: `Done (${phaseCounts.done})`, testId: "show-done" },
-                { value: "archived", label: `Archived (${phaseCounts.archived})`, testId: "show-archived" }, { value: "all", label: "All", testId: "show-all" },
-              ]} />
+          <section className={s.fbar} aria-label="Filters" aria-busy={loading || undefined} data-testid="filters">
+            <div className={s.fRow}>
+              <div className={s.fGroup}>
+                <span className={typeScale.label} aria-hidden="true">Show</span>
+                <SegmentedControl label="Show" value={filters.phase} disabled={loading} onChange={(v) => setFilters((f) => ({ ...f, phase: v }))} options={[
+                  { value: "open", label: `Open (${n(phaseCounts.open)})`, testId: "show-open" }, { value: "done", label: `Done (${n(phaseCounts.done)})`, testId: "show-done" },
+                  { value: "archived", label: `Archived (${n(phaseCounts.archived)})`, testId: "show-archived" }, { value: "all", label: "All", testId: "show-all" },
+                ]} />
+              </div>
+              <Popover label={chips.length ? `Filters (${chips.length})` : "Filters"} title="Filters" data-testid="filters-trigger">
+                <div className={s.filterBody} data-testid="filters-panel">
+                  <ChipGroup label="Filters">
+                    {STATUS_CHIPS.map((c) => <FilterChip key={c.value} selected={filters.statuses.has(c.value)} disabled={loading} onToggle={() => toggleStatus(c.value)} data-testid={`chip-${c.value}`}>{c.label}</FilterChip>)}
+                  </ChipGroup>
+                </div>
+              </Popover>
+              {isFiltered(filters) ? <Button variant="quiet" data-testid="clear-filters" onClick={() => setFilters(DEFAULT_FILTERS)}>Clear filters</Button> : null}
             </div>
-            <div className={s.panelRow}>
-              <span className={s.panelLabel}>Filters</span>
-              <ChipGroup label="Filters">
-                {STATUS_CHIPS.map((c) => <FilterChip key={c.value} selected={filters.statuses.has(c.value)} disabled={loading} onToggle={() => toggleStatus(c.value)} data-testid={`chip-${c.value}`}>{c.label}</FilterChip>)}
-              </ChipGroup>
-            </div>
+            {chips.length ? (
+              <ul className={s.chipRow} aria-label="Active filters" data-testid="active-chips">
+                {chips.map((c) => (
+                  <li key={c.id}>
+                    <Button size="sm" variant="secondary" aria-label={`Remove filter ${c.label}`} data-chip={c.id} onClick={() => toggleStatus(c.id)}>
+                      {c.label}
+                      <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M3 3 9 9M9 3 3 9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </section>
 
-          <SelectionBar count={nSel} filteredTotal={visible.length} noun="sales order" selectAll="always" clear="always"
+          <SelectionBar count={nSel} filteredTotal={visible.length} noun="sales order" idleNote={idleNote}
             onSelectAll={() => setSelected(visible.map(keyOf))} onClear={() => setSelected([])}
-            statusText={({ count }) => `${count} selected of ${visible.length} filtered ${visible.length === 1 ? "record" : "records"}`}
-            idleNote={`0 selected of ${visible.length} filtered ${visible.length === 1 ? "record" : "records"}. Export covers all ${visible.length}.`}>
-            <Button size="sm" variant="secondary" disabled={!nSel} title={printReason(nSel)} data-testid="print-selected" onClick={() => preview(`A print pack for ${nSel} sales order${nSel === 1 ? "" : "s"} would open in a new tab.`)}>Print Selected</Button>
-            <Menu label="Export" size="sm" variant="secondary" data-testid="export-trigger" items={["CSV", "Excel"].map((f) => ({ id: f, label: f, onSelect: () => exportAs(f) }))} />
-            <Button size="sm" variant="primary" disabled={!ordersToConvert(selectedOrders).length} title={convertReason(selectedOrders, nSel)} data-testid="convert-selected" onClick={() => convert(ordersToConvert(selectedOrders))}>Convert Selected to Jobs</Button>
-            <Button size="sm" variant="secondary" disabled={!ordersToDespatch(selectedOrders).length} title={despatchReason(selectedOrders, nSel)} data-testid="despatch-selected" onClick={() => despatch(ordersToDespatch(selectedOrders))}>Despatch Selected</Button>
+            statusText={({ count }) => `${count} selected of ${visible.length} filtered ${visible.length === 1 ? "record" : "records"}`}>
+            {nSel > 0 ? (
+              <>
+                <Button size="sm" variant="secondary" disabled={!nSel} title={printReason(nSel)} data-testid="print-selected" onClick={() => preview(`A print pack for ${nSel} sales order${nSel === 1 ? "" : "s"} would open in a new tab.`)}>Print Selected</Button>
+                <ExportMenu nSel={nSel} total={visible.length} onExport={exportAs} testId="export-selected-trigger" size="sm" />
+                <Button size="sm" variant="primary" disabled={!ordersToConvert(selectedOrders).length} title={convertReason(selectedOrders, nSel)} data-testid="convert-selected" onClick={() => convert(ordersToConvert(selectedOrders))}>Convert Selected to Jobs</Button>
+                <Button size="sm" variant="secondary" disabled={!ordersToDespatch(selectedOrders).length} title={despatchReason(selectedOrders, nSel)} data-testid="despatch-selected" onClick={() => despatch(ordersToDespatch(selectedOrders))}>Despatch Selected</Button>
+              </>
+            ) : null}
           </SelectionBar>
 
-          <h2 className={s.srOnly}>Sales orders</h2>
+          <h2 className={srOnly}>Sales orders</h2>
           {loading ? <LoadingState label="Loading sales orders" rows={6} />
             : failed ? <FailedState title="Couldn’t load sales orders." detail="The list could not be fetched. This is a simulated failure: no request was made and nothing was lost." onRetry={retry} retryLabel="Retry" />
             : visible.length === 0 ? (
@@ -521,11 +517,11 @@ function Inner() {
                     <article key={o.id} className={s.card} data-order={o.ref} data-selected={selected.includes(k) || undefined} aria-label={o.ref}>
                       <div className={s.cardTop}>
                         <Checkbox aria-label={`Select ${o.ref}`} data-testid="select-row" checked={selected.includes(k)} onChange={() => toggleSel(k)} />
-                        <div className={s.cardRef}><span className={cx(s.ref, tabularNumbers)}>{o.ref}</span>{!o.customerPo && o.id ? <span className={s.sub}>No customer PO</span> : null}</div>
+                        <div className={s.cardRef}><span className={cx(typeScale.card, tabularNumbers)}>{o.ref}</span>{!o.customerPo && o.id ? <span className={typeScale.caption}>No customer PO</span> : null}</div>
                         {inView("status") ? <StatusPill status={o.status} /> : null}
                       </div>
                       <dl className={s.dl}>
-                        {inView("customer") ? <div className={s.dlWide}><dt>Customer</dt><dd className={s.dlStrong}>{o.customer || "Customer not linked"}</dd></div> : null}
+                        {inView("customer") ? <div className={s.dlWide}><dt>Customer</dt><dd className={typeScale.name}>{o.customer || "Customer not linked"}</dd></div> : null}
                         {inView("date") ? <div><dt>Order Date</dt><dd className={tabularNumbers}>{fmtDate(o.date)}</dd></div> : null}
                         {inView("delivery") ? <div><dt>Expected Delivery</dt><dd className={tabularNumbers}>{o.delivery ? fmtDate(o.delivery) : "—"}</dd></div> : null}
                         {inView("value") ? <div className={s.dlValue}><dt>Value</dt><dd className={cx(s.cardValue, tabularNumbers)}>{money(o.value)}</dd></div> : null}
@@ -536,7 +532,7 @@ function Inner() {
                 })}
               </div>
             ) : (
-              <ScrollTable label="Sales orders">
+              <ScrollTable label="Sales orders" pinLast>
                 <thead>
                   <tr>
                     <th className={s.thFirst}>
@@ -550,7 +546,7 @@ function Inner() {
                     {inView("delivery") ? <th>Expected Delivery</th> : null}
                     {inView("value") ? <th className={s.right}>Value</th> : null}
                     {inView("status") ? <th>Status</th> : null}
-                    <th className={s.right}>Actions</th>
+                    <th className={cx(s.right, s.cActions)}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -561,15 +557,15 @@ function Inner() {
                         <td className={s.tdFirst}>
                           <span className={s.firstCell}>
                             <Checkbox aria-label={`Select ${o.ref}`} data-testid="select-row" checked={selected.includes(k)} onChange={() => toggleSel(k)} />
-                            <span className={s.refCell}><span className={cx(s.ref, tabularNumbers)}>{o.ref}</span>{!o.customerPo && o.id ? <span className={s.sub}>No customer PO</span> : null}</span>
+                            <span className={s.refCell}><span className={cx(typeScale.name, tabularNumbers)}>{o.ref}</span>{!o.customerPo && o.id ? <span className={typeScale.caption}>No customer PO</span> : null}</span>
                           </span>
                         </td>
                         {inView("customer") ? <td><span className={s.clamp} title={o.customer || undefined}>{o.customer || <span className={s.muted}>Customer not linked</span>}</span></td> : null}
                         {inView("date") ? <td className={cx(s.nowrap, tabularNumbers)}>{fmtDate(o.date)}</td> : null}
                         {inView("delivery") ? <td className={cx(s.nowrap, tabularNumbers)}>{o.delivery ? fmtDate(o.delivery) : <span className={s.muted}>{"—"}</span>}</td> : null}
                         {inView("value") ? <td className={cx(s.right, s.money, tabularNumbers)}>{money(o.value)}</td> : null}
-                        {inView("status") ? <td><StatusPill status={o.status} /></td> : null}
-                        <td className={s.right}>{rowActions(o)}</td>
+                        {inView("status") ? <td><StatusPill status={o.status} mode="text" /></td> : null}
+                        <td className={cx(s.right, s.cActions)}>{rowActions(o)}</td>
                       </tr>
                     );
                   })}
@@ -582,6 +578,12 @@ function Inner() {
       <Dialogs dlg={dlg} close={() => setDlg(null)} setDlg={setDlg} byId={byId} preview={preview} vatRegistered={vatRegistered} customersFail={customersFail} quotesMode={quotesMode} convert={convert} despatch={despatch} role={role} />
     </div>
   );
+}
+
+/* ---------------- toolbar Export (all rows) and the same menu inside the selection bar ---------------- */
+
+function ExportMenu({ nSel, total, onExport, testId, size }: { nSel: number; total: number; onExport: (fmt: string) => void; testId: string; size?: "sm" | "md" }) {
+  return <Menu label="Export" size={size} aria-label={`Export. ${scopeTitle(nSel, total)}`} data-testid={testId} items={["CSV", "Excel"].map((f) => ({ id: f, label: f, onSelect: () => onExport(f) }))} />;
 }
 
 /* ================================================================== */
