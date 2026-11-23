@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { cookies, headers } from "next/headers";
 
 import { LoginForm } from "@/app/login/login-form";
+import { brandedAppEnabled } from "@/lib/company-look/installed-app-server";
 import { BRAND_COOKIE, loginBranding, loginSlug } from "@/lib/server/branding";
 
 /**
@@ -17,7 +18,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const branding = await loginBranding(loginSlug({ org, host, cookie }));
   return (
     <Suspense fallback={null}>
-      <LoginForm initialBranding={branding} />
+      <LoginForm initialBranding={branding} syncInstalledApp={brandedAppEnabled()} />
     </Suspense>
   );
 }

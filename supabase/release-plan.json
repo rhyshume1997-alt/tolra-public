@@ -192,6 +192,33 @@
       "rollback": "supabase/release/163_chase_steps_atomic.rollback.sql",
       "verify": "supabase/verify/chase_steps_atomic_163.sql",
       "marker": "post-144 marker 163 chase_steps_atomic"
+    },
+    {
+      "number": 164,
+      "after": "163",
+      "source": "supabase/proposals/p164_platform_companies.sql",
+      "release": "supabase/release/164_platform_companies.release.sql",
+      "rollback": "supabase/release/164_platform_companies.rollback.sql",
+      "verify": "supabase/verify/platform_companies_164.sql",
+      "marker": "post-144 marker 164 platform_companies"
+    },
+    {
+      "number": 165,
+      "after": "164",
+      "source": "supabase/proposals/p165_owner_issues.sql",
+      "release": "supabase/release/165_owner_issues.release.sql",
+      "rollback": "supabase/release/165_owner_issues.rollback.sql",
+      "verify": "supabase/verify/owner_issues_165.sql",
+      "marker": "post-144 marker 165 owner_issues"
+    },
+    {
+      "number": 167,
+      "after": "165",
+      "source": "supabase/proposals/p167_roadmap_rollouts.sql",
+      "release": "supabase/release/167_roadmap_rollouts.release.sql",
+      "rollback": "supabase/release/167_roadmap_rollouts.rollback.sql",
+      "verify": "supabase/verify/roadmap_rollouts_167.sql",
+      "marker": "post-144 marker 167 roadmap_rollouts"
     }
   ],
   "other_proposals": [

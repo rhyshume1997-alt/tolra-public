@@ -3,9 +3,11 @@
 import { Building2, Plus, ShieldAlert } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+import { OwnerHomeGate } from "@/components/platform/owner-home";
 import { TolraAiControl } from "@/components/platform/tolra-ai-control";
 import { TolraAiCaps } from "@/components/platform/tolra-ai-caps";
 import { AppCredentialsCard } from "@/components/platform/app-credentials-card";
+import { OwnerToolsLinks } from "@/components/platform/owner-tools-links";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,7 +32,7 @@ type CreateField = "name" | "slug" | "adminEmail";
  * The platform owner's company list. The database lists every company only for a platform owner (platform_list_organizations
  * refuses anyone else); entering one needs a reason and opens an expiring, read-only support session that is logged.
  */
-export default function PlatformPage() {
+function CompaniesPage() {
   const [companies, setCompanies] = useState<PlatformCompany[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [entering, setEntering] = useState<string | null>(null);
@@ -213,6 +215,7 @@ export default function PlatformPage() {
           </DialogContent>
         </Dialog>
 
+        <OwnerToolsLinks />
         <AppCredentialsCard />
         <TolraAiControl />
         <TolraAiCaps />
@@ -221,4 +224,9 @@ export default function PlatformPage() {
       </div>
     </main>
   );
+}
+
+/** Owner Home (module 12): while PLATFORM_OWNER_HOME_ENABLED is off the page above is shown exactly as before. */
+export default function PlatformPage() {
+  return <OwnerHomeGate legacy={<CompaniesPage />}><OwnerToolsLinks /><AppCredentialsCard /><TolraAiControl /><TolraAiCaps /></OwnerHomeGate>;
 }
