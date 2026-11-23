@@ -1,6 +1,6 @@
 <!--
 BOUNDARY: documentation only. Inputs: the code on main as read for module K (worksheet builder). Outputs: STEP 1 (how the job worksheet
-works today) and the module K rules. It changes no code, flag or company setting. Keep it in step with docs/MODULES.md section 12.
+works today) and the module K rules. It changes no code, flag or company setting. Keep it in step with docs/MODULES.md section 16.
 -->
 
 # Job worksheet today (Step 1) and the worksheet builder (module K)
