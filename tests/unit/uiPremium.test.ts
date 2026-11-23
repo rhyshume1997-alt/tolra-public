@@ -1,4 +1,5 @@
-// BOUNDARY (module 7, shared UI, NEW; v4 adds the craft-pass checks at the end (type scale, elevation, motion rules scanned from the stylesheet, PageHeader, Tabs, PreviewBar, StackedRows, status modes); v2 adds the segmented control, sheet, form fields, stat tile and the option checks; v3 adds the danger and pressed buttons, menu hints, table variants, panel, callout, disclosure, list, form group, error summary, date range, link tile, large fields and nesting). Inputs: the files in components/ui/premium. Output: checks on their pure helpers, their server-rendered
+// v6 (no sideways scrolling) adds the stylesheet scan for horizontal scroll rules (allowed only inside @media (min-width: 1025px) or on vertical-only containers), the stacked-table checks, planStack, fitTabs and collapseToSelect.
+// BOUNDARY (module 7, shared UI, NEW; v4 adds the craft-pass checks (type scale, elevation, motion rules scanned from the stylesheet, PageHeader, Tabs, PreviewBar, StackedRows, status modes); v5 adds the checks for the builders' gap fixes at the very end (short-label and phone segments, PreviewBar wrap and shortLabel, phone SelectionBar, danger menu item and dialog, pinned columns, attention disclosure, tile control slot, icon button, removable chip, FiltersPopover, label-in-name helper); v2 adds the segmented control, sheet, form fields, stat tile and the option checks; v3 adds the danger and pressed buttons, menu hints, table variants, panel, callout, disclosure, list, form group, error summary, date range, link tile, large fields and nesting). Inputs: the files in components/ui/premium. Output: checks on their pure helpers, their server-rendered
 // markup (roles, aria, names) and on the stylesheet's rules (sizes, no glass, reduced motion). Must not change: it reads no database and calls
 // no network; loosening a rule here (hit areas, no gradients or blur, reduced motion) needs the same PM approval as changing the rule itself.
 import fs from "node:fs";
@@ -12,6 +13,7 @@ import {
   TOKEN_NAMES, calloutLead, cx, dataAttributes, fieldDescribedBy, nextMenuIndex, nextSegmentIndex, pickFirstEnabled, pickInvalidTarget, placeLayer, rangeError, rowClickIsForRow, scrollEdges, selectionControls,
   tabStopIndex, toastRegionStyle,
   PageHeader, PreviewBar, StackedRows, TabPanel, Tabs, isTabKey, layerOriginStyle, toneClassKey, typeScale, PREVIEW_LABEL, EXIT_MS, UI_FONT_FAMILY, UI_FONT_WEIGHTS,
+  ExpanderButton, FiltersPopover, PREVIEW_SHORT_LABEL, RemovableChip, RemovableChips, attentionSummary, filtersLabel, nameContainsVisible, nameWithVisible, pinOffsets, planStack, fitTabs, revealOffset, withDangerSeparator,
 } from "@/components/ui/premium";
 
 const dir = path.resolve(__dirname, "../../components/ui/premium");
@@ -665,7 +667,7 @@ describe("v3 markup and roles", () => {
 
 describe("v3 stylesheet rules", () => {
   it("v3 CSS has no gradients, no glass, no global selectors and no !important outside the reduced-motion block", () => {
-    const body = v3css.slice(0, v3css.indexOf("@media (prefers-reduced-motion: reduce)"));
+    const body = v3css.slice(0, v3css.indexOf("v6 additions")); // the v6 block is checked by its own tests (it uses !important on purpose, only against the desktop table rules)
     expect(body).not.toMatch(/gradient\(|backdrop-filter|blur\(|:root|:global/);
     expect(body).not.toContain("!important");
   });
@@ -1067,5 +1069,586 @@ describe("v4 font: IBM Plex Sans for the whole set", () => {
     expect(css).toContain('--ui-numeric-features: "tnum" 1, "lnum" 1;');
     expect(css).toContain("--ui-font-mono:");
     expect(typeof typeScale.mono).toBe("string");
+  });
+});
+
+/* ---------------------------------------------------------------- v5 ---------------------------------------------------------------- */
+// children are passed as extra arguments here; this loose signature keeps the test code readable (the real components stay strictly typed).
+const mk = createElement as unknown as (type: unknown, props: Record<string, unknown> | null, ...children: unknown[]) => Parameters<typeof renderToStaticMarkup>[0];
+describe("v5 stylesheet rules", () => {
+  const v5 = css.slice(css.indexOf("v5 additions (gaps found by the module builders)"), css.indexOf("v6 additions"));
+  it("the v5 block exists before the reduced motion block and has no gradients, no glass, no global selectors, no !important, no transition: all", () => {
+    expect(v5.length).toBeGreaterThan(2000);
+    expect(v5).not.toMatch(/gradient\(|backdrop-filter|blur\(|:root|:global|!important|transition: all/);
+  });
+  it("every v5 :hover rule is gated by a fine pointer", () => {
+    for (const m of v5.matchAll(/:hover/g)) {
+      const before = v5.slice(0, m.index);
+      const open = before.lastIndexOf("@media (hover: hover) and (pointer: fine)");
+      expect(open, v5.slice(Math.max(0, (m.index ?? 0) - 80), m.index)).toBeGreaterThan(-1);
+    }
+  });
+  it("overflow guard: the preview bar, its slot, the page header actions, list row trailing and callout action never exceed their parent", () => {
+    expect(v5).toContain(".pbar { min-width: 0; max-width: 100%; }");
+    expect(v5).toContain(".pbarSlot, .phActions, .rowTrailing, .calloutAction { max-width: 100%; }");
+  });
+  it("v5 default look changes are listed in index.ts", () => {
+    const idx = fs.readFileSync(path.join(dir, "index.ts"), "utf8");
+    expect(idx).toContain("v5 default look changes");
+    for (const w of ["48 px wide", "640 px", "PreviewBar", "SelectionBar", "Dialog description"]) expect(idx).toContain(w);
+  });
+});
+
+describe("v5 SegmentedControl: short labels and phones", () => {
+  const opts = [{ value: "all", label: "All" }, { value: "list", label: "List" }, { value: "3", label: "3" }, { value: "6", label: "6" }];
+  it("keeps the v4 markup and roles; v6 removed the inner scroller (segments are direct children of the track)", () => {
+    const h = html(mk(SegmentedControl, { label: "View", value: "all", options: opts, onChange: noop, "data-testid": "v" }));
+    expect(h).toContain('role="radiogroup"');
+    expect(h).toContain('aria-label="View"');
+    expect(h.match(/role="radio"/g)?.length).toBe(4);
+    expect(h).not.toContain("segScroll");
+    expect(h).toMatch(/aria-label="View"[^>]*>[^<]*<button/);
+    expect(h).toContain('tabindex="0"');
+    expect(h.match(/tabindex="-1"/g)?.length).toBe(3);
+  });
+  it("every segment is at least 48 px wide; the 48 px tall hit area (pseudo element) is unchanged; the wrapped row gap stays 16 px", () => {
+    expect(css).toContain(".segBtn { min-width: 48px; max-width: 100%; }");
+    expect(css).toContain(".segBtn::after { content: \"\"; position: absolute; inset: -8px -1px; }");
+    expect(css).toContain(".segSm .segBtn::after { inset: -12px -1px; }");
+    expect(css).toContain("gap: 16px 2px");
+  });
+  it("v6: under 640 px the track fills the width and wraps (no scroll box, no inner scroller)", () => {
+    expect(css).not.toContain(".segScroll");
+    const phone = css.slice(css.indexOf("/* ---------- segmented control: every segment is at least 48 px wide"), css.indexOf("/* ---------- preview bar: under 640 px"));
+    expect(phone).toContain(".seg { display: flex; width: 100%; min-width: 0; }");
+    expect(phone).toContain(".seg .segBtn { flex: 1 1 auto; }");
+    expect(phone).not.toMatch(/overflow-x|nowrap/);
+  });
+  it("revealOffset keeps a target fully inside the row (pure)", () => {
+    expect(revealOffset(0, 300, 10, 100)).toBe(0);
+    expect(revealOffset(0, 300, 250, 340)).toBe(46);
+    expect(revealOffset(120, 300, 100, 180)).toBe(94);
+    expect(revealOffset(5, 300, 2, 60)).toBe(0);
+    expect(revealOffset(100, 300, 150, 250)).toBe(100);
+  });
+});
+
+describe("v5 PreviewBar: wraps on phones, shortLabel", () => {
+  it("the default markup is the v4 markup (tag word heavier, one text span, slot only with controls)", () => {
+    const h = html(mk(PreviewBar, {}));
+    expect(h).toContain('role="group"');
+    expect(h).toContain('aria-label="Preview information"');
+    expect(h).toContain("Preview</span>, sample data, nothing is saved");
+    expect(h).not.toContain("pbarShort");
+    expect(h).not.toContain("pbarSlot");
+  });
+  it("shortLabel draws a short visible text (aria-hidden) beside the full text, and the group is named by the FULL label", () => {
+    const h = html(mk(PreviewBar, { shortLabel: PREVIEW_SHORT_LABEL, controls: mk(Button, { size: "sm" }, "Preview controls") }));
+    expect(PREVIEW_SHORT_LABEL).toBe("Preview, sample data");
+    expect(h).toContain(`aria-label="${PREVIEW_LABEL}"`);
+    expect(h).toMatch(/pbarFull[^>]*>.*sample data, nothing is saved/);
+    expect(h).toMatch(/pbarShort[^>]*aria-hidden="true"[^>]*>.*sample data</);
+    expect(h).toContain("pbarHasShort");
+  });
+  it("under 640 px the text wraps (no ellipsis) and the bar grows; the short text swaps in and the full one is clipped away visually", () => {
+    const phone = css.slice(css.indexOf("/* ---------- preview bar: under 640 px the label wraps"), css.indexOf("/* ---------- selection bar under 640 px"));
+    expect(phone).toContain(".pbar { height: auto; min-height: 28px;");
+    expect(phone).toContain("white-space: normal");
+    expect(phone).toContain("text-overflow: clip");
+    expect(phone).toContain(".pbarHasShort .pbarFull { position: absolute;");
+    expect(phone).toContain(".pbarHasShort .pbarShort { display: inline; }");
+    expect(css).toContain(".pbar .btn::after { inset: -12px 0; }");
+  });
+});
+
+describe("v5 SelectionBar on phones", () => {
+  const bar = (extra: Record<string, unknown> = {}) => html(mk(SelectionBar, { count: 2, filteredTotal: 9, noun: "job", onSelectAll: noop, onClear: noop, ...extra }, mk(Button, { size: "sm" }, "Finish")));
+  it("without compact the markup is the v4 markup; idle never draws a compact row", () => {
+    const h = bar();
+    expect(h).toContain('data-selection="active"');
+    expect(h).not.toContain("data-compact");
+    expect(h).not.toContain("barCompact");
+    expect(html(mk(SelectionBar, { count: 0, filteredTotal: 9, onSelectAll: noop, onClear: noop, compact: { primary: mk("b", null, "x") } }))).not.toContain("barCompact");
+  });
+  it("with compact an active bar carries data-compact and a second row: the primary and a More menu named 'More selection actions'", () => {
+    const h = bar({ compact: { primary: mk(Button, { size: "sm", variant: "primary" }, "Finish (2)"), more: [{ id: "x", label: "Export", onSelect: noop }] } });
+    expect(h).toContain('data-compact="true"');
+    expect(h).toContain("barCompact");
+    expect(h).toContain("Finish (2)");
+    expect(h).toContain('aria-label="More selection actions"');
+    expect(h).toContain('aria-haspopup="menu"');
+    expect(h).toContain('data-testid="selection-bar-more"');
+  });
+  it("the compact menu keeps Select all and Clear selection (pure rule from selectionControls)", () => {
+    expect(selectionControls(2, 9)).toEqual({ showSelectAll: true, showClear: true, clearDisabled: false });
+    expect(selectionControls(9, 9).showSelectAll).toBe(false);
+  });
+  it("v6: under 640 px an active bar WRAPS (count, then actions 16 px apart); compact is one row of count, primary and More; nothing scrolls", () => {
+    const phone = css.slice(css.indexOf("/* ---------- selection bar under 640 px"), css.indexOf("/* ---------- menu: a danger item"));
+    expect(phone).toContain(".barCompact { display: none; }");
+    expect(phone).not.toMatch(/overflow-x|contain: inline-size|nowrap;[^}]*scrollbar/);
+    expect(phone).toContain(".barOn .barActions { flex: 1 1 100%; min-width: 0; justify-content: flex-start; gap: 16px 8px; }");
+    expect(phone).toContain('.barOn[data-compact="true"] .barActions { display: none; }');
+    expect(phone).toContain('.barOn[data-compact="true"] .barCompact { display: flex;');
+    expect(css).toContain("gap: 16px 10px; min-height: 48px"); // the wrapped (wide) form is unchanged
+  });
+
+});
+
+describe("v5 Menu: danger, testId, elementId", () => {
+  const items = [{ id: "a", label: "Edit", onSelect: noop }, { id: "b", label: "Archive", onSelect: noop }, { id: "d", label: "Delete job J-0431", onSelect: noop, danger: true }, { id: "e", label: "Delete all", onSelect: noop, danger: true }];
+  it("a separator is added before the first danger item only, and never before a first item or when one is already there", () => {
+    const out = withDangerSeparator(items);
+    expect(out.map((i) => !!i.separatorBefore)).toEqual([false, false, true, false]);
+    expect(withDangerSeparator([{ id: "d", label: "Delete", onSelect: noop, danger: true }])[0].separatorBefore).toBeUndefined();
+    expect(withDangerSeparator([items[0], { ...items[2], separatorBefore: true }])[1].separatorBefore).toBe(true);
+    expect(withDangerSeparator(items.slice(0, 2))).toEqual(items.slice(0, 2));
+  });
+  it("the danger item is red words with a red tint on hover and focus; a disabled one goes muted", () => {
+    expect(css).toContain(".menuItemDanger { color: var(--ui-danger); font-weight: 500; }");
+    expect(css).toContain(".menuItem.menuItemDanger:focus-visible { background: #fbe3e3; }");
+    expect(css).toContain(".menuItem.menuItemDanger:hover:not([aria-disabled=\"true\"]) { background: #fbe3e3; }");
+    expect(css).toContain(".menuItemDanger[aria-disabled=\"true\"] { color: var(--ui-muted);");
+  });
+  it("the item button passes data-testid and id through, marks data-danger, and reads 'destructive' (source)", () => {
+    const src = fs.readFileSync(path.join(dir, "Menu.tsx"), "utf8");
+    for (const w of ["id={it.elementId}", "data-testid={it.testId}", 'data-danger={it.danger ? "true" : undefined}', "it.danger && styles.menuItemDanger", ", destructive"]) expect(src).toContain(w);
+    expect(src).toContain("testId?: string");
+    expect(src).toContain("elementId?: string");
+  });
+});
+
+describe("v5 Dialog: danger convention and multi-line text", () => {
+  const dlg = (extra: Record<string, unknown> = {}) => html(mk(Dialog, { open: true, title: "Delete job J-0431?", description: "Line one.\nLine two.", confirmLabel: "Delete job", onConfirm: noop, onClose: noop, ...extra }));
+  it("default is exactly v4: navy primary, no role, no danger class", () => {
+    const h = dlg();
+    expect(h).not.toContain("alertdialog");
+    expect(h).not.toContain("dialogDanger");
+    expect(h).toContain("primary");
+    expect(h).not.toContain("dangerSolid");
+    expect(h).toContain("Line one.\nLine two.");
+  });
+  it("tone danger: role alertdialog, the RED solid confirm, Cancel first and marked as the first focus, the confirm is named with the verb", () => {
+    const h = dlg({ tone: "danger", confirmTestId: "ok", cancelTestId: "no" });
+    expect(h).toContain('role="alertdialog"');
+    expect(h).toContain("dialogDanger");
+    expect(h).toContain("dangerSolid");
+    expect(h).not.toMatch(/class="[^"]*primary[^"]*"[^>]*>Delete job/);
+    expect(h.indexOf("Cancel")).toBeLessThan(h.indexOf("Delete job</button>"));
+    expect(h).toContain('data-dialog-cancel="true"');
+    expect(h).toContain('data-testid="ok"');
+    expect(h).toContain('data-testid="no"');
+  });
+  it("the description keeps its line breaks (pre-line) and accepts a node", () => {
+    expect(css).toContain(".dialogDesc { white-space: pre-line;");
+    const h = dlg({ description: mk("span", null, "Rich ", mk("b", null, "text")) });
+    expect(h).toContain("<b>text</b>");
+  });
+  it("the danger edge is a thin top rule, not a tint or gradient", () => {
+    expect(css).toContain(".dialogDanger { box-shadow: inset 0 3px 0 var(--ui-danger), var(--ui-elev-modal); }");
+  });
+});
+
+describe("v5 ScrollTable: pinFirst", () => {
+  const table = (props: Record<string, unknown>) => html(mk(ScrollTable, { label: "T", ...props }, mk("thead", null, mk("tr", null, mk("th", null, "A"), mk("th", null, "B")))));
+  it("pinOffsets: each pinned column sticks after the widths before it; 0 to 4; fits only while the pinned set is at most 60% of the visible width", () => {
+    expect(pinOffsets([50, 100, 80, 70, 60], 3, 600)).toEqual({ offsets: [0, 50, 150], fits: true });
+    expect(pinOffsets([50, 100, 80, 70, 60], 4, 600)).toEqual({ offsets: [0, 50, 150, 230], fits: true });
+    expect(pinOffsets([200, 200, 80], 2, 600).fits).toBe(false);
+    expect(pinOffsets([200, 160], 2, 600).fits).toBe(true);
+    expect(pinOffsets([50, 50], 0, 600)).toEqual({ offsets: [], fits: true });
+    expect(pinOffsets([50, 50, 50, 50, 50, 50], 9, 1000).offsets.length).toBe(4);
+    expect(pinOffsets([50], 2, 0).fits).toBe(true);
+  });
+  it("the default (and pinFirst 1) draws exactly the v4 markup: no data-pin-first", () => {
+    expect(table({})).not.toContain("data-pin-first");
+    expect(table({ pinFirst: 1 })).not.toContain("data-pin-first");
+    expect(table({ pinFirst: 2 })).toContain('data-pin-first="2"');
+    expect(table({ pinFirst: 0 })).toContain('data-pin-first="0"');
+    expect(table({ pinFirst: 3, pinLast: true })).toContain('data-pin-last="true"');
+  });
+  it("pinned columns stick at --ui-pin-k; ONLY the last pinned column draws a scroll shadow (a box shadow, no gradient), and only when scrolled; earlier ones draw none", () => {
+    expect(css).toContain('.tableWrap:is([data-pin-first="2"], [data-pin-first="3"], [data-pin-first="4"]) .table :is(th, td):nth-child(2):not([colspan]) { position: sticky; left: var(--ui-pin-1, 0px);');
+    expect(css).toContain('.tableWrap[data-pin-first="4"] .table :is(th, td):nth-child(4):not([colspan]) { position: sticky; left: var(--ui-pin-3, 0px);');
+    expect(css).toContain('.tableWrap:is([data-pin-first="2"], [data-pin-first="3"], [data-pin-first="4"]) .table :is(th, td):first-child::after { content: none; }');
+    expect(css).toContain('.tableWrap[data-pin-first="2"] .table :is(th, td):nth-child(2):not([colspan])::after,');
+    expect(css).toContain('.tableWrap[data-scrolled="true"][data-pin-first="3"] .table :is(th, td):nth-child(3):not([colspan])::after,');
+    expect(css).toContain("box-shadow: inset 8px 0 8px -8px rgba(14, 23, 38, 0.2)");
+    const pinLines = css.split("\n").filter((l) => l.includes("data-pin-first") && l.includes("gradient("));
+    expect(pinLines).toEqual([]);
+  });
+  it("a colspan cell is never pinned; a pinned set that is too wide pins nothing; pinFirst 0 keeps the header's top stickiness", () => {
+    expect(css).toContain(".tableWrap[data-pin-fit=\"false\"] .table td:nth-child(-n+4) { position: static; }");
+    expect(css).toContain(".tableWrap[data-pin-fit=\"false\"] .table th:nth-child(-n+4) { left: auto; z-index: 3; }");
+    expect(css).toContain(".tableWrap[data-pin-first=\"0\"] .table th:first-child { left: auto; z-index: 3; }");
+    expect((css.match(/:nth-child\([234]\):not\(\[colspan\]\)/g) ?? []).length).toBeGreaterThan(6);
+  });
+});
+
+describe("v5 Disclosure: attention variant", () => {
+  const d = (props: Record<string, unknown>) => html(mk(Disclosure, { summary: "S", ...props }, "body"));
+  it("attentionSummary writes the words", () => {
+    expect(attentionSummary(0)).toBe("Nothing needs attention");
+    expect(attentionSummary(1)).toBe("1 thing needs attention");
+    expect(attentionSummary(3)).toBe("3 things need attention");
+    expect(attentionSummary(2, { checking: true })).toBe("Checking what needs attention");
+    expect(attentionSummary(0, { clearText: "All clear" })).toBe("All clear");
+  });
+  it("default markup is v4; attention and clear add a class and data-variant, still the native details with a 48 px summary", () => {
+    expect(d({})).not.toContain("data-variant");
+    expect(d({})).not.toContain("discAttention");
+    expect(d({ variant: "attention" })).toContain("discAttention");
+    expect(d({ variant: "attention" })).toContain('data-variant="attention"');
+    expect(d({ variant: "clear" })).toContain("discClear");
+    expect(d({ variant: "attention" })).toContain("<details");
+    expect(css).toContain(".discSummary { display: flex; align-items: center; gap: 10px; min-height: 48px;");
+  });
+  it("amber tint with dark amber words and a 3 px bar; green twin; the summary inherits the colour", () => {
+    expect(css).toContain(".discAttention { background: var(--ui-warn-soft); color: #4d3200; box-shadow: inset 3px 0 0 #d99a06,");
+    expect(css).toContain(".discClear { background: var(--ui-ok-soft); color: #12482a;");
+    expect(css).toContain(":is(.discAttention, .discClear) > .discSummary { color: inherit; }");
+  });
+});
+
+describe("v5 StatTile control slot", () => {
+  const ctl = mk("span", { "data-x": "1" }, "Hours");
+  it("a plain tile draws the slot on the label row; the default tile is the v4 markup", () => {
+    expect(html(mk(StatTile, { label: "L", value: "1" }))).not.toContain("tileHead");
+    const h = html(mk(StatTile, { label: "Machine time", value: "182 h", control: ctl }));
+    expect(h).toContain("tileHead");
+    expect(h).toContain("tileControl");
+    expect(h).toContain("Hours");
+  });
+  it("a button tile or a link tile never draws it (a control inside a control)", () => {
+    expect(html(mk(StatTile, { label: "L", value: "1", onPress: noop, control: ctl }))).not.toContain("tileControl");
+    expect(html(mk(StatTile, { label: "L", value: "1", href: "/x", control: ctl }))).not.toContain("tileControl");
+  });
+  it("the slot wraps under the label on a narrow tile and cannot widen it", () => {
+    expect(css).toContain(".tileHead { display: flex; flex-wrap: wrap;");
+    expect(css).toContain(".tileControl { flex: none; max-width: 100%; }");
+  });
+});
+
+describe("v5 icon button, expander, removable chip", () => {
+  it("size icon is a 48 x 48 square with no padding and its own 48 px hit area; the other sizes are unchanged", () => {
+    const h = html(mk(Button, { size: "icon", "aria-label": "Close" }, "x"));
+    expect(h).toContain("sizeIcon");
+    expect(css).toContain(".sizeIcon { width: 48px; height: 48px; padding: 0;");
+    expect(css).toContain(".sizeIcon::after { inset: 0; }");
+    expect(css).toMatch(/\.sizeSm::after \{ inset: -8px 0; \}/);
+    expect(html(mk(Button, {}, "x"))).toContain("sizeMd");
+  });
+  it("ExpanderButton: icon size, quiet, named, aria-expanded follows the state, aria-controls optional", () => {
+    const closed = html(mk(ExpanderButton, { expanded: false, onToggle: noop, label: "Show details for J-0431", controls: "r1" }));
+    expect(closed).toContain("sizeIcon");
+    expect(closed).toContain('aria-label="Show details for J-0431"');
+    expect(closed).toContain('aria-expanded="false"');
+    expect(closed).toContain('aria-controls="r1"');
+    expect(html(mk(ExpanderButton, { expanded: true, onToggle: noop, label: "Hide" }))).toContain('aria-expanded="true"');
+    expect(closed).toContain('aria-hidden="true"');
+  });
+  it("RemovableChip: one button; the default name 'Remove filter: <words>' contains the visible words; a custom name is used as given; disabled passes", () => {
+    const h = html(mk(RemovableChip, { onRemove: noop }, "Status: Late"));
+    expect(h).toContain('aria-label="Remove filter: Status: Late"');
+    expect(h).toContain("Status: Late");
+    expect(h).toContain("chipX");
+    expect(html(mk(RemovableChip, { onRemove: noop, removeLabel: "Clear the Late status" }, "Late"))).toContain('aria-label="Clear the Late status"');
+    expect(html(mk(RemovableChip, { onRemove: noop, disabled: true }, "A"))).toContain("disabled");
+    expect(nameContainsVisible("Remove filter: Status: Late", "Status: Late")).toBe(true);
+  });
+  it("RemovableChips is a named list with one li per chip; the chip is 32 px with a 48 px hit area and a 48 px minimum width; rows are 16 px apart", () => {
+    const h = html(mk(RemovableChips, { label: "Active filters" }, mk(RemovableChip, { onRemove: noop }, "A"), mk(RemovableChip, { onRemove: noop }, "B")));
+    expect(h).toContain('<ul aria-label="Active filters"');
+    expect(h.match(/<li>/g)?.length).toBe(2);
+    expect(css).toContain(".chipRow { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 8px;");
+    expect(css).toContain(".chipX::after { content: \"\"; position: absolute; inset: -8px 0; }");
+    expect(css).toMatch(/\.chipX \{[^}]*min-width: 48px; height: var\(--ui-h-sm\)/);
+  });
+});
+
+describe("v5 FiltersPopover", () => {
+  const groups = [
+    { kind: "chips" as const, id: "s", label: "Status", options: [{ value: "late", label: "Late" }], selected: [] as string[], onToggle: noop },
+    { kind: "segmented" as const, id: "show", label: "Show", options: [{ value: "open", label: "Open" }, { value: "all", label: "All" }], value: "open", onChange: noop },
+  ];
+  it("filtersLabel adds the count only above zero", () => {
+    expect(filtersLabel("Filters", 0)).toBe("Filters");
+    expect(filtersLabel("Filters", 3)).toBe("Filters (3)");
+  });
+  it("with nothing on: the Filters button only (no Clear filters, no chips)", () => {
+    const h = html(mk(FiltersPopover, { groups, active: [], onClear: noop, "data-testid": "f" }));
+    expect(h).toContain(">Filters<");
+    expect(h).toContain('aria-haspopup="dialog"');
+    expect(h).not.toContain("Clear filters");
+    expect(h).not.toContain("Active filters");
+    expect(h).toContain('data-testid="f"');
+  });
+  it("with filters on: 'Filters (2)', a quiet Clear filters, and the removable chips list named 'Active filters'", () => {
+    const h = html(mk(FiltersPopover, { groups, active: [{ id: "a", label: "Status: Late", onRemove: noop }, { id: "b", label: "Show: All", onRemove: noop }], onClear: noop }));
+    expect(h).toContain("Filters (2)");
+    expect(h).toContain("Clear filters");
+    expect(h).toContain('aria-label="Active filters"');
+    expect(h).toContain('aria-label="Remove filter: Status: Late"');
+    expect(h).toContain('data-chip="b"');
+    expect(h.match(/data-fp-chip="true"/g)?.length).toBe(2);
+  });
+  it("a custom clear label and a disabled trigger", () => {
+    expect(html(mk(FiltersPopover, { groups, active: [{ id: "a", label: "A", onRemove: noop }], onClear: noop, clearLabel: "Reset" }))).toContain(">Reset<");
+    const off = html(mk(FiltersPopover, { groups, active: [], onClear: noop, disabled: true }));
+    expect(off).toContain("disabled");
+    expect(off).not.toContain("aria-haspopup");
+  });
+  it("it wraps with 16 px between rows and the chip row takes the full width", () => {
+    expect(css).toContain(".fp { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 8px;");
+    expect(css).toContain(".fpChips { flex: 1 1 100%; min-width: 0; }");
+  });
+});
+
+describe("v5 label-in-name helper", () => {
+  it("nameWithVisible starts with the drawn words and adds the detail after a comma", () => {
+    expect(nameWithVisible("J-0437 Lathe 2", "due Friday, running")).toBe("J-0437 Lathe 2, due Friday, running");
+    expect(nameWithVisible("Book it", "J-0437 on Lathe 2")).toBe("Book it, J-0437 on Lathe 2");
+    expect(nameWithVisible("  Add   customer ", "")).toBe("Add customer");
+    expect(nameWithVisible("Open", undefined)).toBe("Open");
+    expect(nameWithVisible("Open", "Open jobs: 19")).toBe("Open jobs: 19");
+    expect(nameWithVisible("", "Only detail")).toBe("Only detail");
+  });
+  it("nameContainsVisible ignores case, punctuation and spacing, and fails a real mismatch", () => {
+    expect(nameContainsVisible("Add customer, Hartley", "Add customer")).toBe(true);
+    expect(nameContainsVisible("ADD  customer", "add customer")).toBe(true);
+    expect(nameContainsVisible("Reset X to default", "Reset to default")).toBe(false);
+    expect(nameContainsVisible("Reset to default: X", "Reset to default")).toBe(true);
+    expect(nameContainsVisible("anything", "")).toBe(true);
+  });
+});
+
+describe("v5 exports and boundaries", () => {
+  it("the v5 names exist and no earlier name went away", async () => {
+    const m = await import("@/components/ui/premium");
+    for (const n of ["ExpanderButton", "RemovableChip", "RemovableChips", "FiltersPopover", "filtersLabel", "nameWithVisible", "nameContainsVisible", "revealInRow", "revealOffset", "pinOffsets", "withDangerSeparator", "attentionSummary", "PREVIEW_SHORT_LABEL",
+      "PageHeader", "Tabs", "PreviewBar", "StackedRows", "Button", "Menu", "Popover", "Dialog", "SelectionBar", "ScrollTable", "SegmentedControl", "Disclosure", "StatTile", "FilterChip", "ChipGroup", "selectionControls", "scrollEdges", "nextMenuIndex", "nextSegmentIndex"]) expect(m, n).toHaveProperty(n);
+  });
+  it("every new v5 file carries a boundary comment", () => {
+    for (const f of ["Expander.tsx", "RemovableChip.tsx", "FiltersPopover.tsx", "accessibleName.ts", "revealInRow.ts"]) expect(fs.readFileSync(path.join(dir, f), "utf8"), f).toMatch(/BOUNDARY \(module 7, shared UI, NEW v5\)/);
+  });
+  it("every changed file says what v5 changed", () => {
+    for (const f of ["SegmentedControl.tsx", "PreviewBar.tsx", "SelectionBar.tsx", "Menu.tsx", "Dialog.tsx", "ScrollTable.tsx", "Disclosure.tsx", "StatTile.tsx", "Button.tsx"]) expect(fs.readFileSync(path.join(dir, f), "utf8"), f).toContain("v5");
+  });
+});
+
+// ====================================================================================================================
+// v6: NO SIDEWAYS SCROLLING on a phone or tablet (<= 1024 px)
+// ====================================================================================================================
+interface CssRule { selector: string; body: string; media: string[] }
+/** A small stylesheet reader: every leaf rule with the at-rule conditions around it. Enough for this file (no nesting beyond @media, no strings with braces). */
+function readRules(src: string): CssRule[] {
+  const text = src.replace(/\/\*[\s\S]*?\*\//g, "");
+  const out: CssRule[] = [];
+  const stack: Array<{ head: string; at: boolean }> = [];
+  let buf = "";
+  let bodyStart = -1;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === "{") {
+      const head = buf.trim();
+      buf = "";
+      const at = head.startsWith("@");
+      stack.push({ head, at });
+      if (!at) bodyStart = i + 1;
+    } else if (ch === "}") {
+      const top = stack.pop();
+      if (top && !top.at) out.push({ selector: top.head, body: text.slice(bodyStart, i), media: stack.filter((x) => x.at).map((x) => x.head) });
+      buf = "";
+    } else if (ch === ";" && stack.length && !stack[stack.length - 1].at === false) {
+      buf = "";
+    } else buf += ch;
+  }
+  return out;
+}
+const cssRules = readRules(css);
+const DESKTOP_ONLY = "@media (min-width: 1025px)";
+const decl = (body: string, prop: string) => Array.from(body.matchAll(new RegExp(`(?:^|[;\\s])${prop}\\s*:\\s*([^;]+)`, "g"))).map((m) => m[1].trim().replace(/\s*!important/, ""));
+// Documented allow-list of VERTICAL scroll containers: they scroll on the y axis and say overflow-x: hidden in the same rule (menus, popovers, dialogs, sheet bodies).
+const VERTICAL_ONLY_ALLOWED = [".layer", ".dialog", ".sheetBody"];
+
+describe("v6 stylesheet: no horizontal scroll container outside @media (min-width: 1025px)", () => {
+  it("the reader finds the cssRules (sanity)", () => {
+    expect(cssRules.length).toBeGreaterThan(300);
+    expect(cssRules.find((r) => r.selector === ".tableScroll")?.media).toEqual([DESKTOP_ONLY]);
+  });
+  it("overflow-x: auto|scroll|overlay appears only inside @media (min-width: 1025px)", () => {
+    for (const r of cssRules) {
+      if (decl(r.body, "overflow-x").some((v) => /^(auto|scroll|overlay)$/.test(v))) expect(r.media, `${r.selector} scrolls sideways`).toContain(DESKTOP_ONLY);
+    }
+  });
+  it("overflow: auto|scroll|overlay (shorthand) appears only inside @media (min-width: 1025px), unless the same rule also sets overflow-x hidden, clip or visible", () => {
+    for (const r of cssRules) {
+      const sh = decl(r.body, "overflow");
+      if (!sh.some((v) => /(^|\s)(auto|scroll|overlay)(\s|$)/.test(v))) continue;
+      const ox = decl(r.body, "overflow-x");
+      const explicit = ox.some((v) => /^(hidden|clip|visible)$/.test(v));
+      if (!explicit) expect(r.media, `${r.selector} uses overflow: auto|scroll with no overflow-x`).toContain(DESKTOP_ONLY);
+    }
+  });
+  it("overflow-y: auto|scroll turns overflow-x into auto too, so the same rule must say overflow-x: hidden or clip (the vertical-only allow-list), or sit in the desktop media block", () => {
+    const seen: string[] = [];
+    for (const r of cssRules) {
+      if (!decl(r.body, "overflow-y").some((v) => /^(auto|scroll|overlay)$/.test(v))) continue;
+      seen.push(r.selector);
+      if (r.media.includes(DESKTOP_ONLY)) continue;
+      expect(decl(r.body, "overflow-x").some((v) => /^(hidden|clip)$/.test(v)), `${r.selector} scrolls vertically but not overflow-x: hidden`).toBe(true);
+    }
+    for (const sel of seen) if (!r_isAllowed(sel)) throw new Error(`${sel} is a vertical scroll container that is not on the documented allow-list ${VERTICAL_ONLY_ALLOWED.join(", ")}`);
+  });
+  it("menus, popovers, dialogs, sheets and toasts stay inside the viewport (max-width calc(100vw - 16px) or 32 px inset) and scroll vertically only", () => {
+    expect(css).toMatch(/\.layer \{[^}]*max-width: calc\(100vw - 16px\)[^}]*overflow-y: auto; overflow-x: hidden/);
+    expect(css).toMatch(/\.dialog \{[^}]*width: min\(480px, calc\(100vw - 32px\)\)[^}]*overflow-y: auto; overflow-x: hidden/);
+    expect(css).toMatch(/\.sheet \{[^}]*max-width: calc\(100vw - 16px\)/);
+    expect(css).toMatch(/\.sheetBody \{[^}]*overflow-y: auto; overflow-x: hidden/);
+    expect(css).toMatch(/\.toastRegion \{[^}]*width: min\(380px, calc\(100vw - 32px\)\)/);
+    expect(css).toContain(".popPanel { min-width: min(260px, calc(100vw - 16px));");
+  });
+  it("long unbroken words wrap in the text containers (overflow-wrap anywhere) and the roots use break-word", () => {
+    expect(css).toMatch(/\.tokens \{ overflow-wrap: break-word; \}/);
+    for (const cls of [".fieldLabel", ".tileValue", ".panelTitle", ".stateText", ".calloutText", ".phDesc", ".dialogTitle", ".stackTitle", ".phTitle", ".rowTitle"]) expect(css, cls).toContain(cls);
+    const anywhere = css.slice(css.indexOf(".fieldLabel, .fieldHint"), css.indexOf("}", css.indexOf(".fieldLabel, .fieldHint")));
+    for (const cls of [".fieldLabel", ".tileValue", ".panelTitle", ".stateText", ".calloutText", ".phDesc"]) expect(anywhere, cls).toContain(cls);
+    expect(anywhere).toContain("overflow-wrap: anywhere");
+  });
+  it("controls may wrap a too-long label at 1024 px and under instead of being wider than the screen", () => {
+    const r = cssRules.find((x) => x.selector === ".btn, .chip, .chipX, .segBtn");
+    expect(r?.media).toEqual(["@media (max-width: 1024px)"]);
+    expect(r?.body).toContain("white-space: normal");
+    expect(r?.body).toContain("max-width: 100%");
+  });
+  it("there is no scrolling row left anywhere: no scrollbar-width: none (the sign of a hidden scroller) and no overscroll-behavior-x outside the desktop block", () => {
+    expect(css).not.toContain("scrollbar-width");
+    for (const r of cssRules) if (/overscroll-behavior-x/.test(r.body)) expect(r.media).toContain(DESKTOP_ONLY);
+  });
+});
+function r_isAllowed(sel: string): boolean { return VERTICAL_ONLY_ALLOWED.includes(sel) || sel.startsWith("@") || sel.includes(".tableScroll"); }
+
+describe("v6 every table-like primitive has a stacked mode at 1024 px and under", () => {
+  const stacked = cssRules.filter((r) => r.media.includes("@media (max-width: 1024px)"));
+  const sel = (s: string) => stacked.find((r) => r.selector === s);
+  it("ScrollTable: table, sections, rows and cells become blocks; the header row is visually hidden but kept; rows are grid records", () => {
+    expect(sel(".table, .table thead, .table tbody, .table tfoot, .table tr, .table th, .table td")?.body).toContain("display: block");
+    const head = sel(".table thead")?.body ?? "";
+    expect(head).toContain("position: absolute");
+    expect(head).toContain("clip: rect(0 0 0 0)");
+    expect(head).not.toContain("display: none");
+    expect(sel(".table tbody tr, .table tfoot tr")?.body).toMatch(/display: grid/);
+  });
+  it("ScrollTable: the scroll box is a desktop-only rule and the edge fade, pinning and fixed widths are switched off when stacked", () => {
+    expect(sel(".tableScroll")?.body).toContain("overflow: visible");
+    expect(sel(".edgeFade")?.body).toContain("display: none");
+    const cells = sel(".table :is(th, td)")?.body ?? "";
+    for (const w of ["position: static !important", "min-width: 0 !important", "width: auto !important", "height: auto !important", "box-shadow: none !important"]) expect(cells).toContain(w);
+  });
+  it("ScrollTable: labels come from data-ui-label (not the app's td[data-label]), title / select / actions / note / hidden roles are styled, actions are 16 px apart", () => {
+    expect(css).toContain('content: attr(data-ui-label) !important');
+    expect(css).not.toMatch(/content: attr\(data-label\)/);
+    expect(stacked.some((r) => r.selector.includes('[data-stack="title"]'))).toBe(true);
+    expect(stacked.some((r) => r.selector.includes('[data-stack="select"]'))).toBe(true);
+    expect(sel('.table :is(th, td)[data-stack="actions"]')?.body).toContain("gap: 16px 8px");
+    expect(stacked.some((r) => r.selector.includes('[data-stack="note"]'))).toBe(true);
+    expect(sel(".table tfoot tr")?.body).toContain("--row-bg");
+  });
+  it("ScrollTable markup: the scroll region keeps its name; stacked tabIndex is decided on the client; the table still renders its own children", () => {
+    const h = html(mk(ScrollTable, { label: "Jobs" }, mk("thead", null, mk("tr", null, mk("th", { scope: "col" }, "Job"))), mk("tbody", null, mk("tr", null, mk("td", null, "J-1")))));
+    expect(h).toContain('role="region"');
+    expect(h).toContain('aria-label="Jobs"');
+    expect(h).toContain("<th scope=\"col\">Job</th>");
+  });
+  it("StackedRows is stacked at every width (it is the stacked form itself); narrowOnly still hides it above 640 px", () => {
+    const h = html(mk(StackedRows, { label: "Jobs", rows: [{ id: "1", title: "J-1", fields: [{ label: "Due", value: "Friday" }] }] }));
+    expect(h).toContain("<dl");
+    expect(h).toContain("<dt>Due</dt><dd>Friday</dd>");
+    expect(css).toMatch(/\.stackNarrow \{ display: none; \}/);
+    expect(css).toMatch(/\.stackFields dd \{[^}]*overflow-wrap: anywhere/);
+  });
+  it("List, StatTiles, Panel, Callout and FormGroup reflow by wrapping or by single columns (no table-like primitive is left unstacked)", () => {
+    expect(css).toMatch(/@media \(max-width: 640px\) \{ \.groupBody \{ grid-template-columns: minmax\(0, 1fr\); \} \}/);
+    expect(css).toMatch(/\.tiles \{ display: grid; grid-template-columns: repeat\(var\(--cols, 4\), minmax\(0, 1fr\)\)/);
+    expect(css).toMatch(/@media \(max-width: 1100px\) \{ \.tiles \{ grid-template-columns: repeat\(min\(var\(--cols, 4\), 2\), minmax\(0, 1fr\)\)/);
+    expect(css).toMatch(/\.rowTrailing \{[^}]*flex-wrap: wrap/);
+  });
+  it("tablet (641 to 1024 px) shows plain records as cards two to a row", () => {
+    const t = cssRules.find((r) => r.selector === ".table tbody:not([data-record=\"true\"])" && r.media.some((m) => m.includes("min-width: 641px")));
+    expect(t?.body).toContain("repeat(2, minmax(0, 1fr))");
+  });
+});
+
+describe("planStack (pure): which column becomes what in a stacked record", () => {
+  const labels = ["", "Job", "Customer", "Status", "Value", "Actions"];
+  it("defaults: a checkbox column is select, the first other column is the title, Actions is the actions row, the rest are fields in table order", () => {
+    const p = planStack(labels, [true, false, false, false, false, false]);
+    expect(p.map((x) => x.role)).toEqual(["select", "title", "field", "field", "field", "actions"]);
+    expect(p[0].order).toBeLessThan(p[1].order);
+    expect(p[2].order).toBeLessThan(p[3].order);
+    expect(p[5].order).toBe(1000);
+  });
+  it("primary picks the title; columnPriority orders fields first; stackHide leaves columns out; actionsColumn none keeps the last column a field", () => {
+    const p = planStack(labels, [true, false, false, false, false, false], { primary: 2, columnPriority: [4, 3], stackHide: [1] });
+    expect(p.map((x) => x.role)).toEqual(["select", "hidden", "title", "field", "field", "actions"]);
+    expect(p[4].order).toBeLessThan(p[3].order);
+    expect(planStack(labels, [], { actionsColumn: "none" })[5].role).toBe("field");
+    expect(planStack(labels, [], { actionsColumn: 3 })[3].role).toBe("actions");
+  });
+  it("a last column with a real header is a field (only a blank header or \"Actions\" is taken for the actions column); a select column is never the title", () => {
+    expect(planStack(["Job", "Owner"], [false, false]).map((x) => x.role)).toEqual(["title", "field"]);
+    expect(planStack(["Job", ""], [false, false])[1].role).toBe("actions");
+    expect(planStack(["", "Job"], [true, false], { primary: 0 }).map((x) => x.role)).toEqual(["select", "title"]);
+    expect(planStack(["A"], [false]).map((x) => x.role)).toEqual(["title"]);
+  });
+});
+
+describe("fitTabs (pure) and Tabs overflow", () => {
+  it("everything fits: all indexes; otherwise the selected tab is kept and tabs fill the room left beside the More trigger", () => {
+    expect(fitTabs([80, 80, 80], 0, 300, 96)).toEqual([0, 1, 2]);
+    expect(fitTabs([80, 80, 80, 80], 0, 300, 96)).toEqual([0, 1]);
+    expect(fitTabs([80, 80, 80, 80], 3, 300, 96)).toEqual([0, 3]);
+    expect(fitTabs([200, 200], 1, 100, 96)).toEqual([1]);
+  });
+  it("the default Tabs markup is unchanged (one tablist, every tab); overflow=more wraps the tablist so the More menu sits beside it, never inside it", () => {
+    const tabs = [{ value: "a", label: "A" }, { value: "b", label: "B" }];
+    const plain = html(mk(Tabs, { label: "S", value: "a", onChange: noop, tabs }));
+    expect(plain.match(/role="tab"/g)?.length).toBe(2);
+    expect(plain).not.toContain("tabsMoreWrap");
+    const more = html(mk(Tabs, { label: "S", value: "a", onChange: noop, tabs, overflow: "more" }));
+    expect(more).toContain("tabsMoreWrap");
+    expect(more.match(/role="tablist"/g)?.length).toBe(1);
+  });
+  it("tab rows that wrap are 4 px apart", () => {
+    expect(css).toMatch(/\.tabs \{ row-gap: 4px; \}/);
+  });
+});
+
+describe("SegmentedControl collapseToSelect", () => {
+  const opts = [{ value: "a", label: "Last 3 months" }, { value: "b", label: "Last 6 months", disabled: true }, { value: "c", label: "All" }];
+  it("renders the segments and the shared Select (same options, a name, disabled kept); the CSS shows the Select under 640 px only", () => {
+    const h = html(mk(SegmentedControl, { label: "Period", value: "a", options: opts, onChange: noop, collapseToSelect: true }));
+    expect(h).toContain('role="radiogroup"');
+    expect(h).toContain("<select");
+    expect(h).toContain('aria-label="Period"');
+    expect(h.match(/<option/g)?.length).toBe(3);
+    expect(h).toMatch(/<option value="b" disabled="">Last 6 months<\/option>/);
+    expect(css).toContain(".segCollapseSelect { display: none; }");
+    expect(css).toMatch(/@media \(max-width: 640px\) \{\s*\.segCollapse > \.seg \{ display: none; \}\s*\.segCollapse > \.segCollapseSelect \{ display: block; width: 100%; \}/);
+  });
+  it("without the prop there is no wrapper and no Select (v5 markup minus the scroller)", () => {
+    const h = html(mk(SegmentedControl, { label: "Period", value: "a", options: opts, onChange: noop }));
+    expect(h).not.toContain("<select");
+    expect(h).not.toContain("segCollapse");
+  });
+});
+
+describe("v6 documentation", () => {
+  it("index.ts lists the v6 default look changes and the new props; every changed file says so in its boundary comment", () => {
+    const idx = fs.readFileSync(path.join(dir, "index.ts"), "utf8");
+    expect(idx).toContain("v6 default look changes");
+    for (const w of ["STACKED RECORDS", "collapseToSelect", "overflow=\"more\"", "columnPriority", "1025px"]) expect(idx).toContain(w);
+    for (const f of ["ScrollTable.tsx", "SegmentedControl.tsx", "SelectionBar.tsx", "Tabs.tsx", "PreviewBar.tsx"]) expect(fs.readFileSync(path.join(dir, f), "utf8"), f).toContain("v6");
+    expect(css).toContain("v6 additions: NO SIDEWAYS SCROLLING");
   });
 });

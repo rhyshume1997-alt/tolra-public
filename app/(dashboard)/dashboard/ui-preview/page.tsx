@@ -6,14 +6,17 @@
  * no control reports success: a confirm just closes and says "Preview only". v2 adds SegmentedControl, Sheet, form fields, StatTile and the toast, dialog,
  * popover, state-panel and selection-bar options. v3 adds the sections from "Button v3" down: danger and pressed buttons, menu hints, table variants, panel, callout, disclosure, list rows, form group, error
  * summary, date range, link tiles, wrapped chips and segments, nested sheets and large fields. v4 (craft pass) shows the type scale, the elevation levels, PageHeader, Tabs, the StatusBadge modes and the info-neutral tone, StackedRows,
+ * v5 (gaps found by the module builders) is the last block of sections ("v5:"): short-label and phone segmented control, PreviewBar at 390, SelectionBar on phones, danger menu items, the danger dialog and multi-line text, pinned columns, the attention disclosure, a StatTile control slot,
+ * the 48 px icon button and expander, RemovableChip, FiltersPopover and the label-in-name helper. v6 (no sideways scrolling) is the "v6:" section: stacked ScrollTable options, collapseToSelect, Tabs More, long words; every other section must fit 320 to 1024 px wide.
  * the PreviewBar, the Panel nested and flat variants and a Type specimen (the same Tolra content in each candidate font that this build can load; nothing is changed by it), and the header of this page is itself a PreviewBar plus a PageHeader. Delete this route when a real module has adopted the set.
  */
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import {
   Button, Callout, Checkbox, ChipGroup, DateRangeGroup, Dialog, Disclosure, EmptyState, ErrorSummary, FailedState, Field, FilterChip, FormGroup, Input, List, ListRow, LoadingState, Menu, Panel, Popover,
-  ScrollTable, SegmentedControl, Select, SelectionBar, Sheet, StatTile, StatTiles, StatusBadge, Switch, Textarea, ToastProvider, rowClickIsForRow, useToast, premiumTokens, tabularNumbers, cx,
+  ScrollTable, SegmentedControl, Select, SelectionBar, Sheet, StatTile, StatTiles, StatusBadge, Switch, Textarea, ToastProvider, rowClickIsForRow, useToast, premiumTokens, tabularNumbers, srOnly, cx,
   PageHeader, PreviewBar, StackedRows, TabPanel, Tabs, typeScale,
-  type ErrorSummaryItem, type StackedRow, type ToastPlacement,
+  ExpanderButton, FiltersPopover, RemovableChip, RemovableChips, PREVIEW_SHORT_LABEL, attentionSummary, nameContainsVisible, nameWithVisible,
+  type ActiveFilter, type ErrorSummaryItem, type FilterGroup, type StackedRow, type ToastPlacement,
 } from "@/components/ui/premium";
 
 const sec: CSSProperties = { display: "grid", gap: 14, paddingTop: 24, borderTop: "1px solid rgba(14,23,38,0.1)" };
@@ -353,11 +356,11 @@ function Showcase({ setPlace }: { setPlace: (p: Place) => void }) {
         </div>
       </Section>
 
-      <Section id="s-table" title="Table finish" note="Sticky first column, a right edge fade while more columns are hidden, and a shadow on the first column only once scrolled sideways. Rows are 64 px with hover and selected tints.">
+      <Section id="s-table" title="Table finish" note="Above 1024 px: sticky first column, a right edge fade while more columns are hidden, a shadow on the first column only once scrolled sideways, 64 px rows. At 1024 px and under (phone and tablet) the SAME table is stacked records: a title line, label and value pairs, the Open action at the bottom. Nothing scrolls sideways there.">
         <SelectionBar count={sel.length} filteredTotal={ROWS.length} noun="job" onSelectAll={() => setSel(allIds)} onClear={() => setSel([])} stickyTop="0px">
           <Button size="sm" variant="primary" disabled={sel.length === 0} onClick={() => previewOnly(`${sel.length} jobs were not finished.`)} data-testid="bulk-finish">Finish selected ({sel.length})</Button>
         </SelectionBar>
-        <ScrollTable label="Sample jobs (scrolls sideways)">
+        <ScrollTable label="Sample jobs (stacked at 1024 px and under, scrolls sideways only on desktop)">
           <thead>
             <tr>{COLS.map((c, i) => <th key={c} scope="col" style={i === 0 ? { minWidth: 200 } : undefined}>{c}</th>)}</tr>
           </thead>
@@ -404,6 +407,8 @@ function Showcase({ setPlace }: { setPlace: (p: Place) => void }) {
       </Section>
 
       <ShowcaseV3 previewOnly={previewOnly} />
+
+      <ShowcaseV5 previewOnly={previewOnly} />
     </div>
   );
 }
@@ -711,7 +716,7 @@ function ShowcaseV3({ previewOnly }: { previewOnly: (what: string) => void }) {
         </div>
       </Section>
 
-      <Section id="s-v3-table" title="Table v3: dense, totals, pinned Actions, clickable rows, record groups" note="The frames are 620 px wide so the tables scroll. Dense = 48 px rows. The totals row is a tfoot. pinLast keeps Actions in view with a shadow on its left edge only while columns are hidden. A colspan sub-row no longer leaks the first-column shadow.">
+      <Section id="s-v3-table" title="Table v3: dense, totals, pinned Actions, clickable rows, record groups" note="Above 1024 px the frames are 620 px wide so the tables scroll; at 1024 px and under every one of them is stacked (totals as a block, sub-rows as notes, clickable rows kept). Dense = 48 px rows. The totals row is a tfoot. pinLast keeps Actions in view with a shadow on its left edge only while columns are hidden. A colspan sub-row no longer leaks the first-column shadow.">
         <div style={{ maxWidth: 620, display: "grid", gap: 20 }}>
           <ScrollTable label="Dense jobs with totals and pinned Actions" dense pinLast>
             <thead><tr>{MINI_COLS.map((c, i) => <th key={c} scope="col" style={i === 0 ? { minWidth: 120 } : i === 2 ? { minWidth: 220 } : undefined}>{c}</th>)}</tr></thead>
@@ -838,6 +843,246 @@ function ShowcaseV3({ previewOnly }: { previewOnly: (what: string) => void }) {
             <Dialog open={discard} title="Discard this customer?" confirmLabel="Discard" onClose={() => setDiscard(false)} onConfirm={() => { setDiscard(false); setInner(false); }} />
           </Sheet>
         </Sheet>
+      </Section>
+    </>
+  );
+}
+
+/* ---------------------------------------------------------------- v5 ---------------------------------------------------------------- */
+
+type FilterState = { statuses: string[]; show: string };
+const FILTER_DEFAULT: FilterState = { statuses: [], show: "open" };
+const FILTER_STATUSES = [["late", "Late"], ["waiting", "Waiting"], ["rework", "Rework"], ["done", "Complete"]] as const;
+const SHOW_LABEL: Record<string, string> = { open: "Open", done: "Done", all: "All" };
+
+function ShowcaseV5({ previewOnly }: { previewOnly: (what: string) => void }) {
+  const [seg, setSeg] = useState<"all" | "list" | "3" | "6">("all");
+  const [segPhone, setSegPhone] = useState<"open" | "done" | "archived" | "all">("open");
+  const [segLong, setSegLong] = useState<"m3" | "m6" | "m12" | "all" | "custom">("m12");
+  const [tab6, setTab6] = useState("a");
+  const [segSm, setSegSm] = useState<"3" | "6">("3");
+  const [barSel, setBarSel] = useState(2);
+  const [danger, setDanger] = useState<null | "menu" | "plain" | "multi">(null);
+  const [dangerBusy, setDangerBusy] = useState(false);
+  const [dangerErr, setDangerErr] = useState<string | undefined>();
+  const [attn, setAttn] = useState(2);
+  const [unit, setUnit] = useState<"hours" | "days">("hours");
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+  const [chips, setChips] = useState(["Status: Late", "Show: Done", "Machine: Laser 2"]);
+  const [filters, setFilters] = useState<FilterState>(FILTER_DEFAULT);
+
+  useEffect(() => {
+    if (!dangerBusy) return;
+    const t = setTimeout(() => { setDangerBusy(false); setDangerErr("Preview only: no request was sent, so nothing was deleted."); }, 1800);
+    return () => clearTimeout(t);
+  }, [dangerBusy]);
+
+  const groups: FilterGroup[] = [
+    { kind: "segmented", id: "show", label: "Show", options: [{ value: "open", label: "Open", testId: "fp-show-open" }, { value: "done", label: "Done", testId: "fp-show-done" }, { value: "all", label: "All", testId: "fp-show-all" }], value: filters.show, onChange: (v) => setFilters((f) => ({ ...f, show: v })) },
+    { kind: "chips", id: "status", label: "Status", options: FILTER_STATUSES.map(([value, label]) => ({ value, label, testId: `fp-chip-${value}` })), selected: filters.statuses, onToggle: (v) => setFilters((f) => ({ ...f, statuses: f.statuses.includes(v) ? f.statuses.filter((x) => x !== v) : [...f.statuses, v] })) },
+  ];
+  const active: ActiveFilter[] = [
+    ...(filters.show !== "open" ? [{ id: "show", label: `Show: ${SHOW_LABEL[filters.show]}`, onRemove: () => setFilters((f) => ({ ...f, show: "open" })) }] : []),
+    ...filters.statuses.map((v) => ({ id: `status-${v}`, label: `Status: ${FILTER_STATUSES.find((s) => s[0] === v)?.[1] ?? v}`, onRemove: () => setFilters((f) => ({ ...f, statuses: f.statuses.filter((x) => x !== v) })) })),
+  ];
+  const dangerItems = [
+    { id: "view", label: "View job", onSelect: () => previewOnly("The job was not opened."), testId: "v5-menu-view", elementId: "v5-menu-view-btn" },
+    { id: "dup", label: "Duplicate job", onSelect: () => previewOnly("Nothing was duplicated."), testId: "v5-menu-dup" },
+    { id: "archive", label: "Archive job", onSelect: () => previewOnly("Nothing was archived."), disabled: true, hint: "Finish the job first", testId: "v5-menu-archive" },
+    { id: "delete", label: "Delete job J-0431", danger: true, onSelect: () => setDanger("menu"), testId: "v5-menu-delete", elementId: "v5-menu-delete-btn" },
+  ];
+  const wide = ["Job", "Customer", "Description", "Machine", "Qty", "Value", "Actions"] as const;
+  const pinRows = ROWS.slice(0, 3);
+  // n = 3 pins a tick box column, the job and the customer (about 300 px); n = 2 pins the job and the customer (about 276 px).
+  const pinTable = (n: 0 | 2 | 3, last: boolean, label: string) => (
+    <ScrollTable label={label} pinFirst={n} pinLast={last} dense>
+      <thead><tr>
+        {n === 3 ? <th scope="col" style={{ width: 56, minWidth: 56 }}><span className={srOnly}>Select</span></th> : null}
+        {wide.map((c, i) => <th key={c} scope="col" style={i === 0 ? { minWidth: 96, width: 96 } : i === 1 ? { minWidth: n === 3 ? 148 : 180, width: n === 3 ? 148 : 180 } : i === 2 ? { minWidth: 240 } : undefined}>{c}</th>)}
+      </tr></thead>
+      <tbody>
+        {pinRows.map((r) => (
+          <tr key={r.id}>
+            {n === 3 ? <td style={{ padding: 0 }}><Checkbox aria-label={`Select ${r.id}`} checked={false} onChange={() => {}} /></td> : null}
+            <td style={{ whiteSpace: "nowrap" }}><strong className={tabularNumbers}>{r.id}</strong></td>
+            <td style={{ whiteSpace: "nowrap" }}>{r.customer}</td>
+            <td style={{ whiteSpace: "nowrap" }}>{r.desc}</td>
+            <td style={{ whiteSpace: "nowrap" }}>{r.machine}</td>
+            <td className={tabularNumbers} style={{ textAlign: "right" }}>{r.qty}</td>
+            <td className={tabularNumbers} style={{ textAlign: "right", whiteSpace: "nowrap" }}>{r.value}</td>
+            <td><Button size="sm" variant="secondary" onClick={() => previewOnly(`${r.id} was not changed.`)}>Open</Button></td>
+          </tr>
+        ))}
+        <tr data-sub="true"><td colSpan={n === 3 ? 8 : 7}><div style={{ color: "#566074", fontSize: 13 }}>A full-width note row: it is never pinned and leaks no shadow.</div></td></tr>
+      </tbody>
+    </ScrollTable>
+  );
+
+  return (
+    <>
+      <Section id="s-v5-seg" title="v5: segmented control with short labels, and on a phone" note="Every segment is at least 48 px wide and 48 px tall (a 48 px hit area, neighbours touch but never overlap). v6: under 640 px the control never scrolls: it fills the width, its segments share the row and wrap onto more rows 16 px apart. The 358 px frames below show the phone form.">
+        <div style={{ display: "grid", gap: 18 }}>
+          <Cell label="Short labels"><SegmentedControl label="View" value={seg} onChange={setSeg} data-testid="v5-seg-short" options={[{ value: "all", label: "All", testId: "v5-seg-all" }, { value: "list", label: "List", testId: "v5-seg-list" }, { value: "3", label: "3", testId: "v5-seg-3" }, { value: "6", label: "6", testId: "v5-seg-6" }]} /></Cell>
+          <Cell label="Small, months"><SegmentedControl label="Months" size="sm" value={segSm} onChange={setSegSm} data-testid="v5-seg-sm" options={[{ value: "3", label: "3" }, { value: "6", label: "6" }]} /></Cell>
+          <Cell label="Longer labels (a phone's width: the segments wrap onto a second row)">
+            <div style={{ width: "100%", maxWidth: 358, minWidth: 0 }} data-testid="v5-seg-frame-long">
+              <SegmentedControl label="Period" value={segLong} onChange={setSegLong} data-testid="v5-seg-long" options={[{ value: "m3", label: "Last 3 months" }, { value: "m6", label: "Last 6 months" }, { value: "m12", label: "Last 12 months" }, { value: "all", label: "All time" }]} />
+            </div>
+          </Cell>
+          <Cell label="Four segments in a 358 px column (a phone's width)">
+            <div style={{ width: "100%", maxWidth: 358, minWidth: 0 }} data-testid="v5-seg-frame">
+              <SegmentedControl label="Show" value={segPhone} onChange={setSegPhone} data-testid="v5-seg-phone" options={[{ value: "open", label: "Open (24)" }, { value: "done", label: "Done (131)" }, { value: "archived", label: "Archived (5)" }, { value: "all", label: "All" }]} />
+            </div>
+          </Cell>
+        </div>
+      </Section>
+
+      <Section id="s-v5-pbar" title="v5: preview bar at 390 px" note="Under 640 px the label wraps to a second short line instead of being cut with an ellipsis, and the controls trigger keeps its 48 px hit area. Or pass shortLabel: phones show the short words, the full label stays readable by assistive technology and names the group.">
+        <div style={{ display: "grid", gap: 24, maxWidth: 390 }}>
+          <div style={{ display: "grid", gap: 6 }}><span style={cap}>Default label</span><PreviewBar data-testid="v5-pbar-wrap" controls={<Button size="sm" variant="secondary">Preview controls</Button>} /></div>
+          <div style={{ display: "grid", gap: 6 }}><span style={cap}>A longer label (wraps, never cut)</span><PreviewBar data-testid="v5-pbar-long" label="Preview, sample data, nothing is saved. Roles and states here are simulated." controls={<Button size="sm" variant="secondary">Preview controls</Button>} /></div>
+          <div style={{ display: "grid", gap: 6 }}><span style={cap}>shortLabel (full text stays for assistive technology)</span><PreviewBar data-testid="v5-pbar-short" shortLabel={PREVIEW_SHORT_LABEL} controls={<Button size="sm" variant="secondary">Preview controls</Button>} /></div>
+        </div>
+      </Section>
+
+      <Section id="s-v5-bar" title="v5: selection bar on a phone" note="v6: under 640 px an active bar never scrolls: the count, then the actions wrapped 16 px apart. With compact the row is the count, one primary action and a More menu holding Select all, Clear selection and your other actions. Narrow your browser under 640 px to see both; above that they look like the normal bar.">
+        <div style={{ display: "grid", gap: 14 }}>
+          <Cell label="Default: the actions wrap under the count on a phone">
+            <div style={{ width: "100%" }}>
+              <SelectionBar count={barSel} filteredTotal={24} noun="job" stickyTop="0px" onSelectAll={() => setBarSel(24)} onClear={() => setBarSel(0)}>
+                <Button size="sm" variant="primary" onClick={() => previewOnly("No jobs were finished.")}>Finish selected ({barSel})</Button>
+                <Button size="sm" variant="secondary" onClick={() => previewOnly("Nothing was printed.")}>Print workshop pack</Button>
+                <Button size="sm" variant="secondary" onClick={() => previewOnly("Nothing was exported.")}>Export selected</Button>
+              </SelectionBar>
+            </div>
+          </Cell>
+          <Cell label="compact: count + primary + More on a phone">
+            <div style={{ width: "100%" }}>
+              <SelectionBar count={barSel} filteredTotal={24} noun="job" stickyTop="0px" onSelectAll={() => setBarSel(24)} onClear={() => setBarSel(0)}
+                compact={{ primary: <Button size="sm" variant="primary" onClick={() => previewOnly("No jobs were finished.")}>Finish ({barSel})</Button>, more: [{ id: "print", label: "Print workshop pack", onSelect: () => previewOnly("Nothing was printed.") }, { id: "export", label: "Export selected", onSelect: () => previewOnly("Nothing was exported.") }] }}>
+                <Button size="sm" variant="primary" onClick={() => previewOnly("No jobs were finished.")}>Finish selected ({barSel})</Button>
+                <Button size="sm" variant="secondary" onClick={() => previewOnly("Nothing was printed.")}>Print workshop pack</Button>
+                <Button size="sm" variant="secondary" onClick={() => previewOnly("Nothing was exported.")}>Export selected</Button>
+              </SelectionBar>
+            </div>
+          </Cell>
+          <Button size="sm" variant="quiet" onClick={() => setBarSel(barSel ? 0 : 2)} data-testid="v5-bar-toggle">{barSel ? "Clear both bars" : "Select 2 jobs in both bars"}</Button>
+        </div>
+      </Section>
+
+      <Section id="s-v5-menu" title="v5: menu danger item, per-item test id and id" note="danger: red words, a red tint on hover and focus, and a separator before the first danger item. The LABEL says what is destroyed ('Delete job J-0431'), so colour is never the only signal; a screen reader also hears 'destructive'. testId puts a data-testid, elementId a DOM id, on the item button. The danger item opens the danger dialog below.">
+        <div style={row}>
+          <Menu label="More" aria-label="More actions for J-0431" items={dangerItems} data-testid="v5-menu" />
+        </div>
+      </Section>
+
+      <Section id="s-v5-dialog" title="v5: danger dialog and multi-line text" note="Convention for anything destructive: the title names the verb and the thing ('Delete job J-0431?'); the description says what is lost, one fact per line (a line break is kept); the confirm is the red solid button named with that verb ('Delete job', never 'OK'); Cancel is the first focus, always; role is alertdialog. Navy primary stays for every non-destructive confirm.">
+        <div style={row}>
+          <Button variant="danger" onClick={() => { setDangerErr(undefined); setDanger("plain"); }} data-testid="v5-open-danger">Delete job…</Button>
+          <Button variant="secondary" onClick={() => { setDangerErr(undefined); setDanger("multi"); }} data-testid="v5-open-multi">Delete with fields and several lines…</Button>
+        </div>
+        <Dialog open={danger === "plain" || danger === "menu"} tone="danger" title="Delete job J-0431?" description={"This removes the job, its 3 worksheets and its time bookings.\nInvoices already raised for it are kept.\nThis cannot be undone."}
+          confirmLabel="Delete job" onConfirm={() => { if (danger === "menu") { setDanger(null); previewOnly("Nothing was deleted."); } else { setDangerErr(undefined); setDangerBusy(true); } }}
+          onClose={() => setDanger(null)} busy={dangerBusy} error={dangerErr} confirmTestId="v5-danger-confirm" cancelTestId="v5-danger-cancel" />
+        <Dialog open={danger === "multi"} tone="danger" title="Delete 2 customers?" description={"Two customers will be removed from the list.\nTheir quotes and jobs stay and show the name only."} confirmLabel="Delete 2 customers"
+          onConfirm={() => { setDanger(null); previewOnly("Nothing was deleted."); }} onClose={() => setDanger(null)} confirmTestId="v5-multi-confirm">
+          <Field label="Type DELETE to confirm"><Input data-testid="v5-multi-field" /></Field>
+        </Dialog>
+      </Section>
+
+      <Section id="s-v5-table" title="v5: pin the first N columns, and pin the last" note="pinFirst={2} or {3} keeps the first columns in view while the rest scroll under them; each sticks after the one before it (measured widths), and only the LAST pinned column shows the soft shadow, only once scrolled. pinFirst={0} pins nothing. If the pinned columns would fill more than 60% of the visible width nothing is pinned. A colspan row is never pinned and leaks no shadow. 560 px frames.">
+        <div style={{ display: "grid", gap: 20, maxWidth: 560 }}>
+          <div style={{ display: "grid", gap: 6 }}><span style={cap}>pinFirst 2 + pinLast</span>{pinTable(2, true, "Two pinned columns and pinned Actions")}</div>
+          <div style={{ display: "grid", gap: 6 }}><span style={cap}>pinFirst 3</span>{pinTable(3, false, "Three pinned columns")}</div>
+          <div style={{ display: "grid", gap: 6 }}><span style={cap}>pinFirst 0</span>{pinTable(0, false, "No pinned column")}</div>
+        </div>
+      </Section>
+
+      <Section id="s-v5-disc" title="v5: disclosure summary variants" note="attention is the summary for a count of things that need a person: 'N things need attention' (amber tint, 3 px bar). clear is its green twin. The words carry the meaning; attentionSummary(n) writes them. Native details: Enter and Space toggle, the row is 48 px.">
+        <div style={{ display: "grid", gap: 12, maxWidth: 560 }}>
+          <Disclosure variant={attn ? "attention" : "clear"} summary={<span data-testid="v5-attn-summary">{attentionSummary(attn)}</span>} data-testid="v5-attn">
+            <ul style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 6 }}>
+              <li>2 people have no display name, so the Job Board cannot say who a job is assigned to.</li>
+              <li>Two-step sign-in is off for 1 administrator.</li>
+            </ul>
+          </Disclosure>
+          <div style={row}>
+            <Button size="sm" variant="secondary" onClick={() => setAttn(attn === 0 ? 2 : attn - 1)} data-testid="v5-attn-dec">Fix one</Button>
+            <span style={cap}>{attn === 0 ? "Nothing left: the same disclosure turns to its clear style." : `${attn} to go.`}</span>
+          </div>
+        </div>
+      </Section>
+
+      <Section id="s-v5-tile" title="v5: stat tile with a control slot" note="control puts ONE inline control on the label row (here an Hours | Days toggle); it wraps under the label on a narrow tile. Only a plain tile takes it (a tile that is a button or link is already a control). The control names itself.">
+        <StatTiles label="Tiles with a control" columns={3}>
+          <StatTile label="Machine time" value={unit === "hours" ? "182 h" : "22.8 days"} hint="This month" control={
+            <SegmentedControl label="Show machine time in" size="sm" value={unit} onChange={setUnit} options={[{ value: "hours", label: "Hours", testId: "v5-unit-hours" }, { value: "days", label: "Days", testId: "v5-unit-days" }]} data-testid="v5-unit" />
+          } data-testid="v5-tile-control" />
+          <StatTile label="Open jobs" value="19" hint="No control here" />
+          <StatTile label="Late jobs" value="3" onPress={() => {}} control={<span>never drawn</span>} hint="A pressable tile skips the slot" />
+        </StatTiles>
+      </Section>
+
+      <Section id="s-v5-icon" title="v5: 48 px icon button, expander and removable chip" note="Button size='icon' is a 48 x 48 square for an icon-only action; it needs an aria-label. ExpanderButton is the chevron version with aria-expanded. RemovableChip is a 32 px chip (a word and a cross) with a 48 px hit area; RemovableChips lists them with a 16 px row gap.">
+        <div style={{ display: "grid", gap: 14 }}>
+          <div style={row}>
+            <ExpanderButton expanded={!!open.a} onToggle={() => setOpen((o) => ({ ...o, a: !o.a }))} label="Show details for J-0431" controls="v5-exp-a" data-testid="v5-expander" />
+            <span className={typeScale.name}>J-0431 Bracket, 6mm plate</span>
+            <Button size="icon" variant="quiet" aria-label="Close preview" data-testid="v5-icon-secondary" onClick={() => previewOnly("Nothing was closed.")}>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M3 3 9 9M9 3 3 9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+            </Button>
+          </div>
+          {open.a ? <p id="v5-exp-a" style={{ ...cap, margin: 0 }}>Details for J-0431 open here: customer, machine and due date.</p> : null}
+          <RemovableChips label="Active filters (sample)" data-testid="v5-chips">
+            {chips.map((c) => <RemovableChip key={c} onRemove={() => setChips(chips.filter((x) => x !== c))} data-testid="v5-chip">{c}</RemovableChip>)}
+            {chips.length === 0 ? <Button size="sm" variant="quiet" onClick={() => setChips(["Status: Late", "Show: Done", "Machine: Laser 2"])}>Put the chips back</Button> : null}
+          </RemovableChips>
+        </div>
+      </Section>
+
+      <Section id="s-v5-filters" title="v5: Filters popover" note="The composition the previews each built: a 'Filters (n)' button, a popover with a SegmentedControl and a ChipGroup, a quiet 'Clear filters' only while something is on, and the active filters as removable chips. Escape returns focus to the Filters button; removing a chip moves focus to the next chip (or the button); Clear filters returns focus to the button.">
+        <div style={{ display: "grid", gap: 10, maxWidth: 640 }}>
+          <FiltersPopover groups={groups} active={active} onClear={() => setFilters(FILTER_DEFAULT)} data-testid="v5-filters" />
+          <p style={{ ...cap, margin: 0 }} data-testid="v5-filters-state">Filtering: show {SHOW_LABEL[filters.show]}, {filters.statuses.length ? filters.statuses.join(", ") : "any status"}.</p>
+        </div>
+      </Section>
+
+      <Section id="s-v6" title="v6: no sideways scrolling (stacked table options, Select collapse, Tabs More)" note="Phone and tablet rule: nothing here scrolls sideways at 1024 px and under. These demos use the new options: primary and columnPriority on a ScrollTable (which cell is the title, which cells come first), actionsColumn, stackHide, a SegmentedControl that collapses to the shared Select under 640 px, Tabs that move into a More menu, and a long unbroken word.">
+        <div style={{ display: "grid", gap: 18, minWidth: 0 }}>
+          <ScrollTable label="Jobs with a chosen title and field order" primary={1} columnPriority={[3, 2]} stackHide={[4]} dense>
+            <thead><tr><th scope="col">Job</th><th scope="col">Customer</th><th scope="col">Due</th><th scope="col">Status</th><th scope="col">Internal ref</th><th scope="col">Actions</th></tr></thead>
+            <tbody>
+              {ROWS.slice(0, 3).map((r) => (
+                <tr key={r.id}><td>{r.id}</td><td>{r.customer}</td><td>{r.due}</td><td><StatusBadge tone={r.tone}>{r.status}</StatusBadge></td><td>REF-{r.id}</td><td><Button size="sm" variant="secondary" onClick={() => previewOnly(`${r.id} was not changed.`)}>Open</Button><Button size="sm" variant="quiet">Copy</Button></td></tr>
+              ))}
+            </tbody>
+          </ScrollTable>
+          <Cell label="collapseToSelect: segments above 640 px, the shared Select under it">
+            <SegmentedControl collapseToSelect label="Period" value={segLong} onChange={setSegLong} data-testid="v6-seg-collapse" options={[{ value: "m3", label: "Last 3 months" }, { value: "m6", label: "Last 6 months" }, { value: "m12", label: "Last 12 months" }, { value: "all", label: "All time" }, { value: "custom", label: "Custom range" }]} />
+          </Cell>
+          <Cell label="Tabs with overflow=more (the tabs that do not fit go into More)">
+            <div style={{ width: "100%", maxWidth: 360, minWidth: 0 }}>
+              <Tabs overflow="more" label="Sections" value={tab6} onChange={setTab6} data-testid="v6-tabs-more" tabs={[{ value: "a", label: "Overview" }, { value: "b", label: "Schedule", count: 12 }, { value: "c", label: "Materials" }, { value: "d", label: "Documents" }, { value: "e", label: "History" }]} />
+            </div>
+          </Cell>
+          <Cell label="A long unbroken word and number wrap instead of widening the page">
+            <Panel title="Supercalifragilisticexpialidocious_customer_reference_000000000000000000000000000000">
+              <p style={{ margin: 0 }}>Reference 12345678901234567890123456789012345678901234567890 and https://example.com/a/very/long/path/that/never/breaks/anywhere/at/all/ever/and/ever</p>
+            </Panel>
+          </Cell>
+        </div>
+      </Section>
+
+      <Section id="s-v5-name" title="v5: label in name helper" note="An aria-label that is longer than the drawn words must still START with them (label in name, axe 'label-content-name-mismatch'). nameWithVisible(visible, detail) builds it; nameContainsVisible checks it. For schedule bars, link tiles and 'Add customer, Hartley' buttons.">
+        <div style={{ display: "grid", gap: 8 }}>
+          {([["J-0437 Lathe 2", "due Friday, running"], ["Book it", "J-0437 on Lathe 2"], ["Open", "Open jobs: 19"]] as const).map(([v, d]) => (
+            <div key={v} style={row} data-testid="v5-name-row">
+              <Button size="sm" variant="secondary" aria-label={nameWithVisible(v, d)} data-testid="v5-name-btn">{v}</Button>
+              <code style={{ fontSize: 13 }}>{nameWithVisible(v, d)}</code>
+              <span style={cap}>{nameContainsVisible(nameWithVisible(v, d), v) ? "contains the drawn words" : "mismatch"}</span>
+            </div>
+          ))}
+        </div>
       </Section>
     </>
   );
