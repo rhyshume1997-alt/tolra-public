@@ -182,7 +182,22 @@ describe("middleware: fail closed verified authorisation", () => {
     h.session.platform_admin = true; gateway(MFA, [502, 502]); await expectUnavailable(await visit()); expect(h.counts.get(MFA)).toBe(2);
   });
   it("an unavailable enrolment read cannot silently exempt an admin", async () => {
-    gateway(ENROL, [502]); await expectUnavailable(await visit()); expect(h.counts.get(ENROL)).toBe(1);
+    gateway(ENROL, [502, 502, 200]); await expectUnavailable(await visit()); expect(h.counts.get(ENROL)).toBe(2);
+  });
+  it("enrolment read 502 then success opens the page instead of a 503 (CI 1692)", async () => {
+    gateway(ENROL, [502]); const response = await visit();
+    expect(response.status).toBe(200); expect(location(response)).toBeNull(); expect(h.counts.get(ENROL)).toBe(2);
+  });
+  it("enrolment read 502 then 'required' still sends the admin to set up the second step", async () => {
+    h.replies.set(ENROL, [{ status: 502 }, { status: 200, body: true }]); const response = await visit();
+    expect(location(response)).toBe("/mfa?enrol=1"); expect(h.counts.get(ENROL)).toBe(2); expect(h.signOuts).toBe(0);
+  });
+  it("an enrolment read that errors without a gateway status is never retried and never read as 'not required'", async () => {
+    gateway(ENROL, [500, 200]); await expectUnavailable(await visit()); expect(h.counts.get(ENROL)).toBe(1);
+  });
+  it("an enrolment read the database refuses is 403, not retried and not 'not required'", async () => {
+    gateway(ENROL, [403, 200]); const response = await visit();
+    expect(response.status).toBe(403); expect(location(response)).toBeNull(); expect(h.counts.get(ENROL)).toBe(1);
   });
   it.each([
     ["platform_admin", undefined], ["platform_admin", "false"], ["hidden_sections", undefined], ["hidden_sections", [null]],

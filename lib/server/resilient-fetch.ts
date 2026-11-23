@@ -18,6 +18,9 @@ const SAFE_RPCS = new Set([
   // Read-only (STABLE, migration 036). requireProfile (lib/server/auth.ts) reads it on every guarded API request; without a retry a
   // gateway blip on it answered 403, which is what left one of a job's photo thumbnails broken while the other loaded.
   "my_session", "company_people",
+  // Read-only (STABLE, one SELECT, migration 065). The middleware asks it on every page for an admin without a second step; without a
+  // retry a gateway 502 on it answered the whole page with the 503 "Service temporarily unavailable" JSON (CI 1692, platform.spec.ts:59).
+  "my_mfa_enrolment_required",
 ]);
 
 export function isRetrySafe(url: string, method: string): boolean {
