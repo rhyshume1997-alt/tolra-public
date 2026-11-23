@@ -7,6 +7,9 @@
  * the navy primary stays the one strong choice. Busy disables Cancel and the secondary too.
  * v3 nesting: a Dialog inside a Sheet (or another Dialog) handles only its OWN cancel and Tab events (target check, and the Tab wrap counts only its own controls), so Escape closes just the inner one.
  * v4: it scales in from 0.95 with a fade (200 ms, centred) and leaves in 120 ms: the content stays rendered while it leaves, then the native dialog closes (data-state on the dialog drives the CSS transition).
+ * v5 (optional, defaults unchanged): tone="danger" is the destructive-confirm convention: the title names the verb and the thing ("Delete job J-0431?"), the description (and children) say what is lost, the confirm is the RED solid button named with that verb
+ * ("Delete job", never "OK" or "Yes"), Cancel is the first focus (a destructive dialog never lands on the red button), the dialog is role="alertdialog", and a thin red top edge repeats it. Navy primary stays for every non-destructive confirm.
+ * description may now hold several lines: a line break ("\n") in the text is kept (white-space: pre-line), and a React node is accepted for richer text (a list of what will be lost goes in children). confirmTestId and cancelTestId pass a data-testid to the two buttons.
  * Must not change: it is controlled (it closes only when the caller sets open to false); the first focus is Cancel for plain confirmations; an
  * `error` is shown inside the dialog and never turns into a success message. It performs nothing: onConfirm is the caller's real action.
  */
@@ -19,7 +22,8 @@ import { useModalPresence } from "./usePresence";
 export interface DialogProps {
   open: boolean;
   title: string;
-  description?: string;
+  /** v5: a string (a "\n" starts a new line) or a node. */
+  description?: ReactNode;
   children?: ReactNode;
   confirmLabel: string;
   cancelLabel?: string;
@@ -32,23 +36,34 @@ export interface DialogProps {
   secondaryLabel?: string;
   onSecondary?: () => void;
   secondaryDisabled?: boolean;
+  /** v5: "danger" = the destructive confirm: red solid confirm, first focus on Cancel, role alertdialog. Default "default" is exactly v4. */
+  tone?: "default" | "danger";
+  /** v5: data-testid for the confirm and cancel buttons. */
+  confirmTestId?: string;
+  cancelTestId?: string;
 }
 
-export function Dialog({ open, title, description, children, confirmLabel, cancelLabel = "Cancel", onConfirm, onClose, busy, error, confirmDisabled, secondaryLabel, onSecondary, secondaryDisabled }: DialogProps) {
+export function Dialog({ open, title, description, children, confirmLabel, cancelLabel = "Cancel", onConfirm, onClose, busy, error, confirmDisabled, secondaryLabel, onSecondary, secondaryDisabled, tone = "default", confirmTestId, cancelTestId }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
   const hasSecondary = !!secondaryLabel && !!onSecondary;
+  const danger = tone === "danger";
   const { shown, state } = useModalPresence(open);
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
-    if (shown && !d.open) d.showModal();
+    if (shown && !d.open) {
+      d.showModal();
+      // v5: a destructive dialog always starts on Cancel, even when it holds fields before the buttons.
+      if (danger) d.querySelector<HTMLElement>("[data-dialog-cancel]")?.focus();
+    }
     if (!shown && d.open) d.close();
-  }, [shown]);
+  }, [shown, danger]);
   return (
     <dialog
       ref={ref}
-      className={cx(premiumTokens, styles.dialog)}
+      className={cx(premiumTokens, styles.dialog, danger && styles.dialogDanger)}
+      role={danger ? "alertdialog" : undefined}
       aria-labelledby={`${id}-t`}
       aria-describedby={description ? `${id}-d` : undefined}
       data-state={state}
@@ -73,9 +88,9 @@ export function Dialog({ open, title, description, children, confirmLabel, cance
           {children ? <div className={styles.dialogBody}>{children}</div> : null}
           {error ? <p role="alert" className={styles.dialogError}>{error}</p> : null}
           <div className={styles.dialogActions}>
-            <Button variant={hasSecondary ? "quiet" : "secondary"} onClick={onClose} disabled={busy}>{cancelLabel}</Button>
+            <Button variant={hasSecondary ? "quiet" : "secondary"} onClick={onClose} disabled={busy} data-dialog-cancel="true" data-testid={cancelTestId}>{cancelLabel}</Button>
             {hasSecondary ? <Button variant="secondary" onClick={onSecondary} disabled={busy || secondaryDisabled}>{secondaryLabel}</Button> : null}
-            <Button variant="primary" onClick={onConfirm} loading={busy} disabled={confirmDisabled}>{confirmLabel}</Button>
+            <Button variant={danger ? "dangerSolid" : "primary"} onClick={onConfirm} loading={busy} disabled={confirmDisabled} data-testid={confirmTestId}>{confirmLabel}</Button>
           </div>
         </>
       ) : null}
