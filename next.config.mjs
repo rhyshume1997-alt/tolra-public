@@ -18,6 +18,8 @@ const csp = [
 const nextConfig = {
   devIndicators: false,
   poweredByHeader: false,
+  // Whatever the Vercel project holds, the browser bundle is built with NO Supabase URL or key, so no client can ever be created (lib/supabase.ts isSupabaseConfigured is false).
+  env: { NEXT_PUBLIC_SUPABASE_URL: "", NEXT_PUBLIC_SUPABASE_ANON_KEY: "", NEXT_PUBLIC_DEMO_MODE: "" },
   eslint: { ignoreDuringBuilds: true },
   async headers() {
     return [
