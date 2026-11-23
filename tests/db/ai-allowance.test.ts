@@ -1,5 +1,5 @@
 /**
- * AI allowance release (supabase/release/ai_allowance.release.sql, canonical source supabase/proposals/p_ai_allowance.sql): a per-company
+ * AI allowance release (supabase/release/162_ai_allowance.release.sql, canonical source supabase/proposals/p162_ai_allowance.sql): a per-company
  * monthly AI request allowance by tier. The DB proof, below PostgREST, one `it` per case.
  *
  * Inputs: the disposable stack only (TEST_DATABASE_URL, isolation-checked). The post-144 fixture installs 145..160; this file then installs
@@ -31,8 +31,8 @@ const runId = randomBytes(4).toString("hex");
 let seq = 0;
 const root = path.resolve(__dirname, "../..");
 const read = (file: string) => readFileSync(path.join(root, file), "utf8");
-const RELEASE = "supabase/release/ai_allowance.release.sql";
-const PROPOSAL = "supabase/proposals/p_ai_allowance.sql";
+const RELEASE = "supabase/release/162_ai_allowance.release.sql";
+const PROPOSAL = "supabase/proposals/p162_ai_allowance.sql";
 const FN = "public.ai_helper_reserve_allowance(text,integer,text,integer)";
 const RESERVE_MD5 = "48b3f8302686bc6310402b117ea09ad5";
 const ASSISTANT_MD5 = "3c415227fefdeda349442ff870a88e64";

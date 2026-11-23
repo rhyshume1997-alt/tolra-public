@@ -1050,7 +1050,7 @@ async function expect099(db: Client, present: boolean) {
   const md5 = async (sig: string) => (await db.query<{ v: string }>("select md5(regexp_replace(prosrc, '\\s', '', 'g')) as v from pg_proc where oid = to_regprocedure($1)", [sig])).rows[0]?.v;
   const replaced: [string, string, string][] = [
     ["public.invoice_from_delivery_notes_draft(uuid,uuid[],date,date,text)", "d467a505ab13a1cc1b1fa51cd8922f58", "cff9113a2490bda9b901764974adfa0a"],
-    ["public.job_finish_draft_invoice(uuid,uuid)", "8c4d3694cec4ac679916f916afc41985", "492fa39d76311ecfc78ce860a5f1160b"],
+    ["public.job_finish_draft_invoice(uuid,uuid)", "47652936f36f4372a9056b9829887bc9", "492fa39d76311ecfc78ce860a5f1160b"],
     ["public.delivery_note_try_draft(uuid,uuid,text)", "c1464c01f419d1866e7143a41076e7d0", "52a9771fec832f0e20e9d780e7561caa"],
     ["public.replace_draft_invoice(uuid,timestamp with time zone,jsonb,jsonb)", "8e8e4cc70d1cd7ad4c3268c49e52f305", "bc56dd3aa75000c36f959955b71026ca"],
   ];

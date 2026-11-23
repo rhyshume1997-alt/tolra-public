@@ -58,6 +58,15 @@ describe("payment chasing settings", () => {
     expect(host.textContent).toContain("Chasers are drafts for approval.");
     await submit(); expect(onSave).toHaveBeenCalledWith([]);
   });
+  it("a failed save shows a clear error, keeps the steps on screen and never says they were saved", async () => {
+    const onSave = mount(vi.fn().mockRejectedValue(new Error("Could not save chase steps.")));
+    input("-5");
+    await submit();
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(host.textContent).toContain("Could not save the chase steps. Please try again.");
+    expect(host.textContent).not.toContain("Chase steps saved.");
+    expect(host.querySelector("input")!.value).toBe("-5");
+  });
   it.each(["", "1.5", "9007199254740992"])("rejects invalid days %s", async (value) => {
     const onSave = mount(); input(value); await submit();
     expect(onSave).not.toHaveBeenCalled();

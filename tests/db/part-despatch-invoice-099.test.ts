@@ -76,6 +76,12 @@ async function complete(jobId: string) {
   await q(who("office"), INSPECT_SQL, [jobId]);
 }
 
+/** Finish, then remove the draft Finish now makes when nothing is despatched (owner write), so a test can start from "no live invoice" as before. */
+async function completeUndrafted(jobId: string) {
+  await complete(jobId);
+  await rows("delete from public.invoices where job_id = $1 and status = 'draft'", [jobId]);
+}
+
 const DN_SQL = "select public.create_delivery_note($1, $2, current_date, current_date, null, null, $3::jsonb) as r";
 /** A delivery note made by the workshop (the job must be released) and sent out by the office: 059 drafts it. */
 async function despatch(o: { orderId: string; jobId?: string }, picks: Array<[string, number]>) {
@@ -164,12 +170,33 @@ describe("a part despatch, then a second part", () => {
     expect((await invoice(a)).subtotal).toBe("750.00");
   });
 
-  it("with a job: Finish with nothing despatched drafts nothing (open question branch); the parts go on the job's draft, then a new draft once it is issued; the issued one is untouched", async () => {
+  it("with a job: Finish with nothing despatched gives a DRAFT of the order's full quantities, unlinked and recorded as a full order; never issued; later notes add nothing to it", async () => {
     const j = await orderJob();
     await complete(j.jobId);
+    const made = await jobInvoices(j.jobId);
+    expect(made).toHaveLength(1);
+    expect(made[0].status).toBe("draft");
+    const draft = made[0].id;
+    expect(await short(draft)).toEqual([["Flange 80mm", 12], ["Bush 25mm", 7]]);
+    expect((await lines(draft)).map((l) => l.sales_order_line_id)).toEqual([null, null]);
+    expect(await invoice(draft)).toMatchObject({ status: "draft", invoice_ref: null, subtotal: "1900.03", vat: "380.01", total: "2280.04" });
+    expect(await rows("select sales_order_id from public.invoice_job_finish_legacy where invoice_id = $1", [draft])).toEqual([{ sales_order_id: j.orderId }]);
+    const drafted = await one<{ n: string }>(
+      "select count(*) as n from security_audit.audit_log where action = 'JOB_DRAFT_INVOICE' and entity_id = $1 and metadata ->> 'outcome' = 'drafted' and metadata ->> 'invoice_id' = $2", [j.jobId, draft]);
+    expect(Number(drafted.n)).toBe(1);
+    // The whole order counts as invoiced while this draft is live: a note sent out later goes on it and adds nothing, and no second draft appears.
+    const before = await lines(draft);
+    const n1 = await despatch(j, [[j.flange, 5]]);
+    expect(await noteInvoice(n1)).toBe(draft);
+    expect(await lines(draft)).toEqual(before);
+    expect(await jobInvoices(j.jobId)).toHaveLength(1);
+    expect((await invoice(draft)).invoice_ref).toBeNull();
+  });
+
+  it("with a job and a draft taken away: the parts go on the job's draft, then a new draft once it is issued; the issued one is untouched", async () => {
+    const j = await orderJob();
+    await completeUndrafted(j.jobId);
     expect(await jobInvoices(j.jobId)).toEqual([]);
-    const job = await one<{ n: string }>("select count(*) as n from security_audit.audit_log where action = 'JOB_DRAFT_INVOICE' and entity_id = $1", [j.jobId]);
-    expect(Number(job.n)).toBe(0);
     // Meanwhile the dashboard lists it: Complete, 19 to despatch (12 + 7), nothing to invoice. The workshop doesn't read this list.
     expect(await awaiting(j.jobId)).toEqual([{ toDespatch: 19, toInvoice: 0 }]);
     expect(await refusal(who("workshop"), "select * from public.jobs_awaiting_despatch_or_invoice()")).toMatchObject({ code: "42501" });
@@ -416,6 +443,8 @@ describe("the delivery note path and Job Finish never bill the same quantity twi
   it("a Job Finish draft made before 099 (full order, unlinked) counts the whole order: later notes go on it and add nothing; issued, they still bill nothing", async () => {
     const j = await orderJob();
     await finish(j.jobId);
+    // Finish now drafts this order itself (nothing despatched); take that draft away so the hand-made one below stands in for 081's.
+    await rows("delete from public.invoices where job_id = $1 and status = 'draft'", [j.jobId]);
     // What 081 made at Finish: the order's full quantities, unlinked, and its audit event (as before 099).
     const legacy = await one<{ id: string }>(
       `insert into public.invoices (organization_id, customer, job_id, status, subtotal, vat, total, carriage, vat_enabled, carriage_vat, amount_paid, invoice_date, due_date, description, quantity, unit_price)
@@ -506,7 +535,7 @@ describe("freed quantity: a delete racing a raise, a job's draft, and what is ne
 
   it("freed on a JOB's draft, then the next note goes on that same draft: it takes the note and the freed quantity, once", async () => {
     const j = await orderJob();
-    await complete(j.jobId);
+    await completeUndrafted(j.jobId);
     const n1 = await despatch(j, [[j.flange, 5], [j.bush, 7]]);
     const draft = (await noteInvoice(n1))!;
     expect(await short(draft)).toEqual([["Flange 80mm", 5], ["Bush 25mm", 7]]);

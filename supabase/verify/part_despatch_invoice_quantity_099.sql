@@ -1,5 +1,5 @@
 -- Migration 099 (a draft invoice bills what was despatched; the same despatched quantity is never on two invoices). Read only: every
--- row should be TRUE (11). Bodies are compared with every whitespace character removed (an SQL-editor paste may store CRLF).
+-- row should be TRUE (12). Bodies are compared with every whitespace character removed (an SQL-editor paste may store CRLF).
 WITH body AS (
   SELECT p.oid, p.proname, p.prosecdef, md5(regexp_replace(p.prosrc, '\s', '', 'g')) AS md5
   FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace
@@ -13,7 +13,7 @@ WITH body AS (
 -- The four replaced functions are 099's (security as before: definer, but replace_draft_invoice invoker).
 SELECT 'replaced_functions_are_099' AS check_name,
        (SELECT count(*) FROM body WHERE (proname, md5, prosecdef) IN (('invoice_from_delivery_notes_draft', 'd467a505ab13a1cc1b1fa51cd8922f58', TRUE),
-                                                                     ('job_finish_draft_invoice', '8c4d3694cec4ac679916f916afc41985', TRUE),
+                                                                     ('job_finish_draft_invoice', '47652936f36f4372a9056b9829887bc9', TRUE),
                                                                      ('delivery_note_try_draft', 'c1464c01f419d1866e7143a41076e7d0', TRUE),
                                                                      ('replace_draft_invoice', '8e8e4cc70d1cd7ad4c3268c49e52f305', FALSE))) = 4 AS ok
 -- The new functions are 099's.
@@ -73,4 +73,8 @@ UNION ALL SELECT 'no_linked_line_over_despatched',
 -- RLS on invoice_line_items is unchanged in shape: still on, no permissive FOR ALL policy.
 UNION ALL SELECT 'invoice_line_items_rls',
   (SELECT c.relrowsecurity FROM pg_class c WHERE c.oid = 'public.invoice_line_items'::regclass)
-  AND NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'invoice_line_items' AND cmd = 'ALL' AND permissive = 'PERMISSIVE');
+  AND NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'invoice_line_items' AND cmd = 'ALL' AND permissive = 'PERMISSIVE')
+-- Job Finish with nothing despatched still drafts (Rhys, 20 Nov): its body records that full-order draft in invoice_job_finish_legacy, and no longer returns 'nothing-despatched'.
+UNION ALL SELECT 'job_finish_drafts_when_nothing_despatched',
+  coalesce((SELECT prosrc LIKE '%INSERT INTO public.invoice_job_finish_legacy%' AND prosrc NOT LIKE '%nothing-despatched%'
+            FROM pg_proc WHERE oid = to_regprocedure('public.job_finish_draft_invoice(uuid,uuid)')), FALSE);

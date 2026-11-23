@@ -3,8 +3,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { cloudAuthorize, cloudBalance, cloudConfig, cloudTenant, cloudTokens, AccountingError, type CloudConfig } from "@/lib/accounting/cloud-adapters";
 import type { AccountingId, ConnectionAdapter } from "@/lib/accounting/types";
 import { KEY_VERSION, decryptSecret, encryptSecret, encryptionKey } from "@/lib/integrations/crypto";
-import { beginConnect, companyXeroToken, disconnectCompany, disconnectAndRevoke, finishConnect, serviceDb, xeroReady } from "@/lib/integrations/server";
+import { DbError, beginConnect, companyXeroToken, disconnectCompany, disconnectAndRevoke, finishConnect, serviceDb, xeroReady } from "@/lib/integrations/server";
+import { randomUUID } from "node:crypto";
 import { createTokenSource } from "@/lib/integrations/tokens";
+import { quickbooksRevoke } from "@/lib/accounting/providers/quickbooks";
 import { hashState, newAuthorisation } from "@/lib/integrations/xero/oauth";
 
 /** One connection contract. The Xero adapter retains its reviewed callback/tenant cleanup and send engine. */
@@ -60,7 +62,9 @@ export async function accountingConnection(id: AccountingId, context: { userClie
         p_access_expires_at: tokens.expiresAt.toISOString(), p_key_version: KEY_VERSION });
       return true;
     },
-    disconnect: () => disconnectAndRevoke(userClient, id),
+    disconnect: id === "quickbooks"
+      ? async () => { await disconnectWithRemoteRevoke(id, { userClient, service, org }, (c, t) => quickbooksRevoke(c, t)); }
+      : () => disconnectAndRevoke(userClient, id),
     async checkInvoice(number) {
       const { data, error } = await service.from("integration_connections").select("tenant_id,status").eq("organization_id", org).eq("provider", id).maybeSingle();
       if (error || data?.status !== "connected" || !data?.tenant_id) throw new AccountingError("refused");
@@ -71,9 +75,67 @@ export async function accountingConnection(id: AccountingId, context: { userClie
   };
 }
 
+export type RemoteRevocation = { remoteRevocation: "revoked" | "local_only"; alreadyDisconnected?: true };
+
+/**
+ * Disconnect locally FIRST (so the admin is never stuck), then revoke the refresh token at the provider once, best effort.
+ * The newest refresh token is read under the lease before the local disconnect deletes it, held in memory only, and never logged.
+ * Never stores tokens or connections on this path.
+ */
+export async function disconnectWithRemoteRevoke(
+  id: Exclude<AccountingId, "xero">,
+  context: { userClient: SupabaseClient; service: SupabaseClient; org: string },
+  revoke: (config: CloudConfig, refreshToken: string) => Promise<boolean>,
+  sleep: (ms: number) => Promise<void> = (ms) => new Promise<void>((r) => setTimeout(r, ms)),
+): Promise<RemoteRevocation> {
+  const { userClient, service, org } = context;
+  const log = (outcome: string, reason?: string) => console.info(`accounting disconnect provider=${id} outcome=${outcome}${reason ? ` reason=${reason}` : ""}`);
+  const config = cloudConfig(id);
+  let key: Buffer | null = null;
+  try { key = encryptionKey(); } catch { key = null; }
+  const db = serviceDb(service);
+  const holder = randomUUID();
+  let leased = false;
+  let token: string | null = null;
+  let reason: "no_token" | "no_config" = "no_config";
+  try {
+    if (config && key) {
+      reason = "no_token";
+      let lease: { refresh_token_enc?: string } | null = null;
+      try {
+        for (let i = 0; i < 4 && !lease; i += 1) {
+          lease = await db.rpc<{ refresh_token_enc?: string } | null>("integration_token_lease", { p_org: org, p_provider: id, p_holder: holder, p_seconds: 60 });
+          if (!lease && i < 3) await sleep(1_500);
+        }
+      } catch { lease = null; }
+      if (lease) {
+        leased = true;
+        try { if (lease.refresh_token_enc) token = decryptSecret(lease.refresh_token_enc, { organizationId: org, provider: id, purpose: "refresh" }, key); } catch { token = null; }
+      }
+    }
+    try { await disconnectAndRevoke(userClient, id); }
+    catch (err) {
+      if (err instanceof DbError && err.hint === "not_connected") { log("local_only", "already_disconnected"); return { remoteRevocation: "local_only", alreadyDisconnected: true }; }
+      throw err;
+    }
+  } finally {
+    if (leased) await db.rpc("integration_token_release", { p_org: org, p_provider: id, p_holder: holder }).catch(() => undefined);
+  }
+  if (!config || !token) { log("local_only", reason); return { remoteRevocation: "local_only" }; }
+  let revoked = false;
+  let failure: "http" | "network" = "http";
+  try { revoked = await revoke(config, token); } catch { failure = "network"; }
+  if (revoked) { log("revoked"); return { remoteRevocation: "revoked" }; }
+  log("local_only", failure);
+  return { remoteRevocation: "local_only" };
+}
+
 /** Disconnect must remain possible even after app credentials are removed. */
-export async function disconnectAccounting(id: AccountingId, context: { userClient: SupabaseClient; service: SupabaseClient; org: string }) {
+export async function disconnectAccounting(id: AccountingId, context: { userClient: SupabaseClient; service: SupabaseClient; org: string }): Promise<RemoteRevocation | undefined> {
   if (id === "xero") {
     await disconnectCompany(context.userClient, context.service, context.org, await xeroReady(process.env, context.service));
+  } else if (id === "quickbooks") {
+    return disconnectWithRemoteRevoke(id, context, (c, t) => quickbooksRevoke(c, t));
   } else await disconnectAndRevoke(context.userClient, id);
+  return undefined;
 }
