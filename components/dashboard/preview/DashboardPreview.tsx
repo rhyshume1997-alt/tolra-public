@@ -22,7 +22,7 @@
 import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent, ReactNode, RefObject } from "react";
 import {
-  Button, PageHeader, Popover, PreviewBar, SegmentedControl, StatusBadge, Switch, Tabs, ToastProvider, cx, premiumTokens, srOnly, tabularNumbers, typeScale, useToast,
+  Button, PageHeader, Popover, PreviewBar, ScrollTable, SegmentedControl, StatusBadge, Switch, Tabs, ToastProvider, cx, premiumTokens, srOnly, tabularNumbers, typeScale, useToast,
 } from "@/components/ui/premium";
 import { buildAttention, type AttentionInput, type AttentionRole, type AttentionSection } from "@/lib/attention-items";
 import { attentionState } from "@/lib/attention";
@@ -581,12 +581,12 @@ function DataTable({ summary, head, rows, testId }: { summary: string; head: str
     <div className={s.dataAlt} data-testid={testId}>
       <Button size="sm" variant="quiet" aria-expanded={open} aria-controls={id} onClick={() => setOpen((v) => !v)}>{open ? "Hide data table" : "Show data table"}</Button>
       {open ? (
-        <div id={id} className={s.tableWrap}>
-          <table className={cx(s.dataTable, tabularNumbers)}>
+        <div id={id} className={s.dataWrap}>
+          <ScrollTable label={summary} dense flush>
             <caption className={srOnly}>{summary}</caption>
             <thead><tr>{head.map((h, i) => <th key={h} scope="col" className={i ? s.right : undefined}>{h}</th>)}</tr></thead>
             <tbody>{rows.map((r) => <tr key={r[0]}>{r.map((c, i) => (i === 0 ? <th key={i} scope="row">{c}</th> : <td key={i} className={s.right}>{c}</td>))}</tr>)}</tbody>
-          </table>
+          </ScrollTable>
         </div>
       ) : null}
     </div>
@@ -616,7 +616,7 @@ function LineChart({ data, format, tickFormat, ticks, target, summary, height = 
   const fmt = tickFormat ?? format;
   return (
     <div ref={ref} className={s.chart}>
-      <svg width={w} height={height} role="img" aria-labelledby={tid} className={s.svg}>
+      <svg width={w} height={height} viewBox={`0 0 ${w} ${height}`} role="img" aria-labelledby={tid} className={s.svg}>
         <title id={tid}>{summary}</title>
         {ticks.map((t) => <g key={t}><line x1={L} x2={w - Rr} y1={y(t)} y2={y(t)} className={t === lo ? s.axisLine : s.gridLine} /><text x={L - 8} y={y(t) + 4} textAnchor="end" className={s.axisText}>{fmt(t)}</text></g>)}
         {target ? <g><line x1={L} x2={w - Rr} y1={y(target.value)} y2={y(target.value)} className={s.targetLine} /><text x={w - Rr} y={y(target.value) - 6} textAnchor="end" className={s.targetText}>{target.label}</text></g> : null}
@@ -643,7 +643,7 @@ function Sparkline({ points, summary }: { points: OwedPoint[]; summary: string }
   const last = points[points.length - 1];
   return (
     <div ref={ref} className={s.chart}>
-      <svg width={w} height={H} role="img" aria-labelledby={tid} className={s.svg}>
+      <svg width={w} height={H} viewBox={`0 0 ${w} ${H}`} role="img" aria-labelledby={tid} className={s.svg}>
         <title id={tid}>{summary}</title>
         <polyline points={points.map((p, i) => `${x(i)},${y(p.owed)}`).join(" ")} className={s.seriesLineThin} fill="none" />
         <circle cx={x(points.length - 1)} cy={y(last.owed)} r={3.5} className={cx(s.point, s.pointLast)} />
@@ -665,7 +665,7 @@ function ColumnChart({ data, summary, height = 176 }: { data: Array<{ date: stri
   const every = step < 28 ? 3 : 2;
   return (
     <div ref={ref} className={s.chart}>
-      <svg width={w} height={height} role="img" aria-labelledby={tid} className={s.svg}>
+      <svg width={w} height={height} viewBox={`0 0 ${w} ${height}`} role="img" aria-labelledby={tid} className={s.svg}>
         <title id={tid}>{summary}</title>
         {ticks.map((t) => <g key={t}><line x1={L} x2={w - Rr} y1={y(t)} y2={y(t)} className={t === 0 ? s.axisLine : s.gridLine} /><text x={L - 6} y={y(t) + 4} textAnchor="end" className={s.axisText}>{t}</text></g>)}
         {data.map((d, i) => {
@@ -813,7 +813,7 @@ function JumpNav({ present }: { present: string[] }) {
   };
   return (
     <div className={s.jump} data-testid="overview-jump">
-      <Tabs label="Jump to" value={current} onChange={go} tabs={links.map((x) => ({ value: x.id, label: x.label, controls: x.id, testId: `jump-${x.id}` }))} />
+      <Tabs label="Jump to" overflow="more" value={current} onChange={go} tabs={links.map((x) => ({ value: x.id, label: x.label, controls: x.id, testId: `jump-${x.id}` }))} />
     </div>
   );
 }
@@ -838,18 +838,18 @@ function TeamWeekPanel({ rows, canOpen }: { rows: TeamRow[] | null; canOpen: (hr
   return (
     <Panel title="Team this week" meta={rows ? `${hm(totalJob)} on jobs · only admins see this` : "Only admins see this"} href="/time/week" allowed={canOpen("/time/week")} testId="team-week">
       {!rows ? <Waiting>{LOADING}</Waiting> : !rows.length ? <Waiting>Nobody has clocked in this week yet.</Waiting> : (
-        <table className={cx(s.team, tabularNumbers)}>
+        <ScrollTable label="Team this week" dense flush>
           <thead><tr><th scope="col">Person</th><th scope="col">Right now</th><th scope="col">Time on jobs</th><th scope="col" className={s.right}>Paid hours</th><th scope="col" className={s.right} title="Share of clocked time spent on jobs">On jobs</th><th scope="col" className={s.right}>Jobs finished</th></tr></thead>
           <tbody>{rows.map((r) => (
             <tr key={r.userId}>
               <th scope="row"><span className={s.personName}>{r.name}</span><span className={s.personSub}>{r.daysWorked} day{r.daysWorked === 1 ? "" : "s"} worked</span></th>
-              <td data-label="Right now"><span className={s.nowCell}><Dot light={NOW_LIGHT[r.now.state]} />{nowText(r.now)}</span></td>
-              <td data-label="Time on jobs"><span className={s.timeCell}><span className={s.miniTrack} aria-hidden="true"><span className={s.miniFill} style={{ width: `${most ? (r.jobMinutes / most) * 100 : 0}%` }} /></span><span className={s.timeFig}>{hm(r.jobMinutes)}</span></span></td>
-              <td data-label="Paid hours" className={s.right}>{hm(r.paidMinutes)}</td>
-              <td data-label="On jobs" className={s.right}>{r.onJobsPercent === null ? DASH : `${r.onJobsPercent}%`}</td>
-              <td data-label="Jobs finished" className={s.right}><b>{r.jobsFinished}</b></td>
+              <td><span className={s.nowCell}><Dot light={NOW_LIGHT[r.now.state]} />{nowText(r.now)}</span></td>
+              <td><span className={s.timeCell}><span className={s.miniTrack} aria-hidden="true"><span className={s.miniFill} style={{ width: `${most ? (r.jobMinutes / most) * 100 : 0}%` }} /></span><span className={s.timeFig}>{hm(r.jobMinutes)}</span></span></td>
+              <td className={s.right}>{hm(r.paidMinutes)}</td>
+              <td className={s.right}>{r.onJobsPercent === null ? DASH : `${r.onJobsPercent}%`}</td>
+              <td className={s.right}><b>{r.jobsFinished}</b></td>
             </tr>))}</tbody>
-        </table>
+        </ScrollTable>
       )}
     </Panel>
   );

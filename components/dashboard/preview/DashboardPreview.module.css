@@ -24,7 +24,7 @@
 .dock p { margin: 0; }
 .dockStates { display: flex; flex-direction: column; gap: 8px; width: 100%; margin-bottom: 4px; }
 .colScope { margin: 0 0 4px; color: var(--ui-muted); font-size: 12.5px; line-height: 17px; max-width: 280px; }
-.colList { display: flex; flex-direction: column; max-height: min(52vh, 420px); overflow-y: auto; padding-right: 4px; }
+.colList { display: flex; flex-direction: column; max-height: min(52vh, 420px); overflow-y: auto; overflow-x: hidden; padding-right: 4px; }
 .colReset { padding: 8px 0 4px; }
 
 /* ---------- notices and banner ---------- */
@@ -40,7 +40,6 @@
 .body { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
 
 /* ---------- jump tabs (the shared underline Tabs, sticky below the top bar) ---------- */
-.jump [role="tablist"] { flex-wrap: nowrap; overflow-x: auto; padding-block: 4px; margin-block: -4px; scrollbar-width: none; }
 .jump { position: sticky; top: 64px; z-index: 10; margin: 0 -4px; padding: 0 4px; background: var(--ui-surface-2); }
 
 /* ---------- sections ---------- */
@@ -132,7 +131,7 @@ a.attnRow:hover { background: var(--ui-surface-2); }
 
 /* ---------- bars, split bar, age list ---------- */
 .bars { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
-.barRow { display: grid; grid-template-columns: minmax(6.5rem, 10.5rem) minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 40px; padding: 4px 0; border-bottom: 1px solid var(--ui-line); font-size: var(--ui-fs-body); }
+.barRow { display: grid; grid-template-columns: minmax(min(6.5rem, 38%), 10.5rem) minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 40px; padding: 4px 0; border-bottom: 1px solid var(--ui-line); font-size: var(--ui-fs-body); }
 .barRow:last-child { border-bottom: 0; }
 .barLabel { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--ui-ink); }
 .barTrack { height: 10px; border-radius: 2px; background: var(--ui-surface-3); overflow: hidden; }
@@ -176,38 +175,17 @@ a.pipeline:hover .pipeCell { box-shadow: inset 0 0 0 1px var(--ui-line-hover); }
 .targetLine { stroke: var(--ui-muted); stroke-width: 1; stroke-dasharray: 4 4; }
 .targetText { fill: var(--ui-muted); font-size: 12px; font-family: var(--ui-font); }
 .dataAlt { margin-top: 4px; }
-.tableWrap { max-height: 260px; overflow: auto; margin-top: 6px; border-radius: var(--ui-radius-sm); box-shadow: inset 0 0 0 1px var(--ui-line); }
-.tableWrap:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
-.dataTable { width: 100%; border-collapse: collapse; font-size: 13px; }
-.dataTable th, .dataTable td { padding: 7px 12px; border-bottom: 1px solid var(--ui-line); text-align: left; font-weight: 500; }
-.dataTable thead th { position: sticky; top: 0; background: var(--ui-surface-2); color: var(--ui-muted); font-size: var(--ui-fs-thead); line-height: var(--ui-lh-thead); font-weight: var(--ui-fw-thead); letter-spacing: var(--ui-ls-thead); text-transform: uppercase; }
-.dataTable tbody th { color: var(--ui-ink); }
-.dataTable .right { text-align: right; }
+.dataWrap { margin-top: 6px; }
 
 /* ---------- team this week ---------- */
-.team { width: 100%; border-collapse: collapse; font-size: var(--ui-fs-body); line-height: var(--ui-lh-body); }
-.team th, .team td { padding: 10px 12px; border-bottom: 1px solid var(--ui-line); text-align: left; vertical-align: middle; font-weight: 400; }
-.team thead th { color: var(--ui-muted); font-size: var(--ui-fs-thead); line-height: var(--ui-lh-thead); font-weight: var(--ui-fw-thead); letter-spacing: var(--ui-ls-thead); text-transform: uppercase; white-space: nowrap; }
-.team tbody th { font-weight: 400; }
-.team tr:last-child td, .team tr:last-child th { border-bottom: 0; }
-.team .right { text-align: right; }
 .personName { display: block; color: var(--ui-ink); font-weight: 600; }
 .personSub { display: block; color: var(--ui-muted); font-size: 12.5px; }
 .nowCell { display: inline-flex; align-items: center; gap: 8px; color: var(--ui-ink); }
-.timeCell { display: flex; align-items: center; gap: 10px; min-width: 9rem; }
+.timeCell { display: flex; align-items: center; gap: 10px; }
+@media (min-width: 1025px) { .timeCell { min-width: 9rem; } }
 .miniTrack { flex: 1; height: 10px; border-radius: 2px; background: var(--ui-surface-3); overflow: hidden; }
 .miniFill { display: block; height: 100%; background: var(--ui-brand); }
 .timeFig { min-width: 3.2rem; text-align: right; font-weight: 650; color: var(--ui-ink); }
-@container dash (max-width: 760px) {
-  .team thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-  .team, .team tbody, .team tr, .team th, .team td { display: block; }
-  .team tr { padding: 10px 0; border-bottom: 1px solid var(--ui-line); }
-  .team th, .team td { padding: 3px 0; border: 0; }
-  .team td { display: flex; justify-content: space-between; gap: 12px; }
-  .team td::before { content: attr(data-label); color: var(--ui-muted); }
-  .team td.right { text-align: left; }
-  .timeCell { min-width: 0; flex: 1; justify-content: flex-end; max-width: 60%; }
-}
 
 /* ---------- workshop ---------- */
 .twoCol { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }

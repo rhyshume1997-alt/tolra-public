@@ -25,15 +25,14 @@
 .showGroup { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 16px 12px; }
 
 /* ---------- table finish on top of the shared ScrollTable ---------- */
-.nameCell { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 13rem; max-width: 22rem; overflow-wrap: anywhere; }
+.nameCell { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; overflow-wrap: anywhere; }
 .cellNote { display: block; }
 .attention { color: #6b4300; font-weight: 600; }
-.contactCell { white-space: nowrap; }
-.emailCell { min-width: 11rem; max-width: 18rem; }
-.clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; min-width: 9.5rem; max-width: 26ch; }
-table th.actionsHead { width: 176px; min-width: 176px; text-align: right; }
-.actionsCell { width: 176px; min-width: 176px; }
-.rowActions { display: flex; flex-wrap: nowrap; align-items: center; justify-content: flex-end; gap: 8px; white-space: nowrap; }
+.contactCell { overflow-wrap: anywhere; }
+.emailCell { overflow-wrap: anywhere; }
+.clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; max-width: 26ch; }
+table th.actionsHead { text-align: right; }
+.rowActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 16px 8px; }
 
 /* ---------- cards ---------- */
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); gap: 16px; }
@@ -45,7 +44,7 @@ table th.actionsHead { width: 176px; min-width: 176px; text-align: right; }
 .dl dt { margin: 0 0 1px; }
 .dl dd { margin: 0; overflow-wrap: anywhere; }
 .dlWide { grid-column: 1 / -1; }
-.cardActions { display: flex; flex-wrap: nowrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; }
+.cardActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; }
 
 /* ---------- denied ---------- */
 .denied { padding: 32px; border-radius: var(--ui-radius-lg); background: var(--ui-surface); text-align: center; box-shadow: var(--ui-elev-raised); }
@@ -78,12 +77,28 @@ table th.actionsHead { width: 176px; min-width: 176px; text-align: right; }
 .chaseRow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; }
 .chaseRow p, .chaseRow > div > p { margin: 0; }
 .chaseTitle { color: #6b4300; }
-.pauseForm { display: grid; grid-template-columns: minmax(0, 1fr) 11rem auto; align-items: end; gap: 10px 12px; }
+.pauseForm { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 11rem) auto; align-items: end; gap: 10px 12px; }
 .pauseBtns { display: flex; gap: 8px; margin-bottom: 4px; }
 
-@media (max-width: 767px) {
-  .cards { grid-template-columns: minmax(0, 1fr); }
+
+/* ---------- responsive (NO SIDEWAYS SCROLLING: at 1024 px and under every table is stacked by the shared ScrollTable and nothing scrolls sideways; fixed widths are desktop-only) ---------- */
+@media (min-width: 1025px) {
+  .nameCell { min-width: 13rem; max-width: 22rem; }
+  .contactCell { white-space: nowrap; }
+  .emailCell { min-width: 11rem; max-width: 18rem; }
+  .clamp { min-width: 9.5rem; }
+  table th.actionsHead { width: 176px; min-width: 176px; }
+  .actionsCell { width: 176px; min-width: 176px; }
+  .rowActions { flex-wrap: nowrap; white-space: nowrap; gap: 8px; }
+}
+@media (max-width: 1024px) {
+  .dock { max-width: 100%; }
+  .colScope { max-width: 100%; }
+  .rowActions { justify-content: flex-start; }
   .pair { grid-template-columns: minmax(0, 1fr); }
-  .pauseForm { grid-template-columns: 1fr; }
+  .pauseForm { grid-template-columns: minmax(0, 1fr); }
   .dl { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .cards { grid-template-columns: minmax(0, 1fr); }
 }

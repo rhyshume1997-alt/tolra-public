@@ -18,7 +18,7 @@
 
 import { useCallback, useId, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { Button, Field, Input, PageHeader, Popover, PreviewBar, SegmentedControl, Select, StatusBadge, Switch, ToastProvider, cx, premiumTokens, tabularNumbers, typeScale, useToast } from "@/components/ui/premium";
+import { Button, Field, Input, PageHeader, Popover, PreviewBar, ScrollTable, SegmentedControl, Select, StatusBadge, Switch, ToastProvider, cx, premiumTokens, tabularNumbers, typeScale, useToast } from "@/components/ui/premium";
 import type { StatusTone } from "@/components/ui/premium";
 import { calendarDate, fmtDateTime, toDateInput } from "@/lib/dates";
 import { NCR_CONFIRMED_TYPES } from "@/lib/jobs/ncr-register";
@@ -236,7 +236,7 @@ function Frame({ title, testId, children, wide }: { title: string; testId: strin
   );
 }
 function Tbl({ label, children }: { label: string; children: ReactNode }) {
-  return <div className={s.tableWrap} tabIndex={0} role="region" aria-label={`${label}, table`}><table className={cx(s.table, tabularNumbers)}>{children}</table></div>;
+  return <ScrollTable label={`${label}, table`} dense>{children}</ScrollTable>;
 }
 function Downloads({ what, rows, disabled, preview }: { what: string; rows: number; disabled?: boolean; preview: Preview }) {
   return (

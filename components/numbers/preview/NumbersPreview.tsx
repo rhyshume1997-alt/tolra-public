@@ -14,7 +14,7 @@
 
 import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode, RefObject } from "react";
-import { Button, PageHeader, Popover, PreviewBar, SegmentedControl, ToastProvider, cx, premiumTokens, tabularNumbers, typeScale, useToast } from "@/components/ui/premium";
+import { Button, PageHeader, Popover, PreviewBar, ScrollTable, SegmentedControl, ToastProvider, cx, premiumTokens, tabularNumbers, typeScale, useToast } from "@/components/ui/premium";
 import { gbp } from "@/lib/money";
 import { cashByMonth, customerConcentration, invoicedByMonth, londonMonthsEnding, machineHours, receivedByMonth, sumOrNull, windowOf } from "@/lib/numbers";
 import type { NumberCredit, NumberInvoice, NumberMachine, NumberPayment, NumberRun } from "@/lib/numbers";
@@ -165,7 +165,7 @@ function CashBars({ data }: { data: Array<{ label: string; invoiced: number | nu
     <div>
       <div className={s.legend} aria-hidden="true"><span><i className={s.swInv} />Invoiced ex VAT</span><span><i className={s.swRec} />Received</span></div>
       <div ref={ref} data-testid="numbers-cash-chart">
-        <svg width={w} height={H} role="img" aria-labelledby={tid} className={s.svg}>
+        <svg width={w} height={H} viewBox={`0 0 ${w} ${H}`} role="img" aria-labelledby={tid} className={s.svg}>
           <title id={tid}>{`Invoiced ex VAT and received by month: ${data.map((d) => `${d.label} invoiced ${d.invoiced === null ? "not read" : gbp(d.invoiced, 0)}, received ${d.received === null ? "not read" : gbp(d.received, 0)}`).join("; ")}.`}</title>
           {ticks.map((t) => <g key={t}><line x1={L} x2={w - Rr} y1={y(t)} y2={y(t)} className={t === 0 ? s.axisLine : s.gridLine} /><text x={L - 8} y={y(t) + 4} textAnchor="end" className={s.axisText}>{kGbp(t)}</text></g>)}
           {data.map((d, i) => {
@@ -249,12 +249,12 @@ function Inner() {
                 <>
                   <CashBars data={view.cash} />
                   <p className={s.note}>The gap is invoiced less received in that month, not money owed: a payment can settle an invoice from an earlier month.</p>
-                  <div className={s.tableWrap} tabIndex={0} role="region" aria-label="Invoiced, received and gap by month">
-                    <table className={cx(s.table, tabularNumbers)}>
+                  <div className={s.tableGap}>
+                    <ScrollTable label="Invoiced, received and gap by month" dense>
                       <thead><tr><th scope="col">Month</th><th scope="col" className={s.right}>Invoiced</th><th scope="col" className={s.right}>Received</th><th scope="col" className={s.right}>Gap</th></tr></thead>
                       <tbody>{view.cash.map((m) => (
                         <tr key={m.key} data-testid={`numbers-cash-${m.key}`}><th scope="row">{m.label}</th><td className={s.right} data-col="invoiced">{m.invoiced === null ? "—" : gbp(m.invoiced, 0)}</td><td className={s.right} data-col="received">{m.received === null ? "—" : gbp(m.received, 0)}</td><td className={s.right} data-col="gap">{m.gap === null ? "—" : gbp(m.gap, 0)}</td></tr>))}</tbody>
-                    </table>
+                    </ScrollTable>
                   </div>
                   {!view.invoicedRead || !view.receivedRead ? <Failed onRetry={retry} /> : null}
                 </>
