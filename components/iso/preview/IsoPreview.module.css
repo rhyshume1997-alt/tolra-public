@@ -1,0 +1,60 @@
+/*
+ * BOUNDARY (ISO templates, Module 9, PREVIEW ONLY). Inputs: the class names used by components/iso/preview/IsoPreview.tsx and the --ui-* tokens that components/ui/premium
+ * defines on its token class (applied to the page root, so no value is repeated here). Output: the look of the Admin > ISO templates preview only (page layout, switch panel,
+ * pack bar, tables, reminder). Must not change: no global selectors, nothing outside this module, no business rules, no document wording. Control heights stay on the 32 / 40 / 48 px
+ * scale and every control keeps a 48 px hit area (the shared Button, Switch and Input draw it). Motion is 120 to 200 ms, colour and transform only, off under prefers-reduced-motion.
+ * Forbidden: gradients, blur or glass, decorative icons.
+ */
+
+.root { display: flex; flex-direction: column; gap: 20px; max-width: 1180px; padding-bottom: 32px; font-feature-settings: "kern", "liga"; }
+.hint { margin: 0; color: var(--ui-muted); font-size: var(--ui-fs-secondary); line-height: var(--ui-lh-secondary); }
+.body { margin: 0; color: var(--ui-ink-2); font-size: var(--ui-fs-body); line-height: var(--ui-lh-body); max-width: 72ch; }
+
+/* ---------- preview dock (inside the shared popover) ---------- */
+.dock { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding-bottom: 8px; min-width: 280px; }
+.dockNote { margin: 0 0 4px; color: var(--ui-muted); font-size: var(--ui-fs-secondary); line-height: var(--ui-lh-secondary); max-width: 280px; }
+.dockLabel { margin: 6px 0 0; color: var(--ui-ink-2); font-size: var(--ui-fs-caption); font-weight: 600; }
+.dockStates { display: flex; flex-direction: column; gap: 4px; width: 100%; margin-bottom: 6px; }
+.dockBtn { position: relative; height: 32px; padding: 0 10px; border: 0; border-radius: 8px; background: #fff; text-align: left; font-size: var(--ui-fs-secondary); font-weight: 500; box-shadow: inset 0 0 0 1px var(--ui-line-strong); transition: background-color var(--ui-t-fast) var(--ui-ease); }
+.dockBtn::after { content: ""; position: absolute; inset: -8px 0; }
+.dockBtn:hover { background: var(--ui-surface-2); }
+.dockBtn:focus-visible { outline: none; box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--ui-accent); }
+.dockBtn[aria-pressed="true"] { background: var(--ui-brand); color: var(--ui-on-brand); font-weight: 600; box-shadow: var(--ui-inset-light), var(--ui-inset-dark); }
+
+/* ---------- off notice, denied ---------- */
+.offNotice { margin: 0; color: var(--ui-ink-2); font-size: var(--ui-fs-body); line-height: var(--ui-lh-body); }
+.denied { padding: 36px 24px; border-radius: var(--ui-radius-lg); background: #fff; box-shadow: var(--ui-shadow-1), inset 0 0 0 1px var(--ui-line); text-align: center; }
+.deniedTitle { margin: 0; font-size: 24px; line-height: 30px; font-weight: 600; color: var(--ui-ink); }
+.deniedNote { margin: 8px 0 0; color: var(--ui-muted); font-size: var(--ui-fs-body); line-height: var(--ui-lh-body); }
+.deniedPreview { margin: 14px auto 0; max-width: 56ch; color: var(--ui-muted); font-size: var(--ui-fs-secondary); line-height: var(--ui-lh-secondary); }
+
+/* ---------- switch panel ---------- */
+.switchWrap { margin-top: 12px; padding: 4px 14px; border-radius: var(--ui-radius-md); background: var(--ui-surface-2); box-shadow: inset 0 0 0 1px var(--ui-line); }
+
+/* ---------- pack bar ---------- */
+.packBar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+
+/* ---------- tables ---------- */
+.sectionHead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; width: 100%; }
+.btnRow { display: flex; flex-wrap: wrap; gap: 16px 8px; }
+.root .right, .root th.right, .root td.right { text-align: right; }
+.cellStrong { font-weight: 600; color: var(--ui-ink); }
+.clause { white-space: nowrap; }
+.basis { color: var(--ui-ink-2); font-size: var(--ui-fs-secondary); line-height: var(--ui-lh-secondary); min-width: 16rem; max-width: 34rem; }
+.requirement { min-width: 13rem; max-width: 24rem; }
+.status { white-space: nowrap; }
+.untouched { margin-top: 0; }
+.unread { margin: 0; }
+
+/* ---------- stacked records (narrow screens): the shared StackedRows inside a bare Panel draws no card of its own ---------- */
+.root .flatStack.flatStack { border-radius: 0; background: transparent; box-shadow: none; }
+
+/* ---------- reminder ---------- */
+.reminderBody { display: flex; flex-direction: column; gap: 14px; }
+.daysField { width: 15rem; max-width: 100%; }
+.reminderEmpty { margin: 0; color: var(--ui-ink-2); font-size: var(--ui-fs-body); line-height: var(--ui-lh-body); }
+
+@media (max-width: 640px) {
+  .daysField { width: 100%; }
+  .basis { min-width: 14rem; }
+}
