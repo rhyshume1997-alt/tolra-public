@@ -88,6 +88,18 @@ Common steps for every flag (do not skip):
   - Known gap: the exact switch-off rules (including whether a fresh code is needed) are marked NOT VERIFIED in `docs/release/KNOWN-LIMITATIONS-AND-RECOVERY.md`; check the function before relying on it.
 - **Approve before on:** Rhys, separately for each company. Do not turn it on "to test" on a live company. Rolling back release 149 itself also needs Rhys's separate approval.
 
+## 6. Tooly tours (module 11)
+
+- **Current state:** OFF. Two switches, both needed: the server env flag `TOOLY_ADMIN_TOUR_ENABLED` (exactly "true"; one flag for all three views) and one per-company marker in `hidden_nav` for each view: `tooly-admin-tour:on`, `tooly-office-tour:on`, `tooly-workshop-tour:on` (`components/tooly/tour/tour-switch.ts`). A marker switches on only its own view, so a company that has the admin tour on does not get the other two. A viewer never gets a tour. There is no Settings screen for the markers yet.
+- **What it is:** a fixed script of plain-words steps (admin 23, office 17, workshop 13) that points at screens and never clicks, saves or sends. No AI, no keys, no new table. It opens by itself the first time a person signs in. Each step has a note ("What happens here and how it gets produced") they can open. A person who skips or finishes it is not shown it again (the saved flag in `lib/auth/tour-flag.ts`), and can replay it from a small button on the Dashboard.
+- **Check on Preview:**
+  - Env flag unset or no marker: nothing shows for anyone.
+  - Env flag on and one marker: only that view sees its tour; the other two do not.
+  - Office and workshop: a page switched off for the person (Admin > Users > Page access, or the company menu) is skipped or named as off, never walked to.
+  - Skip tour, then reload: the tour does not come back, and a Replay tour button shows on the Dashboard (only there). Replay starts at step 1.
+  - Open the note on a step: it explains the step and closes again on the next step.
+- **Approve before on:** Rhys (the wording is staff-facing, and turning it on is a Vercel env change plus a company setting).
+
 ---
 
 ## Not covered
