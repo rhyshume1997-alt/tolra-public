@@ -6,8 +6,9 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const AREAS: Array<{ name: string; css: string; tsx: string }> = [
-  { name: "quotes", css: "components/quotes/preview/QuotesPreview.module.css", tsx: "components/quotes/preview/QuotesPreview.tsx" },
+const AREAS: Array<{ name: string; css: string; tsx: string; table: boolean }> = [
+  { name: "quotes", css: "components/quotes/preview/QuotesPreview.module.css", tsx: "components/quotes/preview/QuotesPreview.tsx", table: true },
+  { name: "rfq", css: "components/rfq/preview/RfqPreview.module.css", tsx: "components/rfq/preview/RfqPreview.tsx", table: false },
 ];
 
 type Hit = { selector: string; decl: string };
@@ -52,9 +53,9 @@ describe("no sideways scrolling in the previews (phone and tablet)", () => {
       expect(tsx).not.toMatch(/overflowX\s*:\s*["'`](auto|scroll)/);
       expect(tsx).not.toMatch(/style=\{\{[^}]*minWidth/);
     });
-    it(`${a.name}: uses the shared stacked ScrollTable (no local table scroll box)`, () => {
+    it(`${a.name}: any table is the shared stacked ScrollTable (no local table scroll box)`, () => {
       const tsx = readFileSync(a.tsx, "utf8");
-      expect(tsx).toMatch(/<ScrollTable /);
+      if (a.table) expect(tsx).toMatch(/<ScrollTable /);
       expect(tsx).not.toMatch(/<table[\s>]/);
     });
   }

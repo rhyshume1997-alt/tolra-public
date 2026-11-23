@@ -418,7 +418,7 @@ function Inner() {
             <div className={s.fRow}>
               <div className={s.fGroup}>
                 <span className={typeScale.label} aria-hidden="true">Show</span>
-                <SegmentedControl label="Show" value={filters.stage} options={stageOptions} disabled={loading} onChange={(v) => setFilters((f) => ({ ...f, stage: v }))} />
+                <SegmentedControl label="Show" collapseToSelect value={filters.stage} options={stageOptions} disabled={loading} onChange={(v) => setFilters((f) => ({ ...f, stage: v }))} />
               </div>
               <Popover label={chips.length ? `Filters (${chips.length})` : "Filters"} title="Filters" data-testid="filters-trigger">
                 <div className={s.filterBody} data-testid="filters-panel">

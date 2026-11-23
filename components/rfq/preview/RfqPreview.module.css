@@ -39,9 +39,10 @@
 .meta { display: flex; flex-wrap: wrap; gap: 2px 20px; margin: 0; color: var(--ui-ink-2); }
 .meta b { color: var(--ui-ink); font-weight: 600; }
 .metaLabel { color: var(--ui-muted); font-weight: 500; }
-/* ONE primary and More in a fixed-width slot, never wrapping */
-.rowActions { display: flex; flex-wrap: nowrap; align-items: center; justify-content: flex-end; gap: 8px; width: 216px; }
-.primarySlot { display: inline-block; min-width: 128px; }
+/* ONE primary and More; a fixed-width slot on desktop only, at 1024 px and under the row is stacked and the actions wrap */
+.rowActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.primarySlot { display: inline-block; }
+@media (min-width: 1025px) { .rowActions { flex-wrap: nowrap; width: 216px; } .primarySlot { min-width: 128px; } }
 .primarySlot > button { width: 100%; }
 .rowEmail { grid-column: 1 / -1; }
 
@@ -82,7 +83,7 @@
 .breakWords { overflow-wrap: anywhere; }
 .chipsRow { display: flex; flex-wrap: wrap; gap: 12px 8px; padding: 2px 0 4px; }
 .tall { min-height: 176px; }
-.emailBody { max-height: 56vh; margin: 0; padding: 14px 16px; overflow: auto; border-radius: var(--ui-radius-md); background: var(--ui-surface-2); box-shadow: inset 0 0 0 1px var(--ui-line); font-family: inherit; font-size: var(--ui-fs-body); line-height: 20px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.emailBody { max-height: 56vh; margin: 0; padding: 14px 16px; overflow-y: auto; overflow-x: hidden; border-radius: var(--ui-radius-md); background: var(--ui-surface-2); box-shadow: inset 0 0 0 1px var(--ui-line); font-family: inherit; font-size: var(--ui-fs-body); line-height: 20px; white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* ---------- form ---------- */
 .form { display: flex; flex-direction: column; gap: 14px; }
