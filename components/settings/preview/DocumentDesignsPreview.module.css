@@ -1,0 +1,74 @@
+/*
+ * BOUNDARY (PREVIEW ONLY; Settings treated as Module 1 for this preview, ownership to be confirmed). Inputs: the class names used by components/settings/preview/DocumentDesignsPreview.tsx and the --ui-* tokens
+ * that components/ui/premium defines on its token class (applied to the page root, so no value is repeated here). Output: the layout and finish of the Document designs card and its standalone page: the lead,
+ * the two switch rows, the design cards (native radio inputs stretched over the whole card, so the hit area is the card), and the PDF preview frame.
+ * NO SIDEWAYS SCROLLING (owner rule): nothing here scrolls or overflows sideways at 1024 px and under. The preview frame is sized by aspect-ratio (A4 portrait) to the width of its column and clips, so the embedded PDF
+ * fits the width at 360, 390, 414, 768 and 1024; below 1025 px the card sits ABOVE the preview. There is no overflow auto or scroll rule in this file (tests/unit/documentDesignsPreview.test.ts scans for one).
+ * Must not change: no global selectors, nothing outside this module, no business rules; every control keeps a 48 px hit area; motion is colour and box-shadow only (120 ms), off under prefers-reduced-motion.
+ * Forbidden: gradients, blur or glass, decorative icons.
+ */
+
+.root { display: flex; flex-direction: column; gap: 20px; max-width: 1120px; min-width: 0; padding-bottom: 32px; font-feature-settings: "kern", "liga"; }
+.stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; min-width: 0; }
+.srOnly { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+.lead { margin: 0; max-width: 78ch; color: var(--ui-ink-2); font-size: var(--ui-fs-body); line-height: var(--ui-lh-body); overflow-wrap: anywhere; }
+.note { margin: 0; max-width: 78ch; color: var(--ui-muted); font-size: var(--ui-fs-secondary); line-height: var(--ui-lh-secondary); overflow-wrap: anywhere; }
+
+.denied { padding: 20px 24px; border-radius: var(--ui-radius-lg); background: #fff; box-shadow: 0 0 0 1px var(--ui-line), var(--ui-shadow-1); }
+.deniedNote { margin: 0; max-width: 64ch; color: var(--ui-muted); font-size: var(--ui-fs-secondary); line-height: var(--ui-lh-secondary); }
+
+/* ---------- preview dock (inside the shared popover) ---------- */
+.dock { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; width: 100%; max-width: 290px; min-width: 0; padding-bottom: 8px; }
+.dockNote { margin: 0 0 4px; color: var(--ui-muted); font-size: var(--ui-fs-secondary); line-height: var(--ui-lh-secondary); max-width: 290px; }
+.dockLabel { margin: 8px 0 0; color: var(--ui-ink-2); font-size: var(--ui-fs-caption); font-weight: 600; }
+.dockSelect { display: flex; flex-direction: column; gap: 0; width: 100%; min-width: 0; font-size: var(--ui-fs-secondary); font-weight: 600; color: var(--ui-ink-2); }
+
+/* ---------- the two switches ---------- */
+.switchList { display: flex; flex-direction: column; min-width: 0; border-radius: var(--ui-radius-md); background: #fff; box-shadow: inset 0 0 0 1px var(--ui-line); }
+.switchBox { min-width: 0; padding: 2px 14px; box-shadow: inset 0 -1px 0 var(--ui-line); }
+.switchBox:last-child { box-shadow: none; }
+
+/* ---------- picker and preview ---------- */
+.layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; min-width: 0; }
+.picker { display: flex; flex-direction: column; gap: 16px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; min-width: 0; }
+
+.card {
+  position: relative; display: flex; align-items: flex-start; gap: 12px; min-width: 0; min-height: 72px; padding: 14px 16px; cursor: pointer;
+  border-radius: var(--ui-radius-md); background: #fff; box-shadow: inset 0 0 0 1px var(--ui-line), var(--ui-inset-light);
+  transition: box-shadow var(--ui-t-fast) var(--ui-ease), background-color var(--ui-t-fast) var(--ui-ease);
+}
+.card[data-selected="true"] { background: var(--ui-soft); box-shadow: inset 0 0 0 2px var(--ui-brand); }
+@media (hover: hover) { .card:hover:not([data-selected="true"]) { box-shadow: inset 0 0 0 1px var(--ui-line-hover), var(--ui-inset-light); } }
+.card:has(.radio:focus-visible) { box-shadow: inset 0 0 0 2px var(--ui-brand), 0 0 0 3px #fff, 0 0 0 5px var(--ui-accent); }
+/* The native radio covers the whole card: the card is the 48 px (and taller) hit area, and the keyboard and screen reader still meet a real radio. */
+.radio { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.dot { flex: none; width: 20px; height: 20px; margin-top: 1px; border-radius: 50%; background: #fff; box-shadow: inset 0 0 0 1.5px var(--ui-line-strong); transition: box-shadow var(--ui-t-fast) var(--ui-ease); }
+.card[data-selected="true"] .dot { box-shadow: inset 0 0 0 6px var(--ui-brand); }
+.cardText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cardTitle { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; color: var(--ui-ink); font-size: var(--ui-fs-body); line-height: var(--ui-lh-body); font-weight: 600; overflow-wrap: anywhere; }
+.current { color: var(--ui-muted); font-size: var(--ui-fs-caption); line-height: var(--ui-lh-caption); font-weight: 500; }
+.cardDesc { color: var(--ui-muted); font-size: var(--ui-fs-secondary); line-height: var(--ui-lh-secondary); overflow-wrap: anywhere; }
+
+.previewCol { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 600px; min-width: 0; margin-inline: auto; }
+/* One A4 page plus the PDF viewer's toolbar, sized by its column's width (aspect-ratio 5:8): the viewer inside always has the container's width, so there is nothing to scroll sideways. */
+.frame { position: relative; width: 100%; aspect-ratio: 5 / 8; min-width: 0; overflow: hidden; border-radius: var(--ui-radius-md); background: var(--ui-surface-2); box-shadow: inset 0 0 0 1px var(--ui-line), var(--ui-shadow-1); }
+.iframe { position: absolute; inset: 0; display: block; width: 100%; height: 100%; border: 0; background: #fff; }
+.frameMsg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; margin: 0; padding: 24px; text-align: center; color: var(--ui-muted); font-size: var(--ui-fs-body); line-height: var(--ui-lh-body); overflow-wrap: anywhere; }
+.frame[data-state="failed"] .frameMsg { color: var(--ui-danger); }
+
+/* Desktop only: the card sits beside the preview. At 1024 px and under it is above it. */
+@media (min-width: 1025px) {
+  .layout { grid-template-columns: 320px minmax(0, 520px); gap: 32px; }
+  .cards { grid-template-columns: minmax(0, 1fr); }
+  .previewCol { margin-inline: 0; }
+}
+@media (max-width: 640px) {
+  .cards { grid-template-columns: minmax(0, 1fr); }
+  .card { padding: 12px 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card, .dot { transition: none; }
+}
