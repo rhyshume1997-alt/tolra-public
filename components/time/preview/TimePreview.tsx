@@ -467,7 +467,7 @@ function TodayBody({ day, date, pid, own, isToday, role, clockedIn, onBreak, sin
                 </div>
               ) : null}
               {day.jobs.length ? (
-                <div style={{ overflowX: "auto", minWidth: 0 }} role="region" aria-label="Jobs worked, table" tabIndex={0}>
+                <div className={s.jobScroll} role="region" aria-label="Jobs worked, table" tabIndex={0}>
                   <table className={s.jobTable} data-testid="job-lines">
                     <thead><tr><th scope="col">Job</th><th scope="col">Times</th><th scope="col" className="num" style={{ textAlign: "right" }}>Time</th><th scope="col" style={{ textAlign: "right" }}>Share</th><th scope="col"><span className={s.srOnly}>Action</span></th></tr></thead>
                     <tbody>
@@ -475,8 +475,8 @@ function TodayBody({ day, date, pid, own, isToday, role, clockedIn, onBreak, sin
                         const j = JOB_INFO[line.jobId];
                         return (
                           <tr key={line.jobId}>
-                            <td><span className={s.jobName}>{j?.job_no ?? "Job"}</span><span className={s.jobSub}>{[j?.customer, j?.description].filter(Boolean).join(" · ")}</span></td>
-                            <td>{line.sessions.map((x) => (
+                            <td className={s.jobCell}><span className={s.jobName}>{j?.job_no ?? "Job"}</span><span className={s.jobSub}>{[j?.customer, j?.description].filter(Boolean).join(" · ")}</span></td>
+                            <td data-lbl="Times">{line.sessions.map((x) => (
                               <div key={x.id} className={s.sess}>
                                 <span className={tabularNumbers}>{clockTime(x.started_at, date)}–{x.ended_at ? clockTime(x.ended_at, date) : "now"}</span>
                                 {canEdit ? (
@@ -487,9 +487,9 @@ function TodayBody({ day, date, pid, own, isToday, role, clockedIn, onBreak, sin
                                 ) : null}
                               </div>
                             ))}</td>
-                            <td className={cx(tabularNumbers, "num")} style={{ textAlign: "right" }}>{hm(line.minutes)}</td>
-                            <td className={tabularNumbers} style={{ textAlign: "right" }}>{hm(line.allocatedMinutes)}</td>
-                            <td style={{ textAlign: "right" }}>{showClock && line.open ? <Button size="sm" onClick={() => onStop(line.jobId)} data-testid="labour-stop" aria-label={`Stop ${j?.job_no}`}>Stop</Button> : null}</td>
+                            <td data-lbl="Time" className={cx(tabularNumbers, "num")} style={{ textAlign: "right" }}>{hm(line.minutes)}</td>
+                            <td data-lbl="Share" className={tabularNumbers} style={{ textAlign: "right" }}>{hm(line.allocatedMinutes)}</td>
+                            <td className={s.jobAct} style={{ textAlign: "right" }}>{showClock && line.open ? <Button size="sm" onClick={() => onStop(line.jobId)} data-testid="labour-stop" aria-label={`Stop ${j?.job_no}`}>Stop</Button> : null}</td>
                           </tr>
                         );
                       })}
@@ -540,10 +540,10 @@ function DayTicksCell({ flags }: { flags: WeekDayFlags }) {
   const counted = DAY_FLAG_KEYS.filter((k) => flags.totals[k].days);
   return (
     <div className={s.dayTicks}>
-      <div>{ticked.map((d) => <span key={d.date} style={{ marginRight: 8, whiteSpace: "nowrap" }}>{shortDay(d.date)}: {flagsShort(d.flags)}{d.source === "suggested" ? "*" : ""}</span>)}</div>
+      <div>{ticked.map((d) => <span key={d.date} className={s.tickItem}>{shortDay(d.date)}: {flagsShort(d.flags)}{d.source === "suggested" ? "*" : ""}</span>)}</div>
       <div className={s.muted2}>
         {!counted.length ? <span>Nothing saved yet</span> : null}
-        {counted.map((k) => <span key={k} style={{ marginRight: 8, whiteSpace: "nowrap" }} data-testid={`flag-total-${k}`}>{DAY_FLAG_LABEL[k]}: {flags.totals[k].days} day{flags.totals[k].days === 1 ? "" : "s"}, {hm(flags.totals[k].paidMinutes)} h</span>)}
+        {counted.map((k) => <span key={k} className={s.tickItem} data-testid={`flag-total-${k}`}>{DAY_FLAG_LABEL[k]}: {flags.totals[k].days} day{flags.totals[k].days === 1 ? "" : "s"}, {hm(flags.totals[k].paidMinutes)} h</span>)}
       </div>
     </div>
   );

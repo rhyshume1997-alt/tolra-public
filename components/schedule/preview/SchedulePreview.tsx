@@ -338,7 +338,7 @@ function Inner() {
           </div>
           <Timeline
             machines={activeMachines} bookings={shown} runs={runs} span={span} setSpan={setSpan} startDate={startDate} setStartDate={setStartDate} isVisible={isVisible}
-            liveLeftOf={liveLeftOf} onSelect={(b) => setSel({ kind: "booking", id: b.id })} onSelectRun={(bar, label) => setSel({ kind: "run", bar, label })}
+            wide={wide} liveLeftOf={liveLeftOf} onSelect={(b) => setSel({ kind: "booking", id: b.id })} onSelectRun={(bar, label) => setSel({ kind: "run", bar, label })}
           />
           <JobsTable
             rows={tableRows} running={runningRows} unbooked={unbookedViews} canBook={canBook(role)} wide={wide} isVisible={isVisible} liveLeftOf={liveLeftOf} requiredDate={requiredDate}
@@ -422,10 +422,10 @@ function MachineCards({ statuses, live, unbooked, isVisible }: { statuses: Retur
    Machine timeline (the lanes). Click or Enter on a bar opens it. There is no drag and drop on the real page and none here.
    ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- */
 
-type Segment = { booking: ScheduledBooking; left: number; width: number; first: boolean; planned?: BookingSegment; outOfHours?: boolean };
+type Segment = { booking: ScheduledBooking; left: number; width: number; first: boolean; planned?: BookingSegment; outOfHours?: boolean; from?: Date; to?: Date };
 
-function Timeline({ machines, bookings, runs, span, setSpan, startDate, setStartDate, isVisible, liveLeftOf, onSelect, onSelectRun }: {
-  machines: Machine[]; bookings: ScheduledBooking[]; runs: RunRow[]; span: number; setSpan: (n: number) => void; startDate: Date; setStartDate: (d: Date) => void; isVisible: (k: string) => boolean;
+function Timeline({ machines, bookings, runs, span, setSpan, startDate, setStartDate, isVisible, liveLeftOf, onSelect, onSelectRun, wide }: {
+  wide: boolean; machines: Machine[]; bookings: ScheduledBooking[]; runs: RunRow[]; span: number; setSpan: (n: number) => void; startDate: Date; setStartDate: (d: Date) => void; isVisible: (k: string) => boolean;
   liveLeftOf: (b: ScheduledBooking) => string | null; onSelect: (b: ScheduledBooking) => void; onSelectRun: (bar: RunBar, label: string) => void;
 }) {
   const days = useMemo(() => Array.from({ length: span }, (_, i) => addDays(startDate, i)), [span, startDate]);
@@ -455,7 +455,7 @@ function Timeline({ machines, bookings, runs, span, setSpan, startDate, setStart
           : days.findIndex((d) => { const w = windowFor(d, machine); return worksOn(d, machine, b.start) && Math.min(b.finish.getTime(), w.end.getTime()) > Math.max(b.start.getTime(), w.start.getTime()); });
         const width = Math.max(MIN_BAR_PERCENT, ((to - from) / total) * 100);
         const left = Math.min(((from - start.getTime()) / total) * 100, 100 - width);
-        return [{ booking: b, left, width, first: dayIdx === firstVisibleDay, planned, outOfHours }];
+        return [{ booking: b, left, width, first: dayIdx === firstVisibleDay, planned, outOfHours, from: new Date(from), to: new Date(to) }];
       });
   }
   const bookingTitle = (seg: Segment, machine: Machine) =>
@@ -477,7 +477,66 @@ function Timeline({ machines, bookings, runs, span, setSpan, startDate, setStart
           <Button aria-label="Next" onClick={() => setStartDate(addDays(startDate, span))} data-testid="next">Next</Button>
         </div>
       </div>
-      {!machines.length ? <p className={s.tlNoMachines} data-testid="no-machines-timeline">No machines to show. Add a machine first.</p> : (
+      {!machines.length ? <p className={s.tlNoMachines} data-testid="no-machines-timeline">No machines to show. Add a machine first.</p> : !wide ? (
+        <div className={s.agenda} data-testid="agenda">
+          {machines.map((machine) => (
+            <section key={machine.id} className={s.agMachine} aria-label={`${machine.name}, day by day`} data-testid="agenda-machine" data-machine={machine.name}>
+              <header className={s.agHead}>
+                <h3 className={s.agName}>{machine.name}</h3>
+                {machine.type && isVisible("machine-type") ? <span className={s.tlType}>{machine.type}</span> : null}
+              </header>
+              <ol className={s.agDays}>
+                {days.map((day, i) => {
+                  const working = isWorkingDay(day, machine);
+                  const segments = segmentsFor(machine, day, i);
+                  const actual = runBarsFor(runs, machine, day, NOW);
+                  const isToday = i === todayIndex;
+                  const empty = !segments.length && !actual.length;
+                  return (
+                    <li key={i} className={cx(s.agDay, isToday && s.agToday, !working && s.agOff)} data-testid="agenda-day" data-today={isToday ? "true" : undefined} aria-current={isToday ? "date" : undefined}>
+                      <h4 className={s.agDate}>{fmtDateText(localDateString(day), { weekday: "short" })}{!working ? <span className={s.agTag}>Not normally worked</span> : null}</h4>
+                      <div className={s.agItems}>
+                        {isToday && isVisible("now-marker") ? <p className={s.agNow} data-testid="agenda-now">Now, {timeOf(NOW)}</p> : null}
+                        {segments.map((seg, k) => {
+                          const done = seg.booking.status === "complete";
+                          const running = !done && seg.booking.status === "running";
+                          const word = done ? "Complete" : running ? "Running" : "Booked";
+                          const state = done ? "complete" : running ? "running" : "booked";
+                          const mins = seg.from && seg.to ? Math.round((seg.to.getTime() - seg.from.getTime()) / 60000) : 0;
+                          const timeText = seg.planned ? `${seg.planned.from}-${seg.planned.to}, ${formatMinutes(seg.planned.minutes)}` : seg.from && seg.to ? `${timeOf(seg.from)}-${timeOf(seg.to)}, ${formatMinutes(mins)}` : "";
+                          return (
+                            <button key={`${seg.booking.id}-${k}`} type="button" data-booking-id={seg.booking.id} data-testid="agenda-booking" data-state={state} aria-label={`${word}. ${seg.booking.jobNo || "Booking"}. ${timeText}${seg.planned ? ". Split by day" : ""}${seg.outOfHours ? ". Partly or wholly outside the machine's hours" : ""}. ${oneLine(bookingTitle(seg, machine))}`}
+                              onClick={() => onSelect(seg.booking)} className={cx(s.agItem, s[`s_${state}`])}>
+                              <span className={s.agWord}>{word}</span>
+                              <span className={s.agJob}>{seg.booking.jobNo || "Booking"}</span>
+                              <span className={s.agWhen}>{timeText}{seg.planned ? ", split by day" : ""}{seg.outOfHours ? ", out of hours" : ""}</span>
+                            </button>
+                          );
+                        })}
+                        {actual.map((bar) => {
+                          const word = bar.kind === "running" ? "Running" : bar.kind === "paused" ? "Paused" : "Finished";
+                          const state = bar.kind === "running" ? "running" : bar.kind === "paused" ? "paused" : "complete";
+                          const mins = Math.round((bar.to.getTime() - bar.from.getTime()) / 60000);
+                          const who = personName(PEOPLE, bar.run.operator_id);
+                          return (
+                            <button key={bar.run.id} type="button" data-testid="agenda-run" data-run-id={bar.run.id} data-kind={bar.kind} aria-label={`Actual use. ${word}. ${bar.run.job_no || "Run"}. ${timeOf(bar.from)}-${bar.open ? "now" : timeOf(bar.to)}, ${formatMinutes(mins)}, by ${who}${bar.outOfHours ? ". Partly or wholly outside the machine's hours" : ""}. ${runBarLabel(bar, machine.name, PEOPLE, NOW)}`}
+                              onClick={() => onSelectRun(bar, runBarLabel(bar, machine.name, PEOPLE, NOW))} className={cx(s.agItem, s.agRun, s[`s_${state}`])}>
+                              <span className={s.agWord}>Actual use: {word}</span>
+                              <span className={s.agJob}>{bar.run.job_no || "Run"}</span>
+                              <span className={s.agWhen}>{timeOf(bar.from)}-{bar.open ? "now" : timeOf(bar.to)}, {formatMinutes(mins)}, {who}{bar.outOfHours ? ", out of hours" : ""}</span>
+                            </button>
+                          );
+                        })}
+                        {empty && working ? <p className={s.agFree}>Free</p> : null}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+            </section>
+          ))}
+        </div>
+      ) : (
         <div className={s.tlScroll} role="region" aria-label="Machine timeline, scrolls sideways" tabIndex={0}>
           <div className={s.tlGrid} style={{ minWidth: LABEL_COL + days.length * minCol, ["--cols" as string]: cols } as CSSProperties}>
             <div className={cx(s.tlRow, s.tlHeadRow)}>
