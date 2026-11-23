@@ -5,6 +5,8 @@
  * a person who has the flag is never redirected. Must not change: no other spec relies on this one; it creates and removes nothing outside
  * the synthetic world (teardown removes the users with the run).
  */
+import { randomBytes } from "node:crypto";
+
 import { expect, test, type Page } from "@playwright/test";
 
 import { TOUR_DONE_META_KEY } from "@/lib/auth/tour-flag";
@@ -19,8 +21,8 @@ let n = 0;
 /** A new admin of alpha. `seen` sets the same flag the app saves when the tour is skipped or finished. */
 async function newAdmin(seen: boolean): Promise<SyntheticUser> {
   n += 1;
-  // The worker index keeps e-mails unique when a failed test restarts the worker and the count starts again at 0.
-  const email = `tour${n}-${test.info().workerIndex}.${w.runId}@example.test`;
+  // Unique across worker restarts (the count starts again at 0), retries and parallel runs: the worker index plus a random part per call.
+  const email = `tour${n}-${test.info().workerIndex}-${randomBytes(4).toString("hex")}.${w.runId}@example.test`;
   const password = generatePassword(14);
   const admin = adminClient();
   const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true, ...(seen ? { user_metadata: SEEN_TOUR_METADATA } : {}) });
