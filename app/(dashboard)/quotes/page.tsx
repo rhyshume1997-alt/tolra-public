@@ -1,5 +1,9 @@
 "use client";
 
+/** Quote Generator route. Both presentations use the same data, role checks, handlers and dialogs. */
+
+import { QuotesRedesign, type QuotesViewProps } from "@/components/quotes/quotes-redesign";
+import { useCompanyUiSwitch } from "@/lib/use-company-ui-switch";
 import { StatTile } from "@/components/stat-tile";
 import { EmptyList } from "@/components/empty-list";
 import { quotesEmptyHint } from "@/lib/empty-hints";
@@ -319,6 +323,7 @@ function AiDraftFlags({ notes }: { notes: string }) {
 }
 
 export default function QuotesPage() {
+  const redesign = useCompanyUiSwitch("ui-quotes-v2:on");
   const [decision, setDecision] = useState<{ quote: QuoteRow; outcome: "accepted" | "rejected" } | null>(null);
   // Confirm Accepted: the customer's PO when it is already known (optional; without it the sales order gets a provisional number).
   const [decisionPo, setDecisionPo] = useState("");
@@ -1029,12 +1034,9 @@ export default function QuotesPage() {
   const viewProblem = viewingQuote && viewItems.length && company ? quoteTotalsProblem(viewingQuote, viewItems, issuedCompany(company, viewingQuote.issuerSnapshot)) : null;
   const viewTotals = viewItems.length ? documentTotals(viewItems.map((item) => ({ quantity: item.quantity, unitPrice: item.unitPrice, ...lineVat(item) })), 0, { vatEnabled: viewVat, standardRate: vat.standardRate }) : null;
 
-  return (
-    <RoleGate allowed={["admin", "office"]}>
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div><h1 className="page-title">Quote Generator</h1><p className="mt-2 text-sm text-slate-500">A quote is the price we offer a customer. Make, send and follow up quotes here.</p></div>
-        <div className="flex flex-wrap items-center gap-2"><ColumnToggle tableKey="quotes" /><ViewSwitcher value={view} onChange={setView} />
+  const View = redesign ? QuotesRedesign : LegacyQuotesView;
+  const actions = (
+    <div className="flex flex-wrap items-center gap-2"><ColumnToggle tableKey="quotes" /><ViewSwitcher value={view} onChange={setView} />
         <Dialog open={builderOpen} onOpenChange={closeBuilder}>
           <DialogTrigger asChild><Button className="bg-brand text-brand-ink hover:bg-brand-hover"><Plus className="size-4" /> New quote</Button></DialogTrigger>
           <DialogContent className="max-w-4xl">
@@ -1087,7 +1089,17 @@ export default function QuotesPage() {
           </DialogContent>
         </Dialog>
         </div>
+  );
+  const legacyHeader = (
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div><h1 className="page-title">Quote Generator</h1><p className="mt-2 text-sm text-slate-500">A quote is the price we offer a customer. Make, send and follow up quotes here.</p></div>
+        {actions}
       </div>
+  );
+
+  return (
+    <RoleGate allowed={["admin", "office"]}>
+    <View actions={actions} legacyHeader={legacyHeader}>
 
       {DEMO_MODE ? <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Demo mode: sample data is shown if the database can&apos;t be reached.</div> : null}
 
@@ -1437,7 +1449,12 @@ export default function QuotesPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </View>
     </RoleGate>
   );
+}
+
+
+function LegacyQuotesView({ legacyHeader, children }: QuotesViewProps) {
+  return <div className="space-y-6">{legacyHeader}{children}</div>;
 }
