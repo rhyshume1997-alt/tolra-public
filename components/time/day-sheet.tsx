@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/ui/premium";
 import { paidHoursExplanation } from "@/lib/working-hours";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -65,7 +66,7 @@ const actionLabel: Record<string, string> = { in: "Clock in", out: "Clock out", 
  * The day line's tick boxes (Overtime, Saturday, Sunday, Bank holiday; 074) are for the person and for office/admin viewing their day;
  * they appear once the database has 074 and save online only (components/time/day-flags.tsx).
  */
-export function DaySheet() {
+export function DaySheet({ redesign = false }: { redesign?: boolean } = {}) {
   const params = useSearchParams();
   const router = useRouter();
   const { user, profile, hasAnyRole } = useUser();
@@ -236,8 +237,14 @@ export function DaySheet() {
   return (
     needsUpdate ? <NeedsDatabaseUpdate /> :
     <div className="space-y-4" data-testid="day-sheet">
-      <h1 className="page-title">Weekly hours</h1>
-      <p className="text-sm text-slate-500">Clock in and out, and see the hours worked each day and week.</p>
+      {redesign ? (
+        <PageHeader title="Weekly hours" description="Clock in and out, and see the hours worked each day and week." />
+      ) : (
+        <>
+          <h1 className="page-title">Weekly hours</h1>
+          <p className="text-sm text-slate-500">Clock in and out, and see the hours worked each day and week.</p>
+        </>
+      )}
       <HoursTabs active="today" weekHref={weekHref} />
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" size="sm" onClick={() => go({ date: addDays(date, -1) })} aria-label="Previous day"><ChevronLeft className="size-4" /></Button>
