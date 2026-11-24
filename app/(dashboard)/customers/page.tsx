@@ -1,5 +1,7 @@
 "use client";
 
+/** Customer directory route. Both presentations use the existing customer, archive, credit and statement actions. */
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { customersEmptyHint } from "@/lib/empty-hints";
 import { toast } from "sonner";
@@ -7,6 +9,8 @@ import { Pencil, Plus } from "lucide-react";
 
 import { ChasePauseControl, ChasePausedBadge, useChasePauses } from "@/components/chase/chase-pause";
 import { DeliveryNotesFor } from "@/components/delivery-notes-for";
+import { CustomersRedesign } from "@/components/customers/customers-redesign";
+import { useCompanyUiSwitch } from "@/lib/use-company-ui-switch";
 import { ColumnToggle } from "@/components/column-toggle";
 import { ArchiveButton, PhaseFilter } from "@/components/phase-filter";
 import { ListToolbar } from "@/components/list-toolbar";
@@ -40,6 +44,7 @@ const NOT_SAVED_LABEL = "Not saved as a customer yet";
 const DOCUMENT_NAMES_TRUNCATED = "Only part of the names found on RFQs, quotes, sales orders and invoices could be listed: some may be missing here.";
 
 export default function CustomersPage() {
+  const redesign = useCompanyUiSwitch("ui-customers-v2:on");
   const { isVisible } = useColumnVisibility("customers");
   // Cards / List / Table, remembered per person (lib/view-mode; styles in app/globals.css [data-view]).
   const [view, setView] = useViewMode("customers", "table");
@@ -163,14 +168,8 @@ export default function CustomersPage() {
     });
   }
 
-  return (
-    <RoleGate allowed={["admin", "office"]}>
-      <div className="space-y-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div><h1 className="page-title">Customers</h1><p className="mt-2 text-sm text-slate-500">The companies we sell to. Used on quotes, sales orders and invoices.</p></div>
-          <div className="flex flex-wrap items-center gap-2"><ColumnToggle tableKey="customers" /><ViewSwitcher value={view} onChange={setView} /><Button className="min-h-11 bg-brand text-brand-ink hover:bg-brand-hover" onClick={() => setEditing(newDraft(""))}><Plus className="size-4" /> New customer</Button></div>
-        </div>
-        <ListToolbar
+  const toolbar = (
+    <ListToolbar
           visibleCount={shown.length}
           selectedCount={0}
           buttonClassName="min-h-11"
@@ -179,7 +178,85 @@ export default function CustomersPage() {
             { label: "Excel", title: exportAllTitle("customer", savedCustomers.length), onSelect: () => void exportSpreadsheet("xlsx", "Customers", CUSTOMER_COLUMNS, savedCustomers, "customers") },
           ]}
         />
-        <PhaseFilter value={phase} onChange={setPhase} counts={phaseCounts} phases={["open", "archived", "all"]} labels={{ open: "Active" }} />
+  );
+  const phaseFilter = (
+    <PhaseFilter value={phase} onChange={setPhase} counts={phaseCounts} phases={["open", "archived", "all"]} labels={{ open: "Active" }} />
+  );
+  const dialog = (
+    <Dialog open={Boolean(editing)} onOpenChange={(open) => !open && setEditing(null)}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>{editing?.id ? "Edit customer" : "Add customer"}</DialogTitle><DialogDescription>Customer contact details.</DialogDescription></DialogHeader>
+            {editing ? (
+              <form key={editing.id || "new"} onSubmit={submit} className="grid gap-3">
+                <Input name="name" placeholder="Customer name" defaultValue={editing.name} required />
+                <Input name="contact_name" placeholder="Contact name" defaultValue={editing.contactName} />
+                <div className="grid gap-3 md:grid-cols-2"><Input name="email" type="email" placeholder="Email" defaultValue={editing.email} /><Input name="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="Phone" defaultValue={editing.phone} /></div>
+                {editing.mobile !== undefined ? <Input name="mobile" type="tel" inputMode="tel" autoComplete="tel" placeholder="Mobile" maxLength={40} defaultValue={editing.mobile} /> : null}
+                <Textarea name="address" placeholder="Address" defaultValue={editing.address} />
+                <Textarea name="notes" placeholder="Notes" defaultValue={editing.notes} />
+                {editing.traceableDefault !== undefined ? (
+                  <label className="flex items-start gap-2 text-sm text-slate-700">
+                    <input type="checkbox" name="traceable_default" defaultChecked={editing.traceableDefault} className="mt-1 size-4" />
+                    <span><span className="font-medium">Traceable material</span> <span className="block text-xs text-slate-500">New jobs for this customer need the material cert no. and heat/cast no. before the inspection can pass.</span></span>
+                  </label>
+                ) : null}
+                <Button type="submit" disabled={saving} className="bg-brand text-brand-ink hover:bg-brand-hover">{saving ? "Saving..." : "Save Customer"}</Button>
+              </form>
+            ) : null}
+            {editing?.id ? <DeliveryNotesFor query={{ customerId: editing.id, customerName: editing.name }} /> : null}
+            {editing?.id ? <ChasePauseControl target={{ kind: "customer", id: editing.id, name: editing.name }} onChange={() => void chasePauses.reload()} /> : null}
+          </DialogContent>
+        </Dialog>
+  );
+
+  if (redesign) {
+    return (
+      <RoleGate allowed={["admin", "office"]}>
+        <CustomersRedesign
+          customers={shown}
+          isVisible={isVisible}
+          view={view}
+          setView={setView}
+          loading={loading}
+          error={error}
+          load={load}
+          emptyTitle={customers.length ? (phase === "archived" ? "No archived customers." : "Every customer is archived: see Show > Archived.") : "No customers yet."}
+          emptyDetail={customers.length ? undefined : customersEmptyHint()}
+          notice={namesTruncated ? DOCUMENT_NAMES_TRUNCATED : undefined}
+          add={() => setEditing(newDraft(""))}
+          toolbar={toolbar}
+          phaseFilter={phaseFilter}
+          dialog={dialog}
+          details={(customer) => (
+            <>
+              {customer.notSaved && <span className="block text-xs font-normal" data-testid="customer-not-saved">{NOT_SAVED_LABEL}</span>}
+              {credits.get(customer.name) ? <span className="block text-xs font-normal text-amber-700" data-testid="customer-credit">Customer credit {gbp(credits.get(customer.name) ?? 0, 2)}</span> : null}
+              {chasePauses.customers.has(customer.name.trim().toLowerCase()) && <ChasePausedBadge />}
+            </>
+          )}
+          actions={(customer) => customer.notSaved ? (
+            <Button variant="outline" onClick={() => setEditing(newDraft(customer.name))}>Add customer</Button>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" onClick={() => setEditing(customer)} disabled={!customer.id}>Edit</Button>
+              {customer.id && !DEMO_MODE && <Button variant="outline" disabled={saving} onClick={() => void draftStatement(customer.id!)}>Draft statement</Button>}
+              {archive.canManage && <ArchiveButton id={customer.id} phase={phaseFor(customer)} manual={customer.id ? archive.manual.get(customer.id) : undefined} onSet={archive.setState} />}
+            </div>
+          )}
+        />
+      </RoleGate>
+    );
+  }
+
+  return (
+    <RoleGate allowed={["admin", "office"]}>
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div><h1 className="page-title">Customers</h1><p className="mt-2 text-sm text-slate-500">The companies we sell to. Used on quotes, sales orders and invoices.</p></div>
+          <div className="flex flex-wrap items-center gap-2"><ColumnToggle tableKey="customers" /><ViewSwitcher value={view} onChange={setView} /><Button className="min-h-11 bg-brand text-brand-ink hover:bg-brand-hover" onClick={() => setEditing(newDraft(""))}><Plus className="size-4" /> New customer</Button></div>
+        </div>
+        {toolbar}
+        {phaseFilter}
         {error ? <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error} <button onClick={load} className="font-semibold underline">Retry</button></div> : null}
         {namesTruncated ? <p className="text-sm text-amber-800" data-testid="customer-names-truncated">{DOCUMENT_NAMES_TRUNCATED}</p> : null}
         {loading ? <Skeleton className="h-72" /> : (
@@ -205,30 +282,7 @@ export default function CustomersPage() {
             </Table>
           </CardContent></Card>
         )}
-        <Dialog open={Boolean(editing)} onOpenChange={(open) => !open && setEditing(null)}>
-          <DialogContent>
-            <DialogHeader><DialogTitle>{editing?.id ? "Edit customer" : "Add customer"}</DialogTitle><DialogDescription>Customer contact details.</DialogDescription></DialogHeader>
-            {editing ? (
-              <form key={editing.id || "new"} onSubmit={submit} className="grid gap-3">
-                <Input name="name" placeholder="Customer name" defaultValue={editing.name} required />
-                <Input name="contact_name" placeholder="Contact name" defaultValue={editing.contactName} />
-                <div className="grid gap-3 md:grid-cols-2"><Input name="email" type="email" placeholder="Email" defaultValue={editing.email} /><Input name="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="Phone" defaultValue={editing.phone} /></div>
-                {editing.mobile !== undefined ? <Input name="mobile" type="tel" inputMode="tel" autoComplete="tel" placeholder="Mobile" maxLength={40} defaultValue={editing.mobile} /> : null}
-                <Textarea name="address" placeholder="Address" defaultValue={editing.address} />
-                <Textarea name="notes" placeholder="Notes" defaultValue={editing.notes} />
-                {editing.traceableDefault !== undefined ? (
-                  <label className="flex items-start gap-2 text-sm text-slate-700">
-                    <input type="checkbox" name="traceable_default" defaultChecked={editing.traceableDefault} className="mt-1 size-4" />
-                    <span><span className="font-medium">Traceable material</span> <span className="block text-xs text-slate-500">New jobs for this customer need the material cert no. and heat/cast no. before the inspection can pass.</span></span>
-                  </label>
-                ) : null}
-                <Button type="submit" disabled={saving} className="bg-brand text-brand-ink hover:bg-brand-hover">{saving ? "Saving..." : "Save Customer"}</Button>
-              </form>
-            ) : null}
-            {editing?.id ? <DeliveryNotesFor query={{ customerId: editing.id, customerName: editing.name }} /> : null}
-            {editing?.id ? <ChasePauseControl target={{ kind: "customer", id: editing.id, name: editing.name }} onChange={() => void chasePauses.reload()} /> : null}
-          </DialogContent>
-        </Dialog>
+        {dialog}
       </div>
     </RoleGate>
   );
