@@ -66,7 +66,7 @@ function LiveInner() {
         if (!active) return;
         // Never the sample rows: an error state with Retry, nothing else.
         setLoaded(null);
-        setError(friendlyError(err, "Couldn't load quotes."));
+        setError(friendlyError(err, "The list could not be loaded. Nothing was changed. Check your connection and try again."));
         setState("error");
       }
     })();

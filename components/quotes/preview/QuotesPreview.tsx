@@ -349,7 +349,7 @@ const EMPTY_HINT = "Press New quote to make your first one.";
 /* 6. The page                                                         */
 /* ================================================================== */
 
-export default function QuotesPreview(props: LiveProps = {}) {
+export default function QuotesPreview(props: LiveProps) {
   return <ToastProvider><Inner {...props} /></ToastProvider>;
 }
 
@@ -833,6 +833,12 @@ function ViewSheet({ live, q, versions, replacedBy, onClose, setDlg, setViewId, 
           </div>
         </div>
       )}>
+      {live ? (
+        <>
+          <p className={s.sheetNote} data-testid="live-sheet-note">{live.readOnlyReason}. Editing, sending, accepting, PDF and archive are not enabled in this preview.</p>
+          <p role="status" aria-live="polite" className={cx(s.sheetNote, s.sheetStatus)} data-testid="sheet-status">{note}</p>
+        </>
+      ) : null}
       <div className={s.facts}>
         <div><span className={s.factLabel}>Customer</span><p className={s.factStrong}>{q.customer}</p></div>
         <div><span className={s.factLabel}>Status</span><p><StatusPill status={q.status} /></p></div>
@@ -870,9 +876,8 @@ function ViewSheet({ live, q, versions, replacedBy, onClose, setDlg, setViewId, 
         {q.vatEnabled ? <div><dt>VAT 20%</dt><dd>{gbp(totals.vat)}</dd></div> : null}
         <div className={s.totalRow}><dt>Total</dt><dd>{gbp(totals.total)}</dd></div>
       </dl>
-      {live ? <p className={s.sheetNote} data-testid="live-sheet-note">{live.readOnlyReason}. Editing, sending, accepting, PDF and archive are not enabled in this preview.</p> : null}
       <p className={s.sheetNote}>Attachments, linked e-mails, the bought-in profit panel and the activity history are not part of this preview.</p>
-      <p role="status" aria-live="polite" className={cx(s.sheetNote, s.sheetStatus)} data-testid="sheet-status">{note}</p>
+      {live ? null : <p role="status" aria-live="polite" className={cx(s.sheetNote, s.sheetStatus)} data-testid="sheet-status">{note}</p>}
     </Sheet>
   );
 }
