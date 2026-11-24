@@ -19,6 +19,22 @@ Common steps for every flag (do not skip):
 
 ---
 
+## Database releases on production (as of 24 Nov 2026)
+
+Read-only checks on quoteflow-prod (project qngvemzbdsvtydkbplpo), reported by Rhys. This records what he reported; nothing here applies or changes anything.
+
+| Release | State on production | Verify result |
+|---|---|---|
+| 163 chase steps atomic | installed | all true (8) |
+| 164 platform companies | installed | all true (9) |
+| 165 owner issues | installed | all true (11) |
+| 167 roadmap and rollouts | installed | all true (10) |
+| 170 worksheet custom | applied 23 Nov 2026 at 23:10 with Rhys's yes; release file sha256 `41fedfd5aa49...efbea`; one transaction | all true (8 of 8); all 24 existing jobs have `worksheet_custom` = `{}` |
+
+Nothing from 163 to 170 is left to apply. Applying these switched nothing on: the worksheet builder is still OFF. Releases 096 to 160 were NOT checked beyond their prerequisites existing, so this document says nothing about whether they are applied.
+
+---
+
 ## 1. Reports (operations reports, module 7)
 
 - **Current state:** OFF. Per-company marker `reports:on` in `organization_settings.hidden_nav`; absent means off (`lib/reports/reports-switch.ts`). Admin and office only.
@@ -105,7 +121,7 @@ Common steps for every flag (do not skip):
 
 - **Current state:** OFF. One server flag, `PLATFORM_COMPANIES_ENABLED` (exactly "true"); with it off the two routes answer 404 (to a platform owner; anyone else is refused by the owner guard first) and the panel renders nothing. Platform owners only (the existing `/platform` guard).
 - **What it is:** a Companies card on `/platform`: every company with its people, jobs and invoices (issued ones separately), and Close or Reopen per company. Close needs the company's exact name typed, a reason and an authenticator code under 15 minutes old, and is refused for the company the owner is inside. Nothing is deleted; Reopen undoes a Close.
-- **Needs:** release 164 applied on that database (the panel shows "Couldn't load the company counts" until it is). Applying 164 on production needs Rhys's yes on the exact file after a fresh backup.
+- **Needs:** release 164 applied on that database. It is applied and verified on production (quoteflow-prod) as of 24 Nov 2026: see "Database releases on production" above. The panel shows "Couldn't load the company counts" on a database without it.
 - **Check on Preview:** flag unset: nothing shows and `/api/platform/companies` answers 404. Flag on, signed in as a platform owner at the second step: counts are right; Close with a wrong name is refused; Close then Reopen round-trips; a company admin cannot call either route.
 - **Approve before on:** Rhys (Close locks a live company's staff out at once).
 
