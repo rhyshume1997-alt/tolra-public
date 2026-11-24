@@ -22,6 +22,8 @@ import { OVER_PLAN_TOLERANCE } from "@/lib/jobs/planned-vs-actual";
 import { REPORTS_OFF_NOTICE, canSeeReports } from "@/lib/reports/reports-switch";
 import { REVENUE_OFF_NOTICE, canSeeRevenue } from "@/lib/reports/revenue/revenue-switch";
 
+import { REPORT_PERIODS } from "@/lib/reports/use-reports-data";
+
 const read = (rel: string) => fs.readFileSync(path.join(process.cwd(), rel), "utf8");
 const VIEW = read("components/reports/reports-view.tsx");
 const REV = read("components/reports/revenue/revenue-view.tsx");
@@ -34,8 +36,8 @@ const pence = (n: number) => Math.round(n * 100);
 
 describe("reports preview: the real source still says what the preview mirrors", () => {
   it("operations page: periods, default, copy, order of the cards", () => {
-    expect(VIEW).toContain("const PERIODS = [3, 6, 12] as const;"); expect([...PERIODS]).toEqual([3, 6, 12]);
-    expect(VIEW).toContain("useState<number>(12)");
+    expect(REPORT_PERIODS).toEqual(PERIODS);
+    expect(read("lib/reports/use-reports-data.ts")).toContain("useState<number>(12)");
     expect(VIEW).toContain(`const MAYBE_INCOMPLETE = "${MAYBE_INCOMPLETE}";`);
     for (const t of ["Read-only operations reports. Dates are UK time. No costs are shown here: these reports count jobs, hours and records only.", "Revenue report", "Last {m} months", "Calculated {fmtDateTime(data.calculatedAt)} (UK time)", "This report can&apos;t be read right now.", "Not shown: "]) expect(VIEW, t).toContain(t);
     expect(VIEW.indexOf("On-time completion")).toBeLessThan(VIEW.indexOf("Work in progress ageing"));
