@@ -102,6 +102,8 @@
 @media (max-width: 640px) { .tokens { --ui-fs-page: 22px; --ui-lh-page: 28px; --ui-fs-numeral: 24px; --ui-lh-numeral: 28px; } }
 .tokens, .tokens *, .tokens *::before, .tokens *::after { box-sizing: border-box; }
 .tokens :where(button, input, select, textarea) { font: inherit; color: inherit; }
+/* Tailwind v4 utilities sit in @layer utilities, and this unlayered reset beats them. A button that asks for white text (the active FilterBar chip: bg-ink text-white) would get ink text on an ink fill. Only buttons carrying that class are restored. */
+.tokens button[class~="text-white"] { color: #fff; }
 .tokens :where(button) { cursor: pointer; }
 .tokens :focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
 
