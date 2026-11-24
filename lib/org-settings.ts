@@ -1,5 +1,8 @@
 "use client";
 
+// Company settings store. The rollout snapshot exposes only confirmed server reads.
+// Existing cached preferences and save behavior are preserved.
+
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 
 import { DASHBOARD_TILES } from "@/lib/dashboard-tiles";
@@ -229,6 +232,9 @@ const NO_SETS: Sets = { hiddenNav: [], hiddenColumns: {} };
 const EMPTY: OrgSettings = { ...NO_SETS, loaded: false, localOnly: false, deviceColumns: {} };
 
 let state: OrgSettings = EMPTY;
+type ConfirmedNavigation = { organizationId: string; userId: string; hiddenNav: readonly string[] };
+let confirmedNavigation: ConfirmedNavigation | null = null;
+let navigationRead = 0;
 /** The last settled value (from the server, or kept locally while offline). */
 let base: Sets = NO_SETS;
 /** Changes shown at once but not yet settled; the visible state is base with these applied. */
@@ -299,6 +305,7 @@ export function resetOrgSettings() {
   const legacyUserKey = currentUserId ? `${STORAGE_KEY}:${currentUserId}` : null;
   const orgPointer = currentUserId ? lastOrgKey(currentUserId) : null;
   generation += 1;
+  confirmedNavigation = null;
   currentUserId = null;
   currentOrgId = null;
   loadPromise = null;
@@ -439,6 +446,11 @@ async function readRow(organizationId: string): Promise<Sets> {
 
 async function fetchSettings() {
   const gen = generation;
+  const read = ++navigationRead;
+  if (confirmedNavigation) {
+    confirmedNavigation = null;
+    setState(state);
+  }
   try {
     if (!supabase) throw new Error("Supabase is not configured.");
     // One auth-server check names both the user and the session's company (it was asked twice in a row before: every auth-server
@@ -449,6 +461,9 @@ async function fetchSettings() {
     rememberOrg(organizationId);
     const row = await readRow(organizationId);
     if (gen !== generation) return;
+    if (read === navigationRead) {
+      confirmedNavigation = { organizationId, userId, hiddenNav: row.hiddenNav };
+    }
     base = row;
     writeLocal(base);
     publish({ loaded: true, localOnly: false, deviceColumns: readDevice() });
@@ -591,6 +606,13 @@ export function useOrgSettings() {
   const settings = useSyncExternalStore(subscribe, () => state, () => EMPTY);
   useEffect(() => { void loadOrgSettings(); }, []);
   return settings;
+}
+
+/** Restricts redesign markers to a settled server read for the current session and company. */
+export function useConfirmedCompanyNavigation() {
+  const navigation = useSyncExternalStore(subscribe, () => confirmedNavigation, () => null);
+  useEffect(() => { void loadOrgSettings(); }, []);
+  return navigation;
 }
 
 export function isNavHidden(settings: Pick<OrgSettings, "hiddenNav">, href: string) {
