@@ -1,0 +1,69 @@
+/*
+ * BOUNDARY (Approval Queue, Module 4 by the coordinator's decision, PREVIEW ONLY). Inputs: the class names used by components/approval/preview/ApprovalPreview.tsx, and the --ui-*
+ * tokens that components/ui/premium defines on its token class (applied to the page root). Output: the look of the Approval Queue preview only. Must not change: no global selectors, nothing outside this
+ * module, no business rules. Control heights stay on the 32 / 40 / 48 px scale. Motion is 120 to 200 ms, opacity, colour and transform only, off under prefers-reduced-motion.
+ * Forbidden: gradients, blur or glass, decorative icons.
+ */
+
+.root { display: flex; flex-direction: column; gap: 16px; max-width: 1720px; padding-bottom: 24px; font-feature-settings: "kern", "liga"; }
+
+.dock { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding-bottom: 8px; max-width: 320px; }
+.dockNote { margin: 0 0 4px; color: var(--ui-muted); font-size: var(--ui-fs-secondary); line-height: var(--ui-lh-secondary); }
+.dockLabel { margin: 6px 0 0; color: var(--ui-ink-2); font-size: var(--ui-fs-caption); font-weight: 600; }
+.dockStates { display: flex; flex-direction: column; gap: 4px; width: 100%; margin-bottom: 6px; }
+.dockBtn { position: relative; height: 32px; padding: 0 10px; border: 0; border-radius: 8px; background: #fff; text-align: left; font-size: var(--ui-fs-secondary); font-weight: 500; box-shadow: inset 0 0 0 1px var(--ui-line-strong); transition: background-color var(--ui-t-fast) var(--ui-ease); }
+.dockBtn::after { content: ""; position: absolute; inset: -8px 0; }
+.dockBtn:hover { background: var(--ui-surface-2); }
+.dockBtn[aria-pressed="true"] { background: var(--ui-brand); color: var(--ui-on-brand); font-weight: 600; box-shadow: var(--ui-inset-light), var(--ui-inset-dark); }
+
+
+.colScope { margin: 0 0 4px; color: var(--ui-muted); font-size: var(--ui-fs-secondary); line-height: var(--ui-lh-secondary); max-width: 260px; }
+.colLocked { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; margin: 0; color: var(--ui-ink); font-size: var(--ui-fs-body); font-weight: 500; }
+.colLocked span:last-child { color: var(--ui-muted); font-size: var(--ui-fs-secondary); font-weight: 500; }
+.colReset { padding: 6px 0 4px; }
+
+.errorCard { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px 14px 20px; border-radius: var(--ui-radius-lg); background: var(--ui-danger-soft); box-shadow: inset 3px 0 0 var(--ui-danger), inset 0 0 0 1px rgba(179, 45, 45, 0.2); }
+.errorText { margin: 0; color: #8f1f1f; font-size: var(--ui-fs-body); font-weight: 500; }
+
+.queue { display: flex; flex-direction: column; gap: 12px; }
+.block { display: flex; flex-direction: column; gap: 12px; margin-top: 8px; }
+.blockTitle { margin: 0; font-size: var(--ui-fs-section); line-height: var(--ui-lh-section); font-weight: 600; letter-spacing: -0.01em; color: var(--ui-ink); }
+.card { display: flex; flex-direction: column; gap: 10px; padding: 16px 20px; border-radius: var(--ui-radius-lg); background: #fff; box-shadow: 0 0 0 1px var(--ui-line), var(--ui-shadow-1); }
+.cardWarn { box-shadow: inset 3px 0 0 #d99a06, 0 0 0 1px rgba(217, 154, 6, 0.45), var(--ui-shadow-1); }
+.cardHead { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px 24px; }
+.cardTitle { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; flex: 1 1 320px; }
+.customer { margin: 0; font-size: 17px; line-height: 24px; font-weight: 600; letter-spacing: -0.008em; color: var(--ui-ink); overflow-wrap: anywhere; }
+.detail { margin: 0; color: var(--ui-ink-2); font-size: var(--ui-fs-body); line-height: var(--ui-lh-body); max-width: 90ch; overflow-wrap: anywhere; }
+.drafted { margin: 0; color: var(--ui-muted); font-size: var(--ui-fs-secondary); white-space: nowrap; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0; padding: 10px 14px; border-radius: var(--ui-radius-sm); background: var(--ui-surface-2); box-shadow: inset 0 0 0 1px var(--ui-line); font-size: var(--ui-fs-body); }
+.facts dt { color: var(--ui-muted); font-weight: 600; }
+.facts dd { margin: 0; color: var(--ui-ink); overflow-wrap: anywhere; }
+.previewBox { max-height: 88px; overflow: hidden; padding: 10px 14px; border-radius: var(--ui-radius-sm); box-shadow: inset 0 0 0 1px var(--ui-line); color: var(--ui-ink-2); font-size: var(--ui-fs-body); line-height: var(--ui-lh-body); }
+.previewBox p { margin: 0; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 8px; }
+.skip { margin-left: auto; }
+.manual { padding-top: 2px; }
+.form { display: flex; flex-direction: column; gap: 12px; }
+.err { margin: 0; color: #8f1f1f; font-size: var(--ui-fs-body); }
+.chaseText { padding: 12px 14px; border-radius: var(--ui-radius-sm); box-shadow: inset 0 0 0 1px var(--ui-line); }
+.chaseSubject { margin: 0 0 4px; font-weight: 600; }
+.chaseBody { margin: 0; white-space: pre-wrap; font-size: var(--ui-fs-body); line-height: var(--ui-lh-body); color: var(--ui-ink-2); }
+.heldTitle { margin: 0; font-size: 16px; line-height: 22px; font-weight: 600; }
+.heldNote { margin: 0; color: #4d3200; font-size: var(--ui-fs-body); line-height: var(--ui-lh-body); font-weight: 500; max-width: 90ch; }
+.reason { margin: 0; padding: 10px 14px; border-radius: var(--ui-radius-sm); background: var(--ui-surface-2); box-shadow: inset 0 0 0 1px var(--ui-line); font-size: var(--ui-fs-body); white-space: pre-wrap; overflow-wrap: anywhere; }
+.reasonLabel { color: var(--ui-muted); font-weight: 600; }
+.recent { border-radius: var(--ui-radius-lg); background: #fff; box-shadow: 0 0 0 1px var(--ui-line), var(--ui-shadow-1); }
+.recentRow { padding: 12px 20px; box-shadow: inset 0 -1px 0 var(--ui-line); }
+.recentRow:last-child { box-shadow: none; }
+.recentName { margin: 0; font-weight: 600; }
+.recentEmpty { margin: 0; padding: 14px 20px; color: var(--ui-ink-2); font-size: var(--ui-fs-body); }
+.fullBody { margin-top: 12px; padding: 14px 16px; border-radius: var(--ui-radius-md); box-shadow: inset 0 0 0 1px var(--ui-line); font-size: var(--ui-fs-body); line-height: var(--ui-lh-body); white-space: pre-wrap; overflow-wrap: anywhere; }
+.confirmText { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--ui-fs-body); line-height: var(--ui-lh-body); }
+
+.denied { padding: 32px; border-radius: var(--ui-radius-lg); background: #fff; text-align: center; box-shadow: 0 0 0 1px var(--ui-line), var(--ui-shadow-1); }
+.deniedTitle { margin: 0; font-size: 24px; line-height: 30px; font-weight: 600; letter-spacing: -0.015em; }
+.deniedText { margin: 8px 0 0; color: var(--ui-ink-2); }
+.deniedNote { margin: 14px auto 0; max-width: 520px; color: var(--ui-muted); font-size: var(--ui-fs-secondary); }
+
+@media (max-width: 767px) { .title { font-size: 24px; line-height: 30px; } .card { padding: 14px; } .drafted { white-space: normal; } .skip { margin-left: 0; } }
+@media (prefers-reduced-motion: reduce) { .dockBtn { animation: none !important; transition: none !important; } }
