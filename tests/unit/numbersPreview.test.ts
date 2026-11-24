@@ -14,15 +14,16 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import NumbersPreview, { CREDITS, FAILED, INVOICES, MACHINES, MONTH_CHOICES, NOW, PAYMENTS, RUNS, SHOWN_CUSTOMERS, customerRows, loadSample, numbersView } from "@/components/numbers/preview/NumbersPreview";
 import { londonMonthsEnding, windowOf } from "@/lib/numbers";
 
+const MODEL = fs.readFileSync(path.join(process.cwd(), "lib/use-numbers-view.ts"), "utf8");
 const PAGE = fs.readFileSync(path.join(process.cwd(), "app/(dashboard)/numbers/page.tsx"), "utf8");
 const pence = (x: number | string | null | undefined) => Math.round(Number(x ?? 0) * 100);
 
 describe("numbers preview: the real page still says what the preview mirrors", () => {
   it("choices, shown customers, failure wording, admin-only, labels", () => {
-    expect(PAGE).toContain("const MONTH_CHOICES = [3, 6, 12] as const;"); expect([...MONTH_CHOICES]).toEqual([3, 6, 12]);
-    expect(PAGE).toContain("const SHOWN_CUSTOMERS = 8;"); expect(SHOWN_CUSTOMERS).toBe(8);
+    expect(MODEL).toContain("const MONTH_CHOICES = [3, 6, 12] as const;"); expect([...MONTH_CHOICES]).toEqual([3, 6, 12]);
+    expect(MODEL).toContain("const SHOWN_CUSTOMERS = 8;"); expect(SHOWN_CUSTOMERS).toBe(8);
     expect(PAGE).toContain("const FAILED = \"Couldn't load this.\";"); expect(FAILED.replace("’", "'")).toBe("Couldn't load this.");
-    expect(PAGE).toContain("activeRole !== \"admin\") router.replace(\"/dashboard\")");
+    expect(MODEL).toContain("activeRole !== \"admin\") router.replace(\"/dashboard\")");
     for (const t of ["1. Which customers are we relying on?", "2. Are invoices turning into cash?", "3. Where is machine time going?", "Issued invoices, less credit notes on their own date", "Payments by the date received, reversals included", "Recorded machine runs, not booked hours", "Invoiced ex VAT against money received, by month", "No invoiced work in these months.", "No machine time recorded in these months.", "The gap is invoiced less received in that month, not money owed: a payment can settle an invoice from an earlier month."]) expect(PAGE).toContain(t);
     const src = fs.readFileSync(path.join(process.cwd(), "components/numbers/preview/NumbersPreview.tsx"), "utf8");
     for (const t of ["1. Which customers are we relying on?", "2. Are invoices turning into cash?", "3. Where is machine time going?", "Issued invoices, less credit notes on their own date", "Payments by the date received, reversals included", "Recorded machine runs, not booked hours", "Invoiced ex VAT against money received, by month", "No invoiced work in these months.", "No machine time recorded in these months."]) expect(src).toContain(t);
