@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import { useCodePrompt } from "@/components/authenticator-code-dialog";
+import { XeroOrganisationRedesign } from "@/components/integrations/xero-organisation-redesign";
+import { useCompanyUiSwitch } from "@/lib/use-company-ui-switch";
 import { RoleGate } from "@/components/role-gate";
 import { postIntegrationWithCode } from "@/lib/integrations/post-with-code";
 
@@ -16,6 +18,7 @@ type Offer = { organisations: Array<{ tenantId: string; name: string }>; csrf: s
  * Connecting never turns transfers on or releases held documents.
  */
 export default function XeroOrganisationPage() {
+  const redesign = useCompanyUiSwitch("ui-admin-xero-v2:on");
   const { requestCode, codeDialog } = useCodePrompt();
   const [offer, setOffer] = useState<Offer | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
@@ -39,6 +42,22 @@ export default function XeroOrganisationPage() {
     setBusy(false);
     if (r.ok) window.location.assign("/admin/integrations?xero=connected");
     else setProblem(r.error);
+  }
+
+  if (redesign) {
+    return (
+      <RoleGate allowed={["admin"]}>
+        <XeroOrganisationRedesign
+          organizations={offer?.organisations ?? null}
+          problem={problem}
+          busy={busy}
+          chosen={chosen}
+          choose={setChosen}
+          connect={() => void connect()}
+          codeDialog={codeDialog}
+        />
+      </RoleGate>
+    );
   }
 
   return (
