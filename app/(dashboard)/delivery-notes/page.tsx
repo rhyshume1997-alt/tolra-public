@@ -1,5 +1,7 @@
 "use client";
 
+/** Delivery Notes presentation toggle. Both views use the existing roles, reads, selections and mutation handlers. */
+
 import { ActivityPanel } from "@/components/activity-panel";
 import { EmptyList } from "@/components/empty-list";
 import { deliveryNotesEmptyHint } from "@/lib/empty-hints";
@@ -15,6 +17,8 @@ import { phaseOf, type PhaseFilterValue, useArchive } from "@/lib/archive";
 import { ColumnToggle } from "@/components/column-toggle";
 import { ViewSwitcher } from "@/components/view-switcher";
 import { useViewMode } from "@/lib/view-mode";
+import { DeliveryNotesRedesign } from "@/components/delivery-notes/delivery-notes-redesign";
+import { useCompanyUiSwitch } from "@/lib/use-company-ui-switch";
 import { RoleGate } from "@/components/role-gate";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/status-badge";
@@ -113,6 +117,7 @@ function parseItemLine(line: string) {
 }
 
 export default function DeliveryNotesPage() {
+  const redesign = useCompanyUiSwitch("ui-delivery-notes-v2:on");
   const { isVisible } = useColumnVisibility("delivery-notes");
   // Cards / List / Table, remembered per person (lib/view-mode; styles in app/globals.css [data-view]). Table is the page as it was.
   const [view, setView] = useViewMode("delivery-notes", "table");
@@ -553,12 +558,8 @@ export default function DeliveryNotesPage() {
 
   const today = toDateInput(new Date());
 
-  return (
-    <RoleGate allowed={["admin", "office", "workshop"]}>
-      <div className="space-y-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div><h1 className="page-title">Delivery Notes</h1><p className="mt-2 text-sm text-slate-500">A delivery note goes with finished work. Despatch means sending finished work to the customer.</p></div>
-          <Dialog open={newOpen} onOpenChange={setNewOpen}>
+  const headerActions = (
+      <Dialog open={newOpen} onOpenChange={setNewOpen}>
             <DialogTrigger asChild><Button className="min-h-11 bg-brand text-brand-ink hover:bg-brand-hover"><Plus className="size-4" /> New delivery note</Button></DialogTrigger>
             <DialogContent>
               <DialogHeader><DialogTitle>New Delivery Note</DialogTitle><DialogDescription>Make it from a sales order or a job, with the quantity despatched on each line, or by hand. No invoice is needed first.</DialogDescription></DialogHeader>
@@ -584,38 +585,19 @@ export default function DeliveryNotesPage() {
               )}
             </DialogContent>
           </Dialog>
-        </div>
-        {DEMO_MODE ? <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Demo mode: sample data is shown if the database can&apos;t be reached.</div> : null}
-        <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => setSelectedIds(visible.map((note) => note.id))}>{`Select all ${visible.length} filtered`}</Button><Button variant="outline" onClick={() => setSelectedIds([])}>Clear selection</Button><span role="status" aria-live="polite" className="self-center text-sm text-slate-600 dark:text-slate-300"><strong className="font-semibold text-ink">{selectedIds.length} selected</strong> of {visible.length} filtered {visible.length === 1 ? "record" : "records"}</span><Button onClick={printSelected} disabled={!selectedIds.length} title={selectedIds.length ? undefined : "Select at least one delivery note"} className="bg-brand text-brand-ink">Print Selected</Button><Button variant="outline" disabled={saving || !selectedIds.length} title={selectedIds.length ? undefined : "Select at least one delivery note"} onClick={markSelectedSigned}>Mark Selected Signed</Button></div>
-        <div className="grid gap-4 md:grid-cols-3">
-          {([
-            ["Despatched This Week", stats.week, ["despatched", "delivered", "signed"], Truck, "text-brand-accent"],
-            ["Signed This Month", stats.signedMonth, ["signed"], PenLine, "text-green-600 dark:text-green-400"],
-            [AWAITING_SIGNATURE_LABEL, stats.awaitingSignature, AWAITING_SIGNATURE_STATUSES, Truck, "text-orange-600 dark:text-orange-400"],
-          ] as readonly (readonly [string, number, readonly string[], LucideIcon, string])[]).map(([label, value, filter, Icon, tone]) => (
-            <Card key={label} className="cursor-pointer transition hover:bg-slate-50" onClick={() => setFilters(new Set(filter))}>
-              <CardContent className="p-5"><Icon className={`size-5 ${tone}`} /><p className="mt-3 text-sm text-slate-500">{label}</p><p className="text-3xl font-bold">{loading ? "—" : value}</p></CardContent>
-            </Card>
-          ))}
-        </div>
+  );
+  const selection = (
+      <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => setSelectedIds(visible.map((note) => note.id))}>{`Select all ${visible.length} filtered`}</Button><Button variant="outline" onClick={() => setSelectedIds([])}>Clear selection</Button><span role="status" aria-live="polite" className="self-center text-sm text-slate-600 dark:text-slate-300"><strong className="font-semibold text-ink">{selectedIds.length} selected</strong> of {visible.length} filtered {visible.length === 1 ? "record" : "records"}</span><Button onClick={printSelected} disabled={!selectedIds.length} title={selectedIds.length ? undefined : "Select at least one delivery note"} className="bg-brand text-brand-ink">Print Selected</Button><Button variant="outline" disabled={saving || !selectedIds.length} title={selectedIds.length ? undefined : "Select at least one delivery note"} onClick={markSelectedSigned}>Mark Selected Signed</Button></div>
+  );
+  const filtersAndToolbar = (
+      <>
         {listFilter ? <ListFilterNotice label={DN_FILTER_LABELS[listFilter] ?? listFilter} onClear={clearListFilter} /> : null}
       <div className="flex flex-wrap items-start justify-between gap-2"><PhaseFilter value={phase} onChange={setPhase} counts={phaseCounts} />
         <FilterBar activeValues={[...filters]} options={[{ label: "All", value: "all" }, { label: "Awaiting", value: "awaiting" }, { label: "Despatched", value: "despatched" }, { label: "Delivered", value: "delivered" }, { label: "Signed", value: "signed" }]} onChange={setFilters} /><ColumnToggle tableKey="delivery-notes" /><ViewSwitcher value={view} onChange={setView} /></div>
-        {loadError ? (
-          <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-            <span>{loadError}</span>
-            <Button variant="outline" size="sm" onClick={() => void loadNotes()}>Retry</Button>
-          </div>
-        ) : null}
-        {loading ? <div className="space-y-3"><Skeleton className="h-16" /><Skeleton className="h-16" /><Skeleton className="h-16" /></div> : loadError && !DEMO_MODE ? null : visible.length === 0 ? (
-          <EmptyList
-            title={notes.length ? "No delivery notes match this filter" : "No delivery notes yet"}
-            hint={notes.length ? "Try a different filter." : deliveryNotesEmptyHint()}
-            hintTestId={notes.length ? undefined : "empty-hint"}
-            action={notes.length ? <Button variant="outline" onClick={() => setFilters(new Set(["all"]))}>Show all</Button> : <Button className="bg-brand text-brand-ink hover:bg-brand-hover" onClick={() => setNewOpen(true)}><Plus className="size-4" /> New delivery note</Button>}
-          />
-        ) : (
-          <Card><CardContent className="p-0"><Table data-view={view}>
+      </>
+  );
+  const recordTable = (
+      <Card><CardContent className="p-0"><Table data-view={view}>
             <TableHeader className="hidden md:table-header-group"><TableRow>
               <TableHead><SelectBox aria-label={`Select all ${visible.length} filtered delivery notes`} checked={selectedIds.length === visible.length && visible.length > 0} onChange={(event) => setSelectedIds(event.target.checked ? visible.map((note) => note.id) : [])} /></TableHead>
               {isVisible("ref") ? <TableHead>DN Ref</TableHead> : null}{isVisible("customer") ? <TableHead>Customer</TableHead> : null}{isVisible("job") ? <TableHead>Job Ref</TableHead> : null}{isVisible("date") ? <TableHead>Delivery Date</TableHead> : null}{isVisible("status") ? <TableHead>Status</TableHead> : null}{isVisible("email") ? <TableHead>Email</TableHead> : null}<TableHead>Actions</TableHead>
@@ -643,7 +625,9 @@ export default function DeliveryNotesPage() {
               </TableRow>
             ))}</TableBody>
           </Table></CardContent></Card>
-        )}
+  );
+  const dialogs = (
+      <>
         <Dialog open={Boolean(viewing)} onOpenChange={(open) => !open && setViewing(null)}><DialogContent><DialogHeader><DialogTitle>{viewing?.ref}</DialogTitle><DialogDescription>Delivery note detail</DialogDescription></DialogHeader>{viewing ? <div className="space-y-3 text-sm"><p><strong>Customer:</strong> {viewing.customer}</p><p><strong>Job:</strong> {viewing.job || "No linked job"}</p><p><strong>Delivery date:</strong> {fmtDate(viewing.date)}</p><p><strong>Status:</strong> {viewing.status}</p>{viewing.signed_by_name ? <p><strong>Signed by:</strong> {viewing.signed_by_name} on {fmtDate(viewing.signed_at)}</p> : null}{viewing.signature_notes ? <p><strong>Signature notes:</strong> {viewing.signature_notes}</p> : null}{viewing.emailed_at ? <p><strong>Email history:</strong> Sent {fmtDateTime(viewing.emailed_at)}</p> : null}<div className="flex flex-wrap gap-2"><Button onClick={() => window.open(`/delivery-notes/${encodeURIComponent(viewing.id)}/print`, "_blank")} className="bg-brand text-brand-ink">Print</Button><Button variant="outline" onClick={() => void downloadDeliveryNotePdf(viewing)}>Download PDF</Button>{canEmail ? <Button variant="outline" onClick={() => void openEmail(viewing)}>Email Customer</Button> : null}</div>{viewing.demo ? null : <CertPack jobNo={viewing.job} canRemove={activeRole === "admin" || activeRole === "office"} />}{viewing.demo ? null : <DocumentAttachments parent={{ kind: "delivery_note", id: viewing.id }} canRemove={activeRole === "admin" || activeRole === "office" || activeRole === "workshop"} removeBlockedReason={["despatched", "delivered", "signed"].includes(viewing.status) ? "This note has gone out, so its files are kept as despatch evidence: more can be added, none removed." : null} />}{viewing.demo ? null : <DeliveryNoteInvoiceLink noteId={viewing.id} canLink={canLinkInvoice} onLinked={() => void loadNotes()} />}</div> : null}<ActivityPanel table="delivery_notes" recordId={viewing?.id} className="mt-4" /></DialogContent></Dialog>
         <Dialog open={Boolean(editing)} onOpenChange={(open) => !open && setEditing(null)}>
           <DialogContent>
@@ -687,6 +671,71 @@ export default function DeliveryNotesPage() {
             ) : null}
           </DialogContent>
         </Dialog>
+      </>
+  );
+
+  if (redesign) {
+    return (
+      <RoleGate allowed={["admin", "office", "workshop"]}>
+        <DeliveryNotesRedesign
+          actions={headerActions}
+          demo={DEMO_MODE}
+          tiles={[["Despatched This Week", stats.week, ["despatched", "delivered", "signed"]], ["Signed This Month", stats.signedMonth, ["signed"]], [AWAITING_SIGNATURE_LABEL, stats.awaitingSignature, AWAITING_SIGNATURE_STATUSES]]}
+          filters={filters}
+          chooseFilter={(values) => setFilters(new Set(values))}
+          controls={<>{selection}{filtersAndToolbar}</>}
+          records={recordTable}
+          dialogs={dialogs}
+          loading={loading}
+          error={loadError}
+          retry={() => void loadNotes()}
+          hasRecords={notes.length > 0}
+          hasVisible={visible.length > 0}
+          showAll={() => setFilters(new Set(["all"]))}
+          add={() => setNewOpen(true)}
+        />
+      </RoleGate>
+    );
+  }
+
+  return (
+    <RoleGate allowed={["admin", "office", "workshop"]}>
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div><h1 className="page-title">Delivery Notes</h1><p className="mt-2 text-sm text-slate-500">A delivery note goes with finished work. Despatch means sending finished work to the customer.</p></div>
+        {headerActions}
+        </div>
+        {DEMO_MODE ? <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Demo mode: sample data is shown if the database can&apos;t be reached.</div> : null}
+        {selection}
+        <div className="grid gap-4 md:grid-cols-3">
+          {([
+            ["Despatched This Week", stats.week, ["despatched", "delivered", "signed"], Truck, "text-brand-accent"],
+            ["Signed This Month", stats.signedMonth, ["signed"], PenLine, "text-green-600 dark:text-green-400"],
+            [AWAITING_SIGNATURE_LABEL, stats.awaitingSignature, AWAITING_SIGNATURE_STATUSES, Truck, "text-orange-600 dark:text-orange-400"],
+          ] as readonly (readonly [string, number, readonly string[], LucideIcon, string])[]).map(([label, value, filter, Icon, tone]) => (
+            <Card key={label} className="cursor-pointer transition hover:bg-slate-50" onClick={() => setFilters(new Set(filter))}>
+              <CardContent className="p-5"><Icon className={`size-5 ${tone}`} /><p className="mt-3 text-sm text-slate-500">{label}</p><p className="text-3xl font-bold">{loading ? "—" : value}</p></CardContent>
+            </Card>
+          ))}
+        </div>
+        {filtersAndToolbar}
+        {loadError ? (
+          <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+            <span>{loadError}</span>
+            <Button variant="outline" size="sm" onClick={() => void loadNotes()}>Retry</Button>
+          </div>
+        ) : null}
+        {loading ? <div className="space-y-3"><Skeleton className="h-16" /><Skeleton className="h-16" /><Skeleton className="h-16" /></div> : loadError && !DEMO_MODE ? null : visible.length === 0 ? (
+          <EmptyList
+            title={notes.length ? "No delivery notes match this filter" : "No delivery notes yet"}
+            hint={notes.length ? "Try a different filter." : deliveryNotesEmptyHint()}
+            hintTestId={notes.length ? undefined : "empty-hint"}
+            action={notes.length ? <Button variant="outline" onClick={() => setFilters(new Set(["all"]))}>Show all</Button> : <Button className="bg-brand text-brand-ink hover:bg-brand-hover" onClick={() => setNewOpen(true)}><Plus className="size-4" /> New delivery note</Button>}
+          />
+        ) : (
+        recordTable
+        )}
+        {dialogs}
       </div>
     </RoleGate>
   );
