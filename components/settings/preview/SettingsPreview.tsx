@@ -55,6 +55,7 @@ import { TIME_NEEDS_DATABASE_UPDATE } from "@/lib/time-features";
 import { DEFAULT_TIME_SETTINGS, type TimeSettings } from "@/lib/time-sheet";
 import { formatHoursMinutes, paidDay, paidHoursExplanation, paidWeek } from "@/lib/working-hours";
 
+import { DocumentDesignsPanel } from "@/components/settings/preview/DocumentDesignsPreview";
 import s from "./SettingsPreview.module.css";
 
 /* ------------------------------------------------------------------ sample data (fictional) ------------------------------------------------------------------ */
@@ -1346,6 +1347,7 @@ function SettingsScreen() {
         <>
           {states.page === "local-only" ? <Callout tone="warn" lead="" role="status" data-testid="local-only-banner">Company settings aren&apos;t available right now. Menu and column choices are saved in this browser only.</Callout> : null}
           <div id="setup-company"><CompanyDetails key={`company-${states.company}-${states.hours}`} state={states.company} timeSettings={timeSettings} hasLogo={flags.logo} preview={preview} /></div>
+          <DocumentDesignsPanel preview={preview} />
           <ArchiveCard preview={preview} />
           <AutoConvertCard key={`convert-${states.autoConvert}`} available={states.autoConvert === "available"} preview={preview} />
           <div id="setup-breaks"><HoursCard key={states.hours} state={states.hours} preview={preview} /></div>

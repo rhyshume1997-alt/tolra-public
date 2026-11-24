@@ -177,7 +177,7 @@ describe("rendering", () => {
     expect(h.querySelector("h1")?.textContent).toBe("Settings");
     expect(h.textContent).toContain("Preview, sample data, nothing is saved");
     const titles = [...h.querySelectorAll("h2")].map((e) => e.textContent);
-    expect(titles).toEqual(["Company details", "Archive", "Quote to job", "Hours", "Workshop network", "Clock-in network lock", "Customer sign-off", "Job reports", "ISO 9001 draft templates", "Print layout", "Year-end export", "Costing rates", "Email schedules", "Menu Sections", "Display", "Workshop Email Settings", "Email templates"]);
+    expect(titles).toEqual(["Company details", "Document designs", "Archive", "Quote to job", "Hours", "Workshop network", "Clock-in network lock", "Customer sign-off", "Job reports", "ISO 9001 draft templates", "Print layout", "Year-end export", "Costing rates", "Email schedules", "Menu Sections", "Display", "Workshop Email Settings", "Email templates"]);
     expect(h.textContent).not.toContain(" AI"); // the AI card is hidden until the server flag is on
     expect(h.textContent).toContain(COMPANY_NAME);
   });
