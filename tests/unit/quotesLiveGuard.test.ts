@@ -2,7 +2,7 @@
  * BOUNDARY (Quotes module 3, READ-ONLY LIVE PREVIEW). Inputs: the SOURCE TEXT of the new live files (the route page, components/quotes/preview/QuotesLive.tsx, lib/quote-list-load.ts,
  * lib/quote-live-gate.ts), the route gate, and middleware.ts's route table (read as text). Output: pass/fail. The guard FAILS if any live file contains a database write
  * (.insert/.update/.upsert/.delete/.rpc), storage, a fetch (any, and fetch('/api')), e-mail, send, mailto or window.open, or imports anything outside a small read-only allow-list (so no write helper
- * such as lib/archive's setState, e-mail, PDF, audit or export code can be imported). It also checks the route returns notFound() on a production deployment, is dynamic, sits behind the
+ * such as lib/archive's setState, e-mail, PDF, audit or export code can be imported). It also checks the route is OFF BY DEFAULT (notFound() unless QUOTE_LIVE_PREVIEW_ENABLED is exactly \"true\" and VERCEL_ENV is exactly \"preview\"), is dynamic, sits behind the
  * /quotes middleware prefix for admin and office, and is wrapped in RoleGate.
  * Must not change: never loosen the patterns or widen the allow-list to let a change pass; a new import needs an owner decision. No network, no Supabase.
  */
@@ -104,21 +104,71 @@ describe("quotes live: the route is gated", () => {
     expect(isProductionDeployment("production")).toBe(true);
     for (const v of ["preview", "development", "", "Production", "prod", undefined]) expect(isProductionDeployment(v)).toBe(false);
   });
-  it("the page returns notFound() on a production deployment, and the screen on preview and locally", async () => {
+  it("the flag name is exactly QUOTE_LIVE_PREVIEW_ENABLED", async () => {
+    const { QUOTE_LIVE_FLAG } = await import("@/lib/quote-live-gate");
+    expect(QUOTE_LIVE_FLAG).toBe("QUOTE_LIVE_PREVIEW_ENABLED");
+  });
+  it("quoteLivePreviewOpen is OFF by default and opens only for flag === 'true' AND VERCEL_ENV === 'preview'", async () => {
+    const { quoteLivePreviewOpen } = await import("@/lib/quote-live-gate");
+    // The one opening combination.
+    expect(quoteLivePreviewOpen({ QUOTE_LIVE_PREVIEW_ENABLED: "true", VERCEL_ENV: "preview" })).toBe(true);
+    // Default: nothing set, or only one of the two.
+    expect(quoteLivePreviewOpen({})).toBe(false);
+    expect(quoteLivePreviewOpen({ VERCEL_ENV: "preview" })).toBe(false);
+    expect(quoteLivePreviewOpen({ QUOTE_LIVE_PREVIEW_ENABLED: "true" })).toBe(false);
+    // The flag must be exactly "true": no other spelling opens it, even on a preview.
+    for (const flag of ["", "false", "TRUE", "True", "1", "yes", "on", " true", "true ", "tru", "enabled"]) {
+      expect(quoteLivePreviewOpen({ QUOTE_LIVE_PREVIEW_ENABLED: flag, VERCEL_ENV: "preview" })).toBe(false);
+    }
+    // VERCEL_ENV must be exactly "preview": production, development, other spellings and unset are all closed, even with the flag on.
+    for (const vercelEnv of ["production", "development", "", "Preview", "PREVIEW", " preview", "preview ", "prod", undefined]) {
+      expect(quoteLivePreviewOpen({ QUOTE_LIVE_PREVIEW_ENABLED: "true", VERCEL_ENV: vercelEnv })).toBe(false);
+    }
+  });
+  it("quoteLivePreviewOpen reads process.env when called with no argument", async () => {
+    const { quoteLivePreviewOpen } = await import("@/lib/quote-live-gate");
+    vi.stubEnv("QUOTE_LIVE_PREVIEW_ENABLED", "true");
+    vi.stubEnv("VERCEL_ENV", "preview");
+    expect(quoteLivePreviewOpen()).toBe(true);
+    vi.stubEnv("VERCEL_ENV", "production");
+    expect(quoteLivePreviewOpen()).toBe(false);
+  });
+  it("the page returns notFound() unless the flag is 'true' AND VERCEL_ENV is 'preview', and renders the screen only then", async () => {
     const page = (await import("@/app/(dashboard)/quotes/preview-live/page")).default;
+    // Default off: preview without the flag, and the flag's other spellings.
+    vi.stubEnv("VERCEL_ENV", "preview");
+    vi.stubEnv("QUOTE_LIVE_PREVIEW_ENABLED", "");
+    expect(() => page()).toThrow("NEXT_NOT_FOUND");
+    vi.stubEnv("QUOTE_LIVE_PREVIEW_ENABLED", "TRUE");
+    expect(() => page()).toThrow("NEXT_NOT_FOUND");
+    vi.stubEnv("QUOTE_LIVE_PREVIEW_ENABLED", "1");
+    expect(() => page()).toThrow("NEXT_NOT_FOUND");
+    // Flag on but not a preview deployment: production, local (unset) and development are closed.
+    vi.stubEnv("QUOTE_LIVE_PREVIEW_ENABLED", "true");
     vi.stubEnv("VERCEL_ENV", "production");
     expect(() => page()).toThrow("NEXT_NOT_FOUND");
-    vi.stubEnv("VERCEL_ENV", "preview");
-    expect(page()).toBeTruthy();
     vi.stubEnv("VERCEL_ENV", "");
+    expect(() => page()).toThrow("NEXT_NOT_FOUND");
+    vi.stubEnv("VERCEL_ENV", "development");
+    expect(() => page()).toThrow("NEXT_NOT_FOUND");
+    // The only open combination.
+    vi.stubEnv("VERCEL_ENV", "preview");
     expect(page()).toBeTruthy();
   });
   it("the page reads the gate before it returns the screen, and is dynamic so the check runs per request", () => {
     const page = read("app/(dashboard)/quotes/preview-live/page.tsx");
     expect(page).toContain('export const dynamic = "force-dynamic"');
-    expect(page.indexOf("isProductionDeployment()")).toBeGreaterThan(-1);
+    expect(page).toContain("if (!quoteLivePreviewOpen()) notFound();");
     expect(page.indexOf("notFound()")).toBeLessThan(page.indexOf("<QuotesLive />"));
     expect(page).toMatch(/robots: \{ index: false, follow: false \}/);
+  });
+  it("the gate file is the only place that reads the flag, and uses exact comparisons", () => {
+    const gate = read("lib/quote-live-gate.ts");
+    expect(gate).toContain('env.QUOTE_LIVE_PREVIEW_ENABLED === "true"');
+    expect(gate).toContain('env.VERCEL_ENV === "preview"');
+    for (const file of LIVE_FILES.filter((f) => f !== "lib/quote-live-gate.ts")) {
+      expect(read(file).replace(/\/\*[\s\S]*?\*\//g, "")).not.toContain("QUOTE_LIVE_PREVIEW_ENABLED");
+    }
   });
   it("middleware limits /quotes and everything under it to admin and office (prefix match), so /quotes/preview-live inherits it", () => {
     const mw = read("middleware.ts");
