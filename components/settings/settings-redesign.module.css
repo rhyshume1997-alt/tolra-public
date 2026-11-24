@@ -1,0 +1,35 @@
+/* Settings presentation applies to opted-in sections. Document Designs is rendered outside these styles. */
+.screen, .panels {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  min-width: 0;
+}
+
+.jumps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.jumps a {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  padding: 0 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.jumps a:hover {
+  text-decoration: underline;
+}
+
+.panels :global([data-slot="card"]) {
+  min-width: 0;
+  border-radius: 14px;
+}
