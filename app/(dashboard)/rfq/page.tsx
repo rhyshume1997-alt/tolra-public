@@ -1,5 +1,7 @@
 "use client";
 
+/** RFQ Control Centre. Both presentations reuse the same intake, quote and mail handlers. */
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { EmptyList } from "@/components/empty-list";
 import { EmailLinkPanel, EmailViewer, type LinkedEmail, loadLinkedEmails } from "@/components/inbound-email-links";
@@ -10,6 +12,8 @@ import { FileText, HelpCircle, Inbox, MailCheck, Plus, Send, Sparkles } from "lu
 
 import { ColumnToggle } from "@/components/column-toggle";
 import { FilterBar } from "@/components/filter-bar";
+import { RfqRedesign } from "@/components/rfq/rfq-redesign";
+import { useCompanyUiSwitch } from "@/lib/use-company-ui-switch";
 import { RoleGate } from "@/components/role-gate";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -95,6 +99,7 @@ const TEMPLATES: Record<string, { subject: string; body: (company: string) => st
 };
 
 export default function RfqPage() {
+  const redesign = useCompanyUiSwitch("ui-rfq-v2:on");
   const { profile: company } = useCompanyProfile();
   const { profile } = useUser();
   const { saving, run } = useSaving();
@@ -345,16 +350,9 @@ export default function RfqPage() {
     });
   }
 
-  return (
-    <RoleGate allowed={["admin", "office"]}>
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h1 className="page-title">RFQ Control Centre</h1>
-          <p className="mt-2 text-sm text-slate-500">RFQ means request for quote: a customer asking us for a price.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-        <ColumnToggle tableKey={RFQ_DISPLAY_KEY} />
+  const actions = (
+    <>
+      <ColumnToggle tableKey={RFQ_DISPLAY_KEY} />
         {mailCheck ? <Button variant="outline" disabled={checking} onClick={() => void checkInbox()}><MailCheck className="size-4" /> {checking ? "Checking\u2026" : "Check inbox"}</Button> : null}
         <Dialog open={creating} onOpenChange={setCreating}>
           <DialogTrigger asChild><Button className="bg-brand text-brand-ink hover:bg-brand-hover"><Plus className="size-4" /> New RFQ</Button></DialogTrigger>
@@ -371,15 +369,10 @@ export default function RfqPage() {
             </form>
           </DialogContent>
         </Dialog>
-        </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        {[["New RFQs", count("new"), "new"], ["Waiting for details", count("clarification"), "clarification"], ["Ready to Quote", count("ready"), "ready"]].map(([label, value, filter]) => (
-          <Card key={label} className="cursor-pointer transition hover:bg-slate-50" onClick={() => setFilters(new Set([filter]))}><CardContent className="p-5"><p className="text-sm text-slate-500">{label}</p><p className="mt-2 text-3xl font-bold text-slate-950">{value}</p></CardContent></Card>
-        ))}
-      </div>
-
+    </>
+  );
+  const filterControls = (
+    <>
       <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Show">
         <span className="text-[0.8125rem] font-semibold text-slate-600">Show</span>
         {(["outstanding", "quoted", "won", "lost", "all"] as const).map((value) => (
@@ -391,12 +384,46 @@ export default function RfqPage() {
       {listFilter ? <ListFilterNotice label="RFQs awaiting clarification" onClear={clearListFilter} /> : null}
       <FilterBar activeValues={[...filters]} options={[{ label: "All", value: "all" }, { label: "New", value: "new" }, { label: "Clarification", value: "clarification" }, { label: "Ready", value: "ready" }]} onChange={setFilters} />
       {mailLinksFailed && !error ? <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Couldn&apos;t check which RFQs came from an email, so Reply and Forward may be missing. <button onClick={() => void loadRfqs()} className="font-semibold underline">Retry</button></div> : null}
-      {error ? <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error} <button onClick={() => void loadRfqs()} className="font-semibold underline">Retry</button></div> : null}
-
-      {loading ? <div className="grid gap-4"><Skeleton className="h-32" /><Skeleton className="h-32" /></div> : (
-        <div className="grid gap-4">
-          {!visible.length && !error ? <EmptyList title={rfqs.length ? "No RFQs match this filter" : "No RFQs yet"} hint={rfqs.length ? "Try a different filter." : rfqEmptyHint()} hintTestId={rfqs.length ? undefined : "empty-hint"} /> : null}
-          {visible.map((rfq) => {
+    </>
+  );
+  const dialogs = (
+    <>
+      <Dialog open={Boolean(viewing)} onOpenChange={(open) => !open && setViewing(null)}>
+        <DialogContent><DialogHeader><DialogTitle>{viewing?.customer}</DialogTitle><DialogDescription>Customer request details</DialogDescription></DialogHeader>{viewing ? <div className="space-y-3 text-sm"><p>{viewing.description}</p>{rfqSpec(viewing.quantity, viewing.material).quantity ? <p><strong>Quantity:</strong> {rfqSpec(viewing.quantity, viewing.material).quantity}</p> : null}{rfqSpec(viewing.quantity, viewing.material).material ? <p className="break-words"><strong>Material:</strong> {rfqSpec(viewing.quantity, viewing.material).material}</p> : null}<p><strong>Value:</strong> {gbp(viewing.value, 0)}</p><p><strong>Email:</strong> {viewing.email}</p><p><strong>Notes:</strong> {viewing.notes || "-"}</p><div className="flex gap-2"><Button asChild><Link href={`/quotes?rfq=${encodeURIComponent(viewing.id)}`}>Create Quote</Link></Button><Button variant="outline" onClick={() => openClarify(viewing)}>Clarify</Button></div></div> : null}</DialogContent>
+      </Dialog>
+      <EmailViewer emailId={viewEmail} onClose={() => setViewEmail(null)} />
+      <Dialog open={Boolean(mailing)} onOpenChange={(open) => !open && setMailing(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{mailing?.mode === "forward" ? "Forward email" : "Reply to email"}</DialogTitle><DialogDescription>{mailing?.rfq.customer}{mailing?.mode === "reply" && mailing.rfq.email ? ` (${mailing.rfq.email})` : ""}. Sent from the connected Microsoft 365 mailbox.</DialogDescription></DialogHeader>
+          <div className="grid gap-3">
+            {mailing?.mode === "forward" ? <Input type="email" value={mailTo} onChange={(event) => setMailTo(event.target.value)} placeholder="Forward to" aria-label="Forward to" /> : null}
+            <Textarea className="min-h-32" value={mailComment} onChange={(event) => setMailComment(event.target.value)} placeholder={mailing?.mode === "forward" ? "Note (optional)" : "Message"} aria-label="Message" />
+            <Button disabled={saving || (mailing?.mode === "reply" ? !mailComment.trim() : !mailTo.trim())} onClick={() => void sendMailAction()}><Send className="size-4" /> {saving ? "Sending\u2026" : mailing?.mode === "forward" ? "Forward" : "Send reply"}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={Boolean(clarifying)} onOpenChange={(open) => !open && setClarifying(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Clarification Email</DialogTitle><DialogDescription>{clarifying?.customer}{clarifying?.email ? ` (${clarifying.email})` : ""}</DialogDescription></DialogHeader>
+          <div className="grid gap-3">
+            <div className="grid gap-2 md:grid-cols-3">
+              {Object.entries(TEMPLATES).map(([name, template]) => (
+                <Button key={name} variant="outline" onClick={() => { setSubject(template.subject); setBody(template.body(signOffName)); }}>{name}</Button>
+              ))}
+            </div>
+            <Input value={subject} onChange={(event) => setSubject(event.target.value)} aria-label="Subject" />
+            <Textarea className="min-h-44" value={body} onChange={(event) => setBody(event.target.value)} aria-label="Message" />
+            <p className="text-xs text-slate-500">This opens your email app with the message ready to send. Once you&apos;ve sent it, log it here.</p>
+            <div className="flex flex-wrap gap-2">
+              <Button variant={mailOpened ? "outline" : "default"} disabled={saving} onClick={openClarification}><Send className="size-4" /> Open in email app</Button>
+              {mailOpened ? <Button disabled={saving} onClick={() => void confirmClarificationSent()}>{saving ? "Saving\u2026" : "I\u2019ve sent it"}</Button> : null}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+  const cards = visible.map((rfq) => {
             // Once a quote exists the intake status (New, Ready...) no longer applies: show the Quoted icon, not the old status.
             const meta = statusMeta[showsStatusBadge(stageOf(rfq)) ? rfq.status : "quoted"];
             const Icon = meta.icon;
@@ -432,43 +459,59 @@ export default function RfqPage() {
                 </CardContent>
               </Card>
             );
-          })}
+          });
+
+  if (redesign) {
+    return (
+      <RoleGate allowed={["admin", "office"]}>
+        <RfqRedesign
+          actions={actions}
+          filters={filterControls}
+          dialogs={dialogs}
+          cards={cards}
+          tileValues={[count("new"), count("clarification"), count("ready")]}
+          activeFilters={filters}
+          filterBy={(value) => setFilters(new Set([value]))}
+          loading={loading}
+          error={error}
+          retry={() => void loadRfqs()}
+          hasRfqs={rfqs.length > 0}
+          hasVisible={visible.length > 0}
+        />
+      </RoleGate>
+    );
+  }
+
+  return (
+    <RoleGate allowed={["admin", "office"]}>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h1 className="page-title">RFQ Control Centre</h1>
+          <p className="mt-2 text-sm text-slate-500">RFQ means request for quote: a customer asking us for a price.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+        {actions}
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        {[["New RFQs", count("new"), "new"], ["Waiting for details", count("clarification"), "clarification"], ["Ready to Quote", count("ready"), "ready"]].map(([label, value, filter]) => (
+          <Card key={label} className="cursor-pointer transition hover:bg-slate-50" onClick={() => setFilters(new Set([filter]))}><CardContent className="p-5"><p className="text-sm text-slate-500">{label}</p><p className="mt-2 text-3xl font-bold text-slate-950">{value}</p></CardContent></Card>
+        ))}
+      </div>
+
+      {filterControls}
+      {error ? <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error} <button onClick={() => void loadRfqs()} className="font-semibold underline">Retry</button></div> : null}
+
+      {loading ? <div className="grid gap-4"><Skeleton className="h-32" /><Skeleton className="h-32" /></div> : (
+        <div className="grid gap-4">
+          {!visible.length && !error ? <EmptyList title={rfqs.length ? "No RFQs match this filter" : "No RFQs yet"} hint={rfqs.length ? "Try a different filter." : rfqEmptyHint()} hintTestId={rfqs.length ? undefined : "empty-hint"} /> : null}
+          {cards}
         </div>
       )}
 
-      <Dialog open={Boolean(viewing)} onOpenChange={(open) => !open && setViewing(null)}>
-        <DialogContent><DialogHeader><DialogTitle>{viewing?.customer}</DialogTitle><DialogDescription>Customer request details</DialogDescription></DialogHeader>{viewing ? <div className="space-y-3 text-sm"><p>{viewing.description}</p>{rfqSpec(viewing.quantity, viewing.material).quantity ? <p><strong>Quantity:</strong> {rfqSpec(viewing.quantity, viewing.material).quantity}</p> : null}{rfqSpec(viewing.quantity, viewing.material).material ? <p className="break-words"><strong>Material:</strong> {rfqSpec(viewing.quantity, viewing.material).material}</p> : null}<p><strong>Value:</strong> {gbp(viewing.value, 0)}</p><p><strong>Email:</strong> {viewing.email}</p><p><strong>Notes:</strong> {viewing.notes || "-"}</p><div className="flex gap-2"><Button asChild><Link href={`/quotes?rfq=${encodeURIComponent(viewing.id)}`}>Create Quote</Link></Button><Button variant="outline" onClick={() => openClarify(viewing)}>Clarify</Button></div></div> : null}</DialogContent>
-      </Dialog>
-      <EmailViewer emailId={viewEmail} onClose={() => setViewEmail(null)} />
-      <Dialog open={Boolean(mailing)} onOpenChange={(open) => !open && setMailing(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>{mailing?.mode === "forward" ? "Forward email" : "Reply to email"}</DialogTitle><DialogDescription>{mailing?.rfq.customer}{mailing?.mode === "reply" && mailing.rfq.email ? ` (${mailing.rfq.email})` : ""}. Sent from the connected Microsoft 365 mailbox.</DialogDescription></DialogHeader>
-          <div className="grid gap-3">
-            {mailing?.mode === "forward" ? <Input type="email" value={mailTo} onChange={(event) => setMailTo(event.target.value)} placeholder="Forward to" aria-label="Forward to" /> : null}
-            <Textarea className="min-h-32" value={mailComment} onChange={(event) => setMailComment(event.target.value)} placeholder={mailing?.mode === "forward" ? "Note (optional)" : "Message"} aria-label="Message" />
-            <Button disabled={saving || (mailing?.mode === "reply" ? !mailComment.trim() : !mailTo.trim())} onClick={() => void sendMailAction()}><Send className="size-4" /> {saving ? "Sending\u2026" : mailing?.mode === "forward" ? "Forward" : "Send reply"}</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={Boolean(clarifying)} onOpenChange={(open) => !open && setClarifying(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Clarification Email</DialogTitle><DialogDescription>{clarifying?.customer}{clarifying?.email ? ` (${clarifying.email})` : ""}</DialogDescription></DialogHeader>
-          <div className="grid gap-3">
-            <div className="grid gap-2 md:grid-cols-3">
-              {Object.entries(TEMPLATES).map(([name, template]) => (
-                <Button key={name} variant="outline" onClick={() => { setSubject(template.subject); setBody(template.body(signOffName)); }}>{name}</Button>
-              ))}
-            </div>
-            <Input value={subject} onChange={(event) => setSubject(event.target.value)} aria-label="Subject" />
-            <Textarea className="min-h-44" value={body} onChange={(event) => setBody(event.target.value)} aria-label="Message" />
-            <p className="text-xs text-slate-500">This opens your email app with the message ready to send. Once you&apos;ve sent it, log it here.</p>
-            <div className="flex flex-wrap gap-2">
-              <Button variant={mailOpened ? "outline" : "default"} disabled={saving} onClick={openClarification}><Send className="size-4" /> Open in email app</Button>
-              {mailOpened ? <Button disabled={saving} onClick={() => void confirmClarificationSent()}>{saving ? "Saving\u2026" : "I\u2019ve sent it"}</Button> : null}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {dialogs}
     </div>
     </RoleGate>
   );
