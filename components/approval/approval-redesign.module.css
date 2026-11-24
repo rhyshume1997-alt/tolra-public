@@ -1,0 +1,16 @@
+/* Scoped spacing and touch targets for the opted-in queue and its existing draft cards. */
+.screen, .queue {
+  display: grid;
+  min-width: 0;
+  gap: 1rem;
+}
+
+.screen :global([data-slot="card"]) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  border-radius: 14px;
+}
+
+.queue :is(a, button) {
+  min-height: 48px;
+}
