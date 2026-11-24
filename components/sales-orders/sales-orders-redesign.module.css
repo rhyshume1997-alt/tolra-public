@@ -1,0 +1,15 @@
+/* Opt-in spacing and touch targets for the live Sales Orders presentation. */
+.screen {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+.records {
+  min-width: 0;
+}
+.records :global([data-slot="card"]) {
+  border-radius: 14px;
+}
+.records :global([data-actions]) button {
+  min-height: 48px;
+}

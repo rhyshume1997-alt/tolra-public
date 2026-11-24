@@ -1,5 +1,7 @@
 "use client";
 
+/** Sales Orders route. The redesign receives the existing selection state, handlers, feature gate and dialogs. */
+
 import { ActivityPanel } from "@/components/activity-panel";
 import { EmptyList } from "@/components/empty-list";
 import { salesOrdersEmptyHint } from "@/lib/empty-hints";
@@ -15,6 +17,8 @@ import { ColumnToggle } from "@/components/column-toggle";
 import { ListToolbar } from "@/components/list-toolbar";
 import { ViewSwitcher } from "@/components/view-switcher";
 import { useViewMode } from "@/lib/view-mode";
+import { SalesOrdersRedesign } from "@/components/sales-orders/sales-orders-redesign";
+import { useCompanyUiSwitch } from "@/lib/use-company-ui-switch";
 import { RoleGate } from "@/components/role-gate";
 import { StatusBadge } from "@/components/status-badge";
 import { salesOrderStatusKey } from "@/lib/status-colours";
@@ -99,6 +103,7 @@ async function loadDemoOrders(): Promise<SalesOrder[]> {
 const emptyForm: { quoteId: string; customer: string; customerPo: string; orderDate: string; deliveryDate: string; value: string; notes: string; vatOn: boolean | null; vat: VatChoice | null } = { quoteId: "", customer: "", customerPo: "", orderDate: "", deliveryDate: "", value: "", notes: "", vatOn: null, vat: null };
 
 export default function SalesOrdersPage() {
+  const redesign = useCompanyUiSwitch("ui-sales-orders-v2:on");
   const { isVisible } = useColumnVisibility("sales-orders");
   // Cards / List / Table, remembered per person (lib/view-mode; styles in app/globals.css [data-view]).
   const [view, setView] = useViewMode("sales-orders", "table");
@@ -538,13 +543,9 @@ export default function SalesOrdersPage() {
     }, `sales-order-${order.ref}.pdf`, { entityTable: "sales_orders", entityId: order.ref });
   }
 
-  return (
-    <RoleGate allowed={["admin", "office"]}>
-      <div className="space-y-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div><h1 className="page-title">Sales Orders</h1><p className="mt-2 text-sm text-slate-500">A sales order is a customer&apos;s confirmed order. Turn it into a job when work starts.</p></div>
-          <div className="flex flex-wrap items-center gap-2"><ColumnToggle tableKey="sales-orders" /><ViewSwitcher value={view} onChange={setView} />
-          <Dialog open={newOpen} onOpenChange={setNewOpen}>
+  const newOrder = (
+    <>
+      <Dialog open={newOpen} onOpenChange={setNewOpen}>
             <DialogTrigger asChild><Button className="min-h-11 bg-brand text-brand-ink hover:bg-brand-hover"><Plus className="size-4" /> New sales order</Button></DialogTrigger>
             <DialogContent>
               <DialogHeader><DialogTitle>New Sales Order</DialogTitle><DialogDescription>Create from an accepted quote, or enter the customer&apos;s order by hand.</DialogDescription></DialogHeader>
@@ -578,15 +579,11 @@ export default function SalesOrdersPage() {
               </form>
             </DialogContent>
           </Dialog>
-          </div>
-        </div>
-        {DEMO_MODE ? <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Demo mode: sample data is shown if the database can&apos;t be reached.</div> : null}
-        <div className="grid gap-4 md:grid-cols-3">
-          {([["Open", counts.open, "open", "text-brand-accent"], ["Confirmed", counts.confirmed, "confirmed", "text-green-600 dark:text-green-400"], ["Despatched", counts.despatched, "despatched", "text-teal-600 dark:text-teal-400"]] as const).map(([label, value, filter, tone]) => (
-            <Card key={label} className="cursor-pointer transition hover:bg-slate-50" onClick={() => { if (filter === "open") setPhase("open"); setFilters(filter === "open" ? new Set<string>(SALES_ORDER_OPEN_CARD_STATUSES) : new Set([filter])); }}><CardContent className="p-5"><ClipboardList className={`size-5 ${tone}`} /><p className="mt-3 text-sm text-slate-500">{label}</p><p className="text-3xl font-bold">{loading ? "—" : value}</p>{filter === "open" ? <p className="mt-1 text-xs text-slate-500">{SALES_ORDER_OPEN_CARD_NOTE}</p> : null}</CardContent></Card>
-          ))}
-        </div>
-        <><PhaseFilter value={phase} onChange={setPhase} counts={phaseCounts} />
+    </>
+  );
+  const listControls = (
+    <>
+      <><PhaseFilter value={phase} onChange={setPhase} counts={phaseCounts} />
         <FilterBar activeValues={[...filters]} options={[{ label: "All", value: "all" }, { label: "Open", value: "open" }, { label: "Confirmed", value: "confirmed" }, { label: "In Production", value: "in_production" }, { label: "Despatched", value: "despatched" }, { label: "Converted", value: "converted" }, { label: "Closed", value: "closed" }]} onChange={setFilters} /></>
         <ListToolbar
           visibleCount={visible.length}
@@ -605,21 +602,11 @@ export default function SalesOrdersPage() {
             <Button variant="outline" disabled={saving || !ordersToDespatch(selectedOrders).length} title={ordersToDespatch(selectedOrders).length ? undefined : selectedKeys.length ? "None of the selected orders can be despatched (already converted, despatched or closed)" : "Select at least one sales order"} onClick={() => void despatchOrders(ordersToDespatch(selectedOrders))}>Despatch Selected</Button>
           </>}
         />
-        {loadError ? (
-          <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-            <span>{loadError}</span>
-            <Button variant="outline" size="sm" onClick={() => void loadOrders()}>Retry</Button>
-          </div>
-        ) : null}
-        {loading ? <div className="space-y-3"><Skeleton className="h-16" /><Skeleton className="h-16" /><Skeleton className="h-16" /></div> : loadError && !DEMO_MODE ? null : visible.length === 0 ? (
-          <EmptyList
-            title={orders.length ? "No sales orders match this filter" : "No sales orders yet"}
-            hint={orders.length ? "Try a different filter." : salesOrdersEmptyHint()}
-            hintTestId={orders.length ? undefined : "empty-hint"}
-            action={orders.length ? <Button variant="outline" onClick={() => setFilters(new Set(["all"]))}>Show all</Button> : <Button className="bg-brand text-brand-ink hover:bg-brand-hover" onClick={() => setNewOpen(true)}><Plus className="size-4" /> New sales order</Button>}
-          />
-        ) : (
-          <Card><CardContent className="p-0"><Table data-view={view}>
+    </>
+  );
+  const records = (
+    <>
+      <Card><CardContent className="p-0"><Table data-view={view}>
             <TableHeader className="hidden md:table-header-group"><TableRow>
               <TableHead><SelectBox aria-label={`Select all ${visible.length} filtered orders`} checked={selectedKeys.length === visible.length && visible.length > 0} onChange={(event) => setSelectedKeys(event.target.checked ? visible.map(keyOf) : [])} /></TableHead>
               {isVisible("ref") ? <TableHead>SO Ref</TableHead> : null}{isVisible("customer") ? <TableHead>Customer</TableHead> : null}{isVisible("date") ? <TableHead>Order Date</TableHead> : null}{isVisible("delivery") ? <TableHead>Expected Delivery</TableHead> : null}{isVisible("value") ? <TableHead>Value</TableHead> : null}{isVisible("status") ? <TableHead>Status</TableHead> : null}<TableHead>Actions</TableHead>
@@ -647,8 +634,11 @@ export default function SalesOrdersPage() {
               </TableRow>
             ))}</TableBody>
           </Table></CardContent></Card>
-        )}
-        <Dialog open={Boolean(selected)} onOpenChange={(open) => !open && setSelected(null)}>
+    </>
+  );
+  const dialogs = (
+    <>
+      <Dialog open={Boolean(selected)} onOpenChange={(open) => !open && setSelected(null)}>
           <DialogContent>
             <DialogHeader><DialogTitle>{selected?.ref}</DialogTitle><DialogDescription>Sales order detail</DialogDescription></DialogHeader>
             {selected ? <div className="space-y-3 text-sm"><p><strong>Customer:</strong> {selected.customer}</p><p><strong>Order date:</strong> {fmtDate(selected.date)}</p><p><strong>Expected delivery:</strong> {fmtDate(selected.delivery) || "Not set"}</p><p><strong>Value:</strong> {currency(selected.value)}</p><p><strong>Status:</strong> {selected.status}</p>{selected.quoteRef ? <p><strong>Quote:</strong> {selected.quoteRef}</p> : null}<p><strong>Customer PO:</strong> {selected.customerPo || "Not received yet"}{selected.id && !selected.customerPo ? <Button variant="outline" size="sm" className="ml-2" onClick={() => { setPoDraft(""); setPoOrder(selected); }}>Add customer PO</Button> : null}</p>{selected.convertedJob ? <p><strong>Linked job:</strong> {selected.convertedJob}</p> : null}{editBlockedReason(selected) ? <p data-testid="so-edit-blocked" className="text-slate-600">{editBlockedReason(selected)}</p> : null}<p data-testid="so-machines-chips"><strong>Machines:</strong> {(selected.id && planByOrder.get(selected.id)) || "None planned"}{selected.convertedJob && selected.id && planByOrder.get(selected.id) ? " (as ordered; the job holds the plan now)" : ""}</p><div className="flex flex-wrap gap-2">{isConverted(selected) ? null : <Button disabled={saving} onClick={() => void convertOrders([selected])} className="bg-brand text-brand-ink">Convert to Job</Button>}{canDespatch(selected) ? <Button variant="outline" disabled={saving} onClick={() => void despatchOrders([selected])}>Despatch</Button> : null}{selected.id ? <Button variant="outline" onClick={() => setMachinesOrder(selected)}>Machines</Button> : null}<Button variant="outline" onClick={() => window.open(`/sales-orders/${encodeURIComponent(selected.id ?? selected.ref)}/print`, "_blank")}>Print</Button><Button variant="outline" onClick={() => void downloadSalesOrderPdf(selected)}>Download PDF</Button></div></div> : null}
@@ -681,6 +671,71 @@ export default function SalesOrdersPage() {
             ) : null}
           </DialogContent>
         </Dialog>
+    </>
+  );
+
+  if (redesign) {
+    const chooseCount = (filter: string) => {
+      if (filter === "open") setPhase("open");
+      setFilters(filter === "open" ? new Set<string>(SALES_ORDER_OPEN_CARD_STATUSES) : new Set([filter]));
+    };
+    return (
+      <RoleGate allowed={["admin", "office"]}>
+        <SalesOrdersRedesign
+          actions={<><ColumnToggle tableKey="sales-orders" /><ViewSwitcher value={view} onChange={setView} />{newOrder}</>}
+          demo={DEMO_MODE}
+          counts={counts}
+          filters={filters}
+          chooseCount={chooseCount}
+          openNote={SALES_ORDER_OPEN_CARD_NOTE}
+          listControls={listControls}
+          records={records}
+          dialogs={dialogs}
+          loading={loading}
+          error={loadError}
+          retry={() => void loadOrders()}
+          hasOrders={orders.length > 0}
+          hasVisible={visible.length > 0}
+          showAll={() => setFilters(new Set(["all"]))}
+          add={() => setNewOpen(true)}
+        />
+      </RoleGate>
+    );
+  }
+
+  return (
+    <RoleGate allowed={["admin", "office"]}>
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div><h1 className="page-title">Sales Orders</h1><p className="mt-2 text-sm text-slate-500">A sales order is a customer&apos;s confirmed order. Turn it into a job when work starts.</p></div>
+          <div className="flex flex-wrap items-center gap-2"><ColumnToggle tableKey="sales-orders" /><ViewSwitcher value={view} onChange={setView} />
+          {newOrder}
+          </div>
+        </div>
+        {DEMO_MODE ? <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Demo mode: sample data is shown if the database can&apos;t be reached.</div> : null}
+        <div className="grid gap-4 md:grid-cols-3">
+          {([["Open", counts.open, "open", "text-brand-accent"], ["Confirmed", counts.confirmed, "confirmed", "text-green-600 dark:text-green-400"], ["Despatched", counts.despatched, "despatched", "text-teal-600 dark:text-teal-400"]] as const).map(([label, value, filter, tone]) => (
+            <Card key={label} className="cursor-pointer transition hover:bg-slate-50" onClick={() => { if (filter === "open") setPhase("open"); setFilters(filter === "open" ? new Set<string>(SALES_ORDER_OPEN_CARD_STATUSES) : new Set([filter])); }}><CardContent className="p-5"><ClipboardList className={`size-5 ${tone}`} /><p className="mt-3 text-sm text-slate-500">{label}</p><p className="text-3xl font-bold">{loading ? "—" : value}</p>{filter === "open" ? <p className="mt-1 text-xs text-slate-500">{SALES_ORDER_OPEN_CARD_NOTE}</p> : null}</CardContent></Card>
+          ))}
+        </div>
+        {listControls}
+        {loadError ? (
+          <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+            <span>{loadError}</span>
+            <Button variant="outline" size="sm" onClick={() => void loadOrders()}>Retry</Button>
+          </div>
+        ) : null}
+        {loading ? <div className="space-y-3"><Skeleton className="h-16" /><Skeleton className="h-16" /><Skeleton className="h-16" /></div> : loadError && !DEMO_MODE ? null : visible.length === 0 ? (
+          <EmptyList
+            title={orders.length ? "No sales orders match this filter" : "No sales orders yet"}
+            hint={orders.length ? "Try a different filter." : salesOrdersEmptyHint()}
+            hintTestId={orders.length ? undefined : "empty-hint"}
+            action={orders.length ? <Button variant="outline" onClick={() => setFilters(new Set(["all"]))}>Show all</Button> : <Button className="bg-brand text-brand-ink hover:bg-brand-hover" onClick={() => setNewOpen(true)}><Plus className="size-4" /> New sales order</Button>}
+          />
+        ) : (
+          records
+        )}
+        {dialogs}
       </div>
     </RoleGate>
   );
