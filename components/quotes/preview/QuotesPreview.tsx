@@ -10,8 +10,11 @@
  * v3 (owner-approved structural items 1, 2, 4, 7, 10, 11 of STRUCTURAL-CHANGES-BRIEF): Show is the inline quick filter and the status chips live under one "Filters (n)" popover with removable
  * chips and one "Clear filters"; the bulk bar (Select all, Clear, Export of the selection) shows only while a row is ticked, and Export of all rows is a toolbar menu; every row has ONE primary action
  * and a "More" menu holding the rest; one PreviewBar strip replaces the yellow tag; the generic page sentence is a tooltip and a screen-reader description of the title; the v4 type scale is used.
+ * LIVE MODE (read-only real data, owner-approved for the scratch environment only): when the optional props are given (readOnlyReason, rows, today, ...) the same screen shows the rows passed in by
+ * components/quotes/preview/QuotesLive.tsx instead of the sample, hides the demo switchers, and EVERY write, send, archive, e-mail, PDF and export action answers "Not enabled in this preview": no dialog opens, nothing is called.
+ * This file still imports no data loader and makes no request; in live mode the quote's lines come from the loadLines prop. With no props (the /quotes/preview route and tests/unit/quotesPreview.test.ts) it is byte-for-byte the sample screen.
  * MUST NOT CHANGE: wording, defaults (Cards view, Show Open, status All), column order, filter semantics and the role gate mirror today's Quote Generator (app/(dashboard)/quotes/page.tsx: admin
- * and office only, workshop and viewer see "Access Denied"). Do not wire this file to real data or real actions, add no control the real page lacks (no search box, no sort), and keep row controls
+ * and office only, workshop and viewer see "Access Denied"). Do not wire this file to real actions (real data enters only through the optional live props, read only), add no control the real page lacks (no search box, no sort), and keep row controls
  * at a 48 px hit area.
  */
 
@@ -59,13 +62,34 @@ export const WIN_RATE_NOTE = "Accepted of sent quotes decided or expired";
 
 export const QUOTE_FILTER_LABELS: Record<ListFilterKey, string> = { expired: "Draft or sent quotes past their valid-until date", "no-decision": "Sent quotes with no decision" };
 
-type SeedLine = { description: string; quantity: number; unitPrice: number; partNumber?: string; drawingNumber?: string; drawingRevision?: string; declined?: boolean };
+export type SeedLine = { description: string; quantity: number; unitPrice: number; partNumber?: string; drawingNumber?: string; drawingRevision?: string; declined?: boolean };
 export type SeedQuote = {
   id: string; ref: string; customer: string; description: string; rawStatus: QuoteStatus; date: string; validUntil: string; sentAt?: string;
   vatEnabled: boolean; version: number; previousVersionId?: string | null; customerPo: string; internalNotes?: string; customerNotes?: string;
   manual?: "archived" | "active"; lines: SeedLine[];
 };
 export type QuoteRow = SeedQuote & { value: number; declinedValue: number; status: QuoteStatus };
+
+/** Optional props for LIVE (read-only real data) mode. All absent = the sample screen. readOnlyReason switches live mode on. */
+export type LiveProps = {
+  /** The banner text; its presence turns live mode on. Every write answers "Not enabled in this preview". */
+  readOnlyReason?: string;
+  /** The real rows (lines are empty here: they come from loadLines when a quote is opened). Never the sample. */
+  rows?: QuoteRow[];
+  /** Today as YYYY-MM-DD: every expiry, archive and figure rule is worked out against it (the sample uses its fixed TODAY). */
+  today?: string;
+  /** The company's "archive after" months (default 12). */
+  archiveMonths?: number;
+  loadState?: "ready" | "loading" | "error";
+  errorDetail?: string;
+  onRetry?: () => void;
+  companyName?: string;
+  /** A short note under the filters (for example that only the newest rows were loaded). */
+  notice?: string;
+  /** SELECT-only loader of one quote's lines (lazy, on opening the quote). */
+  loadLines?: (quoteId: string) => Promise<SeedLine[]>;
+};
+export const NOT_ENABLED = "Not enabled in this preview";
 
 /** Customers and whether the sample has an e-mail address for them (the send question changes when there is none). */
 export const CUSTOMER_EMAIL: Record<string, string | null> = {
@@ -212,16 +236,16 @@ export function matchesListFilter(filter: ListFilterKey, q: Pick<QuoteRow, "rawS
 export type Filters = { phase: PhaseValue; statuses: ReadonlySet<string>; listFilter: ListFilterKey | null };
 export const DEFAULT_FILTERS: Filters = { phase: "open", statuses: new Set(["all"]), listFilter: null };
 
-export function visibleQuotes(rows: readonly QuoteRow[], f: Filters, today: string = TODAY): QuoteRow[] {
-  return newestFirst(rows.filter((q) => (f.listFilter ? matchesListFilter(f.listFilter, q, today) : (f.phase === "all" || phaseOf(q, today) === f.phase) && (f.statuses.has("all") || f.statuses.has(q.status)))));
+export function visibleQuotes(rows: readonly QuoteRow[], f: Filters, today: string = TODAY, months = ARCHIVE_MONTHS): QuoteRow[] {
+  return newestFirst(rows.filter((q) => (f.listFilter ? matchesListFilter(f.listFilter, q, today) : (f.phase === "all" || phaseOf(q, today, months) === f.phase) && (f.statuses.has("all") || f.statuses.has(q.status)))));
 }
-export function phaseCounts(rows: readonly QuoteRow[], today: string = TODAY): Record<Phase, number> {
-  return { open: rows.filter((q) => phaseOf(q, today) === "open").length, done: rows.filter((q) => phaseOf(q, today) === "done").length, archived: rows.filter((q) => phaseOf(q, today) === "archived").length };
+export function phaseCounts(rows: readonly QuoteRow[], today: string = TODAY, months = ARCHIVE_MONTHS): Record<Phase, number> {
+  return { open: rows.filter((q) => phaseOf(q, today, months) === "open").length, done: rows.filter((q) => phaseOf(q, today, months) === "done").length, archived: rows.filter((q) => phaseOf(q, today, months) === "archived").length };
 }
 /** The status legend (lib/list-filter quoteLegend): counts what the list is scoped to. */
-export function legendOf(rows: readonly QuoteRow[], f: Filters, today: string = TODAY): { counts: Record<QuoteStatus, number>; scope: string } {
+export function legendOf(rows: readonly QuoteRow[], f: Filters, today: string = TODAY, months = ARCHIVE_MONTHS): { counts: Record<QuoteStatus, number>; scope: string } {
   const counts: Record<QuoteStatus, number> = { draft: 0, sent: 0, accepted: 0, rejected: 0, expired: 0, superseded: 0 };
-  const inScope = f.listFilter ? rows.filter((q) => matchesListFilter(f.listFilter as ListFilterKey, q, today)) : rows.filter((q) => f.phase === "all" || phaseOf(q, today) === f.phase);
+  const inScope = f.listFilter ? rows.filter((q) => matchesListFilter(f.listFilter as ListFilterKey, q, today)) : rows.filter((q) => f.phase === "all" || phaseOf(q, today, months) === f.phase);
   for (const q of inScope) counts[q.status] += 1;
   const label = f.phase === "all" ? "all quotes" : `${f.phase[0].toUpperCase()}${f.phase.slice(1)}`;
   return { counts, scope: f.listFilter ? QUOTE_FILTER_LABELS[f.listFilter] : `In ${label}` };
@@ -325,14 +349,19 @@ const EMPTY_HINT = "Press New quote to make your first one.";
 /* 6. The page                                                         */
 /* ================================================================== */
 
-export default function QuotesPreview() {
-  return <ToastProvider><Inner /></ToastProvider>;
+export default function QuotesPreview(props: LiveProps) {
+  return <ToastProvider><Inner {...props} /></ToastProvider>;
 }
 
-function Inner() {
+function Inner(props: LiveProps) {
   const toast = useToast();
+  const live = props.readOnlyReason !== undefined;
+  const today = live ? props.today ?? TODAY : TODAY;
+  const archiveMonths = live ? props.archiveMonths ?? ARCHIVE_MONTHS : ARCHIVE_MONTHS;
   const [role, setRole] = useState<Role>("admin");
-  const [screen, setScreen] = useState<Screen>("ready");
+  const [demoScreen, setScreen] = useState<Screen>("ready");
+  /** Live mode takes its state from the loader; the sample keeps its demo switcher. */
+  const screen: Screen = live ? props.loadState ?? "ready" : demoScreen;
   const [view, setViewState] = useState<ViewMode>("cards");
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [selected, setSelected] = useState<string[]>([]);
@@ -340,7 +369,11 @@ function Inner() {
   const [dlg, setDlgState] = useState<Dlg | null>(null);
   /** The quote's own sheet stays open underneath the confirmations, as the real page's does. */
   const [viewId, setViewId] = useState<string | null>(null);
-  const setDlg = useCallback((d: Dlg | null) => { setDlgState(d); if (d) toast.clear(); if (d?.k === "builder") setViewId(null); }, [toast]);
+  const setDlg = useCallback((d: Dlg | null) => {
+    // Live mode: nothing that writes, sends or exports ever opens. The answer is the plain "Not enabled" message.
+    if (live && d) { toast.show({ title: NOT_ENABLED, detail: "Nothing was saved or sent." }); return; }
+    setDlgState(d); if (d) toast.clear(); if (d?.k === "builder") setViewId(null);
+  }, [toast, live]);
   const [reloadTimer, setReloadTimer] = useState<number | null>(null);
 
   useEffect(() => {
@@ -351,22 +384,23 @@ function Inner() {
   /* v4: Table and List are stacked records at 1024 px and under (the shared ScrollTable reflows them), so every view works at every width. */
   const shownView: ViewMode = view;
 
-  const rows = useMemo(() => quoteRows(), []);
+  const liveRows = props.rows;
+  const rows = useMemo(() => (live ? liveRows ?? [] : quoteRows()), [live, liveRows]);
   const byId = useMemo(() => new Map(rows.map((q) => [q.id, q])), [rows]);
   const loaded = screen === "ready";
   const data = useMemo(() => (screen === "ready" ? rows : []), [screen, rows]);
-  const visible = useMemo(() => visibleQuotes(data, filters), [data, filters]);
+  const visible = useMemo(() => visibleQuotes(data, filters, today, archiveMonths), [data, filters, today, archiveMonths]);
   const groups = useMemo(() => groupsOf(visible), [visible]);
-  const figures = useMemo(() => figuresOf(data), [data]);
-  const counts = useMemo(() => phaseCounts(data), [data]);
-  const legend = useMemo(() => legendOf(data, filters), [data, filters]);
+  const figures = useMemo(() => figuresOf(data, today), [data, today]);
+  const counts = useMemo(() => phaseCounts(data, today, archiveMonths), [data, today, archiveMonths]);
+  const legend = useMemo(() => legendOf(data, filters, today, archiveMonths), [data, filters, today, archiveMonths]);
   const scopeTotal = STATUS_ORDER.reduce((n, k) => n + legend.counts[k], 0);
   const inView = (c: ColumnKey) => !hidden.includes(c);
   /* v4: the stacked record (1024 px and under) shows Customer, Status, Value, Valid until, then Date and Description under the quote ref; the indexes follow the visible columns. */
   const tableCols = COLUMNS.filter((c) => inView(c.key)).map((c) => c.key);
   const stackPriority = (["customer", "status", "value", "valid", "date", "description"] as ColumnKey[]).filter((k) => tableCols.includes(k)).map((k) => tableCols.indexOf(k));
   const nSel = selected.length;
-  const preview = useCallback((detail: string) => toast.show({ title: "Preview only", detail: `${detail} Nothing was saved.` }), [toast]);
+  const preview = useCallback((detail: string) => (live ? toast.show({ title: NOT_ENABLED, detail: "Nothing was saved or sent." }) : toast.show({ title: "Preview only", detail: `${detail} Nothing was saved.` })), [toast, live]);
 
   const resetAll = () => { setScreen("ready"); setFilters(DEFAULT_FILTERS); setSelected([]); setHidden([]); setDlg(null); setViewId(null); toast.clear(); };
   const pickScreen = (v: Screen | ListFilterKey) => {
@@ -392,12 +426,14 @@ function Inner() {
     setDlg({ k: "decision", id: q.id, outcome: "accepted" });
   };
   const exportAs = (fmt: string) => {
+    // Live mode: the real export writes an audit entry and loads the company profile, so it is not enabled here at all.
+    if (live) { preview(""); return; }
     preview(`The ${fmt} export would cover ${nSel ? `the ${nSel} selected quote${nSel === 1 ? "" : "s"}` : `all ${visible.length} quote${visible.length === 1 ? "" : "s"} in the current filter`}. No file was downloaded.`);
   };
 
   const rowActions = (q: QuoteRow) => {
     const plan = rowActionPlan(q);
-    const archived = phaseOf(q) === "archived";
+    const archived = phaseOf(q, today, archiveMonths) === "archived";
     const label: Record<RowActionId, string> = { view: "View", send: q.rawStatus === "draft" ? "Send" : "Resend", pdf: "Download PDF", archive: archived ? "Unarchive" : "Archive" };
     const run: Record<RowActionId, () => void> = {
       view: () => setViewId(q.id), send: () => askToSend(q), pdf: () => preview(`The PDF for ${q.ref} is not generated.`),
@@ -423,6 +459,9 @@ function Inner() {
 
   return (
     <div className={cx(premiumTokens, s.root)} data-testid="quotes-preview" data-role={role} data-pview={shownView}>
+      {live ? (
+        <PreviewBar data-testid="preview-bar" label={props.readOnlyReason} shortLabel="Read-only real data, nothing saved or sent" />
+      ) : (
       <PreviewBar data-testid="preview-bar" controls={
         <Popover label="Preview controls" title="Preview controls" size="sm" data-testid="dock-toggle">
           <div className={s.dock}>
@@ -436,9 +475,10 @@ function Inner() {
           </div>
         </Popover>
       } />
+      )}
       <PageHeader
         title={<span title={QUOTES_INTRO} data-testid="quotes-title">Quote Generator</span>}
-        description={<span className={srOnly}>{QUOTES_INTRO}</span>}
+        description={live ? <span data-testid="live-company">{props.companyName ? `Company: ${props.companyName}` : "Your company"}<span className={srOnly}>. {QUOTES_INTRO}</span></span> : <span className={srOnly}>{QUOTES_INTRO}</span>}
         actions={denied ? undefined : (
           <>
             <Popover label="Columns" title="Quotes columns" data-testid="columns-trigger">
@@ -541,6 +581,8 @@ function Inner() {
             ) : null}
           </section>
 
+          {live && props.notice ? <Callout tone="info" lead="" role="status" data-testid="live-notice">{props.notice}</Callout> : null}
+
           <SelectionBar count={nSel} filteredTotal={visible.length} noun="quote" idleNote={idleNote}
             compact={{ primary: <ExportMenu nSel={nSel} total={visible.length} onExport={exportAs} testId="export-selected-compact" size="sm" /> }}
             statusText={({ count, filteredTotal }) => `${count} selected of ${recordWord(filteredTotal)}`}
@@ -551,10 +593,10 @@ function Inner() {
           {/* The shared state panels use an h3: this keeps the heading order h1, h2, h3 on every screen state. */}
           <h2 className={srOnly}>Quotes</h2>
           {screen === "loading" ? <LoadingState label="Loading quotes" rows={6} />
-            : screen === "error" ? <FailedState title="Couldn’t load quotes." detail="The list could not be fetched. This is a simulated failure: no request was made and nothing was lost." onRetry={retry} retryLabel="Retry" />
+            : screen === "error" ? <FailedState title="Couldn’t load quotes." detail={live ? props.errorDetail ?? "The list could not be loaded. Nothing was changed." : "The list could not be fetched. This is a simulated failure: no request was made and nothing was lost."} onRetry={live ? props.onRetry : retry} retryLabel="Retry" />
             : visible.length === 0 ? (
-              <EmptyState title={data.length ? "No quotes match this filter" : "No quotes yet"} detail={data.length ? "Try a different filter." : EMPTY_HINT}
-                action={data.length ? (isFiltered(filters) ? <Button variant="secondary" onClick={() => setFilters(DEFAULT_FILTERS)}>Clear filters</Button> : undefined) : <Button variant="primary" onClick={() => setDlg({ k: "builder", mode: "new" })}>New quote</Button>} />
+              <EmptyState title={data.length ? "No quotes match this filter" : "No quotes yet"} detail={data.length ? "Try a different filter." : live ? "This company has no quotes to show." : EMPTY_HINT}
+                action={data.length ? (isFiltered(filters) ? <Button variant="secondary" onClick={() => setFilters(DEFAULT_FILTERS)}>Clear filters</Button> : undefined) : live ? undefined : <Button variant="primary" onClick={() => setDlg({ k: "builder", mode: "new" })}>New quote</Button>} />
             ) : shownView === "cards" ? (
               <div className={s.groups} data-testid="view-cards">
                 {groups.map((g) => (
@@ -562,7 +604,7 @@ function Inner() {
                     <h2 className={cx(typeScale.card, s.groupHead)}><i className={cx(s.legendDot, s[`seg_${g.status}`])} aria-hidden="true" />{GROUP_HEAD[g.status]} <span className={tabularNumbers}>({g.items.length})</span></h2>
                     <div className={s.cards}>
                       {g.items.map((q) => (
-                        <QuoteCard key={q.id} q={q} selected={selected.includes(q.ref)} inView={inView} onSelect={() => toggleSel(q.ref)} actions={rowActions(q)} />
+                        <QuoteCard key={q.id} q={q} today={today} selected={selected.includes(q.ref)} inView={inView} onSelect={() => toggleSel(q.ref)} actions={rowActions(q)} />
                       ))}
                     </div>
                   </section>
@@ -611,7 +653,7 @@ function Inner() {
         </>
       )}
 
-      <Dialogs dlg={dlg} viewId={viewId} setViewId={setViewId} close={() => setDlg(null)} setDlg={setDlg} byId={byId} preview={preview} askToSend={askToSend} askToAccept={askToAccept} />
+      <Dialogs live={live ? props : null} dlg={dlg} viewId={viewId} setViewId={setViewId} close={() => setDlg(null)} setDlg={setDlg} byId={byId} preview={preview} askToSend={askToSend} askToAccept={askToAccept} />
     </div>
   );
 }
@@ -624,8 +666,8 @@ function ExportMenu({ nSel, total, onExport, testId, size }: { nSel: number; tot
 
 /* ---------------- card ---------------- */
 
-function QuoteCard({ q, selected, inView, onSelect, actions }: { q: QuoteRow; selected: boolean; inView: (c: ColumnKey) => boolean; onSelect: () => void; actions: ReactNode }) {
-  const passed = q.rawStatus === "draft" && q.validUntil && q.validUntil < TODAY;
+function QuoteCard({ q, today = TODAY, selected, inView, onSelect, actions }: { q: QuoteRow; today?: string; selected: boolean; inView: (c: ColumnKey) => boolean; onSelect: () => void; actions: ReactNode }) {
+  const passed = q.rawStatus === "draft" && q.validUntil && q.validUntil < today;
   return (
     <article className={s.card} data-quote={q.ref} data-selected={selected || undefined} aria-label={q.ref}>
       <div className={s.cardTop}>
@@ -651,11 +693,12 @@ function QuoteCard({ q, selected, inView, onSelect, actions }: { q: QuoteRow; se
 /* ================================================================== */
 
 type DialogsProps = {
+  live: LiveProps | null;
   dlg: Dlg | null; viewId: string | null; setViewId: (id: string | null) => void; close: () => void; setDlg: (d: Dlg | null) => void; byId: Map<string, QuoteRow>; preview: (detail: string) => void;
   askToSend: (q: QuoteRow, expiryConfirmed?: boolean) => void; askToAccept: (q: QuoteRow, expiryConfirmed?: boolean) => void;
 };
 
-function Dialogs({ dlg, viewId, setViewId, close, setDlg, byId, preview, askToSend, askToAccept }: DialogsProps) {
+function Dialogs({ live, dlg, viewId, setViewId, close, setDlg, byId, preview, askToSend, askToAccept }: DialogsProps) {
   const q = dlg && "id" in dlg && dlg.id ? byId.get(dlg.id) ?? null : null;
   const vq = viewId ? byId.get(viewId) ?? null : null;
   const [po, setPo] = useState("");
@@ -677,7 +720,7 @@ function Dialogs({ dlg, viewId, setViewId, close, setDlg, byId, preview, askToSe
 
   return (
     <>
-      {vq ? <ViewSheet q={vq} versions={versions} replacedBy={replacedBy} onClose={() => setViewId(null)} setDlg={setDlg} setViewId={setViewId} preview={preview} askToSend={askToSend} askToAccept={askToAccept} /> : null}
+      {vq ? <ViewSheet live={live} q={vq} versions={versions} replacedBy={replacedBy} onClose={() => setViewId(null)} setDlg={setDlg} setViewId={setViewId} preview={preview} askToSend={askToSend} askToAccept={askToAccept} /> : null}
       {dlg?.k === "builder" ? <BuilderSheet mode={dlg.mode} q={q} onClose={close} preview={preview} /> : null}
 
       <Sheet open={dlg?.k === "send" && !!q} size="sm" closeButton={false} onClose={close} testId="dlg-send"
@@ -745,41 +788,64 @@ function Dialogs({ dlg, viewId, setViewId, close, setDlg, byId, preview, askToSe
 
 /* ---------------- the quote's own sheet ---------------- */
 
-function ViewSheet({ q, versions, replacedBy, onClose, setDlg, setViewId, preview, askToSend, askToAccept }: {
-  q: QuoteRow; versions: QuoteRow[]; replacedBy: QuoteRow | null; onClose: () => void; setDlg: (d: Dlg | null) => void; setViewId: (id: string | null) => void; preview: (d: string) => void;
+function ViewSheet({ live, q, versions, replacedBy, onClose, setDlg, setViewId, preview, askToSend, askToAccept }: {
+  live: LiveProps | null; q: QuoteRow; versions: QuoteRow[]; replacedBy: QuoteRow | null; onClose: () => void; setDlg: (d: Dlg | null) => void; setViewId: (id: string | null) => void; preview: (d: string) => void;
   askToSend: (q: QuoteRow) => void; askToAccept: (q: QuoteRow) => void;
 }) {
-  const totals = totalsOf(q.lines, q.vatEnabled);
-  const block = acceptBlock(q.value);
   const [note, setNote] = useState("");
   useEffect(() => setNote(""), [q.id]);
+  /* Live mode: the lines are fetched (SELECT only) when the quote is opened; the totals are the stored ones, VAT being what is left over. */
+  const [liveLines, setLiveLines] = useState<{ state: "loading" | "ready" | "error"; lines: SeedLine[] }>({ state: "loading", lines: [] });
+  const [lineTry, setLineTry] = useState(0);
+  const loadLines = live?.loadLines;
+  useEffect(() => {
+    if (!loadLines) return;
+    let cancelled = false;
+    setLiveLines({ state: "loading", lines: [] });
+    loadLines(q.id).then((lines) => { if (!cancelled) setLiveLines({ state: "ready", lines }); }).catch(() => { if (!cancelled) setLiveLines({ state: "error", lines: [] }); });
+    return () => { cancelled = true; };
+  }, [loadLines, q.id, lineTry]);
+  const shownLines = live ? liveLines.lines : q.lines;
+  const sample = totalsOf(q.lines, q.vatEnabled);
+  const subtotal = live ? totalsOf(shownLines, false).subtotal : sample.subtotal;
+  const liveVat = live && q.vatEnabled ? Math.max(0, Math.round((q.value - subtotal) * 100) / 100) : 0;
+  const totals: Totals = live ? { subtotal, vat: liveVat, total: q.value } : sample;
+  const block = acceptBlock(q.value);
+  /* Live mode: every write button answers in the sheet itself (a toast would sit under this modal). */
+  const off = (run: () => void) => () => { if (live) setNote(`${NOT_ENABLED}. Nothing was saved or sent.`); else run(); };
   return (
     <Sheet open size="lg" onClose={onClose} testId="dlg-view" title={<><span className={tabularNumbers}>{q.ref}</span> quote details</>} description="Quote details, with the price of each item."
       footer={(
         <div className={s.viewFoot} data-testid="quote-actions">
           <div className={s.footGroup}>
-            {q.rawStatus === "draft" ? <Button variant="secondary" onClick={() => setDlg({ k: "builder", mode: "edit", id: q.id })}>Edit Draft</Button> : null}
-            <Button variant="secondary" onClick={() => setDlg({ k: "builder", mode: "copy", id: q.id })}>Copy</Button>
-            {q.rawStatus === "sent" && !replacedBy ? <Button variant="secondary" onClick={() => setDlg({ k: "revise", id: q.id })}>Revise (v{q.version + 1})</Button> : null}
+            {q.rawStatus === "draft" ? <Button variant="secondary" onClick={off(() => setDlg({ k: "builder", mode: "edit", id: q.id }))}>Edit Draft</Button> : null}
+            <Button variant="secondary" onClick={off(() => setDlg({ k: "builder", mode: "copy", id: q.id }))}>Copy</Button>
+            {q.rawStatus === "sent" && !replacedBy ? <Button variant="secondary" onClick={off(() => setDlg({ k: "revise", id: q.id }))}>Revise (v{q.version + 1})</Button> : null}
           </div>
           <div className={s.footGroup}>
             {canRecordDecision(q.rawStatus) && !replacedBy ? (<>
-              <Button variant="secondary" onClick={() => setDlg({ k: "decision", id: q.id, outcome: "rejected" })}>Mark Rejected</Button>
-              <Button variant="secondary" disabled={Boolean(block)} title={block ?? undefined} aria-describedby={block ? "accept-block-reason" : undefined} onClick={() => askToAccept(q)}>Mark Accepted</Button>
+              <Button variant="secondary" onClick={off(() => setDlg({ k: "decision", id: q.id, outcome: "rejected" }))}>Mark Rejected</Button>
+              <Button variant="secondary" disabled={Boolean(block)} title={block ?? undefined} aria-describedby={block ? "accept-block-reason" : undefined} onClick={off(() => askToAccept(q))}>Mark Accepted</Button>
               {block ? <span id="accept-block-reason" className={srOnly}>{block}</span> : null}
             </>) : null}
-            <Button variant="secondary" onClick={() => setNote(`Preview only. The PDF for ${q.ref} is not generated. Nothing was saved.`)}>Download PDF</Button>
-            {canOfferSend(q.rawStatus) ? <Button variant="primary" onClick={() => askToSend(q)}>Send to Customer</Button> : null}
+            <Button variant="secondary" onClick={() => setNote(live ? `${NOT_ENABLED}. Nothing was saved or sent.` : `Preview only. The PDF for ${q.ref} is not generated. Nothing was saved.`)}>Download PDF</Button>
+            {canOfferSend(q.rawStatus) ? <Button variant="primary" onClick={off(() => askToSend(q))}>Send to Customer</Button> : null}
           </div>
         </div>
       )}>
+      {live ? (
+        <>
+          <p className={s.sheetNote} data-testid="live-sheet-note">{live.readOnlyReason}. Editing, sending, accepting, PDF and archive are not enabled in this preview.</p>
+          <p role="status" aria-live="polite" className={cx(s.sheetNote, s.sheetStatus)} data-testid="sheet-status">{note}</p>
+        </>
+      ) : null}
       <div className={s.facts}>
         <div><span className={s.factLabel}>Customer</span><p className={s.factStrong}>{q.customer}</p></div>
         <div><span className={s.factLabel}>Status</span><p><StatusPill status={q.status} /></p></div>
         <div><span className={s.factLabel}>Quote Ref</span><p className={cx(s.factStrong, tabularNumbers)}>{q.ref}</p></div>
         <div data-testid="quote-detail-customer-po"><span className={s.factLabel}>Customer PO</span>
           <p className={s.factPo}><span className={cx(s.factStrong, tabularNumbers)}>{q.customerPo || "Not received yet"}</span>
-            {(q.rawStatus !== "rejected" && q.rawStatus !== "superseded") ? <Button size="sm" variant="secondary" onClick={() => setDlg({ k: "po", id: q.id })}>{q.customerPo ? "Change customer PO" : "Add customer PO"}</Button> : null}</p></div>
+            {(q.rawStatus !== "rejected" && q.rawStatus !== "superseded") ? <Button size="sm" variant="secondary" onClick={off(() => setDlg({ k: "po", id: q.id }))}>{q.customerPo ? "Change customer PO" : "Add customer PO"}</Button> : null}</p></div>
         <div><span className={s.factLabel}>Valid Until</span><p className={cx(s.factStrong, tabularNumbers)}>{q.validUntil ? fmtDate(q.validUntil) : "-"}</p></div>
         {q.description.trim() ? <div className={s.factWide} data-testid="quote-description"><span className={s.factLabel}>Description</span><p>{q.description}</p></div> : null}
       </div>
@@ -796,7 +862,9 @@ function ViewSheet({ q, versions, replacedBy, onClose, setDlg, setViewId, previe
       ) : null}
       <div className={s.lines} data-testid="quote-lines">
         <div className={cx(s.lineRow, s.lineHead)}><span>Description</span><span className={s.right}>Qty</span><span className={s.right}>Unit Price</span><span className={s.right}>Total</span></div>
-        {q.lines.map((l, i) => (
+        {live && liveLines.state === "loading" ? <p className={s.sheetNote} role="status" data-testid="lines-loading">Loading the lines…</p> : null}
+        {live && liveLines.state === "error" ? <p className={s.sheetNote} role="alert" data-testid="lines-error">Couldn’t load the line items. <Button size="sm" variant="secondary" onClick={() => setLineTry((n) => n + 1)}>Retry</Button></p> : null}
+        {shownLines.map((l, i) => (
           <div key={i} className={cx(s.lineRow, l.declined && s.lineOff)} data-testid="quote-line">
             <span><span className={l.declined ? s.struck : undefined}>{l.description}</span>{lineReference(l) ? <small className={s.lineRef}>{lineReference(l)}</small> : null}{l.declined ? <em className={s.notOrdered}>Not ordered</em> : null}</span>
             <span data-l="Qty" className={cx(s.right, tabularNumbers)}>{l.quantity}</span><span data-l="Unit price" className={cx(s.right, tabularNumbers)}>{gbp(l.unitPrice)}</span><span data-l="Total" className={cx(s.right, tabularNumbers)}>{gbp(totalsOf([l], false).subtotal)}</span>
@@ -809,7 +877,7 @@ function ViewSheet({ q, versions, replacedBy, onClose, setDlg, setViewId, previe
         <div className={s.totalRow}><dt>Total</dt><dd>{gbp(totals.total)}</dd></div>
       </dl>
       <p className={s.sheetNote}>Attachments, linked e-mails, the bought-in profit panel and the activity history are not part of this preview.</p>
-      <p role="status" aria-live="polite" className={cx(s.sheetNote, s.sheetStatus)} data-testid="sheet-status">{note}</p>
+      {live ? null : <p role="status" aria-live="polite" className={cx(s.sheetNote, s.sheetStatus)} data-testid="sheet-status">{note}</p>}
     </Sheet>
   );
 }
