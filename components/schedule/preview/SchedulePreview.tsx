@@ -519,7 +519,7 @@ function Timeline({ machines, bookings, runs, span, setSpan, startDate, setStart
                           const mins = Math.round((bar.to.getTime() - bar.from.getTime()) / 60000);
                           const who = personName(PEOPLE, bar.run.operator_id);
                           return (
-                            <button key={bar.run.id} type="button" data-testid="agenda-run" data-run-id={bar.run.id} data-kind={bar.kind} aria-label={`Actual use. ${word}. ${bar.run.job_no || "Run"}. ${timeOf(bar.from)}-${bar.open ? "now" : timeOf(bar.to)}, ${formatMinutes(mins)}, by ${who}${bar.outOfHours ? ". Partly or wholly outside the machine's hours" : ""}. ${runBarLabel(bar, machine.name, PEOPLE, NOW)}`}
+                            <button key={bar.run.id} type="button" data-testid="agenda-run" data-run-id={bar.run.id} data-kind={bar.kind} aria-label={`Actual use: ${word}. ${bar.run.job_no || "Run"}. ${timeOf(bar.from)}-${bar.open ? "now" : timeOf(bar.to)}, ${formatMinutes(mins)}, ${who}${bar.outOfHours ? ". Partly or wholly outside the machine's hours" : ""}. ${runBarLabel(bar, machine.name, PEOPLE, NOW)}`}
                               onClick={() => onSelectRun(bar, runBarLabel(bar, machine.name, PEOPLE, NOW))} className={cx(s.agItem, s.agRun, s[`s_${state}`])}>
                               <span className={s.agWord}>Actual use: {word}</span>{" "}
                               <span className={s.agJob}>{bar.run.job_no || "Run"}</span>{" "}
