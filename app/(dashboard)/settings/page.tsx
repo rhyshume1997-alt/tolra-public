@@ -1,5 +1,7 @@
 "use client";
 
+/** Company Settings presentation. Both views use the same scoped reads and existing setters for each panel. */
+
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -14,6 +16,8 @@ import { EmailSchedulesCard } from "@/components/email-schedules/settings-card";
 import { EmailTemplatesCard } from "@/components/email/email-templates-card";
 import { PrintLayoutCard } from "@/components/print-layout-settings-card";
 import { WorksheetBuilderCard } from "@/components/worksheet-builder/worksheet-builder-card";
+import { SettingsRedesign } from "@/components/settings/settings-redesign";
+import { useCompanyUiSwitch } from "@/lib/use-company-ui-switch";
 import { RoleGate } from "@/components/role-gate";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -605,6 +609,7 @@ function YearEndExportCard() {
 }
 
 export default function SettingsPage() {
+  const redesign = useCompanyUiSwitch("ui-settings-v2:on");
   const settings = useOrgSettings();
   const { profile } = useUser();
   const organizationId = profile?.organization_id;
@@ -651,13 +656,11 @@ export default function SettingsPage() {
     void persist(saveOrgSettings(newData), "Display settings", oldData, newData, { reset: label });
   }
 
-  return (
-    <RoleGate allowed={["admin"]}>
-      <div className="space-y-6">
-        <div><h1 className="page-title">Settings</h1><p className="mt-2 text-sm text-slate-500">Company-wide settings for {PRODUCT.name}. Only admins can change them.</p></div>
-        {settings.loaded && settings.localOnly ? <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Company settings aren&apos;t available right now. Menu and column choices are saved in this browser only.</div> : null}
-        <section id="setup-company"><CompanyDetailsCard timeSettings={timeSettings} /></section>
-        <DocumentDesignsSection />
+  const company = (
+    <section id="setup-company"><CompanyDetailsCard timeSettings={timeSettings} /></section>
+  );
+  const panels = (
+    <>
         <ArchiveSettingsCard />
         <AutoConvertCard />
         <section id="setup-breaks"><TimeSettingsCard key={organizationId} onSettings={onTimeSettings} /></section>
@@ -742,6 +745,30 @@ export default function SettingsPage() {
         </Card>
         <WorkshopEmailCard />
         <section id="setup-email"><EmailTemplatesCard /></section>
+    </>
+  );
+
+  if (redesign) {
+    return (
+      <RoleGate allowed={["admin"]}>
+        <SettingsRedesign
+          productName={PRODUCT.name}
+          company={company}
+          documentDesigns={<DocumentDesignsSection />}
+          panels={panels}
+        />
+      </RoleGate>
+    );
+  }
+
+  return (
+    <RoleGate allowed={["admin"]}>
+      <div className="space-y-6">
+        <div><h1 className="page-title">Settings</h1><p className="mt-2 text-sm text-slate-500">Company-wide settings for {PRODUCT.name}. Only admins can change them.</p></div>
+        {settings.loaded && settings.localOnly ? <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Company settings aren&apos;t available right now. Menu and column choices are saved in this browser only.</div> : null}
+        {company}
+        <DocumentDesignsSection />
+        {panels}
       </div>
     </RoleGate>
   );
