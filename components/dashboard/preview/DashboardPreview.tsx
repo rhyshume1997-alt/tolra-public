@@ -813,7 +813,7 @@ function JumpNav({ present }: { present: string[] }) {
   };
   return (
     <div className={s.jump} data-testid="overview-jump">
-      <Tabs label="Jump to" overflow="more" value={current} onChange={go} tabs={links.map((x) => ({ value: x.id, label: x.label, controls: x.id, testId: `jump-${x.id}` }))} />
+      <Tabs label="Jump to" value={current} onChange={go} tabs={links.map((x) => ({ value: x.id, label: x.label, controls: x.id, testId: `jump-${x.id}` }))} />
     </div>
   );
 }

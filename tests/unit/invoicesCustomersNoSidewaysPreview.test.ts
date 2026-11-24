@@ -104,9 +104,10 @@ describe.each(MODULES)("no sideways scrolling in the %s markup", (m) => {
 });
 
 describe("the dashboard and the table screens use the shared responsive pieces", () => {
-  it("the Dashboard jump tabs use the shared Tabs with overflow=\"more\", with no local overflow scroller", () => {
+  it("the Dashboard jump tabs use the shared Tabs (which wrap, never scroll), with no local overflow scroller", () => {
     const tsx = read("dashboard/preview/DashboardPreview.tsx");
-    expect(tsx).toMatch(/<Tabs label="Jump to" overflow="more"/);
+    expect(tsx).toMatch(/<Tabs label="Jump to" value/);
+    expect(tsx).not.toMatch(/<Tabs label="Jump to"[^>]*overflow=/);
     expect(read("dashboard/preview/DashboardPreview.module.css")).not.toMatch(/\.jump \[role="tablist"\]/);
   });
   it("the Revenue, Numbers and Dashboard data tables are ScrollTable", () => {
