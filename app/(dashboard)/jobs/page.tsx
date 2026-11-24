@@ -68,7 +68,7 @@ import { JobProblemsPanel, ProblemJobsContext, ProblemTag } from "@/components/j
 import { jobsWithProblems, loadOpenProblems } from "@/lib/job-problems";
 import { jobMatchesFilter } from "@/lib/list-filter";
 import { fmtDate, fmtDateTime, nowIso, toDateInput } from "@/lib/dates";
-import { DUE_CHIPS, formatAverageJobTime, hasRequiredDate, jobMatchesStatus, jobStatus, requiredDate } from "@/lib/job-status";
+import { DUE_CHIPS, formatAverageJobTime, hasRequiredDate, jobMatchesStatus } from "@/lib/job-status";
 import { DEMO_MODE } from "@/lib/demo";
 import { EXPORT_TITLES, exportRows, exportSpreadsheet } from "@/lib/export-records";
 import { warmPdfExport } from "@/lib/pdf-warm";
@@ -92,37 +92,13 @@ import { DeliveryNotesFor } from "@/components/delivery-notes-for";
 import { canListDeliveryNotes } from "@/lib/delivery-notes-for";
 import { canOpenDestination } from "@/lib/destinations";
 import { useOrgSettings } from "@/lib/org-settings";
-import type { JobRecord } from "@/types";
+import { type WorkshopJob, rowToJob } from "@/lib/jobs/row-to-job";
 import { fetchAll, truncationNotice } from "@/lib/fetch-all";
 import { type BoardFiles, boardDescription, shownJobColumns, jobBoardFiles, loadBoardJobFiles } from "@/lib/job-board-files";
 import { useColumnVisibility } from "@/lib/org-settings";
 
 const JOB_FILTER_LABELS: Record<string, string> = { overdue: "Jobs past their required date", "awaiting-inspection": "Jobs waiting for inspection", "complete-unbilled": "Complete jobs not yet fully despatched or invoiced", problems: "Jobs with a problem reported" };
 
-type WorkshopJob = JobRecord & {
-  /** Who finished it (035): the person who may undo their own Finish while it awaits inspection (081). */
-  finished_by?: string;
-  started_at?: string;
-  finished_at?: string;
-  inspected_at?: string;
-  inspected_by?: string;
-  specification: string;
-  drawings: string[];
-  customer_po?: string;
-  date_received?: string;
-  date_required?: string;
-  quote_ref?: string;
-  quantity_required?: number | string;
-  drawing_no?: string;
-  /** Made for the company itself (migration 042): no customer needed, tagged "Internal" on the board. */
-  is_internal?: boolean;
-  /** The one job this job relates to (rework or tooling for job X), shown both ways on the board. */
-  related_job_id?: string;
-  /** The operator the job is assigned to (migration 044; informational, shown by display name). */
-  assigned_to?: string;
-  /** Made from a sales order (converted_from_sales_order_id): a delivery note can be made from it. */
-  from_sales_order?: boolean;
-};
 
 /**
  * Every job's machines in one go (read by the whole company); null when it can't be read (the board still shows). The plan joined with
@@ -255,36 +231,6 @@ function averageJobDays(jobs: WorkshopJob[]) {
   return durations.reduce((sum, ms) => sum + ms, 0) / durations.length / AVG_DAY_MS;
 }
 
-function rowToJob(row: Record<string, any>): WorkshopJob { // eslint-disable-line @typescript-eslint/no-explicit-any
-  return {
-    id: row.id,
-    job_no: row.job_no || row.reference || `JOB-${String(row.id).slice(0, 8)}`,
-    customer: row.customer || row.customer_name || row.customer_id || (row.is_internal ? "Internal" : "Customer not linked"),
-    description: row.description || "",
-    stage: row.stage || "material",
-    due_date: requiredDate(row),
-    // The due-date state (lib/job-status): overdue is derived from the required date for unfinished jobs (finished_at null, as the
-    // dashboard's Late and /jobs?filter=overdue count it); manual "at risk" is kept. Rework itself is a tag (the stage), not a status.
-    status: jobStatus(row, toDateInput(new Date())),
-    started_at: row.started_at || "",
-    finished_at: row.finished_at || "",
-    inspected_at: row.inspected_at || "",
-    inspected_by: row.inspected_by || "",
-    finished_by: row.finished_by || undefined,
-    specification: row.specification || "No specification recorded.",
-    drawings: Array.isArray(row.drawings) ? row.drawings : [],
-    customer_po: row.customer_po || undefined,
-    date_received: row.date_received || undefined,
-    date_required: row.date_required || undefined,
-    quote_ref: row.quote_ref || undefined,
-    quantity_required: row.quantity_required ?? undefined,
-    drawing_no: row.drawing_no || undefined,
-    is_internal: Boolean(row.is_internal),
-    related_job_id: row.related_job_id || undefined,
-    assigned_to: row.assigned_to || undefined,
-    from_sales_order: Boolean(row.converted_from_sales_order_id),
-  };
-}
 
 export default function JobsPage() {
   const redesign = useCompanyUiSwitch("ui-jobs-v2:on");
