@@ -2,6 +2,7 @@
 import type { ReactNode } from "react";
 
 import { ColumnToggle } from "@/components/column-toggle";
+import { APPROVAL_GUIDANCE } from "@/lib/approval-guidance";
 import { Callout, EmptyState, FailedState, LoadingState, PageHeader, premiumTokens } from "@/components/ui/premium";
 
 import styles from "./approval-redesign.module.css";
@@ -25,13 +26,12 @@ export function ApprovalRedesign({ draftCount, loading, error, noProvider, retry
         actions={<ColumnToggle tableKey="approvals" />}
       />
       <Callout tone="info">
-        Check each draft before sending. If you send it yourself, choose Mark as Sent Manually after it has gone.
+        {APPROVAL_GUIDANCE}
         {!loading && !error && draftCount > 0 && ` ${draftCount} draft${draftCount === 1 ? "" : "s"} waiting.`}
       </Callout>
       {noProvider && <Callout tone="warn" role="status" data-testid="approval-no-provider">{noProvider}</Callout>}
-      {loading ? <LoadingState label="Loading approval drafts" /> : error ? (
-        <FailedState title="Couldn’t load the approval queue" detail={error} onRetry={retry} retryLabel="Retry" headingLevel={2} />
-      ) : !draftCount ? (
+      {error && <FailedState title="Couldn’t load the approval queue" detail={error} onRetry={retry} retryLabel="Retry" headingLevel={2} />}
+      {loading ? <LoadingState label="Loading approval drafts" /> : !error && draftCount === 0 ? (
         <EmptyState title="Nothing waiting" detail="No drafted emails are waiting for approval." headingLevel={2} />
       ) : (
         <section className={styles.queue} aria-label="Drafts waiting for approval">{renderDrafts()}</section>

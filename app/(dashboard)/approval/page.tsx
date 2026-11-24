@@ -11,6 +11,7 @@ import { ColumnToggle } from "@/components/column-toggle";
 import { ReopenApprovals } from "@/components/reopen-approvals";
 import { Badge } from "@/components/ui/badge";
 import { ApprovalRedesign } from "@/components/approval/approval-redesign";
+import { APPROVAL_GUIDANCE } from "@/lib/approval-guidance";
 import { useCompanyUiSwitch } from "@/lib/use-company-ui-switch";
 import { RoleGate } from "@/components/role-gate";
 import { Button } from "@/components/ui/button";
@@ -511,7 +512,7 @@ export default function ApprovalPage() {
         <CardContent className="flex gap-3 p-5">
           <Info className="mt-0.5 size-5 shrink-0 text-blue-600" />
           <p className="text-sm font-medium text-blue-950">
-            Check each draft before sending. Chase reminders can be approved and sent here when email sending is set up. Customer statements and system-created invoice drafts also offer Approve and send in Full preview when a provider is configured. To send a draft yourself, copy it or open it in your email app, then choose Mark as Sent Manually after you have sent it.
+            {APPROVAL_GUIDANCE}
             {loading || error ? "" : ` ${approvals.length} draft${approvals.length === 1 ? "" : "s"} waiting.`}
           </p>
         </CardContent>
