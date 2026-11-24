@@ -1,5 +1,10 @@
 "use client";
 
+/** Admin Security presentation. Both views use the existing admin gate and data controls. */
+
+import { ComplianceRedesign } from "@/components/admin/admin-security-redesign";
+import { useCompanyUiSwitch } from "@/lib/use-company-ui-switch";
+import { Button as PremiumButton } from "@/components/ui/premium";
 import { useEffect, useMemo, useState } from "react";
 import { BellRing, Database, FileSearch, LockKeyhole, RefreshCw, ShieldCheck, TriangleAlert } from "lucide-react";
 
@@ -109,20 +114,9 @@ export default function CompliancePage() {
     );
   }, [auditEntries, query]);
 
-  return (
-    <RoleGate allowed={["admin"]}>
-      <div className="space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="page-title">Security</h1>
-            <p className="mt-1 text-sm text-slate-500">How {PRODUCT.name} protects your company&apos;s records.</p>
-          </div>
-          <Button className="min-h-11 bg-brand hover:bg-brand-hover" onClick={() => void loadAuditEntries()} disabled={loading}>
-            <RefreshCw className="size-4" />
-            Refresh activity log
-          </Button>
-        </div>
-
+  const redesign = useCompanyUiSwitch("ui-admin-security-v2:on");
+  const body = (
+    <>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {controls.map((control) => {
             const Icon = control.icon;
@@ -206,6 +200,32 @@ export default function CompliancePage() {
             </div>
           </CardContent>
         </Card>
+    </>
+  );
+
+  if (redesign) {
+    return (
+      <RoleGate allowed={["admin"]}>
+        <ComplianceRedesign actions={<PremiumButton onClick={() => void loadAuditEntries()} disabled={loading}>Refresh activity log</PremiumButton>}>{body}</ComplianceRedesign>
+      </RoleGate>
+    );
+  }
+
+  return (
+    <RoleGate allowed={["admin"]}>
+      <div className="space-y-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="page-title">Security</h1>
+            <p className="mt-1 text-sm text-slate-500">How {PRODUCT.name} protects your company&apos;s records.</p>
+          </div>
+          <Button className="min-h-11 bg-brand hover:bg-brand-hover" onClick={() => void loadAuditEntries()} disabled={loading}>
+            <RefreshCw className="size-4" />
+            Refresh activity log
+          </Button>
+        </div>
+
+        {body}
       </div>
     </RoleGate>
   );
