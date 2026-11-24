@@ -1,5 +1,9 @@
 "use client";
 
+/** Admin Integrations presentation. Both views use the existing admin gate and data controls. */
+
+import { AdminIntegrationsRedesign } from "@/components/admin/admin-integrations-redesign";
+import { useCompanyUiSwitch } from "@/lib/use-company-ui-switch";
 import { Suspense } from "react";
 
 import Link from "next/link";
@@ -24,6 +28,23 @@ function AiMoreNote() {
  * default), then "More" (the accountant tools, accounting clouds, send log, the Xero date-range send, and a pointer to the AI settings page). Admins only.
  */
 export default function AdminIntegrationsPage() {
+  const redesign = useCompanyUiSwitch("ui-admin-integrations-v2:on");
+  const body = (
+    <>
+        <Suspense fallback={<p className="text-sm text-slate-500">Loading…</p>}>
+          <IntegrationsOverview moreCards={<><AiMoreNote /><AccountingStatusCard /><XeroBatchCard /></>} />
+        </Suspense>
+    </>
+  );
+
+  if (redesign) {
+    return (
+      <RoleGate allowed={["admin"]}>
+        <AdminIntegrationsRedesign>{body}</AdminIntegrationsRedesign>
+      </RoleGate>
+    );
+  }
+
   return (
     <RoleGate allowed={["admin"]}>
       <div className="space-y-6">
@@ -31,9 +52,7 @@ export default function AdminIntegrationsPage() {
           <h1 className="page-title">Integrations</h1>
           <p className="mt-2 text-sm text-slate-500">Connect AI, Xero and e-mail one step at a time. Everything here is off until an admin connects it and turns it on.</p>
         </div>
-        <Suspense fallback={<p className="text-sm text-slate-500">Loading…</p>}>
-          <IntegrationsOverview moreCards={<><AiMoreNote /><AccountingStatusCard /><XeroBatchCard /></>} />
-        </Suspense>
+        {body}
       </div>
     </RoleGate>
   );
