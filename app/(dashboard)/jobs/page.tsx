@@ -1,5 +1,10 @@
 "use client";
 
+/** Job Board route. Both presentations use the same data, role checks, handlers and dialogs. */
+
+import { LoadingState } from "@/components/ui/premium";
+import { JobsRedesign, JobsSecondaryFilters, type JobsViewProps } from "@/components/jobs/jobs-redesign";
+import { useCompanyUiSwitch } from "@/lib/use-company-ui-switch";
 import { StatTile } from "@/components/stat-tile";
 import { StatusBadge } from "@/components/status-badge";
 import { COLOUR_CLASSES } from "@/lib/status-colours";
@@ -282,6 +287,7 @@ function rowToJob(row: Record<string, any>): WorkshopJob { // eslint-disable-lin
 }
 
 export default function JobsPage() {
+  const redesign = useCompanyUiSwitch("ui-jobs-v2:on");
   const { activeRole, profile, hiddenSections } = useUser();
   const orgSettings = useOrgSettings();
   const [jobs, setJobs] = useState<WorkshopJob[]>(DEMO_MODE ? demoJobs : []);
@@ -1588,24 +1594,60 @@ export default function JobsPage() {
     ),
   });
 
-  return (
-    <ProblemJobsContext.Provider value={problemIds}>
-    <div className="space-y-6">
+  const typeAndGroup = (
+    <>
+      <BoardFilterRow label="Type" groupLabel="Job type">
+          {([["all", "All"], ["customer", "Customer"], ["internal", `Internal (${jobs.filter((job) => job.is_internal).length})`]] as const).map(([value, text]) => (
+            <Button key={value} size="sm" variant={jobType === value ? "default" : "outline"} aria-pressed={jobType === value} className={cn(jobType === value ? "bg-brand text-brand-ink" : "", secondaryTouch)} onClick={() => setJobType(value)}>{text}</Button>
+          ))}
+      </BoardFilterRow>
+      <BoardFilterRow label="Group" groupLabel="Group by">
+          {([["none", "None"], ["machine", "Machine"]] as const).map(([value, text]) => (
+            <Button key={value} size="sm" variant={groupBy === value ? "default" : "outline"} aria-pressed={groupBy === value} className={cn(groupBy === value ? "bg-brand text-brand-ink" : "", secondaryTouch)} onClick={() => setGroupBy(value)}>{text}</Button>
+          ))}
+      </BoardFilterRow>
+    </>
+  );
+  const tagAndStage = (
+    <>
+      {/* What the tag means is written beside the chip (note), not left to a hover title. */}
+      <BoardFilterRow label="Tag" note="Running jobs put back after a failed inspection (or for replacements)">
+        <button type="button" aria-pressed={reworkOnly} onClick={toggleRework}
+          className={cn("inline-flex h-8 items-center gap-1.5 rounded-none border px-3.5 text-[0.82rem] transition pointer-coarse:min-h-11", reworkOnly ? "border-ink bg-ink text-white" : "border-line bg-surface text-ink/70 hover:border-ink/25 hover:text-ink")}>
+          <span aria-hidden className={cn("size-2 rounded-none", COLOUR_CLASSES.purple.dot)} />{`Rework (${stat(reworkCount)})`}
+        </button>
+      </BoardFilterRow>
+      <FilterBar variant="board" label="Stage" activeValues={[...stageFilters]} defaultActive={[]} options={JOB_STAGES.map((stage) => ({ label: STAGE_LABELS[stage], value: stage }))} onChange={setStageFilters} />
+    </>
+  );
+
+  const View = redesign ? JobsRedesign : LegacyJobsView;
+  const actions = (
+    <div className="flex flex-wrap items-center gap-2">
+          <ColumnToggle tableKey="jobs" />
+          <ViewSwitcher value={view} onChange={setView} hideListBelowDesk buttonClassName={workshop ? "pointer-coarse:min-h-12 pointer-coarse:min-w-12" : ""} />
+          {isViewer ? null : <Button className={cn("min-h-11 bg-brand text-brand-ink", secondaryTouch)} onClick={() => setNewJobOpen(true)}><Plus className="size-4" /> New job</Button>}
+        </div>
+  );
+  const legacyHeader = (
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="page-title">Job Board</h1>
           <p className="mt-2 text-sm text-slate-500">Jobs are the work in the workshop. Follow each one from start to finish.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <ColumnToggle tableKey="jobs" />
-          <ViewSwitcher value={view} onChange={setView} hideListBelowDesk buttonClassName={workshop ? "pointer-coarse:min-h-12 pointer-coarse:min-w-12" : ""} />
-          {isViewer ? null : <Button className={cn("min-h-11 bg-brand text-brand-ink", secondaryTouch)} onClick={() => setNewJobOpen(true)}><Plus className="size-4" /> New job</Button>}
-        </div>
+        {actions}
       </div>
+  );
+
+  return (
+    <ProblemJobsContext.Provider value={problemIds}>
+    <View actions={actions} legacyHeader={legacyHeader}>
 
       {loadError ? (
         <Card><CardContent className="flex flex-wrap items-center justify-between gap-3 p-5"><p className="text-sm text-red-700">{loadError}</p><Button variant="outline" onClick={() => setAttempt((n) => n + 1)}>Retry</Button></CardContent></Card>
       ) : null}
+
+      {redesign && loading ? <LoadingState label="Loading jobs" /> : null}
 
       {/* Below desktop width (tablets) the tiles are shorter and three to a row, so the list starts higher up the screen. */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6 xl:gap-4">
@@ -1639,26 +1681,15 @@ export default function JobsPage() {
             <Button key={value} size="sm" variant={show === value ? "default" : "outline"} aria-pressed={show === value} className={cn(show === value ? "bg-brand text-brand-ink" : "", secondaryTouch)} onClick={() => { setStatusTile(null); setShow(value); }}>{text}</Button>
           ))}
       </BoardFilterRow>
-      <BoardFilterRow label="Type" groupLabel="Job type">
-          {([["all", "All"], ["customer", "Customer"], ["internal", `Internal (${jobs.filter((job) => job.is_internal).length})`]] as const).map(([value, text]) => (
-            <Button key={value} size="sm" variant={jobType === value ? "default" : "outline"} aria-pressed={jobType === value} className={cn(jobType === value ? "bg-brand text-brand-ink" : "", secondaryTouch)} onClick={() => setJobType(value)}>{text}</Button>
-          ))}
-      </BoardFilterRow>
-      <BoardFilterRow label="Group" groupLabel="Group by">
-          {([["none", "None"], ["machine", "Machine"]] as const).map(([value, text]) => (
-            <Button key={value} size="sm" variant={groupBy === value ? "default" : "outline"} aria-pressed={groupBy === value} className={cn(groupBy === value ? "bg-brand text-brand-ink" : "", secondaryTouch)} onClick={() => setGroupBy(value)}>{text}</Button>
-          ))}
-      </BoardFilterRow>
+      {!redesign && typeAndGroup}
       {listFilter ? <ListFilterNotice label={JOB_FILTER_LABELS[listFilter] ?? listFilter} onClear={clearListFilter} /> : null}
       <FilterBar variant="board" label="Due" groupLabel="Due (Not started and Running jobs)" note="Not started and Running jobs only" activeValues={[...statusFilters]} options={[{ label: "All", value: "all" }, ...DUE_CHIPS.map((chip) => ({ label: `${chip.label} (${stat(dueCount(chip.value))})`, value: chip.value }))]} onChange={setStatusFilters} />
-      {/* What the tag means is written beside the chip (note), not left to a hover title. */}
-      <BoardFilterRow label="Tag" note="Running jobs put back after a failed inspection (or for replacements)">
-        <button type="button" aria-pressed={reworkOnly} onClick={toggleRework}
-          className={cn("inline-flex h-8 items-center gap-1.5 rounded-none border px-3.5 text-[0.82rem] transition pointer-coarse:min-h-11", reworkOnly ? "border-ink bg-ink text-white" : "border-line bg-surface text-ink/70 hover:border-ink/25 hover:text-ink")}>
-          <span aria-hidden className={cn("size-2 rounded-none", COLOUR_CLASSES.purple.dot)} />{`Rework (${stat(reworkCount)})`}
-        </button>
-      </BoardFilterRow>
-      <FilterBar variant="board" label="Stage" activeValues={[...stageFilters]} defaultActive={[]} options={JOB_STAGES.map((stage) => ({ label: STAGE_LABELS[stage], value: stage }))} onChange={setStageFilters} />
+      {redesign ? (
+        <JobsSecondaryFilters count={Number(jobType !== "all") + Number(groupBy !== "none") + Number(reworkOnly) + stageFilters.size}>
+          {typeAndGroup}
+          {tagAndStage}
+        </JobsSecondaryFilters>
+      ) : tagAndStage}
       </div>
 
       {/* With a job ticked, the selection bar sticks just below the app's top bar (components/topbar: sticky top-0, h-16) while the
@@ -1936,7 +1967,12 @@ export default function JobsPage() {
           {sendJob ? <form action={(formData) => sendToWorkshop(sendJob, formData)} className="space-y-3"><Input name="email" type="email" required placeholder="Workshop email" defaultValue={profile?.workshop_email ?? ""} /><Input name="subject" defaultValue={`JOB SHEET - ${sendJob.job_no} - ${sendJob.customer}`} /><Textarea name="body" defaultValue={`${sendJob.job_no}\n${sendJob.customer}\n${sendJob.description}\nDue: ${showDate(sendJob.due_date)}`} /><Button className="bg-brand text-brand-ink" disabled={saving}>{saving ? "Sending..." : "Send"}</Button></form> : null}
         </DialogContent>
       </Dialog>
-    </div>
+    </View>
     </ProblemJobsContext.Provider>
   );
+}
+
+
+function LegacyJobsView({ legacyHeader, children }: JobsViewProps) {
+  return <div className="space-y-6">{legacyHeader}{children}</div>;
 }
