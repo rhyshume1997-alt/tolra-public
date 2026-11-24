@@ -2,14 +2,16 @@
 
 /**
  * Reports page (admin and office, off by default). Inputs: the company's switch (organization_settings.hidden_nav marker "reports:on") and the
- * signed-in role. Output: the switch-off notice, or the reports (components/reports/reports-view). Reads nothing while the switch is off.
+ * signed-in role. Output: the switch-off notice or the reports, with a separate company marker for the new presentation. Reads no report data while the feature switch is off.
  * Must not change: no data is read or written here; the role list and the notice text.
  */
 import { RoleGate } from "@/components/role-gate";
+import { ReportsRedesign } from "@/components/reports/reports-redesign";
 import { ReportsView } from "@/components/reports/reports-view";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrgSettings } from "@/lib/org-settings";
-import { REPORTS_OFF_NOTICE, reportsEnabled } from "@/lib/reports/reports-switch";
+import { useCompanyUiSwitch } from "@/lib/use-company-ui-switch";
+import { REPORTS_OFF_NOTICE, REPORTS_ON_MARKER, REPORTS_UI_V2_MARKER, reportsEnabled } from "@/lib/reports/reports-switch";
 
 function ReportsBody() {
   const { hiddenNav, loaded } = useOrgSettings();
@@ -18,10 +20,15 @@ function ReportsBody() {
   return <ReportsView />;
 }
 
+function ReportsScreen() {
+  const redesign = useCompanyUiSwitch(REPORTS_UI_V2_MARKER, REPORTS_ON_MARKER);
+  return redesign ? <ReportsRedesign /> : <ReportsBody />;
+}
+
 export default function ReportsPage() {
   return (
     <RoleGate allowed={["admin", "office"]}>
-      <ReportsBody />
+      <ReportsScreen />
     </RoleGate>
   );
 }
