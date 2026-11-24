@@ -3,7 +3,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { expect,it,vi } from "vitest";
 
 vi.mock("@/lib/supabase",()=>({supabase:null}));
-vi.mock("@/lib/org-settings",()=>({useColumnVisibility:()=>({isVisible:()=>true})}));
+vi.mock("@/lib/org-settings",()=>({useColumnVisibility:()=>({isVisible:()=>true}),useOrgSettings:()=>({loaded:false,localOnly:false,hiddenNav:[]}),useConfirmedCompanyNavigation:()=>null}));
+vi.mock("@/lib/use-user",()=>({useUser:()=>({profile:null,user:null}),useMaybeUser:()=>({profile:null,user:null})}));
 vi.mock("@/components/column-toggle",()=>({ColumnToggle:()=>null}));
 vi.mock("@/components/reopen-approvals",()=>({ReopenApprovals:()=>null}));
 vi.mock("@/components/role-gate",()=>({RoleGate:({allowed,children}:{allowed:string[];children:ReactNode})=>{
