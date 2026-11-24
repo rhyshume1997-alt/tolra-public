@@ -1,10 +1,14 @@
 "use client";
 
+/** Live suppliers route. Both views use the same data reads, edit form, writes and admin/office gate. */
+
 import { useEffect, useState } from "react";
 import { suppliersEmptyHint } from "@/lib/empty-hints";
 import { toast } from "sonner";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
+import { SuppliersRedesign } from "@/components/suppliers/suppliers-redesign";
+import { useCompanyUiSwitch } from "@/lib/use-company-ui-switch";
 import { ColumnToggle } from "@/components/column-toggle";
 import { StatusBadge } from "@/components/status-badge";
 import { ViewSwitcher } from "@/components/view-switcher";
@@ -42,6 +46,7 @@ const demoSuppliers: SupplierRecord[] = [
 ];
 
 export default function SuppliersPage() {
+  const redesign = useCompanyUiSwitch("ui-suppliers-v2:on");
   const { isVisible } = useColumnVisibility("suppliers");
   // Cards / List / Table, remembered per person (lib/view-mode; styles in app/globals.css [data-view]).
   const [view, setView] = useViewMode("suppliers", "table");
@@ -113,14 +118,8 @@ export default function SuppliersPage() {
     });
   }
 
-  return (
-    <RoleGate allowed={["admin", "office"]}>
-      <div className="space-y-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div><h1 className="page-title">Suppliers</h1><p className="mt-2 text-sm text-slate-500">The companies we buy from. Used on purchase orders.</p></div>
-          <div className="flex flex-wrap gap-2"><ColumnToggle tableKey="suppliers" /><ViewSwitcher value={view} onChange={setView} /><Button className="min-h-11 bg-brand text-brand-ink hover:bg-brand-hover" onClick={() => setEditing({ name: "", email: "" })}><Plus className="size-4" /> New supplier</Button></div>
-        </div>
-        <ListToolbar
+  const toolbar = (
+    <ListToolbar
           visibleCount={suppliers.length}
           selectedCount={0}
           buttonClassName="min-h-11"
@@ -129,32 +128,9 @@ export default function SuppliersPage() {
             { label: "Excel", title: exportAllTitle("supplier", suppliers.length), onSelect: () => void exportSpreadsheet("xlsx", "Suppliers", SUPPLIER_COLUMNS, suppliers, "suppliers") },
           ]}
         />
-        {error ? <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error} <button onClick={load} className="font-semibold underline">Retry</button></div> : null}
-        {loading ? <Skeleton className="h-72" /> : (
-          <Card><CardContent className="p-0">
-            <Table data-view={view}>
-              <TableHeader className="hidden md:table-header-group"><TableRow>{isVisible("name") ? <TableHead>Name</TableHead> : null}{isVisible("contact") ? <TableHead>Contact</TableHead> : null}{isVisible("email") ? <TableHead>Email</TableHead> : null}{isVisible("phone") ? <TableHead>Phone</TableHead> : null}{isVisible("notes") ? <TableHead>Notes</TableHead> : null}{statusAvailable && isVisible("status") ? <TableHead>Status</TableHead> : null}<TableHead>Actions</TableHead></TableRow></TableHeader>
-              <TableBody>
-                {suppliers.map((supplier) => (
-                  <TableRow key={supplier.id || supplier.name} className="block md:table-row">
-                    {isVisible("name") ? <TableCell data-label="Name" className="block font-semibold md:table-cell">{supplier.name}</TableCell> : null}
-                    {isVisible("contact") ? <TableCell data-label="Contact" className="block md:table-cell">{supplier.contactName || "-"}</TableCell> : null}
-                    {isVisible("email") ? <TableCell data-label="Email" className="block md:table-cell">{supplier.email || "-"}</TableCell> : null}
-                    {isVisible("phone") ? <TableCell data-label="Phone" className="block md:table-cell">{supplier.phone || "-"}</TableCell> : null}
-                    {isVisible("notes") ? <TableCell data-label="Notes" className="block max-w-xs truncate md:table-cell">{supplier.notes || "-"}</TableCell> : null}
-                    {statusAvailable && isVisible("status") ? <TableCell data-label="Status" className="block md:table-cell">{supplier.supplierStatus ? <StatusBadge data-testid="supplier-status" status={SUPPLIER_STATUS_BADGE[supplier.supplierStatus]} label={SUPPLIER_STATUS_LABELS[supplier.supplierStatus]} /> : "-"}</TableCell> : null}
-                    <TableCell data-actions className="block md:table-cell"><div className="flex flex-wrap items-center gap-2">
-                      <Button variant="outline" size="sm" onClick={() => setEditing(supplier)} disabled={!supplier.id}><Pencil className="size-3.5" /> Edit</Button>
-                      <Button variant="outline" size="sm" onClick={() => void remove(supplier)} disabled={!supplier.id || saving}><Trash2 className="size-3.5" /> Delete</Button>
-                    </div></TableCell>
-                  </TableRow>
-                ))}
-                {!suppliers.length ? <TableRow><TableCell colSpan={7} className="py-8 text-center text-slate-500">No suppliers yet. {suppliersEmptyHint()}</TableCell></TableRow> : null}
-              </TableBody>
-            </Table>
-          </CardContent></Card>
-        )}
-        <Dialog open={Boolean(editing)} onOpenChange={(open) => !open && setEditing(null)}>
+  );
+  const dialog = (
+    <Dialog open={Boolean(editing)} onOpenChange={(open) => !open && setEditing(null)}>
           <DialogContent>
             <DialogHeader><DialogTitle>{editing?.id ? "Edit supplier" : "Add supplier"}</DialogTitle><DialogDescription>Supplier contact details.</DialogDescription></DialogHeader>
             {editing ? (
@@ -182,6 +158,64 @@ export default function SuppliersPage() {
             ) : null}
           </DialogContent>
         </Dialog>
+  );
+
+  if (redesign) {
+    return (
+      <RoleGate allowed={["admin", "office"]}>
+        <SuppliersRedesign
+          suppliers={suppliers}
+          loading={loading}
+          error={error}
+          saving={saving}
+          statusAvailable={statusAvailable}
+          isVisible={isVisible}
+          view={view}
+          setView={setView}
+          load={load}
+          edit={setEditing}
+          remove={remove}
+          toolbar={toolbar}
+          dialog={dialog}
+        />
+      </RoleGate>
+    );
+  }
+
+  return (
+    <RoleGate allowed={["admin", "office"]}>
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div><h1 className="page-title">Suppliers</h1><p className="mt-2 text-sm text-slate-500">The companies we buy from. Used on purchase orders.</p></div>
+          <div className="flex flex-wrap gap-2"><ColumnToggle tableKey="suppliers" /><ViewSwitcher value={view} onChange={setView} /><Button className="min-h-11 bg-brand text-brand-ink hover:bg-brand-hover" onClick={() => setEditing({ name: "", email: "" })}><Plus className="size-4" /> New supplier</Button></div>
+        </div>
+        {toolbar}
+        {error ? <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error} <button onClick={load} className="font-semibold underline">Retry</button></div> : null}
+        {loading ? <Skeleton className="h-72" /> : (
+          <Card><CardContent className="p-0">
+            <Table data-view={view}>
+              <TableHeader className="hidden md:table-header-group"><TableRow>{isVisible("name") ? <TableHead>Name</TableHead> : null}{isVisible("contact") ? <TableHead>Contact</TableHead> : null}{isVisible("email") ? <TableHead>Email</TableHead> : null}{isVisible("phone") ? <TableHead>Phone</TableHead> : null}{isVisible("notes") ? <TableHead>Notes</TableHead> : null}{statusAvailable && isVisible("status") ? <TableHead>Status</TableHead> : null}<TableHead>Actions</TableHead></TableRow></TableHeader>
+              <TableBody>
+                {suppliers.map((supplier) => (
+                  <TableRow key={supplier.id || supplier.name} className="block md:table-row">
+                    {isVisible("name") ? <TableCell data-label="Name" className="block font-semibold md:table-cell">{supplier.name}</TableCell> : null}
+                    {isVisible("contact") ? <TableCell data-label="Contact" className="block md:table-cell">{supplier.contactName || "-"}</TableCell> : null}
+                    {isVisible("email") ? <TableCell data-label="Email" className="block md:table-cell">{supplier.email || "-"}</TableCell> : null}
+                    {isVisible("phone") ? <TableCell data-label="Phone" className="block md:table-cell">{supplier.phone || "-"}</TableCell> : null}
+                    {isVisible("notes") ? <TableCell data-label="Notes" className="block max-w-xs truncate md:table-cell">{supplier.notes || "-"}</TableCell> : null}
+                    {statusAvailable && isVisible("status") ? <TableCell data-label="Status" className="block md:table-cell">{supplier.supplierStatus ? <StatusBadge data-testid="supplier-status" status={SUPPLIER_STATUS_BADGE[supplier.supplierStatus]} label={SUPPLIER_STATUS_LABELS[supplier.supplierStatus]} /> : "-"}</TableCell> : null}
+                    <TableCell data-actions className="block md:table-cell"><div className="flex flex-wrap items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setEditing(supplier)} disabled={!supplier.id}><Pencil className="size-3.5" /> Edit</Button>
+                      <Button variant="outline" size="sm" onClick={() => void remove(supplier)} disabled={!supplier.id || saving}><Trash2 className="size-3.5" /> Delete</Button>
+                    </div></TableCell>
+                  </TableRow>
+                ))}
+                {!suppliers.length ? <TableRow><TableCell colSpan={7} className="py-8 text-center text-slate-500">No suppliers yet. {suppliersEmptyHint()}</TableCell></TableRow> : null}
+              </TableBody>
+            </Table>
+          </CardContent></Card>
+        )}
+        {dialog}
       </div>
     </RoleGate>
   );
