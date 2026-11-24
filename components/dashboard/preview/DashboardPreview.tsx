@@ -838,7 +838,7 @@ function TeamWeekPanel({ rows, canOpen }: { rows: TeamRow[] | null; canOpen: (hr
   return (
     <Panel title="Team this week" meta={rows ? `${hm(totalJob)} on jobs · only admins see this` : "Only admins see this"} href="/time/week" allowed={canOpen("/time/week")} testId="team-week">
       {!rows ? <Waiting>{LOADING}</Waiting> : !rows.length ? <Waiting>Nobody has clocked in this week yet.</Waiting> : (
-        <ScrollTable label="Team this week" dense flush>
+        <ScrollTable label="Team hours table" dense flush>
           <thead><tr><th scope="col">Person</th><th scope="col">Right now</th><th scope="col">Time on jobs</th><th scope="col" className={s.right}>Paid hours</th><th scope="col" className={s.right} title="Share of clocked time spent on jobs">On jobs</th><th scope="col" className={s.right}>Jobs finished</th></tr></thead>
           <tbody>{rows.map((r) => (
             <tr key={r.userId}>

@@ -507,8 +507,8 @@ function Timeline({ machines, bookings, runs, span, setSpan, startDate, setStart
                           return (
                             <button key={`${seg.booking.id}-${k}`} type="button" data-booking-id={seg.booking.id} data-testid="agenda-booking" data-state={state} aria-label={`${word}. ${seg.booking.jobNo || "Booking"}. ${timeText}${seg.planned ? ". Split by day" : ""}${seg.outOfHours ? ". Partly or wholly outside the machine's hours" : ""}. ${oneLine(bookingTitle(seg, machine))}`}
                               onClick={() => onSelect(seg.booking)} className={cx(s.agItem, s[`s_${state}`])}>
-                              <span className={s.agWord}>{word}</span>
-                              <span className={s.agJob}>{seg.booking.jobNo || "Booking"}</span>
+                              <span className={s.agWord}>{word}</span>{" "}
+                              <span className={s.agJob}>{seg.booking.jobNo || "Booking"}</span>{" "}
                               <span className={s.agWhen}>{timeText}{seg.planned ? ", split by day" : ""}{seg.outOfHours ? ", out of hours" : ""}</span>
                             </button>
                           );
@@ -521,8 +521,8 @@ function Timeline({ machines, bookings, runs, span, setSpan, startDate, setStart
                           return (
                             <button key={bar.run.id} type="button" data-testid="agenda-run" data-run-id={bar.run.id} data-kind={bar.kind} aria-label={`Actual use. ${word}. ${bar.run.job_no || "Run"}. ${timeOf(bar.from)}-${bar.open ? "now" : timeOf(bar.to)}, ${formatMinutes(mins)}, by ${who}${bar.outOfHours ? ". Partly or wholly outside the machine's hours" : ""}. ${runBarLabel(bar, machine.name, PEOPLE, NOW)}`}
                               onClick={() => onSelectRun(bar, runBarLabel(bar, machine.name, PEOPLE, NOW))} className={cx(s.agItem, s.agRun, s[`s_${state}`])}>
-                              <span className={s.agWord}>Actual use: {word}</span>
-                              <span className={s.agJob}>{bar.run.job_no || "Run"}</span>
+                              <span className={s.agWord}>Actual use: {word}</span>{" "}
+                              <span className={s.agJob}>{bar.run.job_no || "Run"}</span>{" "}
                               <span className={s.agWhen}>{timeOf(bar.from)}-{bar.open ? "now" : timeOf(bar.to)}, {formatMinutes(mins)}, {who}{bar.outOfHours ? ", out of hours" : ""}</span>
                             </button>
                           );

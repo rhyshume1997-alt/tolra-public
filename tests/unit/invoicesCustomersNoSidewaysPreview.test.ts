@@ -113,6 +113,6 @@ describe("the dashboard and the table screens use the shared responsive pieces",
   it("the Revenue, Numbers and Dashboard data tables are ScrollTable", () => {
     expect(read("reports/preview/ReportsPreview.tsx")).toMatch(/<ScrollTable label=\{`\$\{label\}, table`\}/);
     expect(read("numbers/preview/NumbersPreview.tsx")).toContain("<ScrollTable label=\"Invoiced, received and gap by month\"");
-    expect(read("dashboard/preview/DashboardPreview.tsx")).toContain("<ScrollTable label=\"Team this week\"");
+    expect(read("dashboard/preview/DashboardPreview.tsx")).toContain("<ScrollTable label=\"Team hours table\"");
   });
 });

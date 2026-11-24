@@ -33,6 +33,7 @@
 .jt .cSel { padding: 0; }
 .jt th.cSel { padding: 0; }
 .selCell { display: flex; align-items: center; }
+.selCell > * { flex: none; } /* never let a narrow stacked cell squeeze the 48 px hit areas */
 .jt .expander { width: 48px; padding: 0; }
 .jt .expander svg { transition: transform var(--ui-t-base) var(--ui-ease-out); }
 .jt .row[data-flash] { --row-bg: #fff1b8; }
