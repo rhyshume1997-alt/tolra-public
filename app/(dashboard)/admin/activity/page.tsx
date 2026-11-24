@@ -1,5 +1,9 @@
 "use client";
 
+/** Admin Activity presentation. Both views use the existing admin gate and data controls. */
+
+import { ActivityRedesign } from "@/components/admin/admin-activity-redesign";
+import { useCompanyUiSwitch } from "@/lib/use-company-ui-switch";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { History } from "lucide-react";
 
@@ -71,14 +75,9 @@ export default function ActivityPage() {
 
   const typeLabel = (entry: ActivityEntry) => recordTypeLabel(entry.record_table ?? entry.entity_table);
 
-  return (
-    <RoleGate allowed={["admin"]}>
-      <div className="space-y-6">
-        <div>
-          <h1 className="page-title">Activity</h1>
-          <p className="mt-2 text-sm text-slate-500">Everything created, changed or deleted, by whom and when. Entries are permanent: nobody can edit or delete them.</p>
-        </div>
-
+  const redesign = useCompanyUiSwitch("ui-admin-activity-v2:on");
+  const body = (
+    <>
         <Card><CardContent className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
           <label className="grid gap-1.5 text-sm font-medium text-slate-700">Person
             <select aria-label="Person" className={selectClass} value={actor} onChange={(e) => setActor(e.target.value)}>
@@ -132,6 +131,26 @@ export default function ActivityPage() {
           </CardContent></Card>
         )}
         {more ? <div className="flex justify-center"><Button variant="outline" disabled={loading} onClick={() => void load(rows[rows.length - 1])}>{loading ? "Loading…" : "Load more"}</Button></div> : null}
+    </>
+  );
+
+  if (redesign) {
+    return (
+      <RoleGate allowed={["admin"]}>
+        <ActivityRedesign>{body}</ActivityRedesign>
+      </RoleGate>
+    );
+  }
+
+  return (
+    <RoleGate allowed={["admin"]}>
+      <div className="space-y-6">
+        <div>
+          <h1 className="page-title">Activity</h1>
+          <p className="mt-2 text-sm text-slate-500">Everything created, changed or deleted, by whom and when. Entries are permanent: nobody can edit or delete them.</p>
+        </div>
+
+        {body}
       </div>
     </RoleGate>
   );
