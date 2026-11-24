@@ -11,6 +11,9 @@
 /** Stored in hidden_nav when an admin has switched Reports on. Absent (the default) means off. */
 export const REPORTS_ON_MARKER = "reports:on";
 
+/** Selects only the operations Reports presentation. The Reports feature switch still applies. */
+export const REPORTS_UI_V2_MARKER = "ui-reports-v2:on";
+
 export const REPORTS_OFF_NOTICE = "Reports are switched off for your company.";
 
 /** On only when the marker is present. */

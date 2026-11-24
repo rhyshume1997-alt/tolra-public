@@ -8,7 +8,6 @@
  * Must not change: it writes nothing and holds no business rule (those are in lib/reports/*).
  */
 import Link from "next/link";
-import { useEffect, useState } from "react";
 
 import { MachineHoursCard } from "@/components/reports/machine-hours-card";
 import { NcrTrendCard } from "@/components/reports/ncr-trend-card";
@@ -17,13 +16,13 @@ import { WipAgeingCard } from "@/components/reports/wip-ageing-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fmtDateTime } from "@/lib/dates";
 import { useOrgSettings } from "@/lib/org-settings";
-import { loadReports, type ReportCard, type ReportsData } from "@/lib/reports/load-reports";
+import type { ReportCard } from "@/lib/reports/load-reports";
 import { canSeeRevenue, revenueEnabled } from "@/lib/reports/revenue/revenue-switch";
+import { REPORT_PERIODS, useReportsData } from "@/lib/reports/use-reports-data";
 import { MEMBER_SECTIONS } from "@/lib/sections";
 import { supabase } from "@/lib/supabase";
 import { useUser } from "@/lib/use-user";
 
-const PERIODS = [3, 6, 12] as const;
 const MAYBE_INCOMPLETE = "This may be incomplete: more records exist than were read. Choose a shorter period.";
 
 const sectionLabel = (key: string) => MEMBER_SECTIONS.find((s) => s.key === key)?.label ?? key;
@@ -52,19 +51,7 @@ function Frame<T>({ title, testId, card, onRetry, children }: { title: string; t
 export function ReportsView() {
   const { hiddenSections, activeRole } = useUser();
   const { hiddenNav } = useOrgSettings();
-  const [attempt, setAttempt] = useState(0);
-  const retry = () => setAttempt((n) => n + 1);
-  const [months, setMonths] = useState<number>(12);
-  const [data, setData] = useState<ReportsData | null>(null);
-  const hiddenKey = hiddenSections.join(",");
-
-  useEffect(() => {
-    if (!supabase) return;
-    let cancelled = false;
-    setData(null);
-    void loadReports(supabase, { months, hiddenSections: hiddenKey ? hiddenKey.split(",") : [] }).then((next) => { if (!cancelled) setData(next); });
-    return () => { cancelled = true; };
-  }, [months, hiddenKey, attempt]);
+  const { data, months, setMonths, retry } = useReportsData(hiddenSections);
 
   if (!supabase) return <p className="text-sm text-slate-500">Reports are not available in this mode.</p>;
 
@@ -78,7 +65,7 @@ export function ReportsView() {
       <div className="flex flex-wrap items-end gap-3">
         <label className="text-sm">Period<br />
           <select className="min-h-11 rounded-md border border-input bg-background px-3 text-sm" value={months} onChange={(e) => setMonths(Number(e.target.value))}>
-            {PERIODS.map((m) => <option key={m} value={m}>Last {m} months</option>)}
+            {REPORT_PERIODS.map((m) => <option key={m} value={m}>Last {m} months</option>)}
           </select>
         </label>
         {data ? <span data-testid="reports-calculated-at" className="text-xs text-slate-500">Calculated {fmtDateTime(data.calculatedAt)} (UK time)</span> : null}
