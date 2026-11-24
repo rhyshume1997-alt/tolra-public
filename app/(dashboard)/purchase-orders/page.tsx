@@ -1,5 +1,7 @@
 "use client";
 
+/** Purchase Orders presentation toggle. Both views use the existing roles, reads, selections and mutation handlers. */
+
 import { ActivityPanel } from "@/components/activity-panel";
 import { AiFinanceCheckPanel } from "@/components/ai-finance-check-panel";
 import { EmptyList } from "@/components/empty-list";
@@ -16,6 +18,8 @@ import { ColumnToggle } from "@/components/column-toggle";
 import { ListToolbar } from "@/components/list-toolbar";
 import { ViewSwitcher } from "@/components/view-switcher";
 import { useViewMode } from "@/lib/view-mode";
+import { PurchaseOrdersRedesign } from "@/components/purchase-orders/purchase-orders-redesign";
+import { useCompanyUiSwitch } from "@/lib/use-company-ui-switch";
 import { RoleGate } from "@/components/role-gate";
 import { StatusBadge } from "@/components/status-badge";
 import { purchaseOrderStatusKey } from "@/lib/status-colours";
@@ -115,6 +119,7 @@ function demoPurchaseOrders(): PurchaseOrderRow[] {
 }
 
 export default function PurchaseOrdersPage() {
+  const redesign = useCompanyUiSwitch("ui-purchase-orders-v2:on");
   const { isVisible } = useColumnVisibility("purchase-orders");
   // Cards / List / Table, remembered per person (lib/view-mode; styles in app/globals.css [data-view]).
   const [view, setView] = useViewMode("purchase-orders", "table");
@@ -533,12 +538,8 @@ export default function PurchaseOrdersPage() {
 
   const editHasItems = Boolean(editing?.items?.some((item) => item.description));
 
-  return (
-    <RoleGate allowed={["admin", "office"]}>
-      <div className="space-y-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div><h1 className="page-title">Purchase Orders</h1><p className="mt-2 text-sm text-slate-500">Purchase orders are what we buy from suppliers.</p></div>
-          <div className="flex flex-wrap items-center gap-2"><ColumnToggle tableKey="purchase-orders" /><ViewSwitcher value={view} onChange={setView} />
+  const headerActions = (
+      <div className="flex flex-wrap items-center gap-2"><ColumnToggle tableKey="purchase-orders" /><ViewSwitcher value={view} onChange={setView} />
           <Dialog open={newOpen} onOpenChange={setNewPoOpen}>
             <DialogTrigger asChild><Button className="min-h-11 bg-brand text-brand-ink hover:bg-brand-hover"><Plus className="size-4" /> New purchase order</Button></DialogTrigger>
             <DialogContent className="max-w-3xl">
@@ -582,17 +583,9 @@ export default function PurchaseOrdersPage() {
             </DialogContent>
           </Dialog>
           </div>
-        </div>
-        {DEMO_MODE ? <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Demo mode: sample data is shown if the database can&apos;t be reached.</div> : null}
-        <div className="grid gap-4 md:grid-cols-3">
-          {([
-            ["Open POs", stats.open, OPEN_STATUSES, ShoppingCart, "text-blue-700 dark:text-blue-400"],
-            ["Overdue Delivery", stats.overdue, OPEN_STATUSES, TriangleAlert, "text-red-600 dark:text-red-400"],
-            ["Received This Month", stats.receivedMonth, ["received"], CircleCheck, "text-emerald-700 dark:text-emerald-400"],
-          ] as const).map(([label, value, filter, Icon, colour]) => (
-            <Card key={label} className="cursor-pointer transition hover:bg-muted" onClick={() => setFilters(new Set(filter))}><CardContent className="p-5"><Icon aria-hidden className={`size-5 ${colour}`} /><p className="mt-3 text-sm text-muted-foreground">{label}</p><p className="text-3xl font-bold text-card-foreground">{loading ? "—" : value}</p></CardContent></Card>
-          ))}
-        </div>
+  );
+  const filtersAndToolbar = (
+      <>
         {listFilter ? <ListFilterNotice label={PO_FILTER_LABELS[listFilter] ?? listFilter} onClear={clearListFilter} /> : null}
       <><PhaseFilter value={phase} onChange={setPhase} counts={phaseCounts} />
         <FilterBar activeValues={[...filters]} options={[{ label: "All", value: "all" }, { label: "Draft", value: "draft" }, { label: "Issued", value: "issued" }, { label: "Sent", value: "sent" }, { label: "Confirmed", value: "confirmed" }, { label: "Awaiting Delivery", value: "awaiting" }, { label: "Received", value: "received" }]} onChange={setFilters} /></>
@@ -610,21 +603,10 @@ export default function PurchaseOrdersPage() {
           ]}
           actions={<Button variant="outline" disabled={saving || !selectedIds.length} title={selectedIds.length ? undefined : "Select at least one purchase order"} onClick={() => void markReceived(selectedIds)}>{saving ? "Saving…" : "Mark Selected Received"}</Button>}
         />
-        {loadError ? (
-          <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-            <span>{loadError}</span>
-            <Button variant="outline" size="sm" onClick={() => void loadPurchaseOrders()}>Retry</Button>
-          </div>
-        ) : null}
-        {loading ? <div className="space-y-3"><Skeleton className="h-16" /><Skeleton className="h-16" /><Skeleton className="h-16" /></div> : loadError && !DEMO_MODE ? null : visible.length === 0 ? (
-          <EmptyList
-            title={purchaseOrders.length ? "No purchase orders match this filter" : "No purchase orders yet"}
-            hint={purchaseOrders.length ? "Try a different filter." : purchaseOrdersEmptyHint()}
-            hintTestId={purchaseOrders.length ? undefined : "empty-hint"}
-            action={purchaseOrders.length ? <Button variant="outline" onClick={() => setFilters(new Set(["all"]))}>Show all</Button> : <Button className="bg-brand text-brand-ink hover:bg-brand-hover" onClick={() => setNewPoOpen(true)}><Plus className="size-4" /> New purchase order</Button>}
-          />
-        ) : (
-          <Card><CardContent className="p-0"><Table data-view={view}>
+      </>
+  );
+  const recordTable = (
+      <Card><CardContent className="p-0"><Table data-view={view}>
             <TableHeader className="hidden md:table-header-group"><TableRow>
               <TableHead><SelectBox aria-label={`Select all ${visible.length} filtered purchase orders`} checked={selectedIds.length === visible.length && visible.length > 0} onChange={(event) => setSelectedIds(event.target.checked ? visible.map((po) => po.id) : [])} /></TableHead>
               {isVisible("ref") ? <TableHead>PO Ref</TableHead> : null}{isVisible("supplier") ? <TableHead>Supplier</TableHead> : null}{isVisible("date") ? <TableHead>Order Date</TableHead> : null}{isVisible("delivery") ? <TableHead>Expected Delivery</TableHead> : null}{isVisible("value") ? <TableHead>{PO_TOTAL_LABEL}</TableHead> : null}{isVisible("status") ? <TableHead>Status</TableHead> : null}<TableHead>Actions</TableHead>
@@ -652,8 +634,9 @@ export default function PurchaseOrdersPage() {
               </TableRow>
             ))}</TableBody>
           </Table></CardContent></Card>
-        )}
-        <SendEmailDialog request={emailRequest} onClose={() => setEmailRequest(null)} />
+  );
+  const dialogs = (
+      <>
         <Dialog open={Boolean(viewing)} onOpenChange={(open) => !open && setViewing(null)}><DialogContent><DialogHeader><DialogTitle>{viewing?.ref}</DialogTitle><DialogDescription>Purchase order detail</DialogDescription></DialogHeader>{viewing ? <div className="space-y-3 text-sm"><p><strong>Supplier:</strong> {viewing.supplier}</p><p><strong>Order date:</strong> {fmtDate(viewing.date)}</p><p><strong>Expected delivery:</strong> {fmtDate(viewing.delivery) || "Not set"}</p><p><strong>Value:</strong> {currency(viewing.value)}</p><p><strong>Status:</strong> {viewing.status}</p>{viewing.link ? <p data-testid="po-view-link"><strong>For:</strong> {linkLabel(viewing.link)}{viewing.linkedNet !== null && viewing.linkedNet !== undefined ? ` (${currency(viewing.linkedNet)} of this order, ex VAT)` : ""}</p> : null}{viewing.receivedAt ? <p><strong>Received:</strong> {fmtDate(viewing.receivedAt)}</p> : null}{viewing.notes ? <p><strong>Notes:</strong> {viewing.notes}</p> : null}<div className="flex flex-wrap gap-2"><Button onClick={() => window.open(`/purchase-orders/${encodeURIComponent(viewing.id)}/print`, "_blank")} className="bg-brand text-brand-ink">Print</Button><Button variant="outline" onClick={() => void downloadPurchaseOrderPdf(viewing)}>Download PDF</Button>{viewing.status !== "draft" && !viewing.id.startsWith("demo-") ? <Button variant="outline" onClick={() => void emailPurchaseOrder(viewing)}>Email to supplier</Button> : null}</div>{viewing.id.startsWith("demo-") ? null : <DocumentAttachments parent={{ kind: "purchase_order", id: viewing.id }} canRemove />}</div> : null}<ActivityPanel table="purchase_orders" recordId={viewing?.id} className="mt-4" /></DialogContent></Dialog>
         <Dialog open={Boolean(poAction)} onOpenChange={(open) => !open && setPoAction(null)}>
           <DialogContent>
@@ -696,6 +679,69 @@ export default function PurchaseOrdersPage() {
             ) : null}
           </DialogContent>
         </Dialog>
+      </>
+  );
+
+  if (redesign) {
+    return (
+      <RoleGate allowed={["admin", "office"]}>
+        <PurchaseOrdersRedesign
+          actions={headerActions}
+          demo={DEMO_MODE}
+          tiles={[["Open POs", stats.open, OPEN_STATUSES], ["Overdue Delivery", stats.overdue, OPEN_STATUSES], ["Received This Month", stats.receivedMonth, ["received"]]]}
+          filters={filters}
+          chooseFilter={(values) => setFilters(new Set(values))}
+          controls={filtersAndToolbar}
+          records={recordTable}
+          dialogs={dialogs}
+          loading={loading}
+          error={loadError}
+          retry={() => void loadPurchaseOrders()}
+          hasRecords={purchaseOrders.length > 0}
+          hasVisible={visible.length > 0}
+          showAll={() => setFilters(new Set(["all"]))}
+          add={() => setNewPoOpen(true)}
+        />
+      </RoleGate>
+    );
+  }
+
+  return (
+    <RoleGate allowed={["admin", "office"]}>
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div><h1 className="page-title">Purchase Orders</h1><p className="mt-2 text-sm text-slate-500">Purchase orders are what we buy from suppliers.</p></div>
+        {headerActions}
+        </div>
+        {DEMO_MODE ? <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Demo mode: sample data is shown if the database can&apos;t be reached.</div> : null}
+        <div className="grid gap-4 md:grid-cols-3">
+          {([
+            ["Open POs", stats.open, OPEN_STATUSES, ShoppingCart, "text-blue-700 dark:text-blue-400"],
+            ["Overdue Delivery", stats.overdue, OPEN_STATUSES, TriangleAlert, "text-red-600 dark:text-red-400"],
+            ["Received This Month", stats.receivedMonth, ["received"], CircleCheck, "text-emerald-700 dark:text-emerald-400"],
+          ] as const).map(([label, value, filter, Icon, colour]) => (
+            <Card key={label} className="cursor-pointer transition hover:bg-muted" onClick={() => setFilters(new Set(filter))}><CardContent className="p-5"><Icon aria-hidden className={`size-5 ${colour}`} /><p className="mt-3 text-sm text-muted-foreground">{label}</p><p className="text-3xl font-bold text-card-foreground">{loading ? "—" : value}</p></CardContent></Card>
+          ))}
+        </div>
+        {filtersAndToolbar}
+        {loadError ? (
+          <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+            <span>{loadError}</span>
+            <Button variant="outline" size="sm" onClick={() => void loadPurchaseOrders()}>Retry</Button>
+          </div>
+        ) : null}
+        {loading ? <div className="space-y-3"><Skeleton className="h-16" /><Skeleton className="h-16" /><Skeleton className="h-16" /></div> : loadError && !DEMO_MODE ? null : visible.length === 0 ? (
+          <EmptyList
+            title={purchaseOrders.length ? "No purchase orders match this filter" : "No purchase orders yet"}
+            hint={purchaseOrders.length ? "Try a different filter." : purchaseOrdersEmptyHint()}
+            hintTestId={purchaseOrders.length ? undefined : "empty-hint"}
+            action={purchaseOrders.length ? <Button variant="outline" onClick={() => setFilters(new Set(["all"]))}>Show all</Button> : <Button className="bg-brand text-brand-ink hover:bg-brand-hover" onClick={() => setNewPoOpen(true)}><Plus className="size-4" /> New purchase order</Button>}
+          />
+        ) : (
+        recordTable
+        )}
+        <SendEmailDialog request={emailRequest} onClose={() => setEmailRequest(null)} />
+        {dialogs}
       </div>
     </RoleGate>
   );
