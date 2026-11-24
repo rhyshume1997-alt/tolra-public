@@ -19,7 +19,7 @@
 .deniedNote { margin: 0; max-width: 64ch; color: var(--ui-muted); font-size: var(--ui-fs-secondary); line-height: var(--ui-lh-secondary); }
 
 /* ---------- preview dock (inside the shared popover) ---------- */
-.dock { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding-bottom: 8px; min-width: 290px; }
+.dock { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding-bottom: 8px; min-width: min(280px, calc(100vw - 64px)); }
 .dockNote { margin: 0 0 4px; color: var(--ui-muted); font-size: var(--ui-fs-secondary); line-height: var(--ui-lh-secondary); max-width: 290px; }
 .dockLabel { margin: 8px 0 0; color: var(--ui-ink-2); font-size: var(--ui-fs-caption); font-weight: 600; }
 .dockSelect { display: flex; flex-direction: column; gap: 0; width: 100%; font-size: var(--ui-fs-secondary); font-weight: 600; color: var(--ui-ink-2); }

@@ -11,7 +11,7 @@
 .body { margin: 0; color: var(--ui-ink-2); font-size: var(--ui-fs-body); line-height: var(--ui-lh-body); max-width: 72ch; }
 
 /* ---------- preview dock (inside the shared popover) ---------- */
-.dock { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding-bottom: 8px; min-width: 280px; }
+.dock { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding-bottom: 8px; min-width: min(280px, calc(100vw - 64px)); }
 .dockNote { margin: 0 0 4px; color: var(--ui-muted); font-size: var(--ui-fs-secondary); line-height: var(--ui-lh-secondary); max-width: 280px; }
 .dockLabel { margin: 6px 0 0; color: var(--ui-ink-2); font-size: var(--ui-fs-caption); font-weight: 600; }
 .dockStates { display: flex; flex-direction: column; gap: 4px; width: 100%; margin-bottom: 6px; }
