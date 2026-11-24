@@ -1,0 +1,108 @@
+/*
+ * BOUNDARY (RFQ module 3, PREVIEW ONLY, v3). Inputs: the class names used by components/rfq/preview/RfqPreview.tsx, and the --ui-* tokens that components/ui/premium defines on its token class (applied to
+ * the page root and to the shared layers, so no value is repeated here). Output: layout only: the page flow, the three tiles, the one-row filter toolbar with its active chips, the RFQ list rows (one
+ * primary action plus More in a fixed-width actions slot), the e-mail link panels and the sheets' content. Type sizes and weights come from the v4 scale (typeScale classes and the --ui-fs-* tokens).
+ * Must not change: no global selectors, nothing outside this module, no business rules. Control heights stay on the 32 / 40 / 48 px scale and every row control keeps a 48 px hit area (the shared
+ * Button draws it). Motion is the shared set's (120 to 200 ms, off under prefers-reduced-motion). Forbidden: gradients, blur or glass, decorative icons.
+ */
+
+.root { display: flex; flex-direction: column; gap: 16px; max-width: 1720px; padding-bottom: 24px; color: var(--ui-ink); }
+
+/* ---------- filter toolbar: Show inline, everything else under Filters (n) ---------- */
+.fbar { display: flex; flex-direction: column; gap: 12px; }
+.fRow { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 20px; }
+.fGroup { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.chipRow { display: flex; flex-wrap: wrap; gap: 16px 8px; margin: 0; padding: 0; list-style: none; }
+.filterBody { display: grid; gap: 14px; width: min(340px, 76vw); padding: 4px 0 8px; }
+.colsBody { display: grid; gap: 2px; width: min(300px, 76vw); padding-bottom: 6px; }
+.colsBody p { margin: 6px 0 0; }
+.colLocked { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; margin: 0; color: var(--ui-ink); font-size: var(--ui-fs-body); font-weight: 500; }
+.colLocked span:last-child { color: var(--ui-muted); font-size: var(--ui-fs-caption); font-weight: 500; }
+.dock { display: grid; gap: 12px; width: min(340px, 76vw); padding: 4px 0 8px; }
+.dock p { margin: 0; }
+
+/* ---------- tiles (three across, down to a phone) ---------- */
+.root .tiles3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+/* ---------- the RFQ list ---------- */
+.list { margin: 0; padding: 0; list-style: none; border-radius: var(--ui-radius-lg); background: var(--ui-surface); box-shadow: var(--ui-elev-raised); overflow: hidden; }
+.row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px 24px; padding: 12px 16px 12px 20px;
+  box-shadow: inset 0 -1px 0 var(--ui-line); transition: background-color var(--ui-t-base) var(--ui-ease-out);
+}
+.row:last-child { box-shadow: none; }
+@media (hover: hover) and (pointer: fine) { .row:hover { background: var(--ui-surface-2); } }
+.rowMain { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.rowTitle { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-width: 0; }
+.customer { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.desc { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; max-width: 78ch; margin: 0; color: var(--ui-ink-2); }
+.meta { display: flex; flex-wrap: wrap; gap: 2px 20px; margin: 0; color: var(--ui-ink-2); }
+.meta b { color: var(--ui-ink); font-weight: 600; }
+.metaLabel { color: var(--ui-muted); font-weight: 500; }
+/* ONE primary and More; a fixed-width slot on desktop only, at 1024 px and under the row is stacked and the actions wrap */
+.rowActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.primarySlot { display: inline-block; }
+@media (min-width: 1025px) { .rowActions { flex-wrap: nowrap; width: 216px; } .primarySlot { min-width: 128px; } }
+.primarySlot > button { width: 100%; }
+.rowEmail { grid-column: 1 / -1; }
+
+/* ---------- e-mail link panels ---------- */
+.emailPanel { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px 10px 14px; border-radius: var(--ui-radius-sm); font-size: var(--ui-fs-secondary); color: var(--ui-ink); }
+.emailLinked { background: var(--ui-ok-soft); box-shadow: inset 3px 0 0 #1f8a4c, inset 0 0 0 1px rgba(31, 138, 76, 0.22); }
+.emailSuggest { background: var(--ui-warn-soft); box-shadow: inset 3px 0 0 #d99a06, inset 0 0 0 1px rgba(217, 154, 6, 0.4); }
+.emailHead { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 0; }
+.emailHead b { font-weight: 600; }
+.headLink { margin-left: auto; }
+.emailFacts { margin: 0; color: var(--ui-ink-2); font-size: var(--ui-fs-secondary); }
+.emailFacts b { color: var(--ui-ink); font-weight: 600; }
+.emailLinks { display: flex; flex-wrap: wrap; gap: 4px 20px; margin: 0; }
+.refChip { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 6px; background: #fff; box-shadow: inset 0 0 0 1px var(--ui-line-strong); font-size: var(--ui-fs-secondary); font-weight: 600; }
+.suggestList { display: flex; flex-direction: column; gap: 16px; margin: 0; padding: 0; list-style: none; }
+.suggestItem { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 12px; }
+.suggestPo { font-weight: 600; }
+.snippet { min-width: 0; color: var(--ui-ink-2); font-size: var(--ui-fs-secondary); }
+.textLink { position: relative; padding: 0; border: 0; background: none; color: var(--ui-accent); font-size: var(--ui-fs-secondary); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; transition: color var(--ui-t-fast) var(--ui-ease); }
+.textLink::after { content: ""; position: absolute; inset: -14px -6px; }
+.textLink:hover { color: var(--ui-brand); text-decoration-thickness: 2px; }
+
+/* ---------- denied ---------- */
+.denied { display: grid; gap: 8px; padding: 32px; border-radius: var(--ui-radius-lg); background: var(--ui-surface); text-align: center; box-shadow: var(--ui-elev-raised); }
+.denied h2, .denied p { margin: 0; }
+.deniedNote { max-width: 520px; margin: 6px auto 0; }
+
+/* ---------- sheet content ---------- */
+.sheetNote { margin: 0; color: var(--ui-muted); font-size: var(--ui-fs-secondary); line-height: var(--ui-lh-secondary); }
+.sheetStatus:empty { display: none; }
+.blockMsg { margin: 0; padding: 10px 12px; border-radius: var(--ui-radius-sm); background: var(--ui-danger-soft); color: #8f1f1f; box-shadow: inset 3px 0 0 var(--ui-danger), inset 0 0 0 1px rgba(179, 45, 45, 0.18); font-size: var(--ui-fs-secondary); }
+.viewDesc { margin: 0; font-size: var(--ui-fs-body); line-height: 22px; color: var(--ui-ink); }
+.facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 24px; margin: 0; padding: 16px; border-radius: var(--ui-radius-md); background: var(--ui-surface-2); box-shadow: inset 0 0 0 1px var(--ui-line); }
+.facts dt { color: var(--ui-muted); font-size: var(--ui-fs-caption); font-weight: 600; letter-spacing: 0.01em; }
+.facts dd { margin: 2px 0 0; font-weight: 600; font-size: 14px; }
+.factWide { grid-column: 1 / -1; }
+.factWide dd { font-weight: 500; }
+.breakWords { overflow-wrap: anywhere; }
+.chipsRow { display: flex; flex-wrap: wrap; gap: 12px 8px; padding: 2px 0 4px; }
+.tall { min-height: 176px; }
+.emailBody { max-height: 56vh; margin: 0; padding: 14px 16px; overflow-y: auto; overflow-x: hidden; border-radius: var(--ui-radius-md); background: var(--ui-surface-2); box-shadow: inset 0 0 0 1px var(--ui-line); font-family: inherit; font-size: var(--ui-fs-body); line-height: 20px; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* ---------- form ---------- */
+.form { display: flex; flex-direction: column; gap: 14px; }
+.formGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; }
+.formGrid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 16px; }
+.summary { padding: 12px 14px 12px 16px; border-radius: var(--ui-radius-sm); background: var(--ui-danger-soft); box-shadow: inset 3px 0 0 var(--ui-danger), inset 0 0 0 1px rgba(179, 45, 45, 0.18); color: #6e1717; font-size: var(--ui-fs-body); }
+.summary:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
+.summaryTitle { margin: 0 0 4px; font-weight: 600; }
+.summary ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 14px; }
+.summary .textLink { color: #8f1f1f; text-align: left; }
+
+/* ---------- responsive ---------- */
+@media (max-width: 1023px) { .row { grid-template-columns: minmax(0, 1fr); } .rowActions { justify-content: flex-start; } }
+@media (max-width: 767px) {
+  .row { padding: 14px 14px 14px 16px; }
+  .facts, .formGrid, .formGrid3 { grid-template-columns: 1fr; }
+}
+
+/* ---------- reduced motion (the shared set already stops its own motion; this module's two transitions follow) ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .row, .textLink { transition: none; }
+}
