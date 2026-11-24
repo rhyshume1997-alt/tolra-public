@@ -20,6 +20,7 @@ import ApprovalPreview, * as P from "@/components/approval/preview/ApprovalPrevi
 const root = path.resolve(__dirname, "../..");
 const rd = (p: string) => readFileSync(path.join(root, p), "utf8");
 const PAGE = rd("app/(dashboard)/approval/page.tsx");
+const GUIDANCE = rd("lib/approval-guidance.ts");
 const RECOVERY = rd("components/approval-recovery.tsx");
 const CHASE = rd("components/chase/approval-card.tsx");
 const REOPEN = rd("components/reopen-approvals.tsx");
@@ -35,7 +36,8 @@ describe("approval preview: pinned to the real page's source text", () => {
   it("the header, the notices and the states are the real words", () => {
     expect(PAGE).toContain(`<h1 className="page-title">${P.PAGE_TITLE}</h1>`);
     expect(PAGE).toContain(P.PAGE_SUBTITLE);
-    expect(PAGE).toContain(P.INFO);
+    expect(GUIDANCE).toContain(P.INFO);
+    expect(PAGE).toContain("{APPROVAL_GUIDANCE}");
     expect(PAGE).toContain('loading || error ? "" : ` ${approvals.length} draft${approvals.length === 1 ? "" : "s"} waiting.`');
     expect(PAGE).toContain("E-mail sending isn't set up for this company.");
     expect(PAGE).toContain("E-mail sending isn't set up, so this wasn't sent. Copy it or open it in your email client instead.");

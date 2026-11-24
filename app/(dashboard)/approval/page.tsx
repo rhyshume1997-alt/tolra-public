@@ -1,5 +1,7 @@
 "use client";
 
+/** Approval Queue presentation toggle. Existing review, audit and send handlers remain in this route. */
+
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { CheckCircle, Clipboard, Info, Mail, Send } from "lucide-react";
@@ -8,6 +10,9 @@ import { ConnectedChaseApproval } from "@/components/chase/connected-approval";
 import { ColumnToggle } from "@/components/column-toggle";
 import { ReopenApprovals } from "@/components/reopen-approvals";
 import { Badge } from "@/components/ui/badge";
+import { ApprovalRedesign } from "@/components/approval/approval-redesign";
+import { APPROVAL_GUIDANCE } from "@/lib/approval-guidance";
+import { useCompanyUiSwitch } from "@/lib/use-company-ui-switch";
 import { RoleGate } from "@/components/role-gate";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -82,6 +87,7 @@ function toApproval(row: any): ApprovalItem {
 }
 
 export default function ApprovalPage() {
+  const redesign = useCompanyUiSwitch("ui-approval-v2:on");
   const { saving, run } = useSaving();
   const { isVisible } = useColumnVisibility("approvals");
   const [approvals, setApprovals] = useState<ApprovalItem[]>([]);
@@ -315,53 +321,7 @@ export default function ApprovalPage() {
     });
   }
 
-  return (
-    <RoleGate allowed={["admin", "office"]}>
-    <div className="space-y-8">
-      <section className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h1 className="page-title">Approval Queue</h1>
-          <p className="mt-2 text-sm text-slate-500">Emails Tolra has drafted wait here for you to check before they go to customers.</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2"><ColumnToggle tableKey="approvals" /></div>
-        {/* No Settings button: it linked to the admin-only general /settings page, which has no e-mail or approval settings (sweep item 8). */}
-      </section>
-
-      <Card className="border-blue-200 bg-blue-50 shadow-sm">
-        <CardContent className="flex gap-3 p-5">
-          <Info className="mt-0.5 size-5 shrink-0 text-blue-600" />
-          <p className="text-sm font-medium text-blue-950">
-            Check each draft before sending. Chase reminders can be approved and sent here when email sending is set up. Customer statements and system-created invoice drafts also offer Approve and send in Full preview when a provider is configured. To send a draft yourself, copy it or open it in your email app, then choose Mark as Sent Manually after you have sent it.
-            {loading || error ? "" : ` ${approvals.length} draft${approvals.length === 1 ? "" : "s"} waiting.`}
-          </p>
-        </CardContent>
-      </Card>
-
-      {noProvider ? (
-        <Card className="border-amber-300 bg-amber-50 shadow-sm" data-testid="approval-no-provider">
-          <CardContent className="p-5 text-sm font-medium text-amber-950" role="status">{noProvider}</CardContent>
-        </Card>
-      ) : null}
-
-      {error ? (
-        <Card><CardContent className="flex flex-wrap items-center justify-between gap-3 p-5"><p className="text-sm text-red-700">{error}</p><Button variant="outline" onClick={() => void load()}>Retry</Button></CardContent></Card>
-      ) : null}
-
-      <section className="space-y-4">
-        {loading ? (
-          <Skeleton className="h-40" />
-        ) : !error && approvals.length === 0 ? (
-          <Card className="border-green-200 shadow-sm">
-            <CardContent className="flex flex-col items-center justify-center px-6 py-14 text-center">
-              <div className="flex size-14 items-center justify-center rounded-none bg-green-50">
-                <CheckCircle className="size-8 text-green-600" />
-              </div>
-              <h3 className="mt-4 text-lg font-semibold text-slate-950">Nothing waiting</h3>
-              <p className="mt-2 text-sm text-slate-500">No drafted emails are waiting for approval.</p>
-            </CardContent>
-          </Card>
-        ) : (
-          approvals.map((item) => {
+  const renderDrafts = () => approvals.map((item) => {
             if (item.chase) return <ConnectedChaseApproval key={item.id} id={item.id} onDone={() => void load()} manualActions={<>
               <Button variant="outline" onClick={() => void copyToClipboard(item)}>Copy draft</Button>
               <Button variant="outline" onClick={() => openEmailClient(item)}>Open in email app</Button>
@@ -425,10 +385,9 @@ export default function ApprovalPage() {
                 </CardContent>
               </Card>
             );
-          })
-        )}
-      </section>
-
+          });
+  const belowQueue = (
+    <>
       <NeedsChecking items={checking} isAdmin={isAdminUser} busy={saving} onResolve={resolveHeld} />
 
       {/* 113: reopened jobs waiting for an admin's sign-off (nothing shows before the database has 113). */}
@@ -518,6 +477,76 @@ export default function ApprovalPage() {
           ) : null}
         {previewItem?.canApprove ? <Button disabled={saving} onClick={() => void approveCustomerDraft(previewItem)}>Approve and send</Button> : null}</DialogContent>
       </Dialog>
+    </>
+  );
+
+  if (redesign) {
+    return (
+      <RoleGate allowed={["admin", "office"]}>
+        <ApprovalRedesign
+          draftCount={approvals.length}
+          loading={loading}
+          error={error}
+          noProvider={noProvider}
+          retry={() => void load()}
+          renderDrafts={renderDrafts}
+          belowQueue={belowQueue}
+        />
+      </RoleGate>
+    );
+  }
+
+  return (
+    <RoleGate allowed={["admin", "office"]}>
+    <div className="space-y-8">
+      <section className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h1 className="page-title">Approval Queue</h1>
+          <p className="mt-2 text-sm text-slate-500">Emails Tolra has drafted wait here for you to check before they go to customers.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2"><ColumnToggle tableKey="approvals" /></div>
+        {/* No Settings button: it linked to the admin-only general /settings page, which has no e-mail or approval settings (sweep item 8). */}
+      </section>
+
+      <Card className="border-blue-200 bg-blue-50 shadow-sm">
+        <CardContent className="flex gap-3 p-5">
+          <Info className="mt-0.5 size-5 shrink-0 text-blue-600" />
+          <p className="text-sm font-medium text-blue-950">
+            {APPROVAL_GUIDANCE}
+            {loading || error ? "" : ` ${approvals.length} draft${approvals.length === 1 ? "" : "s"} waiting.`}
+          </p>
+        </CardContent>
+      </Card>
+
+      {noProvider ? (
+        <Card className="border-amber-300 bg-amber-50 shadow-sm" data-testid="approval-no-provider">
+          <CardContent className="p-5 text-sm font-medium text-amber-950" role="status">{noProvider}</CardContent>
+        </Card>
+      ) : null}
+
+      {error ? (
+        <Card><CardContent className="flex flex-wrap items-center justify-between gap-3 p-5"><p className="text-sm text-red-700">{error}</p><Button variant="outline" onClick={() => void load()}>Retry</Button></CardContent></Card>
+      ) : null}
+
+      <section className="space-y-4">
+        {loading ? (
+          <Skeleton className="h-40" />
+        ) : !error && approvals.length === 0 ? (
+          <Card className="border-green-200 shadow-sm">
+            <CardContent className="flex flex-col items-center justify-center px-6 py-14 text-center">
+              <div className="flex size-14 items-center justify-center rounded-none bg-green-50">
+                <CheckCircle className="size-8 text-green-600" />
+              </div>
+              <h3 className="mt-4 text-lg font-semibold text-slate-950">Nothing waiting</h3>
+              <p className="mt-2 text-sm text-slate-500">No drafted emails are waiting for approval.</p>
+            </CardContent>
+          </Card>
+        ) : (
+          renderDrafts()
+        )}
+      </section>
+
+      {belowQueue}
     </div>
     </RoleGate>
   );
