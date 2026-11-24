@@ -679,6 +679,7 @@ export default function PurchaseOrdersPage() {
             ) : null}
           </DialogContent>
         </Dialog>
+        <SendEmailDialog request={emailRequest} onClose={() => setEmailRequest(null)} />
       </>
   );
 
@@ -740,7 +741,6 @@ export default function PurchaseOrdersPage() {
         ) : (
         recordTable
         )}
-        <SendEmailDialog request={emailRequest} onClose={() => setEmailRequest(null)} />
         {dialogs}
       </div>
     </RoleGate>
