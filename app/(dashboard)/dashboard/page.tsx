@@ -1,5 +1,8 @@
 "use client";
 
+import { DashboardRedesign } from "@/components/dashboard/dashboard-redesign";
+import { useCompanyUiSwitch } from "@/lib/use-company-ui-switch";
+
 import { AiHelperDashboardLink } from "@/components/ai-helper/dashboard-link";
 import { fetchAll } from "@/lib/fetch-all";
 import { loadMoneyTiles, loadQuoteTiles, overdueOwed as overdueFromBuckets } from "@/lib/dashboard-tile-figures";
@@ -765,6 +768,24 @@ export default function DashboardPage() {
   const { profile, activeRole } = useUser();
   // activeRole is validated against the profile in lib/use-user.ts.
   const role = activeRole;
+  const redesign = useCompanyUiSwitch("ui-dashboard-v2:on");
+  if (redesign) {
+    return (
+      <DashboardRedesign
+        description={`${getGreeting(profile?.full_name)}. ${fmtDateText(new Date(), { weekday: "long", year: true, numberAs: "full" })}`}
+        actions={(
+          <>
+            {(role === "admin" || role === "office") && <><AiHelperDashboardLink /><ApprovalLink /></>}
+            <ColumnToggle tableKey="dashboard" keys={dashboardTileKeysFor(role === "office" ? "office" : role === "admin" ? "admin" : "workshop")} />
+          </>
+        )}
+      >
+        {role === "admin" && <UnrecognisedNetworkBanner />}
+        {role === "workshop" || role === "viewer" ? <WorkshopDashboard role={role} /> : <AdminDashboard office={role === "office"} />}
+      </DashboardRedesign>
+    );
+  }
+
   return (
     <div className="space-y-8">
       <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
