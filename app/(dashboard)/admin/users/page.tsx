@@ -1,5 +1,10 @@
 "use client";
 
+/** Admin User Management presentation. Both views use the existing admin gate and data controls. */
+
+import { UsersRedesign } from "@/components/admin/admin-users-redesign";
+import { useCompanyUiSwitch } from "@/lib/use-company-ui-switch";
+import { Button as PremiumButton } from "@/components/ui/premium";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { usersEmptyHint } from "@/lib/empty-hints";
@@ -503,17 +508,9 @@ export default function UsersPage() {
 
   const editRoles: (UserRole | "")[] = [edit.role, edit.secondary];
 
-  return (
-    <RoleGate allowed={["admin"]}>
-      <div className="space-y-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="page-title">User Management</h1>
-            <p className="mt-2 text-sm text-slate-500">Add people to {company?.name ?? "your company"}, choose what they can open, and manage their passwords. Nothing is e-mailed unless you press Send password reset e-mail.</p>
-          </div>
-          <Button className="bg-brand text-brand-ink" onClick={openAdd}><Plus className="size-4" /> New user</Button>
-        </div>
-
+  const redesign = useCompanyUiSwitch("ui-admin-users-v2:on");
+  const body = (
+    <>
         {error ? <Card><CardContent className="flex flex-wrap items-center justify-between gap-3 p-5"><p className="text-sm text-red-700">{error}</p><Button variant="outline" onClick={() => void load()}>Retry</Button></CardContent></Card> : null}
 
         {!loading && missingNames ? (
@@ -772,6 +769,29 @@ export default function UsersPage() {
           </DialogContent>
         </Dialog>
         {codeDialog}
+    </>
+  );
+
+  if (redesign) {
+    return (
+      <RoleGate allowed={["admin"]}>
+        <UsersRedesign actions={<PremiumButton onClick={openAdd}>New user</PremiumButton>}>{body}</UsersRedesign>
+      </RoleGate>
+    );
+  }
+
+  return (
+    <RoleGate allowed={["admin"]}>
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h1 className="page-title">User Management</h1>
+            <p className="mt-2 text-sm text-slate-500">Add people to {company?.name ?? "your company"}, choose what they can open, and manage their passwords. Nothing is e-mailed unless you press Send password reset e-mail.</p>
+          </div>
+          <Button className="bg-brand text-brand-ink" onClick={openAdd}><Plus className="size-4" /> New user</Button>
+        </div>
+
+        {body}
       </div>
     </RoleGate>
   );
