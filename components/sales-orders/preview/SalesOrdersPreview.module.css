@@ -1,0 +1,157 @@
+/*
+ * BOUNDARY (Sales Orders module 3, PREVIEW ONLY, v3). Inputs: the class names used by components/sales-orders/preview/SalesOrdersPreview.tsx, and the --ui-* tokens that components/ui/premium defines on its
+ * token class (applied to the page root and to the shared layers, so no value is repeated here). Output: layout only: the page flow, the three tiles, the one-row filter toolbar with its active chips, table cell
+ * finish (one primary action plus the shared More menu in a fixed-width Actions column), cards and the sheets' content. Type sizes and weights come from the v4 scale (typeScale classes and the --ui-fs-* tokens).
+ * Must not change: no global selectors, nothing outside this module, no business rules. Control heights stay on the 32 / 40 / 48 px scale and every row control keeps a 48 px hit area (the shared Button and
+ * Checkbox draw it). Motion is the shared set's (off under prefers-reduced-motion). Forbidden: gradients, blur or glass, decorative icons.
+ */
+
+.root { display: flex; flex-direction: column; gap: 16px; max-width: 1720px; padding-bottom: 24px; color: var(--ui-ink); }
+/* the shared SelectionBar is a direct child so it can stick; its quiet count line and its active bar keep one height so ticking a row never moves the table */
+.root > [data-selection] { min-height: 48px; margin-block: -6px; }
+.root .right { text-align: right; }
+.root th.right, .root td.right { text-align: right; }
+.nowrap { white-space: nowrap; }
+.contents { display: contents; }
+.muted { color: var(--ui-muted); }
+.cap { text-transform: capitalize; }
+
+/* ---------- filter toolbar: Show inline, everything else under Filters (n) ---------- */
+.fbar { display: flex; flex-direction: column; gap: 12px; }
+.fRow { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 20px; }
+.fGroup { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.chipRow { display: flex; flex-wrap: wrap; gap: 16px 8px; margin: 0; padding: 0; list-style: none; }
+.filterBody { display: grid; gap: 14px; width: min(340px, 76vw); padding: 4px 0 8px; }
+.colsBody { display: grid; gap: 2px; width: min(300px, 76vw); padding-bottom: 6px; }
+.colsBody p { margin: 6px 0 0; }
+.colLocked { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; margin: 0; color: var(--ui-ink); font-size: var(--ui-fs-body); font-weight: 500; }
+.colLocked span:last-child { color: var(--ui-muted); font-size: var(--ui-fs-caption); font-weight: 500; }
+.dock { display: grid; gap: 12px; width: min(340px, 76vw); padding: 4px 0 8px; }
+.dock p { margin: 0; }
+
+/* ---------- tiles ---------- */
+.root .tiles3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+/* ---------- cards ---------- */
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); gap: 12px; }
+.card {
+  display: flex; flex-direction: column; gap: 10px; padding: 8px 16px 14px 8px; border-radius: var(--ui-radius-lg); background: var(--ui-surface);
+  box-shadow: var(--ui-elev-raised); transition: box-shadow var(--ui-t-base) var(--ui-ease-out), background-color var(--ui-t-base) var(--ui-ease-out);
+}
+@media (hover: hover) and (pointer: fine) { .card:hover { box-shadow: var(--ui-elev-overlay); } }
+.card[data-selected="true"] { background: var(--ui-soft); box-shadow: 0 0 0 1.5px var(--ui-brand), var(--ui-shadow-1); }
+.cardTop { display: flex; align-items: center; gap: 4px; }
+.cardRef { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.cardTop > :last-child { flex: none; }
+.dl { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 10px 20px; margin: 0; padding-left: 8px; }
+.dl div { min-width: 0; }
+.dl dt { margin: 0 0 1px; color: var(--ui-muted); font-size: var(--ui-fs-caption); line-height: var(--ui-lh-caption); font-weight: 600; letter-spacing: var(--ui-ls-caption); }
+.dl dd { margin: 0; font-size: var(--ui-fs-body); line-height: var(--ui-lh-body); color: var(--ui-ink); overflow-wrap: anywhere; }
+.dlWide { grid-column: 1 / -1; }
+.dlValue { text-align: right; }
+.dl dd.cardValue { font-size: var(--ui-fs-section); line-height: var(--ui-lh-section); font-weight: 600; letter-spacing: var(--ui-ls-section); color: var(--ui-brand); }
+.cardActions { display: flex; padding-left: 8px; margin-top: 2px; }
+.cardActions .actions { justify-content: flex-start; }
+
+/* ---------- table finish ---------- */
+.root .thFirst, .root .tdFirst { padding-left: 4px; }
+.firstCell { display: inline-flex; align-items: center; gap: 2px; }
+.refCell { display: flex; flex-direction: column; min-width: 0; }
+/* ONE primary and More, a fixed width, never wrapping */
+.actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.primarySlot { display: inline-block; }
+.primarySlot > button { width: 100%; }
+.selectAll { display: inline-flex; }
+@media (min-width: 1025px) {
+  .actions { flex-wrap: nowrap; }
+  .primarySlot { min-width: 132px; }
+  .root th.cActions, .root td.cActions { width: 232px; min-width: 232px; white-space: nowrap; }
+}
+/* v4: 1024 px and under the table is stacked records (shared ScrollTable): the header row is not shown, so its select-all checkbox leaves the tab order (Select all lives in the selection bar); the clamp shows the whole text */
+@media (max-width: 1024px) {
+  .selectAll { display: none; }
+  .clamp { display: block; min-width: 0; max-width: none; overflow: visible; -webkit-line-clamp: unset; }
+  .root td.right { text-align: left; }
+  .actions { justify-content: flex-start; }
+}
+.money { font-weight: 600; white-space: nowrap; }
+.clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; min-width: 8rem; max-width: 19ch; line-height: 20px; }
+
+/* ---------- denied ---------- */
+.denied { display: grid; gap: 8px; padding: 32px; border-radius: var(--ui-radius-lg); background: var(--ui-surface); text-align: center; box-shadow: var(--ui-elev-raised); }
+.denied h2, .denied p { margin: 0; }
+.deniedNote { max-width: 520px; margin: 6px auto 0; }
+
+/* ---------- sheet content ---------- */
+.sheetNote { margin: 0; color: var(--ui-muted); font-size: var(--ui-fs-secondary); line-height: var(--ui-lh-secondary); }
+.sheetStatus:empty { display: none; }
+.blockMsg { margin: 0; padding: 10px 12px; border-radius: var(--ui-radius-sm); background: var(--ui-danger-soft); color: #8f1f1f; box-shadow: inset 3px 0 0 var(--ui-danger), inset 0 0 0 1px rgba(179, 45, 45, 0.18); font-size: var(--ui-fs-secondary); }
+.warnMsg { margin: 0; padding: 10px 12px; border-radius: var(--ui-radius-sm); background: var(--ui-warn-soft); color: #4d3200; box-shadow: inset 3px 0 0 #d99a06, inset 0 0 0 1px rgba(217, 154, 6, 0.4); font-size: var(--ui-fs-secondary); }
+.viewFoot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px; width: 100%; }
+.footGroup { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 8px; }
+.facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 24px; margin: 0; padding: 16px; border-radius: var(--ui-radius-md); background: var(--ui-surface-2); box-shadow: inset 0 0 0 1px var(--ui-line); }
+.facts dt { color: var(--ui-muted); font-size: var(--ui-fs-caption); font-weight: 600; letter-spacing: 0.01em; }
+.facts dd { margin: 2px 0 0; font-weight: 600; font-size: 14px; }
+.factWide { grid-column: 1 / -1; }
+.plain { font-weight: 500 !important; }
+.poRow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.callout { margin: 0; padding: 10px 12px 10px 14px; border-radius: var(--ui-radius-sm); background: var(--ui-surface-2); box-shadow: inset 3px 0 0 var(--ui-neutral), inset 0 0 0 1px var(--ui-line); font-size: var(--ui-fs-body); }
+.textLink { position: relative; padding: 0; border: 0; background: none; color: var(--ui-accent); font-size: var(--ui-fs-secondary); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.textLink::after { content: ""; position: absolute; inset: -14px -6px; }
+.blockMsg .textLink { color: #8f1f1f; }
+
+/* activity (collapsed by default, like the real panel) */
+.activity { border-top: 1px solid var(--ui-line); padding-top: 4px; }
+.activityBtn { position: relative; display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 40px; padding: 0 2px; border: 0; border-radius: 6px; background: none; color: var(--ui-ink-2); font-size: var(--ui-fs-body); font-weight: 600; text-align: left; transition: color var(--ui-t-fast) var(--ui-ease); }
+.activityBtn::after { content: ""; position: absolute; inset: -4px 0; }
+.activityBtn:hover { color: var(--ui-ink); }
+.chev { transition: transform var(--ui-t-base) var(--ui-ease); }
+.chevOpen { transform: rotate(180deg); }
+.timeline { margin: 6px 0 0 6px; padding: 0 0 0 16px; list-style: none; border-left: 1px solid var(--ui-line-strong); display: flex; flex-direction: column; gap: 12px; }
+.timeline li { position: relative; }
+.timeline li::before { content: ""; position: absolute; left: -20.5px; top: 7px; width: 7px; height: 7px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1.5px var(--ui-line-hover); }
+.tlTitle { margin: 0; font-size: var(--ui-fs-body); color: var(--ui-ink); font-weight: 500; }
+.tlDetail { margin: 1px 0 0; font-size: var(--ui-fs-secondary); color: var(--ui-ink-2); }
+.tlWho { margin: 1px 0 0; font-size: var(--ui-fs-caption); color: var(--ui-muted); }
+
+/* ---------- forms ---------- */
+.form { display: flex; flex-direction: column; gap: 14px; }
+.formGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; }
+.summary { padding: 12px 14px 12px 16px; border-radius: var(--ui-radius-sm); background: var(--ui-danger-soft); box-shadow: inset 3px 0 0 var(--ui-danger), inset 0 0 0 1px rgba(179, 45, 45, 0.18); color: #6e1717; font-size: var(--ui-fs-body); }
+.summary:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
+.summaryTitle { margin: 0 0 4px; font-weight: 600; }
+.summary ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 14px; }
+.summary .textLink { color: #8f1f1f; text-align: left; }
+.vatBlock { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 14px 24px; }
+.vatControls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 20px; }
+.vatRate { width: 132px; }
+.totals { width: min(300px, 100%); margin: 0; padding: 12px 16px; border-radius: var(--ui-radius-md); background: var(--ui-surface-2); box-shadow: inset 0 0 0 1px var(--ui-line); font-size: var(--ui-fs-body); }
+.totals div { display: flex; justify-content: space-between; gap: 16px; padding: 2px 0; }
+.totals dt { color: var(--ui-ink-2); }
+.totals dd { margin: 0; font-weight: 500; }
+.totalRow { margin-top: 4px; padding-top: 8px !important; box-shadow: inset 0 1px 0 var(--ui-line-strong); }
+.totalRow dt { color: var(--ui-ink); font-weight: 600; }
+.totalRow dd { font-weight: 600; }
+
+/* machines */
+.mLines { display: flex; flex-direction: column; gap: 14px; }
+.mLine { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border-radius: var(--ui-radius-md); box-shadow: inset 0 0 0 1px var(--ui-line-strong); }
+.mLegend { margin: 0; font-size: var(--ui-fs-body); font-weight: 600; }
+.mRow { display: grid; grid-template-columns: minmax(0, 1fr) 128px auto; align-items: end; gap: 8px 12px; }
+.mRemove { margin-bottom: 4px; }
+.mSummary { margin: 0; font-size: var(--ui-fs-body); }
+
+/* ---------- responsive ---------- */
+@media (max-width: 767px) {
+  .cards { grid-template-columns: 1fr; }
+  .facts, .formGrid { grid-template-columns: 1fr; }
+  .mRow { grid-template-columns: 1fr 120px; }
+  .mRemove { grid-column: 1 / -1; justify-self: start; margin-bottom: 0; }
+  .viewFoot { flex-direction: column; align-items: stretch; }
+  .footGroup { justify-content: flex-end; }
+}
+
+/* ---------- reduced motion (the shared set already stops its own motion; this module's transitions follow) ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .card, .chev, .activityBtn { transition: none; }
+}

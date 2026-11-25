@@ -10,6 +10,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { IsoPackRedesign } from "@/components/iso/iso-pack-redesign";
+import { useCompanyUiSwitch } from "@/lib/use-company-ui-switch";
 import { IsoSwitchCard } from "@/components/iso/iso-switch-card";
 import { RoleGate } from "@/components/role-gate";
 import { Button } from "@/components/ui/button";
@@ -23,7 +25,7 @@ import { exportSpreadsheet } from "@/lib/export-records";
 import { ISO_DOCUMENTS } from "@/lib/iso/document-list";
 import { fillDocument, TO_COMPLETE, type FillContext } from "@/lib/iso/fill";
 import { buildGapChecklist, EMPTY_EVIDENCE, GAP_CSV_COLUMNS, gapStatusLabel } from "@/lib/iso/gap-checklist";
-import { ISO_OFF_NOTICE, isoTemplatesEnabled } from "@/lib/iso/iso-switch";
+import { ISO_OFF_NOTICE, ISO_TEMPLATES_ON_MARKER, isoTemplatesEnabled } from "@/lib/iso/iso-switch";
 import { loadIsoEvidence, type IsoEvidence } from "@/lib/iso/load-iso-evidence";
 import { overdueNcrs, REVIEW_DAYS_DEFAULT, reviewDays } from "@/lib/iso/ncr-review-reminder";
 import { useOrgSettings } from "@/lib/org-settings";
@@ -40,6 +42,7 @@ export function IsoPackView() {
 }
 
 function IsoPackBody() {
+  const redesign = useCompanyUiSwitch("ui-admin-iso-v2:on", ISO_TEMPLATES_ON_MARKER);
   const { hiddenNav, loaded } = useOrgSettings();
   const on = isoTemplatesEnabled(hiddenNav);
   const available = !DEMO_MODE && Boolean(supabase);
@@ -116,15 +119,8 @@ function IsoPackBody() {
     setBusy(false);
   }
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="page-title">ISO templates</h1>
-        <p className="mt-2 text-sm text-slate-500">Branded draft templates and a self-check list for {companyName}. Template and self-check aid. Needs company review. Not certification evidence.</p>
-      </div>
-      <IsoSwitchCard />
-      {state !== "ready" ? <Skeleton className="h-80" /> : (
-        <>
+  const contents = (
+    <>
           {data?.unread.length ? <p className="text-xs text-slate-500">Some records could not be read ({data.unread.join(", ")}). Those clauses show as not evidenced.</p> : null}
           <div className="flex flex-wrap items-center gap-3">
             <Button className="min-h-11" disabled={busy} onClick={() => void downloadPack()}>Download pack (zip)</Button>
@@ -178,6 +174,24 @@ function IsoPackBody() {
               )}
           </section>
         </>
+  );
+  if (redesign) {
+    return (
+      <IsoPackRedesign companyName={companyName} switching={<IsoSwitchCard />} ready={state === "ready"}>
+        {contents}
+      </IsoPackRedesign>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="page-title">ISO templates</h1>
+        <p className="mt-2 text-sm text-slate-500">Branded draft templates and a self-check list for {companyName}. Template and self-check aid. Needs company review. Not certification evidence.</p>
+      </div>
+      <IsoSwitchCard />
+      {state !== "ready" ? <Skeleton className="h-80" /> : (
+        contents
       )}
     </div>
   );

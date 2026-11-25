@@ -1,0 +1,79 @@
+/*
+ * BOUNDARY (Delivery notes, Invoices module 4, PREVIEW ONLY, v2 on shared UI v4). Inputs: the class names used by components/delivery-notes/preview/DeliveryNotesPreview.tsx, and the
+ * --ui-* tokens that components/ui/premium defines on its token class (applied to the page root, so no value is repeated here). Output: only the page layout the shared set does
+ * not provide: the one-row toolbar, the active-filter chip row, the card grid, the fixed-width actions column and the sheet layout. Everything else (type, tables, panels, badges,
+ * the selection bar) is the shared component's own look.
+ * Must not change: no global selectors, nothing outside this module, no business rules, no !important, no rule that targets a shared component's own classes (tune a shared piece
+ * by a token or a prop only). Control heights stay on the 32 / 40 / 48 px scale and every row control keeps a 48 px hit area (the shared Button and Checkbox draw it), so
+ * wrapped rows sit 16 px apart. Motion comes from the shared set (120 to 200 ms) and stops under prefers-reduced-motion there. Forbidden: gradients, blur or glass, decorative icons.
+ */
+
+.root { display: flex; flex-direction: column; gap: 16px; max-width: 1720px; padding-bottom: 24px; }
+table th.right, table td.right { text-align: right; }
+.nowrap { white-space: nowrap; }
+.ref { white-space: nowrap; overflow-wrap: anywhere; }
+.deniedNote { margin: 12px auto 0; max-width: 520px; text-align: center; }
+
+/* ---------- preview controls (inside the shared popover) ---------- */
+.dock { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; max-width: 280px; padding-bottom: 8px; }
+.dockStates { display: flex; flex-direction: column; gap: 8px; width: 100%; margin-bottom: 4px; }
+
+/* ---------- toolbar: one row, quick filter inline, the rest in popovers ---------- */
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 24px; min-height: 48px; }
+.tbGroup { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 12px; min-width: 0; }
+.activeRow { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 8px; }
+.activeRow .activeChip { gap: 8px; border-radius: 999px; padding-right: 10px; }
+.colScope { max-width: 260px; margin: 0 0 4px; }
+.colLocked { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; margin: 0; }
+.colReset { padding: 6px 0 4px; }
+
+/* ---------- cards ---------- */
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 16px; }
+.card { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 8px 16px 12px 8px; border-radius: var(--ui-radius-lg); background: var(--ui-surface); box-shadow: var(--ui-elev-raised); transition: box-shadow var(--ui-t-base) var(--ui-ease-out), background-color var(--ui-t-base) var(--ui-ease-out); }
+.cardOn { background: var(--ui-soft); box-shadow: 0 0 0 1.5px var(--ui-brand), var(--ui-shadow-1); }
+.cardTop { display: flex; align-items: center; gap: 4px; }
+.cardRef { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.cardTop > :last-child { flex: none; }
+.dl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 20px; margin: 0; padding-left: 8px; }
+.dl div { min-width: 0; }
+.dl dt { margin: 0 0 1px; }
+.dl dd { margin: 0; overflow-wrap: anywhere; }
+.dlWide { grid-column: 1 / -1; }
+.cardNotes { padding-left: 8px; }
+.cardActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding-left: 8px; }
+
+/* ---------- table finish on top of the shared ScrollTable ---------- */
+.firstCell { display: inline-flex; align-items: center; gap: 2px; margin-left: -10px; }
+table th.actionsHead { text-align: right; }
+.rowActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 16px 8px; }
+.clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; max-width: 30ch; }
+.cellNote { display: block; text-align: inherit; }
+.attention { color: #6b4300; font-weight: 600; }
+
+/* ---------- sheets ---------- */
+.sheetStack { display: flex; flex-direction: column; gap: 16px; }
+.facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 24px; margin: 0; padding: 16px; border-radius: var(--ui-radius-md); background: var(--ui-surface-2); box-shadow: var(--ui-elev-flat); }
+.facts dd { margin: 2px 0 0; }
+.factWide { grid-column: 1 / -1; }
+.form { display: flex; flex-direction: column; gap: 14px; }
+.formGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+.formGrid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 16px; }
+
+@media (min-width: 1025px) {
+  .actionsHead, .actionsCell { width: 224px; min-width: 224px; }
+  .cellNote { white-space: nowrap; }
+  .rowActions { flex-wrap: nowrap; white-space: nowrap; gap: 8px; }
+}
+/* ---------- responsive (NO SIDEWAYS SCROLLING: at 1024 px and under every table is stacked by the shared ScrollTable, nothing scrolls sideways) ---------- */
+@media (max-width: 1024px) {
+  .dock { max-width: 100%; }
+  .ref, .nowrap, .cellNote { white-space: normal; }
+  .rowActions { flex-wrap: wrap; justify-content: flex-start; gap: 16px 8px; white-space: normal; }
+  .cardActions { flex-wrap: wrap; gap: 16px 8px; }
+  .facts, .formGrid, .formGrid3 { grid-template-columns: minmax(0, 1fr); }
+  .vatBox { min-width: 0; width: 100%; }
+  .totals { width: 100%; }
+}
+@media (max-width: 640px) {
+  .cards { grid-template-columns: minmax(0, 1fr); }
+}

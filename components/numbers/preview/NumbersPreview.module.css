@@ -1,0 +1,58 @@
+/*
+ * BOUNDARY (Numbers, Module 7, PREVIEW ONLY). Inputs: the class names used by components/numbers/preview/NumbersPreview.tsx and the --ui-* tokens of components/ui/premium
+ * (on the page root). Output: the look of the Numbers preview only. Must not change: no global selectors, nothing outside this module, no business rules; control hit areas stay 48 px.
+ * Motion is colour only and off under prefers-reduced-motion. Forbidden here: gradients, blur or glass, decorative icons. Two navy-scale series, labelled directly; colour is never the only signal.
+ */
+.root { display: flex; flex-direction: column; gap: 20px; max-width: 1200px; padding-bottom: 32px; container-type: inline-size; container-name: num; }
+.right { text-align: right; }
+.muted { margin: 0; color: var(--ui-muted); font-size: 13.5px; }
+.headControls { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 10px; }
+.monthsLabel { color: var(--ui-ink-2); font-size: 13.5px; font-weight: 650; }
+.dock { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; max-width: 280px; padding-bottom: 8px; }
+.dock p { margin: 0; }
+.dockStates { display: flex; flex-direction: column; gap: 8px; width: 100%; margin-bottom: 6px; }
+.gate { padding: 24px; border-radius: var(--ui-radius-lg); background: #fff; box-shadow: 0 0 0 1px var(--ui-line); }
+.gateTitle { margin: 0 0 6px; font-size: var(--ui-fs-section); line-height: var(--ui-lh-section); font-weight: var(--ui-fw-section); }
+.tiles { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
+@container num (min-width: 560px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.tile { display: flex; flex-direction: column; gap: 6px; padding: 16px 18px 15px; border-radius: var(--ui-radius-lg); background: var(--ui-surface); box-shadow: var(--ui-elev-raised); }
+.tileLabel { color: var(--ui-ink-2); font-size: var(--ui-fs-label); line-height: var(--ui-lh-label); font-weight: var(--ui-fw-label); }
+.tileValue { font-size: var(--ui-fs-numeral); line-height: var(--ui-lh-numeral); font-weight: var(--ui-fw-numeral); letter-spacing: var(--ui-ls-numeral); color: var(--ui-ink); }
+.tileSub { color: var(--ui-muted); font-size: var(--ui-fs-secondary); line-height: var(--ui-lh-secondary); }
+.panel { display: flex; flex-direction: column; min-width: 0; border-radius: var(--ui-radius-lg); background: var(--ui-surface); box-shadow: var(--ui-elev-raised); }
+.panelHead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 2px 12px; min-height: 52px; padding: 8px 18px; border-bottom: 1px solid var(--ui-line); }
+.panelTitle { margin: 0; font-size: var(--ui-fs-card); line-height: var(--ui-lh-card); font-weight: var(--ui-fw-card); color: var(--ui-ink); }
+.panelMeta { color: var(--ui-muted); font-size: var(--ui-fs-secondary); text-align: right; }
+.panelBody { padding: 14px 18px 16px; }
+.empty { margin: 0; padding: 24px 0; text-align: center; color: var(--ui-muted); font-size: 13.5px; }
+.note { margin: 10px 0 8px; color: var(--ui-muted); font-size: var(--ui-fs-secondary); line-height: var(--ui-lh-secondary); }
+.failed { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 0; padding: 12px 0; font-size: 14px; color: var(--ui-ink); }
+.failedDash { font-weight: 650; }
+.bars { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.barRow { font-size: var(--ui-fs-body); display: grid; grid-template-columns: minmax(min(7rem, 38%), 15rem) minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 40px; padding: 4px 0; border-bottom: 1px solid var(--ui-line); }
+.barRow:last-child { border-bottom: 0; }
+.barLabel { min-width: 0; overflow-wrap: anywhere; color: var(--ui-ink); }
+.barTrack { height: 10px; border-radius: 2px; background: var(--ui-surface-3); overflow: hidden; }
+.barFill { display: block; height: 100%; border-radius: 2px; background: var(--ui-brand); }
+.barValue { min-width: 4.5rem; text-align: right; font-weight: 600; color: var(--ui-ink); white-space: nowrap; }
+@container num (max-width: 520px) { .barRow { grid-template-columns: minmax(0, 1fr) auto; } .barTrack { grid-column: 1 / -1; order: 3; } }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-bottom: 6px; color: var(--ui-ink-2); font-size: 13px; font-weight: 550; }
+.legend span { display: inline-flex; align-items: center; gap: 8px; }
+.swInv, .swRec { display: inline-block; width: 12px; height: 12px; border-radius: 2px; }
+.swInv, .barInv { background: var(--ui-brand); fill: var(--ui-brand); }
+.swRec { background: #8fa3d6; }
+.barRec { fill: #8fa3d6; }
+.svg { display: block; overflow: visible; }
+.gridLine { stroke: var(--ui-line); }
+.axisLine { stroke: var(--ui-line-strong); }
+.axisText { fill: var(--ui-muted); font-size: 12px; font-family: var(--ui-font); font-variant-numeric: tabular-nums lining-nums; }
+.valueText { fill: var(--ui-ink); font-size: 11.5px; font-weight: 650; font-family: var(--ui-font); font-variant-numeric: tabular-nums lining-nums; }
+.valueTextRec { fill: var(--ui-ink-2); font-size: 11.5px; font-weight: 600; font-family: var(--ui-font); font-variant-numeric: tabular-nums lining-nums; }
+.tableGap { margin-top: 4px; }
+table th.right, table td.right { text-align: right; }
+
+.headControls [role="radio"] { position: relative; }
+.headControls [role="radio"]::after { content: ""; position: absolute; inset: -8px -2px; }
+
+/* the shared control scrolls sideways under 640 px, which clips its transparent hit area: it stays visible here (the control is short enough to fit) */
+.headControls [role="radiogroup"] { overflow: visible; }

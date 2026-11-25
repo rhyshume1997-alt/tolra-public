@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/ui/premium";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -45,7 +46,7 @@ const VALID = /^\d{4}-\d{2}-\d{2}$/;
  * Refused late time actions (075): office/admin see, per person, the clock and job time a phone synced too late (week approved / over
  * 14 days), to add as a correction; hidden until the database has 075.
  */
-export function WeekReview() {
+export function WeekReview({ redesign = false }: { redesign?: boolean } = {}) {
   const params = useSearchParams();
   const router = useRouter();
   const { user, hasAnyRole } = useUser();
@@ -125,8 +126,14 @@ export function WeekReview() {
   if (needsUpdate) return <NeedsDatabaseUpdate />;
   return (
     <div className="space-y-4" data-testid="week-review">
-      <h1 className="page-title">Weekly hours</h1>
-      <p className="text-sm text-slate-500">Clock in and out, and see the hours worked each day and week.</p>
+      {redesign ? (
+        <PageHeader title="Weekly hours" description="Clock in and out, and see the hours worked each day and week." />
+      ) : (
+        <>
+          <h1 className="page-title">Weekly hours</h1>
+          <p className="text-sm text-slate-500">Clock in and out, and see the hours worked each day and week.</p>
+        </>
+      )}
       <HoursTabs active="week" weekHref={`/time/week?week=${week}${only ? `&user=${only}` : ""}`} />
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" size="sm" onClick={() => go(addDays(week, -7))} aria-label="Previous week"><ChevronLeft className="size-4" /></Button>

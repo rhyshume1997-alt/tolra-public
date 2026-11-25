@@ -1,11 +1,31 @@
 "use client";
 
+/** Admin Data presentation. Both views use the existing admin gate and data controls. */
+
+import { AdminDataRedesign } from "@/components/admin/admin-data-redesign";
+import { useCompanyUiSwitch } from "@/lib/use-company-ui-switch";
 import { DataImport } from "@/components/data-import";
 import { RoleGate } from "@/components/role-gate";
 import { SliqImport } from "@/components/sliq-import";
 
 /** Admin > Data (migration 076): import customers, suppliers, stock, quotes, sales orders, jobs, purchase orders, invoices and payments from one upload. */
 export default function AdminDataPage() {
+  const redesign = useCompanyUiSwitch("ui-admin-data-v2:on");
+  const body = (
+    <>
+        <DataImport />
+        <SliqImport />
+    </>
+  );
+
+  if (redesign) {
+    return (
+      <RoleGate allowed={["admin"]}>
+        <AdminDataRedesign>{body}</AdminDataRedesign>
+      </RoleGate>
+    );
+  }
+
   return (
     <RoleGate allowed={["admin"]}>
       <div className="space-y-6">
@@ -13,8 +33,7 @@ export default function AdminDataPage() {
           <h1 className="page-title">Data</h1>
           <p className="mt-2 text-sm text-slate-500">Bring records in from a spreadsheet. The database checks every row first and writes nothing if any row has a problem.</p>
         </div>
-        <DataImport />
-        <SliqImport />
+        {body}
       </div>
     </RoleGate>
   );

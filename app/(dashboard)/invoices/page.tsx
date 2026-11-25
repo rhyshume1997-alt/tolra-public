@@ -1,5 +1,7 @@
 "use client";
 
+import { AGING, InvoiceNotices, InvoicesRedesign, LegacyInvoicesView } from "@/components/invoices/invoices-redesign";
+import { useCompanyUiSwitch } from "@/lib/use-company-ui-switch";
 import { deletedOne } from "@/lib/delete-result";
 import { EmptyList } from "@/components/empty-list";
 import { ActivityPanel } from "@/components/activity-panel";
@@ -51,7 +53,7 @@ import { type CompanyProfile, requireCompanyProfile, useCompanyProfile } from "@
 import { resolveCustomer, resolveCustomerAddress } from "@/lib/customers";
 import { DEMO_MODE } from "@/lib/demo";
 import { ListFilterNotice, useListFilter } from "@/components/list-filter-notice";
-import { DRAFT_INVOICE_DAYS, DRAFT_INVOICE_RULE_TITLE } from "@/lib/attention-items";
+import { DRAFT_INVOICE_RULE_TITLE } from "@/lib/attention-items";
 import { draftInvoiceCounts, invoiceMatchesFilter } from "@/lib/list-filter";
 import { fmtDate, fmtDateTime, nowIso, toDateInput } from "@/lib/dates";
 import { downloadPdf, openMailDraft, pdfBlob, pdfErrorMessage } from "@/lib/download-pdf";
@@ -280,14 +282,8 @@ function invoiceTotalsProblem(invoice: InvoiceBase, lines: InvoiceLine[], compan
   });
 }
 
-const AGING = [
-  { label: "Current", color: "text-blue-700", test: (days: number) => days <= 0 },
-  { label: "1-30 days late", color: "text-amber-700", test: (days: number) => days >= 1 && days <= 30 },
-  { label: "31-60 days late", color: "text-orange-700", test: (days: number) => days >= 31 && days <= 60 },
-  { label: "60+ days late", color: "text-red-700", test: (days: number) => days > 60 },
-];
-
 export default function InvoicesPage() {
+  const redesign = useCompanyUiSwitch("ui-invoices-v2:on");
   const { isVisible } = useColumnVisibility("invoices");
   // Cards / List / Table, remembered per person (lib/view-mode; styles in app/globals.css [data-view]).
   const [view, setView] = useViewMode("invoices", "table");
@@ -1204,17 +1200,10 @@ export default function InvoicesPage() {
     });
   }
 
-  return (
-    <RoleGate allowed={["admin", "office"]}>
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h1 className="page-title">Invoicing</h1>
-          <p className="mt-2 text-sm text-slate-500">Invoices are what customers owe us. See what is unpaid and chase it.</p>
-          {draftsWaiting > 0 ? <p className="mt-1 text-sm font-medium text-ink" data-testid="drafts-waiting" title={`${drafts.old} over ${DRAFT_INVOICE_DAYS} days old (what the dashboard counts). A draft has no number and isn't owed until a person issues it.`}>Drafts waiting to issue: {draftsWaiting}</p> : null}
-          {creditHeld.total > 0 ? <p className="mt-1 text-sm font-medium text-amber-800" data-testid="customer-credit-held" title="Open an invoice with credit to refund it or apply it to another invoice.">Customer credit held: {currency(creditHeld.total)} for {creditHeld.customers} customer{creditHeld.customers === 1 ? "" : "s"}</p> : null}
-        </div>
-        <div className="flex flex-wrap gap-2">
+  const View = redesign ? InvoicesRedesign : LegacyInvoicesView;
+  const notices = <InvoiceNotices draftsWaiting={draftsWaiting} oldDrafts={drafts.old} creditHeld={creditHeld} />;
+  const actions = (
+    <div className="flex flex-wrap gap-2">
           <Button variant="outline" className={overdueInvoices.length ? "border-amber-500 bg-amber-500 text-[#1c1917] hover:border-amber-400 hover:bg-amber-400" : undefined} disabled={saving || loading || !overdueInvoices.length} onClick={() => void chaseOverdue()} title={overdueInvoices.length ? "Draft a chaser email for every overdue invoice" : "No overdue invoices"}>
             <Send className="size-4" /> Chase All Overdue
           </Button>
@@ -1268,7 +1257,21 @@ export default function InvoicesPage() {
             </DialogContent>
           </Dialog>
         </div>
+  );
+  const legacyHeader = (
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <h1 className="page-title">Invoicing</h1>
+          <p className="mt-2 text-sm text-slate-500">Invoices are what customers owe us. See what is unpaid and chase it.</p>
+          {notices}
+        </div>
+        {actions}
       </div>
+  );
+
+  return (
+    <RoleGate allowed={["admin", "office"]}>
+    <View actions={actions} legacyHeader={legacyHeader} notices={notices}>
 
       {DEMO_MODE ? <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Demo mode: sample data is shown if the database can&apos;t be reached.</div> : null}
 
@@ -1727,7 +1730,8 @@ export default function InvoicesPage() {
       />
         </DialogContent>
       </Dialog>
-    </div>
+    </View>
     </RoleGate>
   );
 }
+

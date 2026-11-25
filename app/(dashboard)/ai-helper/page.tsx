@@ -1,13 +1,18 @@
 "use client";
 
+/** Live AI route. The rollout selects presentation only, while AI availability and roles are resolved by the existing feature checks. */
 import Link from "next/link";
 
+import { AiHelperRedesign } from "@/components/ai-helper/ai-helper-redesign";
 import { AiAssistantPanel } from "@/components/ai-helper/assistant-panel";
 import { AiRfqPanel } from "@/components/ai-helper/rfq-panel";
 import { AiRoundupPanel } from "@/components/ai-helper/roundup-panel";
 import { anyFeatureOn, useAiHelperStatus } from "@/components/ai-helper/use-ai-helper-status";
 import { AiWhatItShows } from "@/components/ai-helper/what-it-shows";
 import { RoleGate } from "@/components/role-gate";
+import { useCompanyUiSwitch } from "@/lib/use-company-ui-switch";
+
+const AI_UI_V2_MARKER = "ui-ai-v2:on";
 
 /** Where AI is set up: the AI card on Admin > Integrations (the page's #ai anchor). */
 const AI_SETUP_HREF = "/admin/integrations#ai";
@@ -18,7 +23,7 @@ const AI_SETUP_HREF = "/admin/integrations#ai";
  * actions need a fresh authenticator code, which only the AI card on Admin > Integrations asks for. This page says so and links there, so there is no
  * button here that the server would refuse. Hidden entirely when this server has the AI helper off. Online only: nothing here is queued offline.
  */
-export default function AiHelperPage() {
+function LegacyAiHelperPage() {
   const { status, loaded, allowed, reload } = useAiHelperStatus();
   return (
     <RoleGate allowed={["admin", "office"]}>
@@ -53,6 +58,17 @@ export default function AiHelperPage() {
           </>
         )}
       </div>
+    </RoleGate>
+  );
+}
+
+
+export default function AiHelperPage() {
+  const redesign = useCompanyUiSwitch(AI_UI_V2_MARKER);
+  if (!redesign) return <LegacyAiHelperPage />;
+  return (
+    <RoleGate allowed={["admin", "office"]}>
+      <AiHelperRedesign />
     </RoleGate>
   );
 }
