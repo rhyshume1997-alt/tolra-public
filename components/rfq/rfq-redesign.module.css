@@ -1,0 +1,20 @@
+/* Opt-in RFQ rhythm and touch targets, scoped to the live list and its existing cards. */
+.screen, .records {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.records :global([data-slot="card"]) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  border-radius: 14px;
+}
+
+.records :global([data-slot="card-content"]) > div {
+  min-width: 0;
+}
+
+.records :global([data-rfq-field="actions"]) :is(a, button) {
+  min-height: 48px;
+}
