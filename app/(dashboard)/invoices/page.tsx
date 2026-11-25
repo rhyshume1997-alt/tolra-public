@@ -1,8 +1,6 @@
 "use client";
 
-/** Invoicing route. Both presentations use the same data, role checks, handlers and dialogs. */
-
-import { InvoicesRedesign, type InvoicesViewProps } from "@/components/invoices/invoices-redesign";
+import { AGING, InvoiceNotices, InvoicesRedesign, LegacyInvoicesView } from "@/components/invoices/invoices-redesign";
 import { useCompanyUiSwitch } from "@/lib/use-company-ui-switch";
 import { deletedOne } from "@/lib/delete-result";
 import { EmptyList } from "@/components/empty-list";
@@ -55,7 +53,7 @@ import { type CompanyProfile, requireCompanyProfile, useCompanyProfile } from "@
 import { resolveCustomer, resolveCustomerAddress } from "@/lib/customers";
 import { DEMO_MODE } from "@/lib/demo";
 import { ListFilterNotice, useListFilter } from "@/components/list-filter-notice";
-import { DRAFT_INVOICE_DAYS, DRAFT_INVOICE_RULE_TITLE } from "@/lib/attention-items";
+import { DRAFT_INVOICE_RULE_TITLE } from "@/lib/attention-items";
 import { draftInvoiceCounts, invoiceMatchesFilter } from "@/lib/list-filter";
 import { fmtDate, fmtDateTime, nowIso, toDateInput } from "@/lib/dates";
 import { downloadPdf, openMailDraft, pdfBlob, pdfErrorMessage } from "@/lib/download-pdf";
@@ -283,13 +281,6 @@ function invoiceTotalsProblem(invoice: InvoiceBase, lines: InvoiceLine[], compan
     storedTotals: invoiceStoredTotals(invoice),
   });
 }
-
-const AGING = [
-  { label: "Current", color: "text-blue-700", test: (days: number) => days <= 0 },
-  { label: "1-30 days late", color: "text-amber-700", test: (days: number) => days >= 1 && days <= 30 },
-  { label: "31-60 days late", color: "text-orange-700", test: (days: number) => days >= 31 && days <= 60 },
-  { label: "60+ days late", color: "text-red-700", test: (days: number) => days > 60 },
-];
 
 export default function InvoicesPage() {
   const redesign = useCompanyUiSwitch("ui-invoices-v2:on");
@@ -1210,12 +1201,7 @@ export default function InvoicesPage() {
   }
 
   const View = redesign ? InvoicesRedesign : LegacyInvoicesView;
-  const notices = (
-    <>
-          {draftsWaiting > 0 ? <p className="mt-1 text-sm font-medium text-ink" data-testid="drafts-waiting" title={`${drafts.old} over ${DRAFT_INVOICE_DAYS} days old (what the dashboard counts). A draft has no number and isn't owed until a person issues it.`}>Drafts waiting to issue: {draftsWaiting}</p> : null}
-          {creditHeld.total > 0 ? <p className="mt-1 text-sm font-medium text-amber-800" data-testid="customer-credit-held" title="Open an invoice with credit to refund it or apply it to another invoice.">Customer credit held: {currency(creditHeld.total)} for {creditHeld.customers} customer{creditHeld.customers === 1 ? "" : "s"}</p> : null}
-    </>
-  );
+  const notices = <InvoiceNotices draftsWaiting={draftsWaiting} oldDrafts={drafts.old} creditHeld={creditHeld} />;
   const actions = (
     <div className="flex flex-wrap gap-2">
           <Button variant="outline" className={overdueInvoices.length ? "border-amber-500 bg-amber-500 text-[#1c1917] hover:border-amber-400 hover:bg-amber-400" : undefined} disabled={saving || loading || !overdueInvoices.length} onClick={() => void chaseOverdue()} title={overdueInvoices.length ? "Draft a chaser email for every overdue invoice" : "No overdue invoices"}>
@@ -1749,7 +1735,3 @@ export default function InvoicesPage() {
   );
 }
 
-
-function LegacyInvoicesView({ legacyHeader, children }: InvoicesViewProps) {
-  return <div className="space-y-6">{legacyHeader}{children}</div>;
-}

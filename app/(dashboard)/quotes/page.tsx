@@ -1,8 +1,6 @@
 "use client";
 
-/** Quote Generator route. Both presentations use the same data, role checks, handlers and dialogs. */
-
-import { QuotesRedesign, type QuotesViewProps } from "@/components/quotes/quotes-redesign";
+import { AiDraftFlags, LegacyQuotesView, QuotesRedesign } from "@/components/quotes/quotes-redesign";
 import { useCompanyUiSwitch } from "@/lib/use-company-ui-switch";
 import { StatTile } from "@/components/stat-tile";
 import { EmptyList } from "@/components/empty-list";
@@ -74,7 +72,6 @@ import { type AcceptQuoteResult, acceptOutcome, customerPoInput, deliveryDateInp
 import { CUSTOMER_PO_LABEL, customerPoBeside, customerPoText } from "@/lib/customer-po";
 import { databaseHas068 } from "@/lib/db-features";
 import { useDatabaseHas068 } from "@/lib/use-database-has-068";
-import { readAiDraftNotes } from "@/lib/ai-helper/draft-notes";
 import { acceptedLineIds, baseQuoteRef, type DeclinedLineRow, declinedValueByQuote, describedLine, lineReference, partField, versionChain } from "@/lib/quote-versions";
 
 
@@ -304,22 +301,6 @@ const quotePdfLines = (items: QuoteItem[]) => items.map((item) => ({ description
 /** Why this quote can't be printed from its lines (they don't add up to its stored total), or null. */
 function quoteTotalsProblem(quote: QuoteRow, items: QuoteItem[], company: CompanyProfile) {
   return storedTotalsProblem({ lineItems: quotePdfLines(items), showVat: quote.vatEnabled !== false, company, storedTotals: quoteStoredTotals(quote) });
-}
-
-/** A draft the AI helper suggested: the "AI-suggested" badge and each "Needs human review" item, read from its internal notes. */
-function AiDraftFlags({ notes }: { notes: string }) {
-  const flags = readAiDraftNotes(notes);
-  if (!flags.aiSuggested) return null;
-  return (
-    <div className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm" data-testid="quote-ai-flags">
-      <p><span className="rounded bg-violet-100 px-1.5 py-0.5 text-[11px] font-semibold text-violet-800">AI-suggested</span> <span className="text-slate-700">Drafted by the AI helper from an RFQ email and approved by a person. Check it before sending.</span></p>
-      {flags.review.length ? (
-        <ul className="flex flex-wrap gap-1" aria-label="Needs human review">
-          {flags.review.map((item) => <li key={item} className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-800">Needs human review: {item}</li>)}
-        </ul>
-      ) : null}
-    </div>
-  );
 }
 
 export default function QuotesPage() {
@@ -1454,7 +1435,3 @@ export default function QuotesPage() {
   );
 }
 
-
-function LegacyQuotesView({ legacyHeader, children }: QuotesViewProps) {
-  return <div className="space-y-6">{legacyHeader}{children}</div>;
-}
