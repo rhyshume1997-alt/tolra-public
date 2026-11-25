@@ -61,6 +61,15 @@ function serverEnv(): Record<string, string> | null {
   };
 }
 
+// CI runs the suite as 3 shards on 3 runners: E2E_SHARD="N/3". Unset or empty = the whole suite (every local run and the --list in the web job).
+function shardFromEnv(): { current: number; total: number } | undefined {
+  const raw = process.env.E2E_SHARD ?? "";
+  if (raw === "") return undefined;
+  const m = /^([1-9])\/([1-9])$/.exec(raw);
+  if (!m || Number(m[1]) > Number(m[2])) throw new Error(`E2E_SHARD must look like "1/3", got "${raw}"`);
+  return { current: Number(m[1]), total: Number(m[2]) };
+}
+
 const env = external ? null : serverEnv();
 const build = process.env.E2E_SKIP_BUILD === "1" ? "" : "npm run build && ";
 
@@ -75,6 +84,7 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: 0,
+  shard: shardFromEnv(),
   forbidOnly: Boolean(process.env.CI),
   reporter: [["list"]],
   use: {
