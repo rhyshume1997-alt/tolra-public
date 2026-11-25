@@ -459,7 +459,7 @@ td[data-label]::before {
  * Must not change: colour, size and shape only; no layout flow, handler, text, focus or data changes. Without the attribute nothing here applies.
  * Do not edit components/ui/premium/premium.module.css; the tokens come from it.
  */
-html[data-ui-v2="on"] [data-slot="button"] { border-radius: var(--ui-radius-sm); font-family: var(--ui-font); font-weight: 600; letter-spacing: 0; min-height: var(--ui-h-md, 40px); }
+html[data-ui-v2="on"] :is([data-slot="button"], [data-slot="dropdown-menu-trigger"][data-variant]) { border-radius: var(--ui-radius-sm); font-family: var(--ui-font); font-weight: 600; letter-spacing: 0; min-height: var(--ui-h-md, 40px); }
 html[data-ui-v2="on"] [data-slot="button"][data-size="xs"], html[data-ui-v2="on"] [data-slot="button"][data-size="sm"] { min-height: 32px; }
 html[data-ui-v2="on"] [data-slot="button"][data-size="lg"] { min-height: var(--ui-h-lg, 48px); }
 html[data-ui-v2="on"] [data-slot="button"][data-size^="icon"] { min-height: 0; }
@@ -516,10 +516,13 @@ html[data-ui-v2="on"] [data-slot="dropdown-menu-item"]:focus, html[data-ui-v2="o
  * NAVY SELECTION BAR (Jobs). Inputs: the bar's own data-testid="selection-bar" data-selected="true" (app/(dashboard)/jobs/page.tsx, unchanged).
  * Output: the bar's shared Buttons are translucent white-outline with white text, and Finish Selected is white with navy text (the on-dark look of the v4 shots).
  * Why: the premium token class sets control text to "inherit" (unlayered), so a white-fill outline Button inside the white-text navy bar became white on white.
- * Not scoped to html[data-ui-v2] on purpose: it fixes the bar whether or not the skin is on. Colour only; no layout, handler or text change.
+ * Scoped to html[data-ui-v2="on"], so a screen with its switch OFF is untouched. Colour only; no layout, handler or text change.
  */
-[data-testid="selection-bar"][data-selected="true"] [data-slot="button"] { background: rgba(255, 255, 255, 0.12); color: #fff; border-color: rgba(255, 255, 255, 0.4); box-shadow: none; }
-[data-testid="selection-bar"][data-selected="true"] [data-slot="button"]:hover:not(:disabled) { background: rgba(255, 255, 255, 0.22); color: #fff; }
-[data-testid="selection-bar"][data-selected="true"] [data-slot="button"][data-variant="finish"] { background: #fff; color: var(--ui-brand, #1e3472); border-color: #fff; }
-[data-testid="selection-bar"][data-selected="true"] [data-slot="button"][data-variant="finish"]:hover:not(:disabled) { background: #eef2fb; color: var(--ui-brand, #1e3472); }
-[data-testid="selection-bar"][data-selected="true"] [data-slot="button"]:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+html[data-ui-v2="on"] [data-testid="selection-bar"][data-selected="true"] [data-slot="button"], html[data-ui-v2="on"] [data-testid="selection-bar"][data-selected="true"] [data-slot="dropdown-menu-trigger"] { background: rgba(255, 255, 255, 0.12); color: #fff; border-color: rgba(255, 255, 255, 0.4); box-shadow: none; }
+html[data-ui-v2="on"] [data-testid="selection-bar"][data-selected="true"] [data-slot="button"]:hover:not(:disabled), html[data-ui-v2="on"] [data-testid="selection-bar"][data-selected="true"] [data-slot="dropdown-menu-trigger"]:hover:not(:disabled) { background: rgba(255, 255, 255, 0.22); color: #fff; }
+html[data-ui-v2="on"] [data-testid="selection-bar"][data-selected="true"] [data-slot="button"][data-variant="finish"] { background: #fff; color: var(--ui-brand, #1e3472); border-color: #fff; }
+html[data-ui-v2="on"] [data-testid="selection-bar"][data-selected="true"] [data-slot="button"][data-variant="finish"]:hover:not(:disabled) { background: #eef2fb; color: var(--ui-brand, #1e3472); }
+html[data-ui-v2="on"] [data-testid="selection-bar"][data-selected="true"] [data-slot="button"]:focus-visible, html[data-ui-v2="on"] [data-testid="selection-bar"][data-selected="true"] [data-slot="dropdown-menu-trigger"]:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+/* The app's own chrome keeps its own face: the premium token class sits on <html> (so portalled dialogs get the tokens) and would otherwise hand the sidebar, the mobile menu and the top bar IBM Plex Sans. */
+html[data-ui-v2="on"] :is(aside, header.sticky, [data-slot="sheet-content"][data-side="left"]) { font-family: var(--font-sans); }
