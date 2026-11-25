@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { needsFullDocumentLoad } from "@/lib/full-document-load";
 import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useUser } from "@/lib/use-user";
@@ -40,7 +41,7 @@ export function CompanySetupGuide() {
   return <section aria-label="Company setup" className="mb-6 rounded-lg border border-blue-200 bg-white p-4 print:hidden">
     <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">Set up your company — {count} of {SETUP_STEPS.length} reviewed</h2><button type="button" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? "Show less" : "Show setup steps"}</button></div>
     {expanded && <><p className="mt-2 text-sm">Start with your own details. No sample customers, jobs or invoices are added. Follow these steps, then tick each one when you have checked it. Optional connections can stay off.</p>
-      <ol className="mt-3 grid gap-3 md:grid-cols-3">{SETUP_STEPS.map((step, i) => <li key={step.id} className="rounded border p-3"><Link href={step.href} className="font-semibold underline">{i + 1}. {step.label}</Link><p className="mt-1 text-sm">{step.hint}</p><label className="mt-2 flex gap-2 text-sm"><input type="checkbox" checked={Boolean(progress[step.id])} disabled={saving || loaded?.org !== org} onChange={e => void mark(step.id, e.target.checked)} />I have checked this</label></li>)}</ol></>}
+      <ol className="mt-3 grid gap-3 md:grid-cols-3">{SETUP_STEPS.map((step, i) => <li key={step.id} className="rounded border p-3">{needsFullDocumentLoad(step.href) ? <a href={step.href} className="font-semibold underline">{i + 1}. {step.label}</a> : <Link href={step.href} className="font-semibold underline">{i + 1}. {step.label}</Link>}<p className="mt-1 text-sm">{step.hint}</p><label className="mt-2 flex gap-2 text-sm"><input type="checkbox" checked={Boolean(progress[step.id])} disabled={saving || loaded?.org !== org} onChange={e => void mark(step.id, e.target.checked)} />I have checked this</label></li>)}</ol></>}
     {message && <p role="status" className="mt-2 text-sm text-amber-800">{message}</p>}
   </section>;
 }
