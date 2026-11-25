@@ -1,8 +1,12 @@
 "use client";
 
+/** Email history uses the same queries and settlement action in both presentations. */
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Brain, Info, Mail } from "lucide-react";
 
+import { EmailRedesign, type EmailRow } from "@/components/email/email-redesign";
+import { useCompanyUiSwitch } from "@/lib/use-company-ui-switch";
 import { FilterBar } from "@/components/filter-bar";
 import { RoleGate } from "@/components/role-gate";
 import { StatusBadge } from "@/components/status-badge";
@@ -19,21 +23,12 @@ import { PRODUCT } from "@/lib/product";
 import { useUser } from "@/lib/use-user";
 import { toast } from "sonner";
 
-type EmailRow = {
-  id: string;
-  to: string;
-  subject: string;
-  body: string;
-  status: string;
-  related: string;
-  when: string;
-};
-
 const STATUS_LABEL: Record<string, string> = {
   drafted: "Drafted", copied: "Copied", sent_manually: "Sent manually", sent_via_system: "Sent", failed: "Failed", sending: "Sending", unknown: "Needs checking",
 };
 
 export default function EmailPage() {
+  const redesign = useCompanyUiSwitch("ui-email-v2:on");
   const [filters, setFilters] = useState(new Set(["all"]));
   const [rows, setRows] = useState<EmailRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,6 +82,25 @@ export default function EmailPage() {
 
   const visible = useMemo(() => filters.has("all") ? rows : rows.filter((row) => filters.has(row.status)), [filters, rows]);
   const count = (status: string) => (loading || error ? "—" : String(rows.filter((row) => row.status === status).length));
+
+  if (redesign) {
+    return (
+      <RoleGate allowed={["admin", "office"]}>
+        <EmailRedesign
+          filters={filters}
+          setFilters={setFilters}
+          visible={visible}
+          loading={loading}
+          error={error}
+          count={count}
+          load={load}
+          statusLabel={(status) => STATUS_LABEL[status] ?? status}
+          settle={activeRole === "admin" ? settle : undefined}
+          settling={settling}
+        />
+      </RoleGate>
+    );
+  }
 
   return (
     <RoleGate allowed={["admin", "office"]}>
