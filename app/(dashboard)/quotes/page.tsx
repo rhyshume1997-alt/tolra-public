@@ -1,5 +1,7 @@
 "use client";
 
+import { AiDraftFlags, LegacyQuotesView, QuotesRedesign } from "@/components/quotes/quotes-redesign";
+import { useCompanyUiSwitch } from "@/lib/use-company-ui-switch";
 import { StatTile } from "@/components/stat-tile";
 import { EmptyList } from "@/components/empty-list";
 import { quotesEmptyHint } from "@/lib/empty-hints";
@@ -70,7 +72,6 @@ import { type AcceptQuoteResult, acceptOutcome, customerPoInput, deliveryDateInp
 import { CUSTOMER_PO_LABEL, customerPoBeside, customerPoText } from "@/lib/customer-po";
 import { databaseHas068 } from "@/lib/db-features";
 import { useDatabaseHas068 } from "@/lib/use-database-has-068";
-import { readAiDraftNotes } from "@/lib/ai-helper/draft-notes";
 import { acceptedLineIds, baseQuoteRef, type DeclinedLineRow, declinedValueByQuote, describedLine, lineReference, partField, versionChain } from "@/lib/quote-versions";
 
 
@@ -302,23 +303,8 @@ function quoteTotalsProblem(quote: QuoteRow, items: QuoteItem[], company: Compan
   return storedTotalsProblem({ lineItems: quotePdfLines(items), showVat: quote.vatEnabled !== false, company, storedTotals: quoteStoredTotals(quote) });
 }
 
-/** A draft the AI helper suggested: the "AI-suggested" badge and each "Needs human review" item, read from its internal notes. */
-function AiDraftFlags({ notes }: { notes: string }) {
-  const flags = readAiDraftNotes(notes);
-  if (!flags.aiSuggested) return null;
-  return (
-    <div className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm" data-testid="quote-ai-flags">
-      <p><span className="rounded bg-violet-100 px-1.5 py-0.5 text-[11px] font-semibold text-violet-800">AI-suggested</span> <span className="text-slate-700">Drafted by the AI helper from an RFQ email and approved by a person. Check it before sending.</span></p>
-      {flags.review.length ? (
-        <ul className="flex flex-wrap gap-1" aria-label="Needs human review">
-          {flags.review.map((item) => <li key={item} className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-800">Needs human review: {item}</li>)}
-        </ul>
-      ) : null}
-    </div>
-  );
-}
-
 export default function QuotesPage() {
+  const redesign = useCompanyUiSwitch("ui-quotes-v2:on");
   const [decision, setDecision] = useState<{ quote: QuoteRow; outcome: "accepted" | "rejected" } | null>(null);
   // Confirm Accepted: the customer's PO when it is already known (optional; without it the sales order gets a provisional number).
   const [decisionPo, setDecisionPo] = useState("");
@@ -1029,12 +1015,9 @@ export default function QuotesPage() {
   const viewProblem = viewingQuote && viewItems.length && company ? quoteTotalsProblem(viewingQuote, viewItems, issuedCompany(company, viewingQuote.issuerSnapshot)) : null;
   const viewTotals = viewItems.length ? documentTotals(viewItems.map((item) => ({ quantity: item.quantity, unitPrice: item.unitPrice, ...lineVat(item) })), 0, { vatEnabled: viewVat, standardRate: vat.standardRate }) : null;
 
-  return (
-    <RoleGate allowed={["admin", "office"]}>
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div><h1 className="page-title">Quote Generator</h1><p className="mt-2 text-sm text-slate-500">A quote is the price we offer a customer. Make, send and follow up quotes here.</p></div>
-        <div className="flex flex-wrap items-center gap-2"><ColumnToggle tableKey="quotes" /><ViewSwitcher value={view} onChange={setView} />
+  const View = redesign ? QuotesRedesign : LegacyQuotesView;
+  const actions = (
+    <div className="flex flex-wrap items-center gap-2"><ColumnToggle tableKey="quotes" /><ViewSwitcher value={view} onChange={setView} />
         <Dialog open={builderOpen} onOpenChange={closeBuilder}>
           <DialogTrigger asChild><Button className="bg-brand text-brand-ink hover:bg-brand-hover"><Plus className="size-4" /> New quote</Button></DialogTrigger>
           <DialogContent className="max-w-4xl">
@@ -1087,7 +1070,17 @@ export default function QuotesPage() {
           </DialogContent>
         </Dialog>
         </div>
+  );
+  const legacyHeader = (
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div><h1 className="page-title">Quote Generator</h1><p className="mt-2 text-sm text-slate-500">A quote is the price we offer a customer. Make, send and follow up quotes here.</p></div>
+        {actions}
       </div>
+  );
+
+  return (
+    <RoleGate allowed={["admin", "office"]}>
+    <View actions={actions} legacyHeader={legacyHeader}>
 
       {DEMO_MODE ? <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Demo mode: sample data is shown if the database can&apos;t be reached.</div> : null}
 
@@ -1437,7 +1430,8 @@ export default function QuotesPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </View>
     </RoleGate>
   );
 }
+
