@@ -1,5 +1,6 @@
 "use client";
 
+import { ScheduleBanners, ScheduleView } from "@/components/schedule/schedule-redesign";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AlertTriangle, CalendarClock, Flag, Pencil, Plus } from "lucide-react";
@@ -330,21 +331,18 @@ export default function SchedulePage() {
     }
   }
 
+  const actions = (
+    <div className="flex flex-wrap items-center gap-2">
+      <ColumnToggle tableKey="schedule" />
+      {canBook ? <Button className={`min-h-11 ${navy}`} onClick={() => setBooking({})} disabled={!activeMachines.length}><CalendarClock className="size-4" /> New booking</Button> : null}
+    </div>
+  );
+  const legacyTitle = <div><h1 className="page-title">Machine Schedule</h1><p className="mt-2 text-sm text-slate-500">Book jobs onto machines and see when each machine is free.</p></div>;
+
   return (
     <RoleGate allowed={["admin", "office", "workshop", "viewer"]}>
-      <div className="space-y-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="page-title">Machine Schedule</h1>
-            <p className="mt-2 text-sm text-slate-500">Book jobs onto machines and see when each machine is free.</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <ColumnToggle tableKey="schedule" />
-            {canBook ? <Button className={`min-h-11 ${navy}`} onClick={() => setBooking({})} disabled={!activeMachines.length}><CalendarClock className="size-4" /> New booking</Button> : null}
-          </div>
-        </div>
-        {error ? <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error} <button onClick={() => void load()} className="font-semibold underline">Retry</button></div> : null}
-        {liveError && !error ? <div role="alert" data-testid="schedule-live-error" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Live machine use may be out of date. {liveError} <button onClick={() => void refresh("all")} className="font-semibold underline">Retry</button></div> : null}
+      <ScheduleView actions={actions} legacyTitle={legacyTitle}>
+        <ScheduleBanners error={error} liveError={liveError} onRetry={() => void load()} onRetryLive={() => void refresh("all")} />
 
         {loading ? <Skeleton className="h-96" /> : (
           <>
@@ -528,7 +526,7 @@ export default function SchedulePage() {
             onDelete={() => void removeBooking(selected.id)}
           />
         ) : null}
-      </div>
+      </ScheduleView>
     </RoleGate>
   );
 }
@@ -822,3 +820,4 @@ function BookingDetailDialog({ booking, now, liveLeft, canEdit, canDelete, isAdm
     </Dialog>
   );
 }
+
