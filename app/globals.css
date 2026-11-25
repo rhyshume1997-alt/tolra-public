@@ -511,3 +511,15 @@ html[data-ui-v2="on"] [data-slot="dialog-description"], html[data-ui-v2="on"] [d
 html[data-ui-v2="on"] [data-slot="dropdown-menu-content"], html[data-ui-v2="on"] [data-slot="select-content"], html[data-ui-v2="on"] [data-slot="dropdown-menu-sub-content"] { border-radius: var(--ui-radius-md); border: 1px solid var(--ui-line); background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-shadow-pop); font-family: var(--ui-font); }
 html[data-ui-v2="on"] [data-slot="dropdown-menu-item"], html[data-ui-v2="on"] [data-slot="select-item"] { border-radius: 6px; min-height: 40px; font-size: 14px; }
 html[data-ui-v2="on"] [data-slot="dropdown-menu-item"]:focus, html[data-ui-v2="on"] [data-slot="select-item"]:focus { background: var(--ui-surface-3); color: var(--ui-ink); }
+
+/*
+ * NAVY SELECTION BAR (Jobs). Inputs: the bar's own data-testid="selection-bar" data-selected="true" (app/(dashboard)/jobs/page.tsx, unchanged).
+ * Output: the bar's shared Buttons are translucent white-outline with white text, and Finish Selected is white with navy text (the on-dark look of the v4 shots).
+ * Why: the premium token class sets control text to "inherit" (unlayered), so a white-fill outline Button inside the white-text navy bar became white on white.
+ * Not scoped to html[data-ui-v2] on purpose: it fixes the bar whether or not the skin is on. Colour only; no layout, handler or text change.
+ */
+[data-testid="selection-bar"][data-selected="true"] [data-slot="button"] { background: rgba(255, 255, 255, 0.12); color: #fff; border-color: rgba(255, 255, 255, 0.4); box-shadow: none; }
+[data-testid="selection-bar"][data-selected="true"] [data-slot="button"]:hover:not(:disabled) { background: rgba(255, 255, 255, 0.22); color: #fff; }
+[data-testid="selection-bar"][data-selected="true"] [data-slot="button"][data-variant="finish"] { background: #fff; color: var(--ui-brand, #1e3472); border-color: #fff; }
+[data-testid="selection-bar"][data-selected="true"] [data-slot="button"][data-variant="finish"]:hover:not(:disabled) { background: #eef2fb; color: var(--ui-brand, #1e3472); }
+[data-testid="selection-bar"][data-selected="true"] [data-slot="button"]:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
