@@ -1,9 +1,16 @@
+"use client";
 /** Live settings navigation and presentation. Panel controls, writes and Document Designs are rendered by the route. */
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
-import { PageHeader, premiumTokens } from "@/components/ui/premium";
+import { PageHeader, Tabs, premiumTokens } from "@/components/ui/premium";
 
 import styles from "./settings-redesign.module.css";
+
+const JUMPS = [
+  { value: "setup-company", label: "Company" },
+  { value: "setup-breaks", label: "Working hours" },
+  { value: "setup-email", label: "Email templates" },
+];
 
 export function SettingsRedesign({ productName, company, documentDesigns, panels }: {
   productName: string;
@@ -11,14 +18,14 @@ export function SettingsRedesign({ productName, company, documentDesigns, panels
   documentDesigns: ReactNode;
   panels: ReactNode;
 }) {
+  const [jump, setJump] = useState(JUMPS[0].value);
   return (
     <div className={styles.screen} data-testid="settings-v2">
       <PageHeader title="Settings" description={`Company-wide settings for ${productName}. Only admins can change them.`} />
-      <nav className={`${premiumTokens} ${styles.jumps}`} aria-label="Jump to settings">
-        <a href="#setup-company">Company</a>
-        <a href="#setup-breaks">Working hours</a>
-        <a href="#setup-email">Email templates</a>
-      </nav>
+      {/* Same three targets as before; selecting one scrolls to its section, nothing is hidden or reordered. */}
+      <div className={premiumTokens}>
+        <Tabs label="Jump to settings" value={jump} tabs={JUMPS} onChange={(value) => { setJump(value); document.getElementById(value)?.scrollIntoView({ block: "start", behavior: "smooth" }); }} />
+      </div>
       <div className={`${premiumTokens} ${styles.panels}`}>{company}</div>
       {documentDesigns}
       <div className={`${premiumTokens} ${styles.panels}`}>{panels}</div>
