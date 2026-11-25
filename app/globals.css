@@ -451,3 +451,78 @@ td[data-label]::before {
   [data-slot="dialog-content"][data-state="open"],
   [data-slot="sheet-content"][data-state="open"] { animation: feel-fade-in var(--feel-base) var(--feel-out); }
 }
+
+/*
+ * UI V2 SKIN. Inputs: html[data-ui-v2="on"] and the premium token class, both set by components/ui/ui-v2-skin.tsx only while a screen whose
+ * ui-<screen>-v2:on switch is ON is open. Output: the old shared controls (data-slot button, input, textarea, select, card, tabs, badge, table,
+ * dialog, sheet, menus) are drawn with the shared premium look (navy, IBM Plex Sans, 40/48 px controls, underline tabs, soft status pills).
+ * Must not change: colour, size and shape only; no layout flow, handler, text, focus or data changes. Without the attribute nothing here applies.
+ * Do not edit components/ui/premium/premium.module.css; the tokens come from it.
+ */
+html[data-ui-v2="on"] :is([data-slot="button"], [data-slot="dropdown-menu-trigger"][data-variant]) { border-radius: var(--ui-radius-sm); font-family: var(--ui-font); font-weight: 600; letter-spacing: 0; min-height: var(--ui-h-md, 40px); }
+html[data-ui-v2="on"] [data-slot="button"][data-size="xs"], html[data-ui-v2="on"] [data-slot="button"][data-size="sm"] { min-height: 32px; }
+html[data-ui-v2="on"] [data-slot="button"][data-size="lg"] { min-height: var(--ui-h-lg, 48px); }
+html[data-ui-v2="on"] [data-slot="button"][data-size^="icon"] { min-height: 0; }
+html[data-ui-v2="on"] [data-slot="button"]:is([data-variant="default"],[data-variant="outline"],[data-variant="secondary"]) { box-shadow: var(--ui-shadow-1), var(--ui-inset-light); }
+@media (pointer: coarse) { html[data-ui-v2="on"] [data-slot="button"] { min-height: 48px; } html[data-ui-v2="on"] [data-slot="button"][data-size^="icon"] { min-height: 48px; min-width: 48px; } }
+html[data-ui-v2="on"] [data-slot="button"][data-variant="default"] { background: var(--ui-brand); color: var(--ui-on-brand); border-color: var(--ui-brand); box-shadow: var(--ui-inset-light); }
+html[data-ui-v2="on"] [data-slot="button"][data-variant="default"]:hover:not(:disabled) { background: color-mix(in srgb, var(--ui-brand) 88%, #fff); }
+html[data-ui-v2="on"] [data-slot="button"][data-variant="outline"], html[data-ui-v2="on"] [data-slot="button"][data-variant="secondary"] { background: var(--ui-surface); color: var(--ui-ink); border-color: var(--ui-line-strong); }
+html[data-ui-v2="on"] [data-slot="button"][data-variant="outline"]:hover:not(:disabled), html[data-ui-v2="on"] [data-slot="button"][data-variant="secondary"]:hover:not(:disabled) { background: var(--ui-surface-2); border-color: var(--ui-line-hover); }
+html[data-ui-v2="on"] [data-slot="button"][data-variant="ghost"] { color: var(--ui-ink); }
+html[data-ui-v2="on"] [data-slot="button"][data-variant="ghost"]:hover:not(:disabled) { background: var(--ui-surface-3); }
+html[data-ui-v2="on"] [data-slot="button"][data-variant="destructive"] { background: var(--ui-danger-soft); color: var(--ui-danger); border-color: color-mix(in srgb, var(--ui-danger) 35%, #fff); }
+html[data-ui-v2="on"] [data-slot="button"][data-variant="link"] { color: var(--ui-accent); font-weight: 500; text-decoration: none; min-height: 0; }
+html[data-ui-v2="on"] [data-slot="button"][data-variant="link"]:hover { text-decoration: underline; text-underline-offset: 3px; }
+html[data-ui-v2="on"] [data-slot="button"]:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; box-shadow: none; }
+
+html[data-ui-v2="on"] [data-slot="input"], html[data-ui-v2="on"] [data-slot="textarea"], html[data-ui-v2="on"] [data-slot="select-trigger"] {
+  border-radius: var(--ui-radius-sm); border: 1px solid var(--ui-line-strong); background: var(--ui-surface); color: var(--ui-ink); font-family: var(--ui-font); font-size: 14px; box-shadow: none;
+}
+html[data-ui-v2="on"] [data-slot="input"], html[data-ui-v2="on"] [data-slot="select-trigger"] { min-height: var(--ui-h-md, 40px); }
+@media (pointer: coarse) { html[data-ui-v2="on"] [data-slot="input"], html[data-ui-v2="on"] [data-slot="select-trigger"] { min-height: 48px; } }
+html[data-ui-v2="on"] [data-slot="input"]:hover:not(:disabled), html[data-ui-v2="on"] [data-slot="textarea"]:hover:not(:disabled) { border-color: var(--ui-line-hover); }
+html[data-ui-v2="on"] [data-slot="input"]:focus-visible, html[data-ui-v2="on"] [data-slot="textarea"]:focus-visible, html[data-ui-v2="on"] [data-slot="select-trigger"]:focus-visible { border-color: var(--ui-accent); outline: 2px solid var(--ui-accent); outline-offset: 1px; box-shadow: none; }
+html[data-ui-v2="on"] [data-slot="input"][aria-invalid="true"], html[data-ui-v2="on"] [data-slot="textarea"][aria-invalid="true"] { border-color: var(--ui-danger); }
+html[data-ui-v2="on"] input[type="checkbox"], html[data-ui-v2="on"] input[type="radio"] { accent-color: var(--ui-brand); }
+
+html[data-ui-v2="on"] [data-slot="card"] { border-radius: var(--ui-radius-lg); border: 1px solid var(--ui-line); background: var(--ui-surface); box-shadow: var(--ui-shadow-1); color: var(--ui-ink); font-family: var(--ui-font); }
+html[data-ui-v2="on"] [data-slot="card-title"] { font-family: var(--ui-font-heading); font-size: var(--ui-fs-card); line-height: var(--ui-lh-card); font-weight: var(--ui-fw-card); letter-spacing: var(--ui-ls-card); }
+html[data-ui-v2="on"] [data-slot="card-description"] { color: var(--ui-muted); font-size: var(--ui-fs-secondary); }
+
+html[data-ui-v2="on"] [data-slot="tabs-list"] { background: transparent; border-radius: 0; padding: 0; gap: 4px; height: auto; border-bottom: 1px solid var(--ui-line); width: 100%; justify-content: flex-start; flex-wrap: wrap; }
+html[data-ui-v2="on"] [data-slot="tabs-trigger"] { flex: 0 0 auto; height: 44px; padding: 0 14px; border-radius: 0; border: 0; background: transparent; color: var(--ui-muted); font-family: var(--ui-font); font-size: 14px; font-weight: 500; box-shadow: none; }
+html[data-ui-v2="on"] [data-slot="tabs-trigger"]:hover { color: var(--ui-ink); }
+html[data-ui-v2="on"] [data-slot="tabs-trigger"][data-state="active"], html[data-ui-v2="on"] [data-slot="tabs-trigger"][data-active] { background: transparent; color: var(--ui-ink); font-weight: 600; box-shadow: none; }
+html[data-ui-v2="on"] [data-slot="tabs-trigger"]::after { background: var(--ui-brand); height: 2px; bottom: -1px; }
+html[data-ui-v2="on"] [data-slot="tabs-trigger"][data-state="active"]::after { opacity: 1; }
+
+html[data-ui-v2="on"] [data-slot="badge"] { border-radius: 6px; font-family: var(--ui-font); font-size: 12px; font-weight: 600; letter-spacing: 0; }
+
+html[data-ui-v2="on"] [data-slot="table"] { font-family: var(--ui-font); font-size: 14px; font-variant-numeric: tabular-nums; }
+html[data-ui-v2="on"] [data-slot="table-head"] { font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--ui-ink-2); background: var(--ui-surface-2); }
+html[data-ui-v2="on"] [data-slot="table-row"] { border-color: var(--ui-line); }
+
+html[data-ui-v2="on"] [data-slot="dialog-content"], html[data-ui-v2="on"] [data-slot="sheet-content"] { border-radius: var(--ui-radius-lg); border: 1px solid var(--ui-line); background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-shadow-dialog); font-family: var(--ui-font); }
+html[data-ui-v2="on"] [data-slot="sheet-content"] { border-radius: 0; }
+html[data-ui-v2="on"] [data-slot="dialog-overlay"], html[data-ui-v2="on"] [data-slot="sheet-overlay"] { background: rgba(14, 23, 38, 0.45); }
+html[data-ui-v2="on"] [data-slot="dialog-title"], html[data-ui-v2="on"] [data-slot="sheet-title"] { font-family: var(--ui-font-heading); font-size: var(--ui-fs-section); line-height: var(--ui-lh-section); font-weight: var(--ui-fw-section); color: var(--ui-ink); }
+html[data-ui-v2="on"] [data-slot="dialog-description"], html[data-ui-v2="on"] [data-slot="sheet-description"] { color: var(--ui-muted); font-size: 14px; }
+html[data-ui-v2="on"] [data-slot="dropdown-menu-content"], html[data-ui-v2="on"] [data-slot="select-content"], html[data-ui-v2="on"] [data-slot="dropdown-menu-sub-content"] { border-radius: var(--ui-radius-md); border: 1px solid var(--ui-line); background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-shadow-pop); font-family: var(--ui-font); }
+html[data-ui-v2="on"] [data-slot="dropdown-menu-item"], html[data-ui-v2="on"] [data-slot="select-item"] { border-radius: 6px; min-height: 40px; font-size: 14px; }
+html[data-ui-v2="on"] [data-slot="dropdown-menu-item"]:focus, html[data-ui-v2="on"] [data-slot="select-item"]:focus { background: var(--ui-surface-3); color: var(--ui-ink); }
+
+/*
+ * NAVY SELECTION BAR (Jobs). Inputs: the bar's own data-testid="selection-bar" data-selected="true" (app/(dashboard)/jobs/page.tsx, unchanged).
+ * Output: the bar's shared Buttons are translucent white-outline with white text, and Finish Selected is white with navy text (the on-dark look of the v4 shots).
+ * Why: the premium token class sets control text to "inherit" (unlayered), so a white-fill outline Button inside the white-text navy bar became white on white.
+ * Scoped to html[data-ui-v2="on"], so a screen with its switch OFF is untouched. Colour only; no layout, handler or text change.
+ */
+html[data-ui-v2="on"] [data-testid="selection-bar"][data-selected="true"] [data-slot="button"], html[data-ui-v2="on"] [data-testid="selection-bar"][data-selected="true"] [data-slot="dropdown-menu-trigger"] { background: rgba(255, 255, 255, 0.12); color: #fff; border-color: rgba(255, 255, 255, 0.4); box-shadow: none; }
+html[data-ui-v2="on"] [data-testid="selection-bar"][data-selected="true"] [data-slot="button"]:hover:not(:disabled), html[data-ui-v2="on"] [data-testid="selection-bar"][data-selected="true"] [data-slot="dropdown-menu-trigger"]:hover:not(:disabled) { background: rgba(255, 255, 255, 0.22); color: #fff; }
+html[data-ui-v2="on"] [data-testid="selection-bar"][data-selected="true"] [data-slot="button"][data-variant="finish"] { background: #fff; color: var(--ui-brand, #1e3472); border-color: #fff; }
+html[data-ui-v2="on"] [data-testid="selection-bar"][data-selected="true"] [data-slot="button"][data-variant="finish"]:hover:not(:disabled) { background: #eef2fb; color: var(--ui-brand, #1e3472); }
+html[data-ui-v2="on"] [data-testid="selection-bar"][data-selected="true"] [data-slot="button"]:focus-visible, html[data-ui-v2="on"] [data-testid="selection-bar"][data-selected="true"] [data-slot="dropdown-menu-trigger"]:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+/* The app's own chrome keeps its own face: the premium token class sits on <html> (so portalled dialogs get the tokens) and would otherwise hand the sidebar, the mobile menu and the top bar IBM Plex Sans. */
+html[data-ui-v2="on"] :is(aside, header.sticky, [data-slot="sheet-content"][data-side="left"]) { font-family: var(--font-sans); }
