@@ -14,6 +14,9 @@
 #   * Once per commit, not twice: it runs on `push` only for main, and on `pull_request` for every branch. A feature
 #     branch with an open pull request is checked by the pull request run alone (a push to a branch without a pull
 #     request is not checked until one is opened). The "changes" job handles both events, as before.
+#   * `integration` is now two jobs that run in parallel: `database` (database suite and upgrade rehearsal) and `browser` (the
+#     Playwright suite in 3 shards, `--shard=N/3`, each shard on its own runner with its own disposable Supabase and ports).
+#     Both follow every rule here that names `integration`. `ci-gate` needs both and every shard.
 #   * `integration` is the slow one (about 22 minutes), so on a pull request it runs only once the PR carries the
 #     `ready` label: adding the label starts a run, and every later push to a labelled PR runs it too. It always runs
 #     on main and on a manual run (Actions > CI > Run workflow). The quick checks (`web`: typecheck, lint, unit tests,
@@ -102,6 +105,7 @@ jobs:
     needs: changes
     if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.code != 'false') }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30  # Added with the CI speed-up: `web` runs in well under 15 minutes; this only stops a hung job holding a runner for the 6-hour default.
     env:
       NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
       NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
@@ -131,13 +135,14 @@ jobs:
       - name: Dependency audit, all packages (report only)
         run: npm audit --audit-level=critical || true
 
-  # Database and browser suites against a disposable local Supabase (audit B1). Docker on the runner only: no
-  # hosted project, secret or production URL is involved, and the isolation guard refuses anything non-local.
-  integration:
+  # Database suite and upgrade rehearsal against their own disposable local Supabase (audit B1). Docker on the runner only: no
+  # hosted project, secret or production URL is involved, and the isolation guard refuses anything non-local. Split out of the old
+  # single `integration` job so it runs in parallel with the browser shards; every step below is unchanged and still runs here.
+  database:
     needs: changes
-    # On a pull request, only with the `ready` label (see the top). Otherwise skipped (counts as passed) only when
-    # "changes" says so; if it failed or said anything else, run.
-    if: ${{ !cancelled() && (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ready')) && (needs.changes.result != 'success' || needs.changes.outputs.integration != 'false') }}
+    # Same rules as before (see the top): on a pull request only with the `ready` label; skipped only when "changes" says so. A targeted
+    # manual run (workflow_dispatch with `specs` and skip_db=true) skips this job, as it skipped the database suite and rehearsal before.
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ready')) && (needs.changes.result != 'success' || needs.changes.outputs.integration != 'false') && !(github.event_name == 'workflow_dispatch' && inputs.specs != '' && inputs.skip_db == 'true') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 120  # Raised from 60 with Rhys's OK, 15 Oct 2026 (runs reached 58 min), and from 90 with Rhys's OK, 22 Oct 2026 (PR 1's run was cancelled at 90 min with 7 browser tests left). Flag it if runs approach 120; do not raise silently.
     # The test-backend helper explicitly selects the official ghcr.io images. Anonymous pulls were
@@ -212,6 +217,18 @@ jobs:
           print("busy:", busy or "none")
           sys.exit("Supabase ports already in use: " + "; ".join(busy) if busy else 0)
           PY
+      # Supabase Docker images, cached as one tarball (the images `supabase start` pulls from ghcr.io). Keyed by the CLI version and
+      # supabase/config.toml. A miss pulls as before (and saves the tarball afterwards); a hit loads it and `supabase start` finds the
+      # images already present. The save runs only after a successful start, so a partial pull is never cached.
+      - name: Restore Supabase Docker images from cache
+        id: supabase-images
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/supabase-images.tar
+          key: supabase-images-2.40.7-${{ hashFiles('supabase/config.toml') }}
+      - name: Load cached Supabase Docker images
+        if: ${{ steps.supabase-images.outputs.cache-hit == 'true' }}
+        run: docker load --input "$RUNNER_TEMP/supabase-images.tar"
       - name: Financial143 CLI, rate snapshots and company isolation (own disposable database)
         run: |
           git fetch --no-tags --depth=1 origin e42d927383513d1b98ce9cfca444884475622e2f
@@ -225,6 +242,22 @@ jobs:
           B5_SUPABASE_CLI="$cli_dir/supabase" npx vitest run -c tests/reviews/b5-financial/vitest.config.ts
       - name: Start disposable Supabase (applies supabase/migrations to an empty database)
         run: npm run test:backend
+      - name: Save Supabase Docker images to cache
+        if: ${{ steps.supabase-images.outputs.cache-hit != 'true' }}
+        continue-on-error: true
+        run: |
+          images="$(docker image ls --format '{{.Repository}}:{{.Tag}}' | grep -E '^(ghcr\.io|public\.ecr\.aws)/supabase/' | grep -v ':<none>$' | sort -u)"
+          [ -n "$images" ] || { echo "No Supabase images found to cache."; exit 1; }
+          echo "$images"
+          # shellcheck disable=SC2086
+          docker save --output "$RUNNER_TEMP/supabase-images.tar" $images
+      - name: Store Supabase Docker images in cache
+        if: ${{ steps.supabase-images.outputs.cache-hit != 'true' }}
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/supabase-images.tar
+          key: supabase-images-2.40.7-${{ hashFiles('supabase/config.toml') }}
       - name: Export this job's disposable test environment
         run: |
           python3 - <<'PY_ENV'
@@ -381,6 +414,158 @@ jobs:
           echo "== #253 and #255 proofs =="
           node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/reviewer-inbound-conditions.test.ts tests/db/reviewer-chase-conditions.test.ts || rc=1
           exit $rc
+      - name: "Evidence: upgrade rehearsal 013 (catalogue compare, frozen security checks), real lines"
+        if: ${{ always() && hashFiles('evidence/rehearsal.json') != '' }}
+        shell: bash
+        run: |
+          node scripts/ci-evidence.mjs list-all evidence/rehearsal.json REHEARSAL '^D2'
+          node scripts/ci-evidence.mjs vitest-summary evidence/rehearsal.json REHEARSAL
+      - name: Keep run evidence (database suite and rehearsal)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-evidence-database
+          path: evidence/
+          if-no-files-found: ignore
+      - name: "Diff audit against the approved baselines (findings printed, each explained in the evidence file)"
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          git fetch --no-tags origin 41c685c416305637d86b580324fff9e6cda037ff 97811d301479d4e409b8eb89f0e7ff2bc61db7e6 f96087a58bf7dd9030e447e71a10b52ba54671d9 2b4bd18390efc468a01b449dae70c844ee204a05
+          node scripts/ci-evidence.mjs diff-audit HEAD 41c685c416305637d86b580324fff9e6cda037ff 97811d301479d4e409b8eb89f0e7ff2bc61db7e6 f96087a58bf7dd9030e447e71a10b52ba54671d9 2b4bd18390efc468a01b449dae70c844ee204a05
+      - name: Stop disposable Supabase
+        if: always()
+        run: npm run test:backend:stop
+
+  # Browser suite, split into 3 Playwright shards (`--shard=N/3`: together exactly the unsharded run's tests; same test files, no new skips or
+  # retries). Each shard is its own runner with its own Docker, its own disposable Supabase (api 54321, db 54322, mail 54324) and its own app
+  # servers (3001, 3002, mock 3999), so nothing is shared between shards: no port, database or state. Each shard starts from the numbered migrations
+  # plus the one-time releases, the same state the single job had after the upgrade rehearsal's reset. Shard 2 also runs the ten reviewer specs and
+  # the informational 146 rollback evidence (which resets that shard's own database). A targeted manual run (`specs`) uses one shard, unsharded.
+  browser:
+    needs: changes
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ready')) && (needs.changes.result != 'success' || needs.changes.outputs.integration != 'false') }}
+    name: browser (shard ${{ matrix.shard }})
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON((github.event_name == 'workflow_dispatch' && inputs.specs != '') && '[1]' || '[1, 2, 3]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120  # Raised from 60 with Rhys's OK, 15 Oct 2026 (runs reached 58 min), and from 90 with Rhys's OK, 22 Oct 2026 (PR 1's run was cancelled at 90 min with 7 browser tests left). Flag it if runs approach 120; do not raise silently.
+    # The test-backend helper explicitly selects the official ghcr.io images. Anonymous pulls were
+    # rate-limited on 26 Oct 2026 (HTTP 429, runs 40360101636 and 40367638716; public.ecr.aws then refused anonymous pulls
+    # with "Data limit exceeded", run 40384629882), so this job signs in to ghcr.io with its own token, read-only.
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      # Linux hands out 32768-60999 as source ports for outgoing connections, and Supabase listens on 54320-54324, so an
+      # outgoing connection (npm ci, the cache, image pulls) could hold one first: "failed to bind host port ... address
+      # already in use" (26 Oct 2026, runs 40378990100 and 40319104185). Reserve 54320-54329 before anything else runs so the
+      # kernel never picks them; Supabase's own binds still work. Existing reservations are kept. Fails the job if the
+      # reservation does not take.
+      - name: Keep the Supabase ports out of the outgoing-connection range
+        run: |
+          current=$(cat /proc/sys/net/ipv4/ip_local_reserved_ports)
+          sudo sysctl -w net.ipv4.ip_local_reserved_ports="${current:+$current,}54320-54329"
+          python3 - <<'PY'
+          import sys
+          s = open("/proc/sys/net/ipv4/ip_local_reserved_ports").read().strip()
+          reserved = set()
+          for part in filter(None, s.split(",")):
+              lo, _, hi = part.partition("-")
+              reserved.update(range(int(lo), int(hi or lo) + 1))
+          missing = [p for p in range(54320, 54330) if p not in reserved]
+          print("reserved ports now:", s)
+          sys.exit(f"not reserved: {missing}" if missing else 0)
+          PY
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # The CLI this suite has always run on. 143 now quotes save_costing_settings_atomic, so 2.40.7 (which misreads an unquoted
+      # name ending in _atomic as BEGIN ATOMIC, 42601) splits it correctly. 2.108.0 starts a stack whose service_role lacks the
+      # default grants these tests rely on (runs 42065110388 and 42091337997: 119 database files fail on assert_privileged_aal).
+      # Pinned by checksum, not only by version: the tarball must match the sha256 published in the release's own
+      # supabase_2.40.7_checksums.txt (21dccbce...), and the installed binary must report 2.40.7. No fallback to another version.
+      - name: Install Supabase CLI 2.40.7 (checksum-verified)
+        run: |
+          set -euo pipefail
+          cli_home="$RUNNER_TEMP/supabase-cli-main"
+          mkdir -p "$cli_home/bin"
+          curl -fsSL -o "$cli_home/cli.tar.gz" https://github.com/supabase/cli/releases/download/v2.40.7/supabase_linux_amd64.tar.gz
+          echo "21dccbcecb9d2ffff4e48ed953539fe223b23becf13e0213a30c2d9a4054d258  $cli_home/cli.tar.gz" | sha256sum -c -
+          tar -xzf "$cli_home/cli.tar.gz" -C "$cli_home/bin" supabase
+          test "$("$cli_home/bin/supabase" --version)" = "2.40.7"
+          echo "$cli_home/bin" >> "$GITHUB_PATH"
+      # Signed-in pulls from ghcr.io (see `permissions` above): the job's own token, read-only, passed on stdin, never printed.
+      - name: Sign in to ghcr.io for the Supabase image pulls
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # The reservation stops new allocations but cannot free a port already held, so check the ports Supabase binds
+      # (api 54321, db 54322, mail 54324: supabase/config.toml) are free right before it starts, and name any that are not.
+      - name: Supabase ports are free
+        run: |
+          python3 - <<'PY'
+          import socket, sys
+          busy = []
+          for port in (54321, 54322, 54324):
+              s = socket.socket()
+              try:
+                  s.bind(("0.0.0.0", port))
+              except OSError as e:
+                  busy.append(f"{port}: {e}")
+              finally:
+                  s.close()
+          print("busy:", busy or "none")
+          sys.exit("Supabase ports already in use: " + "; ".join(busy) if busy else 0)
+          PY
+      # Supabase Docker images, cached as one tarball (the images `supabase start` pulls from ghcr.io). Keyed by the CLI version and
+      # supabase/config.toml. A miss pulls as before (and saves the tarball afterwards); a hit loads it and `supabase start` finds the
+      # images already present. The save runs only after a successful start, so a partial pull is never cached.
+      - name: Restore Supabase Docker images from cache
+        id: supabase-images
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/supabase-images.tar
+          key: supabase-images-2.40.7-${{ hashFiles('supabase/config.toml') }}
+      - name: Load cached Supabase Docker images
+        if: ${{ steps.supabase-images.outputs.cache-hit == 'true' }}
+        run: docker load --input "$RUNNER_TEMP/supabase-images.tar"
+      - name: Start disposable Supabase (applies supabase/migrations to an empty database)
+        run: npm run test:backend
+      - name: Save Supabase Docker images to cache
+        if: ${{ steps.supabase-images.outputs.cache-hit != 'true' }}
+        continue-on-error: true
+        run: |
+          images="$(docker image ls --format '{{.Repository}}:{{.Tag}}' | grep -E '^(ghcr\.io|public\.ecr\.aws)/supabase/' | grep -v ':<none>$' | sort -u)"
+          [ -n "$images" ] || { echo "No Supabase images found to cache."; exit 1; }
+          echo "$images"
+          # shellcheck disable=SC2086
+          docker save --output "$RUNNER_TEMP/supabase-images.tar" $images
+      - name: Store Supabase Docker images in cache
+        if: ${{ steps.supabase-images.outputs.cache-hit != 'true' }}
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/supabase-images.tar
+          key: supabase-images-2.40.7-${{ hashFiles('supabase/config.toml') }}
+      - name: Export this job's disposable test environment
+        run: |
+          python3 - <<'PY_ENV'
+          import os
+          from pathlib import Path
+          allowed = {"TEST_SUPABASE_URL", "TEST_SUPABASE_ANON_KEY", "TEST_SUPABASE_SERVICE_ROLE_KEY", "TEST_DATABASE_URL"}
+          rows = [line for line in Path(".env.test.local").read_text().splitlines() if line.partition("=")[0] in allowed]
+          if {line.partition("=")[0] for line in rows} != allowed:
+              raise SystemExit("Disposable backend environment is incomplete; stop.")
+          with open(os.environ["GITHUB_ENV"], "a") as target:
+              target.write("\n".join(rows) + "\n")
+          PY_ENV
       # Releases 145/146, their verification queries and extra refusal proofs are
       # owned by the ordered test:db fixture. Never apply these one-time files twice.
       - name: Build against the disposable backend
@@ -418,20 +603,26 @@ jobs:
           done
           psql_q -c "NOTIFY pgrst, 'reload schema'"
           sleep 3
-      - name: "Evidence: upgrade rehearsal 013 (catalogue compare, frozen security checks), real lines"
-        if: ${{ always() && hashFiles('evidence/rehearsal.json') != '' }}
-        shell: bash
-        run: |
-          node scripts/ci-evidence.mjs list-all evidence/rehearsal.json REHEARSAL '^D2'
-          node scripts/ci-evidence.mjs vitest-summary evidence/rehearsal.json REHEARSAL
+      - name: Restore Playwright browsers from cache
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      # Chromium itself comes from the cache on a hit; its system libraries are still installed on every run (they are not part of the cache).
       - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+        run: |
+          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" = true ]; then
+            npx playwright install-deps chromium
+          else
+            npx playwright install --with-deps chromium
+          fi
       - name: "SCHEMA MARKER before the browser tests (no reset since the 145/146/147/148/149/150/151/152/153/154/156/157/158/159/160/163/164/165/167/170 install step)"
         run: scripts/ci-schema-markers.sh
       - name: Browser suite
-        # A manual run may name spec files (`specs`): only those run, in the same disposable stack. Empty = the whole suite.
-        # The list comes in through SPECS, never pasted into the script (audit S4): split into words on spaces, with no globbing or
-        # command substitution, and an entry that looks like an option is refused.
+        # A manual run may name spec files (`specs`): only those run, in the same disposable stack (one shard, not split). Empty = the whole
+        # suite, as this shard's share of it. The list comes in through SPECS, never pasted into the script (audit S4): split into words on
+        # spaces, with no globbing or command substitution, and an entry that looks like an option is refused.
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "$SPECS" ]; then
             read -r -a spec_files <<< "$SPECS"
@@ -440,16 +631,18 @@ jobs:
             done
             npx playwright test "${spec_files[@]}"
           else
-            npm run test:e2e
+            npm run test:e2e -- --shard="$SHARD/$SHARD_TOTAL"
           fi
         env:
           E2E_SKIP_BUILD: "1"
           SPECS: ${{ inputs.specs }}
+          SHARD: ${{ matrix.shard }}
+          SHARD_TOTAL: "3"
       - name: "SCHEMA MARKER immediately before the reviewer specs"
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && format('{0}', matrix.shard) == (github.event_name == 'workflow_dispatch' && inputs.specs != '' && '1' || '2') }}
         run: scripts/ci-schema-markers.sh
       - name: Reviewer browser conditions (all ten, database required)
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && format('{0}', matrix.shard) == (github.event_name == 'workflow_dispatch' && inputs.specs != '' && '1' || '2') }}
         env:
           PLAYWRIGHT_JSON_OUTPUT_NAME: evidence/reviewer.json
         run: REVIEWER_REQUIRE_DATABASE=1 E2E_SKIP_BUILD=1 npx playwright test -c playwright.reviewer.config.ts --reporter=list,json
@@ -457,7 +650,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: integration-evidence
+          name: integration-evidence-browser-${{ matrix.shard }}
           path: |
             test-results/
             playwright-report/
@@ -467,8 +660,8 @@ jobs:
       - name: "Evidence: reviewer specs (requires exactly 10 passed, 0 failed, 0 skipped)"
         if: ${{ always() && hashFiles('evidence/reviewer.json') != '' }}
         run: node scripts/ci-evidence.mjs playwright evidence/reviewer.json 10
-      - name: "Evidence: reinstall after a 146 rollback (informational, never gates; prints NOT-PROVEN unless the refusal was shown; runs last, then resets the disposable database)"
-        if: ${{ !cancelled() }}
+      - name: "Evidence: reinstall after a 146 rollback (informational, never gates; prints NOT-PROVEN unless the refusal was shown; runs last, then resets this shard's own disposable database; on the reviewer shard only)"
+        if: ${{ !cancelled() && format('{0}', matrix.shard) == (github.event_name == 'workflow_dispatch' && inputs.specs != '' && '1' || '2') }}
         continue-on-error: true
         shell: bash
         run: |
@@ -478,12 +671,6 @@ jobs:
           scripts/ci-146-rollback-evidence.sh evidence || rc=$?
           scripts/test-backend.sh reset
           exit "$rc"
-      - name: "Diff audit against the approved baselines (findings printed, each explained in the evidence file)"
-        if: ${{ !cancelled() }}
-        shell: bash
-        run: |
-          git fetch --no-tags origin 41c685c416305637d86b580324fff9e6cda037ff 97811d301479d4e409b8eb89f0e7ff2bc61db7e6 f96087a58bf7dd9030e447e71a10b52ba54671d9 2b4bd18390efc468a01b449dae70c844ee204a05
-          node scripts/ci-evidence.mjs diff-audit HEAD 41c685c416305637d86b580324fff9e6cda037ff 97811d301479d4e409b8eb89f0e7ff2bc61db7e6 f96087a58bf7dd9030e447e71a10b52ba54671d9 2b4bd18390efc468a01b449dae70c844ee204a05
       - name: Stop disposable Supabase
         if: always()
         run: npm run test:backend:stop
@@ -512,7 +699,7 @@ jobs:
     # A targeted manual run (workflow_dispatch with `specs`) reports under another check name, so it can never stand in for the
     # required `ci-gate` on a commit: it is diagnostic only, and merge approval still needs the full pull-request run.
     name: ${{ (github.event_name == 'workflow_dispatch' && inputs.specs != '') && 'targeted-run (diagnostic, not a gate)' || 'ci-gate' }}
-    needs: [changes, web, integration, guardrails]
+    needs: [changes, web, database, browser, guardrails]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -524,11 +711,19 @@ jobs:
           CODE: ${{ needs.changes.outputs.code }}
           INTEGRATION_NEEDED: ${{ needs.changes.outputs.integration }}
           WEB: ${{ needs.web.result }}
-          INTEGRATION: ${{ needs.integration.result }}
+          DATABASE: ${{ needs.database.result }}
+          BROWSER: ${{ needs.browser.result }}
+          SKIP_DB: ${{ github.event_name == 'workflow_dispatch' && inputs.specs != '' && inputs.skip_db == 'true' }}
           GUARDRAILS: ${{ needs.guardrails.result }}
         run: |
-          echo "event=$EVENT ready=$READY changes=$CHANGES code=$CODE integration_needed=$INTEGRATION_NEEDED"
-          echo "web=$WEB integration=$INTEGRATION guardrails=$GUARDRAILS"
+          echo "web=$WEB database=$DATABASE browser=$BROWSER (all shards) guardrails=$GUARDRAILS"
+          # `browser` is a matrix: its result is success only when every shard passed. The old single `integration` result is rebuilt from the
+          # two jobs: both must agree (success/success, or skipped/skipped), except that a targeted run (skip_db) skips `database` on purpose.
+          # Any other mix (one passed, the other failed, was cancelled or skipped) fails.
+          if [ "$DATABASE" = "$BROWSER" ]; then INTEGRATION="$BROWSER"
+          elif [ "$SKIP_DB" = true ] && [ "$DATABASE" = skipped ]; then INTEGRATION="$BROWSER"
+          else INTEGRATION="mixed(database=$DATABASE,browser=$BROWSER)"; fi
+          echo "integration (combined)=$INTEGRATION"
           fail=0
           # guardrails runs on every pull request and must pass there; on main and manual runs it is skipped (nothing to compare).
           if [ "$GUARDRAILS" = success ] || { [ "$GUARDRAILS" = skipped ] && [ "$EVENT" != pull_request ]; }; then
