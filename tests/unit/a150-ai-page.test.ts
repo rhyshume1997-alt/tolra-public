@@ -12,6 +12,7 @@ import type { AiHelperStatus } from "@/components/ai-helper/use-ai-helper-status
 
 const state = vi.hoisted(() => ({ allowed: true, loaded: true, status: null as AiHelperStatus | null, reload: vi.fn(), setStatus: vi.fn() }));
 vi.mock("@/components/ai-helper/use-ai-helper-status", async (original) => ({ ...(await original<object>()), useAiHelperStatus: () => state }));
+vi.mock("@/lib/use-company-ui-switch", () => ({ useCompanyUiSwitch: () => false })); // this file covers the OFF (legacy) screen only
 vi.mock("@/components/role-gate", () => ({ RoleGate: ({ children }: { children: ReactNode }) => children }));
 vi.mock("@/components/ai-helper/roundup-panel", () => ({ AiRoundupPanel: () => createElement("section", { "data-testid": "stub-roundup" }) }));
 vi.mock("@/components/ai-helper/rfq-panel", () => ({ AiRfqPanel: () => createElement("section", { "data-testid": "stub-rfq" }) }));

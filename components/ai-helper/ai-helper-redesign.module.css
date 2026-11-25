@@ -1,0 +1,33 @@
+/* Presentation within the enabled AI screen. Shared AI panels retain their controls and handlers. */
+.screen {
+  display: grid;
+  min-width: 0;
+  gap: 1rem;
+}
+
+.screen :global([data-slot="card"]) {
+  min-width: 0;
+  gap: 1rem;
+  border-radius: 14px;
+  overflow-wrap: anywhere;
+}
+
+.screen :global([data-slot="card-title"]) {
+  font-size: 0.9375rem;
+  line-height: 1.375rem;
+  font-weight: 600;
+}
+
+.screen :is(button, input, select) {
+  min-height: 48px;
+}
+
+.screen :is(input, select, textarea) {
+  max-width: 100%;
+}
+
+@media (max-width: 639px) {
+  .screen :is(input, select, textarea) {
+    font-size: 1rem;
+  }
+}
