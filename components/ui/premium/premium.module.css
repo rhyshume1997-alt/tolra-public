@@ -21,6 +21,8 @@
   --ui-brand: var(--brand, #1e3472);
   --ui-accent: var(--brand-accent, #2e52b8);
   --ui-on-brand: var(--brand-ink, #ffffff);
+  /* Tailwind's green-600 is 3.2:1 under white text (the Users "Active" badge, bg-green-600 text-white). Inside the redesigned screens it is the green-700 shade, 5.0:1, so every bg-green-600 fill with white text passes without a per-element rule. */
+  --color-green-600: #15803d;
   --ui-ink: #0e1726;
   --ui-ink-2: #3b4559;
   --ui-muted: #566074;
@@ -101,9 +103,9 @@
 }
 @media (max-width: 640px) { .tokens { --ui-fs-page: 22px; --ui-lh-page: 28px; --ui-fs-numeral: 24px; --ui-lh-numeral: 28px; } }
 .tokens, .tokens *, .tokens *::before, .tokens *::after { box-sizing: border-box; }
-.tokens :where(button, input, select, textarea) { font: inherit; color: inherit; }
-/* Tailwind v4 utilities sit in @layer utilities, and this unlayered reset beats them. A button that asks for white text (the active FilterBar chip: bg-ink text-white) would get ink text on an ink fill. Only buttons carrying that class are restored. */
-.tokens button[class~="text-white"] { color: #fff; }
+/* Form controls inherit the surrounding font and colour. The rule in the Tailwind base layer lets every text-* utility win on a control that carries one (text-white, text-background, text-primary-foreground, text-brand-ink and so on); an unlayered rule would beat all of them, which turned the label of a filled control into the page ink (ink on navy, 1.5:1). Controls with no fill of their own, or a light one (bg-surface, bg-white, bg-transparent), keep the previous inherit through the unlayered rule below: the inactive filter chip stays full ink (tests/e2e/chip-contrast.spec.ts). Any other fill (bg-brand, bg-ink, bg-green-600 ...) now keeps its own text colour. No per-colour or white-text override: do not add one. */
+@layer base { .tokens :where(button, input, select, textarea) { font: inherit; color: inherit; } }
+.tokens :where(button, input, select, textarea):is(:not([class^="bg-"], [class*=" bg-"]), [class^="bg-surface"], [class*=" bg-surface"], [class^="bg-white"], [class*=" bg-white"], [class^="bg-transparent"], [class*=" bg-transparent"]) { color: inherit; }
 .tokens :where(button) { cursor: pointer; }
 .tokens :focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
 
