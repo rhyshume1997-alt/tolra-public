@@ -2,6 +2,7 @@
  * NCR register menu link (navigation). Reads the sidebar source (it is not rendered in unit tests).
  * Must not change: the link shows only for admin and office, and only while the NCR register switch (job-ncr-register:on) is on.
  */
+import { navActive } from "@/lib/nav-active";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -20,8 +21,11 @@ describe("NCR register menu link", () => {
     expect(sidebar).toContain('item.href !== "/jobs/ncr" || (canSeeNcrRegister(activeRole) && ncrRegisterEnabled(orgSettings.hiddenNav))');
   });
 
-  it("Job Board is not highlighted on the NCR page", () => {
-    expect(sidebar).toContain('!(item.href === "/jobs" && pathname.startsWith("/jobs/ncr"))');
+  it("Job Board is not the current page on the NCR page (the NCR item is; Job Board is only marked as its parent)", () => {
+    const now = navActive("/jobs/ncr", ["/jobs", "/jobs/ncr"]);
+    expect(now.current).toBe("/jobs/ncr");
+    expect(now.parents).toEqual(["/jobs"]);
+    expect(sidebar).toContain("navActive(pathname,");
   });
 
   it("the switch is off by default and on only with the marker", () => {

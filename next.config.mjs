@@ -16,27 +16,26 @@ const supabase = supabaseOrigins();
 // 'wasm-unsafe-eval' lets @react-pdf/renderer compile its layout engine (WebAssembly) without allowing JS eval.
 // 'unsafe-eval' is only added for the dev server (React Refresh).
 /** The policy for app pages. Static invitation responses use the restrictive policy below. */
-const policy = (formAction, previewFrames = false) => [
+const policy = (formAction, documentPreview = false) => [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${isProd ? "" : " 'unsafe-eval'"}`,
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob: ${supabase.https}`,
   "font-src 'self' data:",
-  `connect-src 'self' ${supabase.https} ${supabase.wss}`,
+  // Settings uses an embedded data: URL when react-pdf loads the PDF layout engine.
+  `connect-src 'self' ${supabase.https} ${supabase.wss}${documentPreview ? " data:" : ""}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
   `form-action ${formAction}`,
   "object-src 'none'",
-  // Only the Settings page: its Document designs preview shows a generated PDF (a blob: URL) in a frame, and without this Chrome refuses the
-  // frame (default-src 'self' covers frames). Nothing else changes: object-src stays 'none' and default-src stays 'self'. Every other page
-  // keeps no frame-src of its own. Checked in Chromium: with this alone the PDF viewer opens.
-  ...(previewFrames ? ["frame-src blob:"] : []),
+  // Settings embeds the generated PDF as a blob: iframe. Other pages inherit default-src for frames.
+  ...(documentPreview ? ["frame-src blob:"] : []),
   // Installable app: the service worker (/sw.js) and the per-company manifest are same-origin only.
   "worker-src 'self'",
   "manifest-src 'self'",
 ].join("; ");
 const csp = policy("'self'");
-/** Settings only (the Document designs preview): the global policy plus frame-src blob:, nothing else. */
+/** Settings only (the Document designs preview): the global policy plus connect-src data: and frame-src blob:. */
 const settingsCsp = policy("'self'", true);
 // The accountant's connect link (/api/integrations/invite/<22-character reference>): its Continue button is a form POST answered with a
 // redirect to Xero, and a browser checks form-action against the redirect target too. These self-contained pages have no scripts or

@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { TriangleAlert, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -56,7 +55,7 @@ export function UnrecognisedNetworkBanner() {
         <TriangleAlert className="mt-0.5 size-4 shrink-0" />
         <span>
           {unrecognisedBannerText(batch.count)}{" "}
-          <Link className="font-medium underline" href="/settings#workshop-network" data-testid="unrecognised-network-link">Open Settings &gt; Workshop network</Link>
+          <a className="font-medium underline" href="/settings#workshop-network" data-testid="unrecognised-network-link">Open Settings &gt; Workshop network</a>
         </span>
       </p>
       <Button size="sm" variant="outline" onClick={dismiss} aria-label="Dismiss this warning" data-testid="unrecognised-network-dismiss"><X className="size-4" /></Button>

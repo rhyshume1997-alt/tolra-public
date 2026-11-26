@@ -18,6 +18,7 @@ const pageFile: Record<string, string[]> = {
   "/dashboard": ["app/(dashboard)/dashboard/page.tsx"],
   "/time": ["components/time/day-sheet.tsx", "components/time/week-review.tsx"],
   "/jobs/ncr": ["components/jobs/ncr-register.tsx"], // the H1 lives in the component; the page file is a thin wrapper
+  "/admin/iso": ["components/iso/iso-pack-view.tsx"], // the H1 lives in the view; the page file is a thin wrapper
   "/reports": ["components/reports/reports-view.tsx"], // the H1 lives in the view; the page file is only the role and switch gate
 };
 const fileFor = (href: string) => pageFile[href] ?? [`app/(dashboard)${href}/page.tsx`];
