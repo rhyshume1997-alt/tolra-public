@@ -1,3 +1,4 @@
+// Inputs are scheduled periods and timesheet reads. A truncated period sends no email.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
@@ -6,6 +7,7 @@ import { type EmailScheduleRow, RETRY_AFTER_MS, claimRun } from "@/lib/email/sch
 import { scheduleEmailKey } from "@/lib/email/schedules/keys";
 import { adminEmails, weekNumber, loadPeopleHours, previousWeekStart, runTimesheets, scopedToCompany, weekLabel } from "@/lib/email/schedules/timesheet";
 import { dueOccurrence } from "@/lib/email/schedules/due";
+import { TimeDataTruncatedError } from "@/lib/time-data";
 import type { CompanyEmailInput, CompanyEmailResult } from "@/lib/email/send-company-email";
 import { DEFAULT_TIME_SETTINGS, type AttendanceEvent } from "@/lib/time-sheet";
 import { FakeDb } from "../support/fake-db";
@@ -114,6 +116,13 @@ describe("running a period of timesheet e-mails", () => {
       ],
       organizations: [{ id: ORG, name: "JNR Engineering" }],
     });
+  });
+
+  it("records an explicit truncation error and sends nothing", async () => {
+    loadTimeData.mockRejectedValueOnce(new TimeDataTruncatedError());
+    const result = await runTimesheets(db as never, schedule, occurrence, now, { send });
+    expect(result).toMatchObject({ sent: 0, error: expect.stringContaining("truncated"), retryable: true });
+    expect(send).not.toHaveBeenCalled();
   });
 
   it("sends one e-mail per person who worked, each to every admin, for the right week", async () => {
