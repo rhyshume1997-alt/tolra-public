@@ -1,4 +1,4 @@
-// Module 2 worksheet interface: loaded job rows -> worksheet display/edit state. Database guards remain authoritative.
+// Module 2 worksheet interface: loaded job rows -> worksheet display/edit state. Drawing listings require metadata and storage reads. Database guards remain authoritative.
 import { fmtDateTime } from "@/lib/dates";
 import { flowStatusOf } from "@/lib/job-flow";
 import { DEMO_MODE } from "@/lib/demo";
@@ -256,8 +256,7 @@ async function loadOrganizationId(): Promise<string | null> {
 
 /**
  * The job's drawings: the rows in job_files (current revision of each, the labels of the ones it replaced) plus any file in the
- * job's own folder that has no row yet (uploaded before migration 034). Returns null when Storage is not reachable (caller
- * falls back to the demo list).
+ * job's own folder that has no row yet (uploaded before migration 034). Returns null if metadata or storage is unavailable.
  */
 export async function listDrawings(jobId: string): Promise<DrawingFile[] | null> {
   try {
@@ -268,11 +267,11 @@ export async function listDrawings(jobId: string): Promise<DrawingFile[] | null>
       supabase.from("job_files").select("id, ref, revision, file_name, storage_bucket, storage_path, superseded_at, created_at").eq("job_id", jobId).eq("kind", "drawing").order("created_at").order("id"),
       supabase.storage.from(DRAWINGS_BUCKET).list(folder),
     ]);
-    if (error) throw error;
+    if (rowsError || error) return null;
     const registered = new Set<string>();
     const current: DrawingFile[] = [];
     const earlier = new Map<string, string[]>();
-    for (const row of rowsError ? [] : rows ?? []) {
+    for (const row of rows ?? []) {
       registered.add(`${row.storage_bucket}/${row.storage_path}`);
       if (row.superseded_at) {
         earlier.set(row.ref, [...(earlier.get(row.ref) ?? []), row.revision || "no label"]);
