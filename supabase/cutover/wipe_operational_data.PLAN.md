@@ -16,6 +16,8 @@ Backup: full JSON export of both companies' rows, the live company, the 3 test u
 ```
 Run as `SELECT pg_temp.tolra_wipe('<json>'::jsonb);` after the function definition, in the same session.
 
+## Rehearsal 2 (26 Nov, updated script with the owner decisions): fresh synthetic set A2/B2/LIVE2; dry run rolled back clean; real run clean: wiped tables 0, hidden_nav kept, counters QUO/J/INV/SO/PO/CRD reset to 0 and DLN untouched (10), DLN hold row kept, 3 test users deleted, live company deleted with its 2 audit rows, kept admins still admin, 0 triggers left disabled.
+
 ## Rehearsal evidence (scratch)
 Seed: 3 synthetic companies (A like JNR, B like Marpet, L like the empty live one), 2 kept admins, 3 test users, rows in 24 wiped tables.
 Dry run: rolled back as designed, result shown. Real run: wiped counts matched the seed; users deleted 3; company L deleted with its 2 audit rows listed; 193 guard triggers switched off then on; 0 triggers left disabled.
