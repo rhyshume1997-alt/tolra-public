@@ -1,3 +1,4 @@
+// Purchase-order receipt actions use selected IDs and confirm only persisted receipts. Existing edit and issue rules are unchanged.
 "use client";
 
 /** Purchase Orders presentation toggle. Both views use the existing roles, reads, selections and mutation handlers. */
@@ -44,6 +45,7 @@ import { linkedRecordId } from "@/lib/record-link";
 import { type SupplierStatus, supplierKey, supplierOrderNotice } from "@/lib/supplier-status";
 import { esc } from "@/lib/html";
 import { documentTotals, gbp } from "@/lib/money";
+import { CANCELLED_RECEIPT_MESSAGE, planPurchaseOrderReceipt, receivePurchaseOrders } from "@/lib/purchase-order-receipt";
 import { PO_TOTAL_LABEL, purchaseOrderTotalIncVat } from "@/lib/purchase-order-total";
 import { allocateNumber } from "@/lib/numbering";
 import { openPrintPack } from "@/lib/print-pack";
@@ -460,11 +462,14 @@ export default function PurchaseOrdersPage() {
   }
 
   async function markReceived(ids: string[]) {
-    // Drafts must be issued first; already received ones are skipped.
-    const targets = purchaseOrders.filter((po) => ids.includes(po.id) && po.status !== "received" && po.status !== "draft");
+    const { targets, cancelled } = planPurchaseOrderReceipt(purchaseOrders, ids);
     if (!ids.length) {
       toast.error("Select at least one purchase order first.");
       return;
+    }
+    if (cancelled.length) {
+      toast.error(CANCELLED_RECEIPT_MESSAGE);
+      if (!targets.length) return;
     }
     if (!targets.length) {
       toast.info("Selected purchase orders are already received or still drafts (issue them first).");
@@ -473,14 +478,28 @@ export default function PurchaseOrdersPage() {
     await run(async () => {
       try {
         const receivedAt = nowIso();
-        await persistPos(targets, { status: "received", received_at: receivedAt }, { status: "received", receivedAt });
-        // Audit only after the database update succeeded.
-        void auditEvent({ action: "MARK_RECEIVED", entityTable: "purchase_orders", metadata: { ids: targets.map((po) => po.id) } });
+        const realIds = targets.filter((po) => !po.demo).map((po) => po.id);
+        if (!supabase && (realIds.length || !DEMO_MODE)) throw new Error("Supabase is not configured.");
+        const receivedIds = supabase && realIds.length ? await receivePurchaseOrders(supabase, realIds, receivedAt) : [];
+        const confirmed = new Set([...receivedIds, ...targets.filter((po) => po.demo).map((po) => po.id)]);
+        if (!confirmed.size) {
+          toast.error("No purchase orders were marked received. Refresh the list and try again.");
+          return;
+        }
+        setPurchaseOrders((current) => current.map((po) => confirmed.has(po.id) ? { ...po, status: "received", receivedAt } : po));
+        if (receivedIds.length) {
+          void auditEvent({ action: "MARK_RECEIVED", entityTable: "purchase_orders", metadata: { ids: receivedIds } });
+        }
+        if (cancelled.length || confirmed.size < targets.length) {
+          setSelectedIds((current) => current.filter((id) => !confirmed.has(id)));
+          toast.info(`${confirmed.size} purchase order(s) moved to Received. Remaining orders were left unchanged.`);
+          return;
+        }
         setSelectedIds([]);
         setViewing(null);
         setFilters(new Set(["received"]));
         setPhase("done"); // it moved to Done: show it there
-        toast.success(`${targets.length} purchase order(s) moved to Received`);
+        toast.success(`${confirmed.size} purchase order(s) moved to Received`);
       } catch (err) {
         toast.error(userMessage(err, "Could not mark the purchase order as received"));
       }

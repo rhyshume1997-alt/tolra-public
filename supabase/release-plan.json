@@ -232,6 +232,10 @@
   ],
   "other_proposals": [
     {
+      "source": "supabase/proposals/p172_purchase_order_cancelled_terminal.sql",
+      "disposition": "Reserved release 172 after 171; Purchasing terminal cancellation guard, pending normal approval and excluded from the automatic release chain."
+    },
+    {
       "source": "supabase/proposals/builder2_chase_settings_atomic.sql",
       "disposition": "reviewed original of the function released as numbered phase 163 (canonical source now supabase/proposals/p163_chase_steps_atomic.sql, same function text); not applied directly on production; this file stays and its own test reads it"
     },
