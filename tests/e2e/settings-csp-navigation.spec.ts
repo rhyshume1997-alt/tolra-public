@@ -19,7 +19,7 @@ async function documentCspAfter(page: Page, path: string, action: () => Promise<
   // A history navigation the boundary replaces is reported as aborted by Playwright; the replacing load is the one measured.
   await Promise.resolve(action()).catch(() => undefined);
   const header = (await response).headers()["content-security-policy"];
-  await page.waitForLoadState("load");
+  await page.waitForLoadState("load", { timeout: 30_000 });
   return csp(header);
 }
 
@@ -48,6 +48,14 @@ async function behaviourOn(page: Page, path: string): Promise<{ dataFetchAllowed
     return null; // the document was replaced while probing (the boundary's reload): try again
   }
 }
+/**
+ * Moves through history WITHOUT waiting for a navigation event: the suite sets no navigation timeout, and page.goBack waits for a commit that the boundary's
+ * location.replace can supersede, which never arrives. The page is told to move and the polling below waits for the settled document. A context destroyed
+ * by the replace while this runs is expected.
+ */
+async function historyMove(page: Page, direction: "back" | "forward") {
+  await page.evaluate((d) => { if (d === "back") history.back(); else history.forward(); }, direction).catch(() => undefined);
+}
 /** Polls until the settled document on `path` behaves as `expected`. The page being replaced answers null or the other policy, never `expected`. */
 async function expectBehaviour(page: Page, path: string, settings: boolean) {
   await expect.poll(() => behaviourOn(page, path), { timeout: 30_000, intervals: [500, 500, 1000] }).toEqual({ dataFetchAllowed: settings, blobFrameAllowed: settings });
@@ -66,9 +74,9 @@ function expectGlobalPolicy(value: string) {
 
 test("Settings has its own policy and every other route has the global one", async ({ page }) => {
   await signIn(page, world().tenants.alpha.users.admin);
-  expectGlobalPolicy(await documentCspAfter(page, "/dashboard", () => page.goto("/dashboard")));
-  expectGlobalPolicy(await documentCspAfter(page, "/jobs", () => page.goto("/jobs")));
-  expectSettingsPolicy(await documentCspAfter(page, "/settings", () => page.goto("/settings")));
+  expectGlobalPolicy(await documentCspAfter(page, "/dashboard", () => page.goto("/dashboard", { timeout: 30_000 })));
+  expectGlobalPolicy(await documentCspAfter(page, "/jobs", () => page.goto("/jobs", { timeout: 30_000 })));
+  expectSettingsPolicy(await documentCspAfter(page, "/settings", () => page.goto("/settings", { timeout: 30_000 })));
 });
 
 test("Dashboard to Settings to Job Board: each document has its own route's policy", async ({ page }) => {
@@ -80,20 +88,21 @@ test("Dashboard to Settings to Job Board: each document has its own route's poli
 });
 
 test("browser Back and Forward across Settings keep each document's own policy", async ({ page }) => {
+  test.setTimeout(120_000);
   await signIn(page, world().tenants.alpha.users.admin);
   expectSettingsPolicy(await documentCspAfter(page, "/settings", () => page.getByRole("link", { name: "Settings", exact: true }).first().click()));
   expectGlobalPolicy(await documentCspAfter(page, "/jobs", () => page.getByRole("link", { name: "Job Board" }).first().click()));
   // A history navigation is not always a network document request (cache restore, or only the boundary's replace), so the policy of the document the
   // person ends on is checked by what it allows, not by a response header.
-  await page.goBack({ waitUntil: "commit" }).catch(() => undefined);
+  await historyMove(page, "back");
   await expectBehaviour(page, "/settings", true);
-  await page.goForward({ waitUntil: "commit" }).catch(() => undefined);
+  await historyMove(page, "forward");
   await expectBehaviour(page, "/jobs", false);
 });
 
 test("signing out from Settings lands on a document with the global policy", async ({ page }) => {
   await signIn(page, world().tenants.alpha.users.admin);
-  await page.goto("/settings");
-  await page.waitForLoadState("load");
+  await page.goto("/settings", { timeout: 30_000 });
+  await page.waitForLoadState("load", { timeout: 30_000 });
   expectGlobalPolicy(await documentCspAfter(page, "/login", () => page.getByRole("button", { name: "Log out" }).first().click()));
 });
