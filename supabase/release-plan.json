@@ -232,6 +232,10 @@
   ],
   "other_proposals": [
     {
+      "source": "supabase/proposals/p171_drawing_registration.sql",
+      "disposition": "CR-002 reserved release 171, after 170 in sequence; proposal and manual release package pending approval of the target database's verified migration 034 cutoff. Excluded from the automatic release chain until approval."
+    },
+    {
       "source": "supabase/proposals/builder2_chase_settings_atomic.sql",
       "disposition": "reviewed original of the function released as numbered phase 163 (canonical source now supabase/proposals/p163_chase_steps_atomic.sql, same function text); not applied directly on production; this file stays and its own test reads it"
     },
