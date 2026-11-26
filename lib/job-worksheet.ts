@@ -1,4 +1,5 @@
-// Module 2 worksheet interface: loaded job rows -> worksheet display/edit state. Database guards remain authoritative.
+// Module 2 worksheet interface: job rows and drawing uploads produce worksheet state and registered file paths.
+// Database and Storage guards remain authoritative.
 import { fmtDateTime } from "@/lib/dates";
 import { flowStatusOf } from "@/lib/job-flow";
 import { DEMO_MODE } from "@/lib/demo";
@@ -301,14 +302,18 @@ export function validateDrawing(file: File): string | null {
   return null;
 }
 
+/** Registered uploads live below the folder used to discover loose legacy drawings. */
+function newDrawingPath(orgId: string, jobId: string, name: string): string {
+  return `${orgId}/${jobId}/drawings/${crypto.randomUUID()}-${name}`;
+}
+
 export async function uploadDrawing(jobId: string, file: File): Promise<DrawingFile> {
   const problem = validateDrawing(file);
   if (problem) throw new Error(problem);
   const orgId = await loadOrganizationId();
   if (!supabase || !orgId) throw new Error("Storage is not available.");
   const name = file.name.replace(/[^\w.\- ()]/g, "_");
-  // Timestamp prefix keeps every upload unique, so nothing is ever overwritten.
-  const path = `${orgId}/${jobId}/${Date.now()}-${name}`;
+  const path = newDrawingPath(orgId, jobId, name);
   const { error } = await supabase.storage.from(DRAWINGS_BUCKET).upload(path, file, { contentType: file.type });
   if (error) throw error;
   const { data, error: rowError } = await supabase.from("job_files").insert({
@@ -361,7 +366,7 @@ export async function uploadNewRevision(drawing: DrawingFile, jobId: string, fil
   const orgId = await loadOrganizationId();
   if (!supabase || !orgId) throw new Error("Storage is not available.");
   const name = file.name.replace(/[^\w.\- ()]/g, "_");
-  const path = `${orgId}/${jobId}/${Date.now()}-${name}`;
+  const path = newDrawingPath(orgId, jobId, name);
   const { error } = await supabase.storage.from(DRAWINGS_BUCKET).upload(path, file, { contentType: file.type });
   if (error) throw error;
   const { data, error: rpcError } = await supabase.rpc("bump_drawing_revision", { p_file: drawing.id, p_revision: revision.trim(), p_file_name: name, p_storage_path: path });
