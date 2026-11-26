@@ -1,0 +1,72 @@
+            tbl             | export_rows | meta_rows | local_rows | key_not_column | row_hash_equal 
+----------------------------+-------------+-----------+------------+----------------+----------------
+ attendance_events          |          32 |        32 |         32 |              0 | t
+ chase_pauses               |           2 |         2 |          2 |              0 | t
+ chase_steps                |           4 |         4 |          4 |              0 | t
+ company_setup_progress     |           1 |         1 |          1 |              0 | t
+ credit_note_lines          |           4 |         4 |          4 |              0 | t
+ credit_notes               |           4 |         4 |          4 |              0 | t
+ customers                  |          10 |        10 |         10 |              0 | t
+ delivery_note_items        |          10 |        10 |         10 |              0 | t
+ delivery_notes             |          10 |        10 |         10 |              0 | t
+ dln_numbering_pending      |           1 |         1 |          1 |              0 | t
+ doc_counters               |          10 |        10 |         10 |              0 | t
+ email_history              |           3 |         3 |          3 |              0 | t
+ import_batches             |           4 |         4 |          4 |              0 | t
+ import_record_keys         |           1 |         1 |          1 |              0 | t
+ inspector_authorisations   |           6 |         6 |          6 |              0 | t
+ invoice_credit_allocations |           4 |         4 |          4 |              0 | t
+ invoice_job_finish_legacy  |          14 |        14 |         14 |              0 | t
+ invoice_line_items         |          21 |        21 |         21 |              0 | t
+ invoice_notes_legacy       |           7 |         7 |          7 |              0 | t
+ invoice_payments           |          21 |        21 |         21 |              0 | t
+ invoice_queue_events       |           1 |         1 |          1 |              0 | t
+ invoice_reminder_sends     |           0 |           |          0 |              0 | t
+ invoices                   |          21 |        21 |         21 |              0 | t
+ issues                     |           1 |         1 |          1 |              0 | t
+ job_files                  |           4 |         4 |          4 |              0 | t
+ job_flow_events            |          55 |        55 |         55 |              0 | t
+ job_inspections            |          31 |        31 |         31 |              0 | t
+ job_machines               |           9 |         9 |          9 |              0 | t
+ job_part_logs              |           5 |         5 |          5 |              0 | t
+ job_problems               |           1 |         1 |          1 |              0 | t
+ job_rework                 |           7 |         7 |          7 |              0 | t
+ job_rework_entries         |           5 |         5 |          5 |              0 | t
+ job_rework_entry_values    |           1 |         1 |          1 |              0 | t
+ job_values                 |          22 |        22 |         22 |              0 | t
+ jobs                       |          29 |        29 |         29 |              0 | t
+ legacy_audit_log           |         104 |       104 |        104 |              0 | t
+ machine_bookings           |           9 |         9 |          9 |              0 | t
+ machine_run_ops            |          42 |        42 |         42 |              0 | t
+ machine_runs               |          29 |        29 |         29 |              0 | t
+ machines                   |           1 |         1 |          1 |              0 | t
+ operator_sessions          |          21 |        21 |         21 |              0 | t
+ organization_members       |           9 |         9 |          9 |              0 | t
+ organization_settings      |           3 |         3 |          3 |              0 | t
+ organizations              |           3 |           |          3 |              0 | t
+ overview_owed_snapshots    |          68 |        68 |         68 |              0 | t
+ purchase_orders            |          10 |        10 |         10 |              0 | t
+ quote_line_items           |          34 |        34 |         34 |              0 | t
+ quotes                     |          31 |        31 |         31 |              0 | t
+ record_archive_state       |          69 |        69 |         69 |              0 | t
+ reopen_requests            |           1 |         1 |          1 |              0 | t
+ rfqs                       |          10 |        10 |         10 |              0 | t
+ sales_order_lines          |          21 |        21 |         21 |              0 | t
+ sales_orders               |          22 |        22 |         22 |              0 | t
+ security_audit_audit_log   |        1948 |           |       1948 |              0 | t
+ site_network_members       |           2 |         2 |          2 |              0 | t
+ site_network_ops           |           5 |         5 |          5 |              0 | t
+ site_networks              |           1 |         1 |          1 |              0 | t
+ stock                      |           6 |         6 |          6 |              0 | t
+ suppliers                  |           9 |         9 |          9 |              0 | t
+ time_settings              |           1 |         1 |          1 |              0 | t
+ time_week_approvals        |           1 |         1 |          1 |              0 | t
+ user_profiles              |           5 |         5 |          5 |              0 | t
+ xero_transfer_hold         |           2 |         2 |          2 |              0 | t
+(63 rows)
+
+ result | tables | total_rows | all_equal 
+--------+--------+------------+-----------
+ ALL OK |     63 |       2828 | t
+(1 row)
+

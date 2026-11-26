@@ -1,0 +1,7 @@
+Local isolated Postgres 16, two psql sessions, repo file sha256 ae08ae14...b69a (run as-is with \i).
+CASE 1  competing writer holds a row lock on public.customers (JNR) -> wipe (real run) aborted:
+        SQLSTATE=55P03 "canceling statement due to lock timeout" after 10.0 s; JNR customers still 9; nothing changed.
+CASE 1b competing writer commits after 3 s -> wipe waited, then ran (dry run): DRY_RUN_ROLLED_BACK after 2.9 s.
+CASE 2  wipe (real run, inside a transaction held 9 s) holds its locks -> competing UPDATE on customers:
+        (a) lock_timeout 2 s: SQLSTATE=55P03 after 2.0 s;  (b) no timeout: blocked 5.1 s, proceeded only after the wipe rolled back; JNR customers still 9.
+Side effect of MY competing writers only: 2 customers no-op updates wrote 2 security_audit rows (1948 -> 1950); every other table fingerprint unchanged (132/133 equal; the 1 difference is these 2 rows).

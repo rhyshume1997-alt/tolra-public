@@ -46,7 +46,6 @@ END $d$;
 
 CREATE OR REPLACE FUNCTION pg_temp.tolra_wipe(p jsonb) RETURNS jsonb LANGUAGE plpgsql AS $wipe$
 DECLARE
-  v_started     timestamptz := clock_timestamp();
   v_wipe_orgs   uuid[] := ARRAY(SELECT jsonb_array_elements_text(p->'wipe_orgs'))::uuid[];
   v_delete_org  uuid   := NULLIF(p->>'delete_org', '')::uuid;
   v_org_audit   uuid[] := ARRAY(SELECT jsonb_array_elements_text(coalesce(p->'delete_org_audit_ids', '[]'::jsonb)))::uuid[];
@@ -91,8 +90,8 @@ DECLARE
   v_before jsonb := '{}'::jsonb; v_after jsonb := '{}'::jsonb; v_deleted jsonb := '{}'::jsonb;
   v_disabled jsonb := '[]'::jsonb; v_dig_before jsonb := '{}'::jsonb; v_dig_after jsonb := '{}'::jsonb; v_removed_users jsonb := '[]'::jsonb;
   v_audit_rows jsonb := '[]'::jsonb; v_userrefs_before jsonb := '[]'::jsonb; v_userrefs_after jsonb := '[]'::jsonb; v_cascade_removed jsonb := '{}'::jsonb;
-  v_counter_before jsonb; v_counter_after jsonb; v_reminders bigint := 0; v_all_orgs uuid[]; v_u jsonb; v_h text; v_prev text; v_n int;
-  v_audit_dig_before text; v_audit_dig_after text; v_cycle text[];
+  v_counter_before text; v_counter_after text; v_counter_previous jsonb := '{}'::jsonb; v_audit_snap jsonb := '{}'::jsonb; v_audit_check bigint; v_reminders bigint := 0; v_all_orgs uuid[]; v_u jsonb; v_h text; v_prev text; v_n int;
+  v_cycle text[]; v_report jsonb;
 BEGIN
   IF coalesce(p->>'confirm', '') <> 'WIPE OPERATIONAL DATA' THEN RAISE EXCEPTION 'wipe refused: confirm must be WIPE OPERATIONAL DATA. Nothing changed.'; END IF;
   IF coalesce(nullif(current_setting('role', TRUE), 'none'), session_user::text) IN ('anon', 'authenticated') THEN RAISE EXCEPTION 'wipe refused: must run as the database owner or service role, not a browser role. Nothing changed.'; END IF;
@@ -145,6 +144,7 @@ BEGIN
   FOR r IN SELECT x AS tbl FROM unnest(v_wipe || v_keep || v_special) x WHERE to_regclass('public.' || x) IS NOT NULL ORDER BY x LOOP
     EXECUTE format('LOCK TABLE public.%I IN SHARE ROW EXCLUSIVE MODE', r.tbl);
   END LOOP;
+  LOCK TABLE security_audit.audit_log IN SHARE ROW EXCLUSIVE MODE;
 
   -- approved headline counts must equal the live counts
   IF v_expected IS NULL THEN RAISE EXCEPTION 'wipe refused: p.expected (the approved row counts) is required. Nothing changed.'; END IF;
@@ -170,8 +170,8 @@ BEGIN
   END LOOP;
   SELECT coalesce(md5(string_agg(md5(to_jsonb(d)::text), E'\n' ORDER BY d.organization_id, d.prefix)), '-') || ':' || count(*) INTO v_counter_before
     FROM public.doc_counters d WHERE d.organization_id = ANY(v_wipe_orgs) AND NOT (d.prefix = ANY(v_prefix_ok));
-  SELECT coalesce(md5(string_agg(md5(to_jsonb(a)::text), E'\n' ORDER BY a.id)), '-') || ':' || count(*) INTO v_audit_dig_before
-    FROM security_audit.audit_log a WHERE a.organization_id = ANY(v_wipe_orgs) AND a.created_at < v_started;
+  -- every audit row that already exists for the wiped companies, by id, hash and a digest of the whole row (not by time): re-checked after the wipe
+  SELECT coalesce(jsonb_object_agg(a.id::text, jsonb_build_object('hash', a.hash, 'row_digest', md5(to_jsonb(a)::text))), '{}'::jsonb) INTO v_audit_snap FROM security_audit.audit_log a WHERE a.organization_id = ANY(v_wipe_orgs);
   -- 5: every reference to the named users, before
   IF cardinality(v_del_users) > 0 THEN
     FOR r IN SELECT cn.nspname AS sch, cl.relname AS rel, a.attname AS col, c.confdeltype AS od
@@ -246,6 +246,8 @@ BEGIN
 
   -- 8: counters: only the approved prefixes, by explicit name, for the named companies
   IF v_counters = 'reset' THEN
+    -- the six counters' previous values, per company, kept in the audit rows and the report before they are reset
+    SELECT coalesce(jsonb_object_agg(x.organization_id::text, x.pv), '{}'::jsonb) INTO v_counter_previous FROM (SELECT d.organization_id, jsonb_object_agg(d.prefix, d.last) AS pv FROM public.doc_counters d WHERE d.organization_id = ANY(v_wipe_orgs) AND d.prefix = ANY(v_prefixes) GROUP BY d.organization_id) x;
     UPDATE public.doc_counters SET last = 0 WHERE organization_id = ANY(v_wipe_orgs) AND prefix = ANY(v_prefixes);
     IF EXISTS (SELECT 1 FROM public.doc_counters WHERE organization_id = ANY(v_wipe_orgs) AND prefix = ANY(v_prefixes) AND last <> 0) THEN RAISE EXCEPTION 'wipe failed: a counter did not reset. Nothing changed.'; END IF;
   END IF;
@@ -305,9 +307,8 @@ BEGIN
   SELECT coalesce(md5(string_agg(md5(to_jsonb(d)::text), E'\n' ORDER BY d.organization_id, d.prefix)), '-') || ':' || count(*) INTO v_counter_after
     FROM public.doc_counters d WHERE d.organization_id = ANY(v_wipe_orgs) AND NOT (d.prefix = ANY(v_prefix_ok));
   IF v_counter_after IS DISTINCT FROM v_counter_before THEN RAISE EXCEPTION 'wipe failed: a counter outside the approved prefixes changed (DLN or other). Nothing changed.'; END IF;
-  SELECT coalesce(md5(string_agg(md5(to_jsonb(a)::text), E'\n' ORDER BY a.id)), '-') || ':' || count(*) INTO v_audit_dig_after
-    FROM security_audit.audit_log a WHERE a.organization_id = ANY(v_wipe_orgs) AND a.created_at < v_started;
-  IF v_audit_dig_after IS DISTINCT FROM v_audit_dig_before THEN RAISE EXCEPTION 'wipe failed: existing audit rows of the wiped companies differ after the wipe. Nothing changed.'; END IF;
+  SELECT count(*) INTO v_audit_check FROM security_audit.audit_log a JOIN jsonb_each(v_audit_snap) e ON e.key = a.id::text AND e.value ->> 'hash' = a.hash AND e.value ->> 'row_digest' = md5(to_jsonb(a)::text);
+  IF v_audit_check <> (SELECT count(*) FROM jsonb_object_keys(v_audit_snap)) THEN RAISE EXCEPTION 'wipe failed: % of % existing audit rows of the wiped companies are missing or changed. Nothing changed.', (SELECT count(*) FROM jsonb_object_keys(v_audit_snap)) - v_audit_check, (SELECT count(*) FROM jsonb_object_keys(v_audit_snap)); END IF;
   FOREACH k IN ARRAY ARRAY(SELECT unnest(v_keep_admins)::text) LOOP
     FOREACH o IN ARRAY v_wipe_orgs LOOP
       IF NOT EXISTS (SELECT 1 FROM public.organization_members WHERE organization_id = o AND user_id = k::uuid AND role = 'admin' AND active) THEN RAISE EXCEPTION 'wipe failed: kept admin % lost admin on %. Nothing changed.', k, o; END IF;
@@ -316,16 +317,19 @@ BEGIN
   FOREACH o IN ARRAY v_wipe_orgs LOOP
     INSERT INTO security_audit.audit_log (organization_id, action, entity_table, entity_id, new_data, metadata)
     VALUES (o, 'DATA_WIPE', 'public', 'operational', coalesce(v_deleted -> o::text, '{}'::jsonb),
-            jsonb_build_object('script', 'supabase/cutover/wipe_operational_data.sql', 'version', 2, 'counters', v_counters, 'prefixes', to_jsonb(v_prefixes), 'db_user', current_user, 'dry_run', v_dry));
+            jsonb_build_object('script', 'supabase/cutover/wipe_operational_data.sql', 'version', 2, 'counters', v_counters, 'prefixes', to_jsonb(v_prefixes), 'counters_previous', coalesce(v_counter_previous -> o::text, '{}'::jsonb), 'db_user', current_user, 'dry_run', v_dry));
   END LOOP;
-  RETURN jsonb_build_object('dry_run', v_dry, 'version', 2,
+  v_report := jsonb_build_object('dry_run', v_dry, 'version', 2,
     'reconciliation', jsonb_build_object('before_every_wipe_table_per_company', v_before, 'after_all_zero', v_after, 'deleted', v_deleted),
     'retained_compared_by_hash', v_dig_before, 'retained_equal_after', true,
     'doc_counters_outside_approved_prefixes_equal', v_counter_before, 'counter_prefixes_reset', CASE WHEN v_counters = 'reset' THEN to_jsonb(v_prefixes) ELSE '[]'::jsonb END,
     'triggers_disabled_then_restored', v_disabled, 'triggers_left_enabled_by_review', to_jsonb(v_trigger_leave),
     'user_references_before', v_userrefs_before, 'users_deleted', v_removed_users,
     'live_company', CASE WHEN v_delete_org IS NULL THEN NULL ELSE jsonb_build_object('id', v_delete_org, 'audit_rows_verified_then_deleted', v_audit_rows) END,
-    'invoice_reminder_sends_cascaded', v_reminders, 'audit_rows_before_equal_after_for_wipe_companies', v_audit_dig_before = v_audit_dig_after);
+    'invoice_reminder_sends_cascaded', v_reminders, 'existing_audit_rows_verified_by_id_hash_digest', v_audit_check, 'counters_previous', v_counter_previous);
+  -- dry_run (the default, true unless the caller says false) runs every step and every check, then ROLLS BACK by raising DRY_RUN_ROLLED_BACK with the full report in the DETAIL: nothing is kept (no deletes, no DATA_WIPE audit rows).
+  IF v_dry THEN RAISE EXCEPTION USING MESSAGE = 'DRY_RUN_ROLLED_BACK', DETAIL = v_report::text; END IF;
+  RETURN v_report;
 END
 $wipe$;
 -- RUN, in the same session, right after the two function definitions (the owner approves the exact numbers first; see the PLAN):
