@@ -114,7 +114,7 @@ describe("next.config.mjs security headers (production)", () => {
     for (const [name, sources] of csp) expect(sources, `${name} must not allow 'unsafe-eval'`).not.toContain("'unsafe-eval'");
   });
 
-  it("CSP: the Settings page alone adds frame-src blob: (the Document designs PDF preview); every other directive is identical and object-src stays 'none'", async () => {
+  it("CSP: Settings adds only the PDF preview sources to connect-src and frame-src", async () => {
     const { rules, csp } = await loadHeaders({ NODE_ENV: "production", supabaseUrl: SUPABASE_URL });
     const parse = (value: string) => new Map(value.split(";").map((part) => part.trim()).filter(Boolean).map((part) => { const [name, ...sources] = part.split(/\s+/); return [name, sources] as const; }));
     const settingsRule = rules.find((rule) => rule.source === "/settings");
@@ -126,18 +126,18 @@ describe("next.config.mjs security headers (production)", () => {
     expect(settings.get("frame-src")).toEqual(["blob:"]);
     expect(settings.get("object-src")).toEqual(["'none'"]);
     expect(settings.get("default-src")).toEqual(["'self'"]);
-    const without = new Map([...settings].filter(([name]) => name !== "frame-src"));
-    expect(without).toEqual(csp);
+    const expected = new Map(csp);
+    expected.set("connect-src", ["'self'", SUPABASE_URL, "wss://abcdefgh.supabase.co", "data:"]);
+    expected.set("frame-src", ["blob:"]);
+    expect(settings).toEqual(expected);
     expect(settings.get("frame-ancestors")).toEqual(["'none'"]);
-    expect(settings.get("connect-src")).toEqual(csp.get("connect-src"));
-    // Nothing weaker than the global policy: the same script and style sources (so no 'unsafe-inline' or 'unsafe-eval' is added), and the only
-    // scheme source the Settings policy has beyond img-src and font-src is the blob: of frame-src. No wildcard anywhere.
+    expect(settings.get("worker-src")).toEqual(["'self'"]);
     expect([...(settings.get("script-src") ?? [])].sort()).toEqual(["'self'", "'unsafe-inline'", "'wasm-unsafe-eval'"]);
     expect([...(settings.get("style-src") ?? [])].sort()).toEqual(["'self'", "'unsafe-inline'"]);
     for (const [name, sources] of settings) {
       for (const source of sources) {
         expect(source, `${name} has a wildcard or scheme-wide source`).not.toMatch(/^(\*|https?:|http:\/\/\*|https:\/\/\*$)$/);
-        if (name !== "img-src" && name !== "font-src" && name !== "frame-src") expect(source, `${name} allows data:/blob:`).not.toMatch(/^(data|blob):$/);
+        if (name !== "img-src" && name !== "font-src" && name !== "frame-src" && name !== "connect-src") expect(source, `${name} allows data:/blob:`).not.toMatch(/^(data|blob):$/);
       }
     }
   });
@@ -165,7 +165,11 @@ describe("next.config.mjs security headers (production)", () => {
     const { rules, csp } = await loadHeaders({ NODE_ENV: "development", supabaseUrl: SUPABASE_URL });
     const settings = rules.find((rule) => rule.source === "/settings")!.headers[0].value;
     expect(settings).toContain("frame-src blob:");
-    expect(settings.replace("; frame-src blob:", "")).toBe([...csp].map(([name, sources]) => [name, ...sources].join(" ")).join("; "));
+    const global = [...csp].map(([name, sources]) => [name, ...sources].join(" ")).join("; ");
+    const expected = global
+      .replace(/connect-src [^;]+/, "$& data:")
+      .replace("object-src 'none';", "object-src 'none'; frame-src blob:;");
+    expect(settings).toBe(expected);
   });
 
   it("CSP: 'unsafe-inline' is the only weakness and does not grow (L10)", async () => {
