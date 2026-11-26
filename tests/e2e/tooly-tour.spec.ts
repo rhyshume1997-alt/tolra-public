@@ -65,13 +65,14 @@ test("a new person gets the tour, can finish it, and is not redirected afterward
     return data.user?.user_metadata?.[TOUR_DONE_META_KEY] ?? null;
   }).toBe(true);
 
-  // Afterwards: no redirect to a step page, no tour, only the small Replay button on the Dashboard.
+  // Afterwards: no redirect to a step page, no tour; Replay tour is offered in Account Settings.
   await page.goto("/settings");
   await page.waitForTimeout(1500);
   await expect(page).toHaveURL(/\/settings/);
   await expect(tour(page)).toHaveCount(0);
   await page.goto("/dashboard");
-  await expect(page.getByTestId("tooly-tour-replay")).toBeVisible();
+  await page.getByRole("button", { name: "Settings" }).first().click();
+  await expect(page.getByRole("button", { name: "Replay tour" })).toBeVisible();
   await expect(tour(page)).toHaveCount(0);
 });
 
@@ -79,7 +80,9 @@ test("a person who has seen the tour is not redirected and gets no tour", async 
   const user = await newAdmin(true);
   await signIn(page, user);
   await expect(tour(page)).toHaveCount(0);
-  await expect(page.getByTestId("tooly-tour-replay")).toBeVisible();
+  await page.getByRole("button", { name: "Settings" }).first().click();
+  await expect(page.getByRole("button", { name: "Replay tour" })).toBeVisible();
+  await page.keyboard.press("Escape");
 
   await page.goto("/jobs");
   await page.waitForTimeout(1500);
