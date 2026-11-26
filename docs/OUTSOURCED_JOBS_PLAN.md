@@ -26,9 +26,9 @@ Some jobs are not done in-house: they are passed to another company to do instea
 ## Data (migration proposal, jobs module)
 New fields on jobs (company, marked-at, sent-out-at, due-back, back-in-at, plus a link to the supplier row), written only through guarded functions that reuse the job history table (job_flow_events needs its kind check widened for sent_out and back_in). Append-only history, audited, per-company, no cross-company reads.
 
-## Open decisions
-- [ ] Should a part delivery shrink the draft invoice to what is despatched? (Today the draft stays at the full order; flagged by the scratch flow check.)
-- [ ] Should "Outsourced (In progress)" count as the job's "In progress" stage in the existing filters, or only show as its own label? (Plan: its own label plus the normal stage unchanged.)
+## Decisions (all answered)
+- [x] Part delivery: ANSWERED (Rhys, 26 Nov 13:08): the draft invoice stays at the FULL order, no shrinking.
+- [x] Outsourced (In progress): ANSWERED (Rhys, 26 Nov 13:08): its OWN label, not the normal In progress filter stage.
 
 ## Evidence behind this
 Scratch flow check (26 Nov): a job with no machine can be finished and followed by inspection, delivery note and draft invoice; a linked purchase order feeds cost only and never changes the job; there is no outsourced marker, no "out" or "back in" date, and nothing flags a job with no machine. Report: FLOW-CHECK-REPORT.md (scratchpad copy).
