@@ -523,6 +523,13 @@ html[data-ui-v2="on"] button[role="switch"][class*="rounded-none"]:focus-visible
 /* Native selects and date fields outside the shared Select get the same field look as the inputs. */
 html[data-ui-v2="on"] select:not([data-slot]) { border-radius: var(--ui-radius-sm); border: 1px solid var(--ui-line-strong); background-color: var(--ui-surface); color: var(--ui-ink); font-family: var(--ui-font); }
 html[data-ui-v2="on"] select:not([data-slot]):focus-visible { border-color: var(--ui-accent); outline: 2px solid var(--ui-accent); outline-offset: 1px; }
+/* ACTIVE SIDEBAR ITEM (v2 screens only). Inputs: data-nav-active="current" (the page you are on, also aria-current=page) or "parent" (a visible item above it) on the sidebar links
+   (components/sidebar.tsx, lib/nav-active.ts). Output: the current item is the brand colours swapped (brand-ink fill, brand text, bold, 3px bar), which reads at the same
+   contrast as the sidebar text itself (4.5:1 or better on every brand colour, because textOn picks the ink); a parent is bold with a 3px ink bar and no fill. Colour and weight only. */
+html[data-ui-v2="on"] :is(aside, [data-slot="sheet-content"][data-side="left"]) a[data-nav-active="current"] { background: var(--brand-ink); color: var(--brand); font-weight: 600; box-shadow: inset 3px 0 0 var(--brand); }
+html[data-ui-v2="on"] :is(aside, [data-slot="sheet-content"][data-side="left"]) a[data-nav-active="current"]:hover { background: var(--brand-ink); color: var(--brand); }
+html[data-ui-v2="on"] :is(aside, [data-slot="sheet-content"][data-side="left"]) a[data-nav-active="parent"] { font-weight: 600; box-shadow: inset 3px 0 0 var(--brand-ink); }
+
 /*
  * NAVY SELECTION BAR (Jobs). Inputs: the bar's own data-testid="selection-bar" data-selected="true" (app/(dashboard)/jobs/page.tsx, unchanged).
  * Output: the bar's shared Buttons are translucent white-outline with white text, and Finish Selected is white with navy text (the on-dark look of the v4 shots).
