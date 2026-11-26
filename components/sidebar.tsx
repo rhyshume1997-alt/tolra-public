@@ -17,6 +17,7 @@ import { useOrgSettings } from "@/lib/org-settings";
 import { useAiFeatures } from "@/components/ai-features";
 import { aiNavAvailable, canOpenDestination } from "@/lib/destinations";
 import { canSeeIso, isoTemplatesEnabled } from "@/lib/iso/iso-switch";
+import { navActive } from "@/lib/nav-active";
 import { canSeeReports, reportsEnabled } from "@/lib/reports/reports-switch";
 import { canSeeNcrRegister, ncrRegisterEnabled } from "@/lib/jobs/ncr-register-switch";
 import { passwordProblem } from "@/lib/password";
@@ -190,6 +191,8 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
     }
   }
 
+  const visibleOf = (section: (typeof navSections)[number]) => section.items.filter((item) => hasAnyRole(item.roles) && (item.href !== "/admin/integrations" || has084) && aiNavAvailable(item.href, Boolean(aiHelper)) && (item.href !== "/reports" || (canSeeReports(activeRole) && reportsEnabled(orgSettings.hiddenNav))) && (item.href !== "/admin/iso" || (canSeeIso(activeRole) && isoTemplatesEnabled(orgSettings.hiddenNav))) && (item.href !== "/jobs/ncr" || (canSeeNcrRegister(activeRole) && ncrRegisterEnabled(orgSettings.hiddenNav))) && canOpenDestination(item.href, { activeRole, hiddenSections, hiddenNav: orgSettings.hiddenNav }));
+  const activeNav = navActive(pathname, navSections.flatMap((section) => visibleOf(section).map((item) => item.href)));
   return (
     <div className="flex h-full flex-col bg-brand text-brand-ink">
       <div className="px-5 pb-5 pt-6">
@@ -231,7 +234,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
       <nav className="flex-1 overflow-y-auto pb-4">
         {navSections.map((section) => {
-          const visibleItems = section.items.filter((item) => hasAnyRole(item.roles) && (item.href !== "/admin/integrations" || has084) && aiNavAvailable(item.href, Boolean(aiHelper)) && (item.href !== "/reports" || (canSeeReports(activeRole) && reportsEnabled(orgSettings.hiddenNav))) && (item.href !== "/admin/iso" || (canSeeIso(activeRole) && isoTemplatesEnabled(orgSettings.hiddenNav))) && (item.href !== "/jobs/ncr" || (canSeeNcrRegister(activeRole) && ncrRegisterEnabled(orgSettings.hiddenNav))) && canOpenDestination(item.href, { activeRole, hiddenSections, hiddenNav: orgSettings.hiddenNav }));
+          const visibleItems = visibleOf(section);
           if (!visibleItems.length) return null;
 
           return (
@@ -239,10 +242,11 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
               <p className="label-mono px-6 pb-2 text-brand-ink/50">{section.title}</p>
               <div className="space-y-0.5">
                 {visibleItems.map((item) => {
-                  const active = (pathname === item.href || pathname.startsWith(`${item.href}/`)) && !(item.href === "/jobs" && pathname.startsWith("/jobs/ncr")); // the NCR register has its own item
+                  const active = activeNav.current === item.href;
+                  const parentActive = activeNav.parents.includes(item.href);
                   const queued = (approvalCount ?? 0) + reopenCount;
                   const badge = item.href === "/approval" && queued ? queued.toString() : null;
-                  const linkClass = cn("flex min-h-10 items-center gap-3 px-6 py-2 pointer-coarse:min-h-11 text-[0.9rem] text-brand-ink/90 transition hover:bg-brand-ink/[0.07] hover:text-brand-ink", active && "bg-brand-ink/[0.12] font-semibold text-brand-ink");
+                  const linkClass = cn("flex min-h-10 items-center gap-3 px-6 py-2 pointer-coarse:min-h-11 text-[0.9rem] text-brand-ink/90 transition hover:bg-brand-ink/[0.07] hover:text-brand-ink", active && "bg-brand-ink/[0.12] font-semibold text-brand-ink", parentActive && "font-semibold text-brand-ink");
                   const content = (
                     <>
                       <span className="min-w-0 flex-1 leading-snug [overflow-wrap:anywhere]">{item.label}</span>
@@ -252,9 +256,9 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                   // Settings has its own Content-Security-Policy header (next.config.mjs, the PDF preview). A client-side navigation keeps the previous
                   // page's policy, so the entry to Settings is a normal document load (lib/full-document-load).
                   return needsFullDocumentLoad(item.href) ? (
-                    <a key={item.href} href={item.href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={linkClass}>{content}</a>
+                    <a key={item.href} href={item.href} onClick={onNavigate} aria-current={active ? "page" : undefined} data-nav-active={active ? "current" : parentActive ? "parent" : undefined} className={linkClass}>{content}</a>
                   ) : (
-                    <Link key={item.href} href={item.href} prefetch={false} onClick={onNavigate} aria-current={active ? "page" : undefined} className={linkClass}>{content}</Link>
+                    <Link key={item.href} href={item.href} prefetch={false} onClick={onNavigate} aria-current={active ? "page" : undefined} data-nav-active={active ? "current" : parentActive ? "parent" : undefined} className={linkClass}>{content}</Link>
                   );
                 })}
               </div>
