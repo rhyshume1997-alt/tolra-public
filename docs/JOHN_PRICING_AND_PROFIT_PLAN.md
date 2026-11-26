@@ -52,7 +52,7 @@ Status: PLAN ONLY. Nothing is built. Starts after the data wipe, #644 and #645 h
 Costing engine (labour, programming, overhead, margin, machine rates), "Price this part" in the quote builder, planned-vs-actual panel and machine-hours variance report (flag-gated), WIP ageing, revenue reports (no costs), Numbers page, schedule bookings (planned hours), operator sessions (actual hours), POs linked to jobs and quotes.
 
 ## Open questions
-- [ ] Should quotes warn against break-even only, or also against the target profit percent? (Plan: both, as two lines.)
+- [x] Should quotes warn against break-even only, or also against the target profit percent? ANSWERED (Rhys, 26 Nov): both, as two separate lines.
 - [ ] Is one bought-in percentage enough, or should it vary by supplier or item? (John says one percentage.)
 - [ ] Should "can see profit" be visible to office or Rhys if John allows it? (Plan: John only by default.)
 - [ ] Which month does the "year" start in, for the yearly target?
