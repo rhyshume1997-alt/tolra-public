@@ -246,6 +246,14 @@
     {
       "source": "supabase/proposals/builder2_atomic_settings.rollback.sql",
       "disposition": "rollback only; never forward release input"
+    },
+    {
+      "source": "supabase/proposals/p171_iso_editable_documents.sql",
+      "disposition": "proposed release 171 (module 9, editable ISO documents, owner-approved 26 Nov); not yet a numbered phase (no release, verify or preflight marker file); rehearsed on the scratch database only (p171_iso_editable_documents.rehearsal.md); not applied anywhere hosted; the app treats the missing table as 'editing is not available yet'"
+    },
+    {
+      "source": "supabase/proposals/p171_iso_editable_documents.rollback.sql",
+      "disposition": "rollback only for p171; never forward release input; refuses while any ISO document version exists"
     }
   ]
 }
