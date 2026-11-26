@@ -94,12 +94,20 @@ export function luminance(hex: string) {
   return 0.2126 * channel(hex, 1) + 0.7152 * channel(hex, 3) + 0.0722 * channel(hex, 5);
 }
 
-/** White or near-black text, whichever reads better on `background`. */
+/**
+ * Text colour for `background` (the shell's --brand-ink: Log out, sidebar and header text on the company's colour).
+ * INPUTS: a #rrggbb brand colour. OUTPUTS: "#ffffff", "#0f172a" or "#000000", always at WCAG AA (4.5:1) against it.
+ * White or near-black as before whichever reads better; only when that choice falls below 4.5 (mid-tone colours such as #2f7ed8 or #777777)
+ * does it switch to pure black or white, whichever passes (one of the two always does). MUST NOT CHANGE: the choice for colours that already passed.
+ */
 export function textOn(background: string) {
   const l = luminance(background);
-  const contrastWhite = 1.05 / (l + 0.05);
-  const contrastDark = (l + 0.05) / 0.05;
-  return contrastWhite >= contrastDark ? "#ffffff" : "#0f172a";
+  const SLATE = "#0f172a";
+  const ratio = (textLuminance: number) => (Math.max(l, textLuminance) + 0.05) / (Math.min(l, textLuminance) + 0.05);
+  const slateL = luminance(SLATE);
+  const preferred = ratio(1) >= ratio(slateL) ? "#ffffff" : SLATE;
+  if (ratio(preferred === "#ffffff" ? 1 : slateL) >= 4.5) return preferred;
+  return ratio(0) >= ratio(1) ? "#000000" : "#ffffff";
 }
 
 /** The organisation slug from a host like "jnr-engineering.example.co.uk", given the root domain; null otherwise. */
