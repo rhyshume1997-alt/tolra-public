@@ -83,8 +83,10 @@ test("ON, designated person (answered in the browser): empty boxes, no number un
   await page.getByLabel("Working weeks per year").fill("50");
   await page.getByLabel("Hourly cost per man (£)").fill("10");
   await page.getByRole("button", { name: "Add a running cost" }).click();
-  await page.getByLabel("Name").first().fill("Example rent");
-  await page.getByLabel("Amount (£)").first().fill("1000");
+  // Scoped to the row: the Settings page has other "Name" boxes (for example the company name) above this section.
+  const row = page.getByTestId("running-cost-row").first();
+  await row.getByLabel("Name", { exact: true }).fill("Example rent");
+  await row.getByLabel("Amount (£)", { exact: true }).fill("1000");
   await expect(page.getByTestId("running-total")).toHaveText("Monthly total: £1,000.00");
   await expect(helper).toContainText("£13.00 an hour");
   await page.getByLabel("Profit percent you want (%)").fill("20");
