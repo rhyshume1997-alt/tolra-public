@@ -4,8 +4,9 @@
  * The ISO templates page body (admin only, off by default). Inputs: the company's switch (organization_settings.hidden_nav marker),
  * the signed-in role, the company profile and the records read by lib/iso/load-iso-evidence. Outputs: the nine draft documents (each a
  * PDF), a zip of all nine plus the gap checklist PDF, the gap checklist (also CSV) and an internal reminder of NCRs open too long.
- * Must not change: it never writes anything, reads nothing while the switch is off, shows only to admin, and the reminder (its day
- * count is held in this component only, nothing saved) never feeds the gap checklist.
+ * Must not change: it never writes anything (saving and approving happen in the editor, components/iso/iso-document-editor.tsx, owner-approved 26 Nov),
+ * reads nothing while the switch is off, shows only to admin, and the reminder (its day count is held in this component only, nothing saved) never feeds the
+ * gap checklist. Each document PDF and the zip use the latest APPROVED text, else the latest saved draft, else today's generated draft (lib/iso/editable-document.ts).
  */
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -22,7 +23,10 @@ import { loadCompanyProfile, useCompanyProfile, type CompanyProfile } from "@/li
 import { fmtDate, toDateInput } from "@/lib/dates";
 import { DEMO_MODE } from "@/lib/demo";
 import { exportSpreadsheet } from "@/lib/export-records";
+import Link from "next/link";
 import { ISO_DOCUMENTS } from "@/lib/iso/document-list";
+import { effectiveDocument, printChoiceLabel, versionsOf, whichVersionPrints, type IsoVersion, type IsoVersionMeta } from "@/lib/iso/editable-document";
+import { loadIsoVersionMetas, loadPrintVersions } from "@/lib/iso/iso-document-versions";
 import { fillDocument, TO_COMPLETE, type FillContext } from "@/lib/iso/fill";
 import { buildGapChecklist, EMPTY_EVIDENCE, GAP_CSV_COLUMNS, gapStatusLabel } from "@/lib/iso/gap-checklist";
 import { ISO_OFF_NOTICE, ISO_TEMPLATES_ON_MARKER, isoTemplatesEnabled } from "@/lib/iso/iso-switch";
@@ -53,6 +57,8 @@ function IsoPackBody() {
   const { profile: sharedCompany } = useCompanyProfile();
   const company = loadedCompany ?? sharedCompany;
   const [data, setData] = useState<IsoEvidence | null>(null);
+  // Saved versions (null: not readable, so the documents are the read-only generated drafts and "Editing is not available yet" shows).
+  const [saved, setSaved] = useState<{ metas: IsoVersionMeta[]; print: Map<string, { kind: "approved" | "draft"; version: IsoVersion }> } | null>(null);
   // Held in this component only: nothing is saved.
   const [daysText, setDaysText] = useState(String(REVIEW_DAYS_DEFAULT));
   const [busy, setBusy] = useState(false);
@@ -63,10 +69,12 @@ function IsoPackBody() {
     let cancelled = false;
     setState("loading");
     void (async () => {
-      const [profile, evidence] = await Promise.all([settleWithin(loadCompanyProfile(), ISO_LOAD_LIMIT_MS, null), loadIsoEvidenceSafe()]);
+      const [profile, evidence, metas] = await Promise.all([settleWithin(loadCompanyProfile(), ISO_LOAD_LIMIT_MS, null), loadIsoEvidenceSafe(), loadIsoVersionMetas()]);
+      const print = metas.ok ? await loadPrintVersions(metas.versions) : null;
       if (cancelled) return;
       setCompany(profile);
       setData(evidence);
+      setSaved(metas.ok && print?.ok ? { metas: metas.versions, print: print.byDoc } : null);
       setState("ready");
     })();
     return () => { cancelled = true; };
@@ -90,7 +98,7 @@ function IsoPackBody() {
     return {
       document: (id: string) => {
         const doc = ISO_DOCUMENTS.find((d) => d.id === id)!;
-        return toBytes(<IsoDocumentPDF doc={fillDocument(doc, ctx)} logoSrc={company?.logoSrc} /> as never);
+        return toBytes(<IsoDocumentPDF doc={effectiveDocument(fillDocument(doc, ctx), saved?.print.get(id) ?? null)} logoSrc={company?.logoSrc} /> as never);
       },
       checklist: () => toBytes(<GapChecklistPDF rows={gapRows} companyName={companyName} logoSrc={company?.logoSrc} /> as never),
     };
@@ -133,14 +141,21 @@ function IsoPackBody() {
           </div>
           <section className="space-y-2">
             <h2 className="text-base font-semibold">Documents</h2>
+            {!saved ? <p className="text-xs text-slate-500" data-testid="iso-editing-unavailable">Editing is not available yet. The documents below are today&apos;s generated drafts.</p> : null}
             <Table>
-              <TableHeader><TableRow><TableHead>Document</TableHead><TableHead>Clause</TableHead><TableHead /></TableRow></TableHeader>
+              <TableHeader><TableRow><TableHead>Document</TableHead><TableHead>Clause</TableHead><TableHead>Version</TableHead><TableHead /></TableRow></TableHeader>
               <TableBody>
                 {ISO_DOCUMENTS.map((d) => (
                   <TableRow key={d.id}>
                     <TableCell>{d.title}</TableCell>
                     <TableCell>{d.clause}</TableCell>
-                    <TableCell><Button variant="outline" className="min-h-11" disabled={busy} onClick={() => void downloadDocument(d.id)} aria-label={`Download PDF: ${d.title}`}>Download PDF</Button></TableCell>
+                    <TableCell className="text-sm text-slate-600">{saved ? printChoiceLabel(whichVersionPrints(versionsOf(saved.metas, d.id))) : "Generated draft"}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-2">
+                        <Link href={`/admin/iso/${d.id}`} className="inline-flex min-h-11 items-center rounded-md border border-slate-300 px-3 text-sm font-medium" aria-label={`${saved ? "Edit" : "View"}: ${d.title}`}>{saved ? "Edit" : "View"}</Link>
+                        <Button variant="outline" className="min-h-11" disabled={busy} onClick={() => void downloadDocument(d.id)} aria-label={`Download PDF: ${d.title}`}>Download PDF</Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
