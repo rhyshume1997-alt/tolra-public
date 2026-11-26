@@ -12,6 +12,10 @@ SQL cannot delete Storage files (a protect trigger on storage.objects), so this 
 
 document_attachments and quote_attachments have 0 rows for either company, so nothing else is tied to wiped rows. NOT deleted: org-logos/264fe031.../logo-1791492821252.png (JNR's company logo, kept) and org-logos/75b27c0c.../logo-1794308781434.png (the deleted live company's logo: it becomes an orphan file; add it to the list only if the owner says so).
 
+## Rules (reviewer point 11)
+- The list above is generated from the wiped rows (`wipe_storage_list.sql`, run BEFORE the wipe; it returned exactly these 4). The run deletes ONLY these 4 exact object paths. There is no bucket delete and no folder or prefix delete: the API field is called `prefixes` but each entry here is a full object path.
+- Before deleting, compare the query result with this table; after, verify with the SQL below. Anything else in a bucket is left alone.
+
 ## Commands (service-role key in the shell only)
 ```bash
 export SUPABASE_URL="https://qngvemzbdsvtydkbplpo.supabase.co"
