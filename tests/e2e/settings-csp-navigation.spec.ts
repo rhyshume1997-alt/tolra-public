@@ -10,13 +10,17 @@ import { signIn, world } from "./helpers";
 const csp = (value: string | undefined) => value ?? "";
 const hasWide = (value: string) => /frame-src blob:/.test(value) || /connect-src[^;]*\bdata:/.test(value);
 
-/** The CSP of the most recent document (navigation) response. */
-function trackDocumentCsp(page: Page) {
-  const seen: { url: string; csp: string }[] = [];
-  page.on("response", (response) => {
-    if (response.request().resourceType() === "document" && response.request().isNavigationRequest()) seen.push({ url: new URL(response.url()).pathname, csp: csp(response.headers()["content-security-policy"]) });
-  });
-  return { seen, last: (path: string) => [...seen].reverse().find((d) => d.url === path)?.csp ?? "" };
+/**
+ * Runs `action` and returns the CSP header of the DOCUMENT response for `path` that it causes. A client-side navigation changes the URL before the
+ * boundary's reload happens, so the URL is not proof: the header of the new document response is. Fails (timeout) when no document is loaded.
+ */
+async function documentCspAfter(page: Page, path: string, action: () => Promise<unknown>): Promise<string> {
+  const response = page.waitForResponse((r) => r.request().isNavigationRequest() && r.request().resourceType() === "document" && new URL(r.url()).pathname === path, { timeout: 30_000 });
+  // A history navigation the boundary replaces is reported as aborted by Playwright; the replacing load is the one measured.
+  await Promise.resolve(action()).catch(() => undefined);
+  const header = (await response).headers()["content-security-policy"];
+  await page.waitForLoadState("load");
+  return csp(header);
 }
 
 function expectSettingsPolicy(value: string) {
@@ -31,62 +35,42 @@ function expectGlobalPolicy(value: string) {
 }
 
 test("Settings has its own policy and every other route has the global one", async ({ page }) => {
-  const docs = trackDocumentCsp(page);
   await signIn(page, world().tenants.alpha.users.admin);
-  expectGlobalPolicy(docs.last("/dashboard"));
-  await page.goto("/jobs");
-  expectGlobalPolicy(docs.last("/jobs"));
-  await page.goto("/settings");
-  expectSettingsPolicy(docs.last("/settings"));
+  expectGlobalPolicy(await documentCspAfter(page, "/dashboard", () => page.goto("/dashboard")));
+  expectGlobalPolicy(await documentCspAfter(page, "/jobs", () => page.goto("/jobs")));
+  expectSettingsPolicy(await documentCspAfter(page, "/settings", () => page.goto("/settings")));
 });
 
 test("Dashboard to Settings to Job Board: each document has its own route's policy", async ({ page }) => {
-  const docs = trackDocumentCsp(page);
   await signIn(page, world().tenants.alpha.users.admin);
-  await page.getByRole("link", { name: "Settings", exact: true }).first().click();
-  await page.waitForURL(/\/settings/);
-  expectSettingsPolicy(docs.last("/settings"));
-  await page.getByRole("link", { name: "Job Board" }).first().click();
-  await page.waitForURL(/\/jobs/);
-  expectGlobalPolicy(docs.last("/jobs"));
+  expectSettingsPolicy(await documentCspAfter(page, "/settings", () => page.getByRole("link", { name: "Settings", exact: true }).first().click()));
+  expectGlobalPolicy(await documentCspAfter(page, "/jobs", () => page.getByRole("link", { name: "Job Board" }).first().click()));
   // The document in the page itself: blob: frames and data: fetches are refused here.
   const blocked = await page.evaluate(async () => {
+    const violations: string[] = [];
+    document.addEventListener("securitypolicyviolation", (e) => violations.push(e.violatedDirective));
     const frame = document.createElement("iframe");
-    const frameBlocked = new Promise<boolean>((resolve) => {
-      document.addEventListener("securitypolicyviolation", (e) => { if (e.violatedDirective.startsWith("frame-src") || e.violatedDirective.startsWith("child-src") || e.violatedDirective.startsWith("default-src")) resolve(true); });
-      setTimeout(() => resolve(false), 3000);
-    });
     frame.src = URL.createObjectURL(new Blob(["x"], { type: "text/html" }));
     document.body.appendChild(frame);
     const fetchBlocked = await fetch("data:text/plain,x").then(() => false, () => true);
-    return { frame: await frameBlocked, fetch: fetchBlocked };
+    await new Promise((r) => setTimeout(r, 500));
+    return { frame: violations.some((v) => /^(frame-src|child-src|default-src)/.test(v)), fetch: fetchBlocked };
   });
   expect(blocked).toEqual({ frame: true, fetch: true });
 });
 
 test("browser Back and Forward across Settings keep each document's own policy", async ({ page }) => {
-  const docs = trackDocumentCsp(page);
   await signIn(page, world().tenants.alpha.users.admin);
-  await page.getByRole("link", { name: "Settings", exact: true }).first().click();
-  await page.waitForURL(/\/settings/);
-  await page.getByRole("link", { name: "Job Board" }).first().click();
-  await page.waitForURL(/\/jobs/);
-  await page.goBack();
-  await page.waitForURL(/\/settings/);
+  expectSettingsPolicy(await documentCspAfter(page, "/settings", () => page.getByRole("link", { name: "Settings", exact: true }).first().click()));
+  expectGlobalPolicy(await documentCspAfter(page, "/jobs", () => page.getByRole("link", { name: "Job Board" }).first().click()));
+  expectSettingsPolicy(await documentCspAfter(page, "/settings", () => page.goBack({ waitUntil: "commit" })));
   await expect(page.getByRole("heading", { name: "Settings" }).first()).toBeVisible();
-  expectSettingsPolicy(docs.last("/settings"));
-  await page.goForward();
-  await page.waitForURL(/\/jobs/);
-  await expect(page.getByRole("heading").first()).toBeVisible();
-  expectGlobalPolicy(docs.last("/jobs"));
+  expectGlobalPolicy(await documentCspAfter(page, "/jobs", () => page.goForward({ waitUntil: "commit" })));
 });
 
 test("signing out from Settings lands on a document with the global policy", async ({ page }) => {
-  const docs = trackDocumentCsp(page);
   await signIn(page, world().tenants.alpha.users.admin);
   await page.goto("/settings");
-  expectSettingsPolicy(docs.last("/settings"));
-  await page.getByRole("button", { name: "Log out" }).first().click();
-  await page.waitForURL(/\/login/, { timeout: 30_000 });
-  expectGlobalPolicy(docs.last("/login"));
+  await page.waitForLoadState("load");
+  expectGlobalPolicy(await documentCspAfter(page, "/login", () => page.getByRole("button", { name: "Log out" }).first().click()));
 });

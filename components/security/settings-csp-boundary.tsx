@@ -12,11 +12,13 @@
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 
+import { markBoundaryReload } from "@/lib/full-document-load";
+
 export function SettingsCspBoundary() {
   const pathname = usePathname();
   const previous = useRef(pathname);
   useEffect(() => {
-    if ((previous.current === "/settings") !== (pathname === "/settings")) window.location.replace(window.location.href);
+    if ((previous.current === "/settings") !== (pathname === "/settings")) { markBoundaryReload(); window.location.replace(window.location.href); }
     previous.current = pathname;
   }, [pathname]);
   return null;
