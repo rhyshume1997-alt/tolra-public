@@ -8,7 +8,7 @@
  * the done flag. It is on by default for every company (tour-switch.ts: only TOOLY_TOUR_DISABLED="true" turns it off; no company marker is
  * read); it shows the tour for the person's view (admin, office or workshop); a viewer never sees one. It opens by itself until the person has seen it once (the done flag, saved per person), and each step has
  * a note the person can open ("What happens here and how it gets produced", tour-notes.ts). "Skip tour" closes it and saves the same
- * flag. Once seen, a small "Replay tour" button shows on the Dashboard only; replaying starts at step 1 and saves the flag again.
+ * flag. Once seen, a hidden replay trigger exists on the Dashboard only (the visible "Replay tour" button lives in the sidebar's Account Settings dialog and clicks it, so nothing floats over the page); replaying starts at step 1 and saves the flag again.
  * It POINTS only: the ring ignores the mouse, no app button is ever pressed, no dialog is opened, no form is touched. Moving to the
  * next page is plain navigation. It works with AI off and calls no API.
  * Game look: when the company's third marker (tooly-game-tour:on) is also on, the same steps, notes, Skip and Replay are shown by
@@ -120,7 +120,7 @@ export function AdminTour({ envOn }: { envOn: boolean }) {
 
   if (enabled && done && !active && plan.length > 0 && pathname === "/dashboard") {
     return (
-      <button type="button" onClick={startReplay} className="print:hidden fixed bottom-24 left-3 z-40 rounded-md border bg-white px-3 py-1.5 text-xs text-slate-600 shadow" data-testid="tooly-tour-replay">Replay tour</button>
+      <button type="button" onClick={startReplay} className="sr-only print:hidden" tabIndex={-1} aria-hidden="true" data-testid="tooly-tour-replay">Replay tour</button>
     );
   }
   if (!active || !planned) return null;

@@ -7,6 +7,11 @@ import { supabase } from "@/lib/supabase";
 import { useUser } from "@/lib/use-user";
 import { SETUP_STEPS, readSetupProgress, writeSetupProgress, type SetupProgress, type SetupStep } from "@/lib/company-setup/progress";
 
+/** Once every step is ticked the card is hidden behind a single "Show setup steps" button; fewer ticks show the card as before. */
+export function setupGuideView(count: number, total: number, showWhenComplete: boolean): "card" | "compact" {
+  return total > 0 && count >= total && !showWhenComplete ? "compact" : "card";
+}
+
 export function CompanySetupGuide() {
   const { profile, activeRole, session } = useUser();
   const pathname = usePathname();
@@ -16,6 +21,7 @@ export function CompanySetupGuide() {
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [expanded, setExpanded] = useState(true);
+  const [showWhenComplete, setShowWhenComplete] = useState(false);
   useEffect(() => {
     let live = true;
     setLoaded(null); setMessage("");
@@ -28,6 +34,8 @@ export function CompanySetupGuide() {
   if (!visible || !org || !canManage) return null;
   const progress = loaded?.org === org ? loaded.progress : {};
   const count = SETUP_STEPS.filter(step => progress[step.id]).length;
+  const view = loaded?.org === org ? setupGuideView(count, SETUP_STEPS.length, showWhenComplete) : "card";
+  if (view === "compact") return <div className="mb-6 print:hidden" data-testid="setup-complete"><button type="button" className="text-sm underline" onClick={() => setShowWhenComplete(true)}>Show setup steps</button></div>;
   async function mark(step: SetupStep, completed: boolean) {
     if (!supabase || !org || saving || loaded?.org !== org) return;
     const company = org;
@@ -39,7 +47,7 @@ export function CompanySetupGuide() {
     finally { setSaving(false); }
   }
   return <section aria-label="Company setup" className="mb-6 rounded-lg border border-blue-200 bg-white p-4 print:hidden">
-    <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">Set up your company — {count} of {SETUP_STEPS.length} reviewed</h2><button type="button" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? "Show less" : "Show setup steps"}</button></div>
+    <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">Set up your company — {count} of {SETUP_STEPS.length} reviewed</h2><button type="button" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? "Show less" : "Show setup steps"}</button>{count >= SETUP_STEPS.length ? <button type="button" onClick={() => setShowWhenComplete(false)}>Hide setup steps</button> : null}</div>
     {expanded && <><p className="mt-2 text-sm">Start with your own details. No sample customers, jobs or invoices are added. Follow these steps, then tick each one when you have checked it. Optional connections can stay off.</p>
       <ol className="mt-3 grid gap-3 md:grid-cols-3">{SETUP_STEPS.map((step, i) => <li key={step.id} className="rounded border p-3">{needsFullDocumentLoad(step.href) ? <a href={step.href} className="font-semibold underline">{i + 1}. {step.label}</a> : <Link href={step.href} className="font-semibold underline">{i + 1}. {step.label}</Link>}<p className="mt-1 text-sm">{step.hint}</p><label className="mt-2 flex gap-2 text-sm"><input type="checkbox" checked={Boolean(progress[step.id])} disabled={saving || loaded?.org !== org} onChange={e => void mark(step.id, e.target.checked)} />I have checked this</label></li>)}</ol></>}
     {message && <p role="status" className="mt-2 text-sm text-amber-800">{message}</p>}

@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { loadCompanyProfile, type CompanyProfile } from "@/lib/company";
+import { loadCompanyProfile, useCompanyProfile, type CompanyProfile } from "@/lib/company";
 import { fmtDate, toDateInput } from "@/lib/dates";
 import { DEMO_MODE } from "@/lib/demo";
 import { exportSpreadsheet } from "@/lib/export-records";
@@ -26,7 +26,8 @@ import { ISO_DOCUMENTS } from "@/lib/iso/document-list";
 import { fillDocument, TO_COMPLETE, type FillContext } from "@/lib/iso/fill";
 import { buildGapChecklist, EMPTY_EVIDENCE, GAP_CSV_COLUMNS, gapStatusLabel } from "@/lib/iso/gap-checklist";
 import { ISO_OFF_NOTICE, ISO_TEMPLATES_ON_MARKER, isoTemplatesEnabled } from "@/lib/iso/iso-switch";
-import { loadIsoEvidence, type IsoEvidence } from "@/lib/iso/load-iso-evidence";
+import type { IsoEvidence } from "@/lib/iso/load-iso-evidence";
+import { ISO_LOAD_LIMIT_MS, loadIsoEvidenceSafe, settleWithin } from "@/lib/iso/load-iso-evidence-safe";
 import { overdueNcrs, REVIEW_DAYS_DEFAULT, reviewDays } from "@/lib/iso/ncr-review-reminder";
 import { useOrgSettings } from "@/lib/org-settings";
 import { downloadFile } from "@/lib/spreadsheet";
@@ -47,25 +48,29 @@ function IsoPackBody() {
   const on = isoTemplatesEnabled(hiddenNav);
   const available = !DEMO_MODE && Boolean(supabase);
   const [state, setState] = useState<"idle" | "loading" | "ready">("idle");
-  const [company, setCompany] = useState<CompanyProfile | null>(null);
+  const [loadedCompany, setCompany] = useState<CompanyProfile | null>(null);
+  // The profile the app shell already holds is the fallback, so the name shows from the first paint and survives a slow or failed read here.
+  const { profile: sharedCompany } = useCompanyProfile();
+  const company = loadedCompany ?? sharedCompany;
   const [data, setData] = useState<IsoEvidence | null>(null);
   // Held in this component only: nothing is saved.
   const [daysText, setDaysText] = useState(String(REVIEW_DAYS_DEFAULT));
   const [busy, setBusy] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!loaded || !on || !available) return;
     let cancelled = false;
     setState("loading");
     void (async () => {
-      const [profile, evidence] = await Promise.all([loadCompanyProfile().catch(() => null), loadIsoEvidence()]);
+      const [profile, evidence] = await Promise.all([settleWithin(loadCompanyProfile(), ISO_LOAD_LIMIT_MS, null), loadIsoEvidenceSafe()]);
       if (cancelled) return;
       setCompany(profile);
       setData(evidence);
       setState("ready");
     })();
     return () => { cancelled = true; };
-  }, [loaded, on, available]);
+  }, [loaded, on, available, attempt]);
 
   const ctx: FillContext = useMemo(() => ({ company, facts: data?.facts ?? null }), [company, data]);
   const gapRows = useMemo(() => buildGapChecklist(data?.evidence ?? EMPTY_EVIDENCE), [data]);
@@ -76,7 +81,7 @@ function IsoPackBody() {
   if (!on) return <div className="space-y-4"><p className="text-sm text-slate-500">{ISO_OFF_NOTICE}</p><IsoSwitchCard /></div>;
   if (!available) return <p className="text-sm text-slate-500">The ISO templates are not available in this mode.</p>;
 
-  const companyName = company?.documentName || company?.name || TO_COMPLETE;
+  const companyName = company?.name || company?.documentName || TO_COMPLETE;
   const stamp = toDateInput(new Date());
 
   async function build() {
@@ -121,7 +126,7 @@ function IsoPackBody() {
 
   const contents = (
     <>
-          {data?.unread.length ? <p className="text-xs text-slate-500">Some records could not be read ({data.unread.join(", ")}). Those clauses show as not evidenced.</p> : null}
+          {data?.unread.length ? <p className="flex flex-wrap items-center gap-3 text-xs text-slate-500">Some records could not be read ({data.unread.join(", ")}). Those clauses show as not evidenced. <Button variant="outline" size="sm" className="min-h-11" onClick={() => setAttempt((n) => n + 1)}>Try reading again</Button></p> : null}
           <div className="flex flex-wrap items-center gap-3">
             <Button className="min-h-11" disabled={busy} onClick={() => void downloadPack()}>Download pack (zip)</Button>
             <span className="text-xs text-slate-500">All nine documents and the gap checklist, as PDFs.</span>

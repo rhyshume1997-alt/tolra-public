@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { useOrgSettings } from "@/lib/org-settings";
 import { useAiFeatures } from "@/components/ai-features";
 import { aiNavAvailable, canOpenDestination } from "@/lib/destinations";
+import { canSeeIso, isoTemplatesEnabled } from "@/lib/iso/iso-switch";
 import { canSeeReports, reportsEnabled } from "@/lib/reports/reports-switch";
 import { canSeeNcrRegister, ncrRegisterEnabled } from "@/lib/jobs/ncr-register-switch";
 import { passwordProblem } from "@/lib/password";
@@ -87,6 +88,8 @@ const navSections: { title: string; items: NavItem[] }[] = [
       { href: "/admin/compliance", label: "Security", roles: ["admin"] },
       { href: "/admin/data", label: "Data", roles: ["admin"] },
       { href: "/admin/integrations", label: "Integrations", roles: ["admin"] },
+      // Only while an admin has switched the ISO templates on (isoTemplatesEnabled); admin only.
+      { href: "/admin/iso", label: "ISO templates", roles: ["admin"] },
       { href: "/settings", label: "Settings", roles: ["admin"] },
     ],
   },
@@ -96,6 +99,9 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const { profile, organizations, switchOrganization, activeRole, setActiveRole, signOut, hasAnyRole, hiddenSections } = useUser();
   const orgSettings = useOrgSettings();
+  // Account Settings dialog: the Replay tour button shows only while the Dashboard's tour offers a replay (it clicks the tour's own hidden trigger).
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [canReplay, setCanReplay] = useState(false);
   const { aiHelper } = useAiFeatures();
   const connection = connectionState(useOfflineStatus());
   const { profile: company, loading: companyLoading } = useShellCompany();
@@ -225,7 +231,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
       <nav className="flex-1 overflow-y-auto pb-4">
         {navSections.map((section) => {
-          const visibleItems = section.items.filter((item) => hasAnyRole(item.roles) && (item.href !== "/admin/integrations" || has084) && aiNavAvailable(item.href, Boolean(aiHelper)) && (item.href !== "/reports" || (canSeeReports(activeRole) && reportsEnabled(orgSettings.hiddenNav))) && (item.href !== "/jobs/ncr" || (canSeeNcrRegister(activeRole) && ncrRegisterEnabled(orgSettings.hiddenNav))) && canOpenDestination(item.href, { activeRole, hiddenSections, hiddenNav: orgSettings.hiddenNav }));
+          const visibleItems = section.items.filter((item) => hasAnyRole(item.roles) && (item.href !== "/admin/integrations" || has084) && aiNavAvailable(item.href, Boolean(aiHelper)) && (item.href !== "/reports" || (canSeeReports(activeRole) && reportsEnabled(orgSettings.hiddenNav))) && (item.href !== "/admin/iso" || (canSeeIso(activeRole) && isoTemplatesEnabled(orgSettings.hiddenNav))) && (item.href !== "/jobs/ncr" || (canSeeNcrRegister(activeRole) && ncrRegisterEnabled(orgSettings.hiddenNav))) && canOpenDestination(item.href, { activeRole, hiddenSections, hiddenNav: orgSettings.hiddenNav }));
           if (!visibleItems.length) return null;
 
           return (
@@ -236,7 +242,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                   const active = (pathname === item.href || pathname.startsWith(`${item.href}/`)) && !(item.href === "/jobs" && pathname.startsWith("/jobs/ncr")); // the NCR register has its own item
                   const queued = (approvalCount ?? 0) + reopenCount;
                   const badge = item.href === "/approval" && queued ? queued.toString() : null;
-                  const linkClass = cn("flex min-h-10 items-center gap-3 px-6 py-2 pointer-coarse:min-h-11 text-[0.9rem] text-brand-ink/75 transition hover:bg-brand-ink/[0.07] hover:text-brand-ink", active && "bg-brand-ink/[0.12] font-semibold text-brand-ink");
+                  const linkClass = cn("flex min-h-10 items-center gap-3 px-6 py-2 pointer-coarse:min-h-11 text-[0.9rem] text-brand-ink/90 transition hover:bg-brand-ink/[0.07] hover:text-brand-ink", active && "bg-brand-ink/[0.12] font-semibold text-brand-ink");
                   const content = (
                     <>
                       <span className="min-w-0 flex-1 leading-snug [overflow-wrap:anywhere]">{item.label}</span>
@@ -265,14 +271,15 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             <p className="truncate text-sm font-medium">{profile?.full_name || profile?.email || ""}</p>
             <span className="label-mono flex flex-wrap items-center gap-x-1.5 text-brand-ink/50"><span>{roleLabel(activeRole)}</span><span className="flex min-w-0 items-center gap-1.5"><ConnectionDot tone={connection.tone} /><span data-testid="drawer-connection">{connection.label}</span></span></span>
           </div>
-          <Dialog>
-            <DialogTrigger asChild><button type="button" className="-mt-2.5 flex size-10 shrink-0 items-center justify-center rounded-none pointer-coarse:-mt-3 pointer-coarse:size-11 text-brand-ink/55 transition hover:bg-brand-ink/10 hover:text-brand-ink" aria-label="Settings"><Settings className="size-[18px]" strokeWidth={1.75} /></button></DialogTrigger>
+          <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+            <DialogTrigger asChild><button type="button" onClick={() => setCanReplay(Boolean(document.querySelector('[data-testid="tooly-tour-replay"]')))} className="-mt-2.5 flex size-10 shrink-0 items-center justify-center rounded-none pointer-coarse:-mt-3 pointer-coarse:size-11 text-brand-ink transition hover:bg-brand-ink/10 hover:text-brand-ink" aria-label="Settings"><Settings className="size-[18px]" strokeWidth={1.75} /></button></DialogTrigger>
             <DialogContent>
               <DialogHeader><DialogTitle>Account Settings</DialogTitle><DialogDescription>Profile and {PRODUCT.name} preferences.</DialogDescription></DialogHeader>
               <div className="space-y-4 text-sm">
                 <div className="rounded-lg border bg-slate-50 p-4"><p className="font-semibold text-slate-950">{profile?.full_name || profile?.email || ""}</p><p className="text-slate-500">{roleLabel(profile?.role)}{company ? `, ${company.name}` : ""}</p><p className="mt-2 text-slate-600">{profile?.email}</p></div>
                 <div className="rounded-lg border p-4"><DisplayNameForm /></div>
                 <div className="rounded-lg border p-4"><DateFormatSettings /></div>
+                {canReplay ? <Button variant="outline" className="w-full" onClick={() => { setSettingsOpen(false); document.querySelector<HTMLButtonElement>('[data-testid="tooly-tour-replay"]')?.click(); }}>Replay tour</Button> : null}
                 {canChooseView ? (
                   <Button variant="outline" className="w-full" onClick={() => { window.location.assign("/select-role"); }}>Choose admin, office, or workshop view</Button>
                 ) : profile?.secondary_role ? (
@@ -298,7 +305,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             Switch view: {roleLabel(activeRole === profile.role ? profile.secondary_role : profile.role)}
           </Button>
         ) : null}
-        <Button variant="ghost" className="mt-1 w-full justify-start text-brand-ink/60 hover:bg-brand-ink/10 hover:text-brand-ink" onClick={signOut}><LogOut className="size-4" /> Log out</Button>
+        <Button variant="ghost" className="mt-1 w-full justify-start text-brand-ink hover:bg-brand-ink/10 hover:text-brand-ink" onClick={signOut}><LogOut className="size-4" /> Log out</Button>
       </div>
       {codeDialog}
     </div>

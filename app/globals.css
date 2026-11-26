@@ -459,22 +459,22 @@ td[data-label]::before {
  * Must not change: colour, size and shape only; no layout flow, handler, text, focus or data changes. Without the attribute nothing here applies.
  * Do not edit components/ui/premium/premium.module.css; the tokens come from it.
  */
-html[data-ui-v2="on"] :is([data-slot="button"], [data-slot="dropdown-menu-trigger"][data-variant]) { border-radius: var(--ui-radius-sm); font-family: var(--ui-font); font-weight: 600; letter-spacing: 0; min-height: var(--ui-h-md, 40px); }
-html[data-ui-v2="on"] [data-slot="button"][data-size="xs"], html[data-ui-v2="on"] [data-slot="button"][data-size="sm"] { min-height: 32px; }
-html[data-ui-v2="on"] [data-slot="button"][data-size="lg"] { min-height: var(--ui-h-lg, 48px); }
-html[data-ui-v2="on"] [data-slot="button"][data-size^="icon"] { min-height: 0; }
-html[data-ui-v2="on"] [data-slot="button"]:is([data-variant="default"],[data-variant="outline"],[data-variant="secondary"]) { box-shadow: var(--ui-shadow-1), var(--ui-inset-light); }
-@media (pointer: coarse) { html[data-ui-v2="on"] [data-slot="button"] { min-height: 48px; } html[data-ui-v2="on"] [data-slot="button"][data-size^="icon"] { min-height: 48px; min-width: 48px; } }
-html[data-ui-v2="on"] [data-slot="button"][data-variant="default"] { background: var(--ui-brand); color: var(--ui-on-brand); border-color: var(--ui-brand); box-shadow: var(--ui-inset-light); }
-html[data-ui-v2="on"] [data-slot="button"][data-variant="default"]:hover:not(:disabled) { background: color-mix(in srgb, var(--ui-brand) 88%, #fff); }
-html[data-ui-v2="on"] [data-slot="button"][data-variant="outline"], html[data-ui-v2="on"] [data-slot="button"][data-variant="secondary"] { background: var(--ui-surface); color: var(--ui-ink); border-color: var(--ui-line-strong); }
-html[data-ui-v2="on"] [data-slot="button"][data-variant="outline"]:hover:not(:disabled), html[data-ui-v2="on"] [data-slot="button"][data-variant="secondary"]:hover:not(:disabled) { background: var(--ui-surface-2); border-color: var(--ui-line-hover); }
-html[data-ui-v2="on"] [data-slot="button"][data-variant="ghost"] { color: var(--ui-ink); }
-html[data-ui-v2="on"] [data-slot="button"][data-variant="ghost"]:hover:not(:disabled) { background: var(--ui-surface-3); }
-html[data-ui-v2="on"] [data-slot="button"][data-variant="destructive"] { background: var(--ui-danger-soft); color: var(--ui-danger); border-color: color-mix(in srgb, var(--ui-danger) 35%, #fff); }
-html[data-ui-v2="on"] [data-slot="button"][data-variant="link"] { color: var(--ui-accent); font-weight: 500; text-decoration: none; min-height: 0; }
-html[data-ui-v2="on"] [data-slot="button"][data-variant="link"]:hover { text-decoration: underline; text-underline-offset: 3px; }
-html[data-ui-v2="on"] [data-slot="button"]:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; box-shadow: none; }
+html[data-ui-v2="on"] :is([data-slot="button"], [data-slot="dropdown-menu-trigger"][data-variant]):not(:is(aside, [data-slot="sheet-content"][data-side="left"]) *) { border-radius: var(--ui-radius-sm); font-family: var(--ui-font); font-weight: 600; letter-spacing: 0; min-height: var(--ui-h-md, 40px); }
+html[data-ui-v2="on"] [data-slot="button"]:not(:is(aside, [data-slot="sheet-content"][data-side="left"]) *)[data-size="xs"], html[data-ui-v2="on"] [data-slot="button"]:not(:is(aside, [data-slot="sheet-content"][data-side="left"]) *)[data-size="sm"] { min-height: 32px; }
+html[data-ui-v2="on"] [data-slot="button"]:not(:is(aside, [data-slot="sheet-content"][data-side="left"]) *)[data-size="lg"] { min-height: var(--ui-h-lg, 48px); }
+html[data-ui-v2="on"] [data-slot="button"]:not(:is(aside, [data-slot="sheet-content"][data-side="left"]) *)[data-size^="icon"] { min-height: 0; }
+html[data-ui-v2="on"] [data-slot="button"]:not(:is(aside, [data-slot="sheet-content"][data-side="left"]) *):is([data-variant="default"],[data-variant="outline"],[data-variant="secondary"]) { box-shadow: var(--ui-shadow-1), var(--ui-inset-light); }
+@media (pointer: coarse) { html[data-ui-v2="on"] [data-slot="button"]:not(:is(aside, [data-slot="sheet-content"][data-side="left"]) *) { min-height: 48px; } html[data-ui-v2="on"] [data-slot="button"]:not(:is(aside, [data-slot="sheet-content"][data-side="left"]) *)[data-size^="icon"] { min-height: 48px; min-width: 48px; } }
+html[data-ui-v2="on"] [data-slot="button"]:not(:is(aside, [data-slot="sheet-content"][data-side="left"]) *)[data-variant="default"] { background: var(--ui-brand); color: var(--ui-on-brand); border-color: var(--ui-brand); box-shadow: var(--ui-inset-light); }
+html[data-ui-v2="on"] [data-slot="button"]:not(:is(aside, [data-slot="sheet-content"][data-side="left"]) *)[data-variant="default"]:hover:not(:disabled) { background: color-mix(in srgb, var(--ui-brand) 88%, #fff); }
+html[data-ui-v2="on"] [data-slot="button"]:not(:is(aside, [data-slot="sheet-content"][data-side="left"]) *)[data-variant="outline"], html[data-ui-v2="on"] [data-slot="button"]:not(:is(aside, [data-slot="sheet-content"][data-side="left"]) *)[data-variant="secondary"] { background: var(--ui-surface); color: var(--ui-ink); border-color: var(--ui-line-strong); }
+html[data-ui-v2="on"] [data-slot="button"]:not(:is(aside, [data-slot="sheet-content"][data-side="left"]) *)[data-variant="outline"]:hover:not(:disabled), html[data-ui-v2="on"] [data-slot="button"]:not(:is(aside, [data-slot="sheet-content"][data-side="left"]) *)[data-variant="secondary"]:hover:not(:disabled) { background: var(--ui-surface-2); border-color: var(--ui-line-hover); }
+html[data-ui-v2="on"] [data-slot="button"]:not(:is(aside, [data-slot="sheet-content"][data-side="left"]) *)[data-variant="ghost"] { color: var(--ui-ink); }
+html[data-ui-v2="on"] [data-slot="button"]:not(:is(aside, [data-slot="sheet-content"][data-side="left"]) *)[data-variant="ghost"]:hover:not(:disabled) { background: var(--ui-surface-3); }
+html[data-ui-v2="on"] [data-slot="button"]:not(:is(aside, [data-slot="sheet-content"][data-side="left"]) *)[data-variant="destructive"] { background: var(--ui-danger-soft); color: var(--ui-danger); border-color: color-mix(in srgb, var(--ui-danger) 35%, #fff); }
+html[data-ui-v2="on"] [data-slot="button"]:not(:is(aside, [data-slot="sheet-content"][data-side="left"]) *)[data-variant="link"] { color: var(--ui-accent); font-weight: 500; text-decoration: none; min-height: 0; }
+html[data-ui-v2="on"] [data-slot="button"]:not(:is(aside, [data-slot="sheet-content"][data-side="left"]) *)[data-variant="link"]:hover { text-decoration: underline; text-underline-offset: 3px; }
+html[data-ui-v2="on"] [data-slot="button"]:not(:is(aside, [data-slot="sheet-content"][data-side="left"]) *):focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; box-shadow: none; }
 
 html[data-ui-v2="on"] [data-slot="input"], html[data-ui-v2="on"] [data-slot="textarea"], html[data-ui-v2="on"] [data-slot="select-trigger"] {
   border-radius: var(--ui-radius-sm); border: 1px solid var(--ui-line-strong); background: var(--ui-surface); color: var(--ui-ink); font-family: var(--ui-font); font-size: 14px; box-shadow: none;
@@ -512,6 +512,17 @@ html[data-ui-v2="on"] [data-slot="dropdown-menu-content"], html[data-ui-v2="on"]
 html[data-ui-v2="on"] [data-slot="dropdown-menu-item"], html[data-ui-v2="on"] [data-slot="select-item"] { border-radius: 6px; min-height: 40px; font-size: 14px; }
 html[data-ui-v2="on"] [data-slot="dropdown-menu-item"]:focus, html[data-ui-v2="on"] [data-slot="select-item"]:focus { background: var(--ui-surface-3); color: var(--ui-ink); }
 
+
+/* The older hand-built on/off switches (role=switch with rounded-none: Settings VAT registered, Sign-in page branding, ISO, worksheet, e-mail schedules) get the premium look: rounded track, navy when on, round thumb.
+   The premium Switch has its own styles and is not matched (it carries no rounded-none). Colour and radius only; size, position and handlers are unchanged. */
+html[data-ui-v2="on"] button[role="switch"][class*="rounded-none"] { border-radius: 12px; }
+html[data-ui-v2="on"] button[role="switch"][class*="rounded-none"][aria-checked="true"] { background: var(--ui-brand); border-color: var(--ui-brand); }
+html[data-ui-v2="on"] button[role="switch"][class*="rounded-none"][aria-checked="false"] { background: #8a94a7; border-color: #8a94a7; }
+html[data-ui-v2="on"] button[role="switch"][class*="rounded-none"] > span { border-radius: 50%; background: #fff; }
+html[data-ui-v2="on"] button[role="switch"][class*="rounded-none"]:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 2px; }
+/* Native selects and date fields outside the shared Select get the same field look as the inputs. */
+html[data-ui-v2="on"] select:not([data-slot]) { border-radius: var(--ui-radius-sm); border: 1px solid var(--ui-line-strong); background-color: var(--ui-surface); color: var(--ui-ink); font-family: var(--ui-font); }
+html[data-ui-v2="on"] select:not([data-slot]):focus-visible { border-color: var(--ui-accent); outline: 2px solid var(--ui-accent); outline-offset: 1px; }
 /*
  * NAVY SELECTION BAR (Jobs). Inputs: the bar's own data-testid="selection-bar" data-selected="true" (app/(dashboard)/jobs/page.tsx, unchanged).
  * Output: the bar's shared Buttons are translucent white-outline with white text, and Finish Selected is white with navy text (the on-dark look of the v4 shots).
