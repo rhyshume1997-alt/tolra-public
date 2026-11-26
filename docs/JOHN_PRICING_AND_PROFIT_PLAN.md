@@ -5,12 +5,12 @@ Status: PLAN ONLY. Nothing is built. Starts after the data wipe, #644 and #645 h
 ## Ground rules (owner)
 - **No figure from John's notes is a default.** Rates, headcount, hours, weeks, overheads, markups and targets are entered by John in Tolra himself. Tests may use made-up numbers, labelled as examples. Until a figure is entered, the views say "Enter your rates in Settings" and show no number.
 - **Profit = what is left after wages, running costs, suppliers and materials.** John's own pay comes from dividends, so it is not a cost; the views say "profit before dividends".
-- **Only John sees profit figures** (a per-user "can see profit" switch, off by default).
+- **Only John sees profit figures**, nobody else (one designated user; off for everyone until set).
 - Everything links: quotes, jobs, purchase orders, invoices.
 
 ## What John told us (answers, 26 Nov)
 - Markup on top changes by customer (anywhere from 15 to 50 percent). Hours are not priced differently; the customer's markup is what changes.
-- Anything he buys in gets one percentage added, in case of a mistake.
+- Anything he buys in gets a percentage added, in case of a mistake. It varies by supplier (Rhys, 26 Nov).
 - Floor: 3 men, 38 hours a week, 48 weeks a year. John is office, not shop floor, and is not counted in shop capacity.
 - He does not know his break-even hourly rate; that is what he is trying to work out.
 - Running costs belong in the app (Settings), and the app should tell him whether a price covers them.
@@ -23,11 +23,11 @@ Status: PLAN ONLY. Nothing is built. Starts after the data wipe, #644 and #645 h
 ### A. Settings (migration proposal)
 - [ ] Crew (men on the floor), hours per week per man, working weeks per year, hourly cost per man (all entered by John, empty by default)
 - [ ] Running costs section: list of regular business costs (name, amount, monthly or yearly), monthly total
-- [ ] Bought-in percentage (one company-wide setting; a quote line can override it)
+- [ ] Bought-in percentage PER SUPPLIER (set on each supplier; a company-wide fallback for suppliers with none; a quote line can still override it)
 - [ ] Markup per customer (15 to 50 percent range, set on each customer; quotes start from it)
 - [ ] Targets: yearly target and monthly profit percent target
 - [ ] Break-even helper: the hourly rate he must charge to cover wages and running costs, and the rate for a profit percent he picks (a calculation, not a stored assumption)
-- [ ] "Can see profit" per-user switch (off by default), John only
+- [ ] "Can see profit": John only. One designated user (John), nobody else, not even other admins; off for everyone until John is set
 - [ ] Migration proposal + rollback + scratch rehearsal; switch off by default
 
 ### B. Cost and profit links
@@ -51,11 +51,11 @@ Status: PLAN ONLY. Nothing is built. Starts after the data wipe, #644 and #645 h
 ## Already in Tolra (reuse, do not rebuild)
 Costing engine (labour, programming, overhead, margin, machine rates), "Price this part" in the quote builder, planned-vs-actual panel and machine-hours variance report (flag-gated), WIP ageing, revenue reports (no costs), Numbers page, schedule bookings (planned hours), operator sessions (actual hours), POs linked to jobs and quotes.
 
-## Open questions
+## Open questions (all answered)
 - [x] Should quotes warn against break-even only, or also against the target profit percent? ANSWERED (Rhys, 26 Nov): both, as two separate lines.
-- [ ] Is one bought-in percentage enough, or should it vary by supplier or item? (John says one percentage.)
-- [ ] Should "can see profit" be visible to office or Rhys if John allows it? (Plan: John only by default.)
-- [ ] Which month does the "year" start in, for the yearly target?
+- [x] Is one bought-in percentage enough? ANSWERED (Rhys, 26 Nov): it varies by supplier.
+- [x] Who sees profit? ANSWERED (Rhys, 26 Nov): nobody, only John.
+- [x] Which month does the year start? ANSWERED (Rhys, 26 Nov): 1 December to 30 November (the yearly target and the profit-per-year views use that year).
 
 ## Timing
 About 1 to 1.5 days each for A, B, C and D plus CI (integration about 90 minutes). Earliest start is after the wipe yes, #644 and #645. Not for Monday.
