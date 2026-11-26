@@ -1,5 +1,6 @@
 import { AiFeaturesProvider } from "@/components/ai-features";
 import { DashboardShell } from "@/components/dashboard-shell";
+import { SettingsCspBoundary } from "@/components/security/settings-csp-boundary";
 import { UiV2Skin } from "@/components/ui/ui-v2-skin";
 import { aiFinanceCheckEnabled } from "@/lib/ai/finance-check/flag";
 import { aiHelperEnabled } from "@/lib/ai-helper/flag";
@@ -43,7 +44,7 @@ export default async function DashboardLayout({
     // AI features this server has on: plain booleans only (the env var stays on the server). All off by default. Outside the shell, so
     // the sidebar (inside it) can show the AI item too.
     <AiFeaturesProvider value={{ financeCheck: aiFinanceCheckEnabled(), aiHelper: aiHelperEnabled() }}>
-      <DashboardShell company={await readCompany()} toolyTour={toolyTourEnvEnabled()}><UiV2Skin />{children}</DashboardShell>
+      <DashboardShell company={await readCompany()} toolyTour={toolyTourEnvEnabled()}><UiV2Skin /><SettingsCspBoundary />{children}</DashboardShell>
     </AiFeaturesProvider>
   );
 }
