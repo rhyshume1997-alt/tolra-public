@@ -21,7 +21,7 @@ The earlier local runs used a superuser; they were repeated as a non-superuser r
 | 10 | Identity columns (`job_flow_events.seq`, 3 security_audit tables) | identity | plain bigint | No. |
 | 11 | CHECK constraints | 449 CHECKs exist on production and were not loaded locally (they never block a delete) | not loaded | No. |
 
-Everything else compared equal by definition: all 521 primary, unique and foreign keys (including every public FK and its ON DELETE rule: the 204 of 205 "difference" was only the `issues` FK), all other 480 delete-time-relevant triggers by name, function and definition, trigger function bodies by md5 (except item 6), all other columns by name, type, NOT NULL, generated and identity flags.
+Everything else compared equal by definition: all 521 primary, unique and foreign keys (including every public FK and its ON DELETE rule: the 204 of 205 "difference" was only the `issues` FK), all other 481 triggers by name, function and definition, trigger function bodies by md5 (except item 6), all other columns by name, type, NOT NULL, generated and identity flags.
 
 ## The script's own guards, evaluated on the production definitions
 - Classification: every production public table with `organization_id` is in the wipe, kept or special list: **none unclassified**.
