@@ -18,7 +18,7 @@ Inventory from the real production schema: `wipe-evidence/FK_AND_TRIGGER_INVENTO
 | 10 | Production-shaped rehearsal | See Rehearsal. |
 | 11 | Storage | The exact 4 object paths from the wiped rows; no bucket or prefix deletes (the API `prefixes` argument holds full object paths). See wipe_storage_step.md. |
 
-**Owner confirmation still required before the run (point 8):** Rhys confirms that no real document from these records (quotes, invoices, delivery notes, purchase orders, credit notes) was ever sent to a customer or accountant. Resetting numbering is only right if that is true.
+**Owner confirmation (point 8): CONFIRMED by Rhys, 26 Nov:** nothing from these records was ever sent to anyone; there was no customer or accountant. Resetting the six counters is therefore right. (Still needs the final yes with the counts.)
 
 ## Maintenance window (point 7)
 1. Tell John and the office nobody uses Tolra (the offline mobile queue can write later, so ask the shop to stay out of the app and to be online when they return).
