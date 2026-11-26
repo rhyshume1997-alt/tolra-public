@@ -1,0 +1,3252 @@
+[
+ {
+  "child": "auth.identities",
+  "parent": "auth.users",
+  "conname": "identities_user_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": false,
+  "cols": "user_id",
+  "nullable": false
+ },
+ {
+  "child": "auth.mfa_factors",
+  "parent": "auth.users",
+  "conname": "mfa_factors_user_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": false,
+  "cols": "user_id",
+  "nullable": false
+ },
+ {
+  "child": "auth.mfa_recovery_code_sets",
+  "parent": "auth.users",
+  "conname": "mfa_recovery_code_sets_user_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": false,
+  "cols": "user_id",
+  "nullable": false
+ },
+ {
+  "child": "auth.oauth_authorizations",
+  "parent": "auth.users",
+  "conname": "oauth_authorizations_user_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": false,
+  "cols": "user_id",
+  "nullable": true
+ },
+ {
+  "child": "auth.oauth_consents",
+  "parent": "auth.users",
+  "conname": "oauth_consents_user_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": false,
+  "cols": "user_id",
+  "nullable": false
+ },
+ {
+  "child": "auth.one_time_tokens",
+  "parent": "auth.users",
+  "conname": "one_time_tokens_user_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": false,
+  "cols": "user_id",
+  "nullable": false
+ },
+ {
+  "child": "auth.scim_users",
+  "parent": "auth.users",
+  "conname": "scim_users_user_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": false,
+  "child_has_org": false,
+  "cols": "user_id",
+  "nullable": true
+ },
+ {
+  "child": "auth.sessions",
+  "parent": "auth.users",
+  "conname": "sessions_user_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": false,
+  "cols": "user_id",
+  "nullable": false
+ },
+ {
+  "child": "auth.webauthn_challenges",
+  "parent": "auth.users",
+  "conname": "webauthn_challenges_user_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": false,
+  "cols": "user_id",
+  "nullable": true
+ },
+ {
+  "child": "auth.webauthn_credentials",
+  "parent": "auth.users",
+  "conname": "webauthn_credentials_user_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": false,
+  "cols": "user_id",
+  "nullable": false
+ },
+ {
+  "child": "public.ai_helper_tolra_control",
+  "parent": "auth.users",
+  "conname": "ai_helper_tolra_control_updated_by_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": false,
+  "child_has_org": false,
+  "cols": "updated_by",
+  "nullable": true
+ },
+ {
+  "child": "public.attendance_event_network_ips",
+  "parent": "auth.users",
+  "conname": "attendance_event_network_ips_user_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "user_id",
+  "nullable": false
+ },
+ {
+  "child": "public.attendance_event_networks",
+  "parent": "auth.users",
+  "conname": "attendance_event_networks_user_id_fkey",
+  "on_delete": "RESTRICT",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "user_id",
+  "nullable": false
+ },
+ {
+  "child": "public.attendance_events",
+  "parent": "auth.users",
+  "conname": "attendance_events_recorded_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "recorded_by",
+  "nullable": true
+ },
+ {
+  "child": "public.attendance_events",
+  "parent": "auth.users",
+  "conname": "attendance_events_user_id_fkey",
+  "on_delete": "RESTRICT",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "user_id",
+  "nullable": false
+ },
+ {
+  "child": "public.clock_in_network_exemptions",
+  "parent": "auth.users",
+  "conname": "clock_in_network_exemptions_updated_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "updated_by",
+  "nullable": true
+ },
+ {
+  "child": "public.clock_in_network_exemptions",
+  "parent": "auth.users",
+  "conname": "clock_in_network_exemptions_user_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "user_id",
+  "nullable": false
+ },
+ {
+  "child": "public.clock_in_network_locks",
+  "parent": "auth.users",
+  "conname": "clock_in_network_locks_locked_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "locked_by",
+  "nullable": true
+ },
+ {
+  "child": "public.clock_in_network_refusals",
+  "parent": "auth.users",
+  "conname": "clock_in_network_refusals_user_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "user_id",
+  "nullable": false
+ },
+ {
+  "child": "public.clock_in_network_unverified",
+  "parent": "auth.users",
+  "conname": "clock_in_network_unverified_user_id_fkey",
+  "on_delete": "RESTRICT",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "user_id",
+  "nullable": false
+ },
+ {
+  "child": "public.credit_notes",
+  "parent": "auth.users",
+  "conname": "credit_notes_created_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "created_by",
+  "nullable": true
+ },
+ {
+  "child": "public.credit_notes",
+  "parent": "auth.users",
+  "conname": "credit_notes_issued_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "issued_by",
+  "nullable": true
+ },
+ {
+  "child": "public.credit_notes",
+  "parent": "auth.users",
+  "conname": "credit_notes_updated_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "updated_by",
+  "nullable": true
+ },
+ {
+  "child": "public.customer_credit_ledger",
+  "parent": "auth.users",
+  "conname": "customer_credit_ledger_created_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "created_by",
+  "nullable": true
+ },
+ {
+  "child": "public.customers",
+  "parent": "auth.users",
+  "conname": "customers_created_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "created_by",
+  "nullable": true
+ },
+ {
+  "child": "public.customers",
+  "parent": "auth.users",
+  "conname": "customers_updated_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "updated_by",
+  "nullable": true
+ },
+ {
+  "child": "public.delivery_notes",
+  "parent": "auth.users",
+  "conname": "delivery_notes_created_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "created_by",
+  "nullable": true
+ },
+ {
+  "child": "public.delivery_notes",
+  "parent": "auth.users",
+  "conname": "delivery_notes_despatched_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "despatched_by",
+  "nullable": true
+ },
+ {
+  "child": "public.delivery_notes",
+  "parent": "auth.users",
+  "conname": "delivery_notes_emailed_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "emailed_by",
+  "nullable": true
+ },
+ {
+  "child": "public.delivery_notes",
+  "parent": "auth.users",
+  "conname": "delivery_notes_signed_by_user_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "signed_by_user_id",
+  "nullable": true
+ },
+ {
+  "child": "public.delivery_notes",
+  "parent": "auth.users",
+  "conname": "delivery_notes_signed_recorded_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "signed_recorded_by",
+  "nullable": true
+ },
+ {
+  "child": "public.delivery_notes",
+  "parent": "auth.users",
+  "conname": "delivery_notes_updated_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "updated_by",
+  "nullable": true
+ },
+ {
+  "child": "public.document_attachments",
+  "parent": "auth.users",
+  "conname": "document_attachments_uploaded_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "uploaded_by",
+  "nullable": true
+ },
+ {
+  "child": "public.import_mappings",
+  "parent": "auth.users",
+  "conname": "import_mappings_updated_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "updated_by",
+  "nullable": true
+ },
+ {
+  "child": "public.invoice_credit_allocations",
+  "parent": "auth.users",
+  "conname": "invoice_credit_allocations_created_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "created_by",
+  "nullable": true
+ },
+ {
+  "child": "public.invoice_queue_events",
+  "parent": "auth.users",
+  "conname": "invoice_queue_events_created_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "created_by",
+  "nullable": true
+ },
+ {
+  "child": "public.invoices",
+  "parent": "auth.users",
+  "conname": "invoices_created_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "created_by",
+  "nullable": true
+ },
+ {
+  "child": "public.invoices",
+  "parent": "auth.users",
+  "conname": "invoices_emailed_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "emailed_by",
+  "nullable": true
+ },
+ {
+  "child": "public.invoices",
+  "parent": "auth.users",
+  "conname": "invoices_issued_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "issued_by",
+  "nullable": true
+ },
+ {
+  "child": "public.invoices",
+  "parent": "auth.users",
+  "conname": "invoices_paid_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "paid_by",
+  "nullable": true
+ },
+ {
+  "child": "public.invoices",
+  "parent": "auth.users",
+  "conname": "invoices_sent_by_user_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "sent_by_user_id",
+  "nullable": true
+ },
+ {
+  "child": "public.invoices",
+  "parent": "auth.users",
+  "conname": "invoices_updated_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "updated_by",
+  "nullable": true
+ },
+ {
+  "child": "public.issues",
+  "parent": "auth.users",
+  "conname": "issues_user_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "user_id",
+  "nullable": true
+ },
+ {
+  "child": "public.job_files",
+  "parent": "auth.users",
+  "conname": "job_files_created_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "created_by",
+  "nullable": true
+ },
+ {
+  "child": "public.job_files",
+  "parent": "auth.users",
+  "conname": "job_files_deleted_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "deleted_by",
+  "nullable": true
+ },
+ {
+  "child": "public.job_inspections",
+  "parent": "auth.users",
+  "conname": "job_inspections_inspector_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "inspector_id",
+  "nullable": true
+ },
+ {
+  "child": "public.job_machines",
+  "parent": "auth.users",
+  "conname": "job_machines_created_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "created_by",
+  "nullable": true
+ },
+ {
+  "child": "public.job_part_logs",
+  "parent": "auth.users",
+  "conname": "job_part_logs_logged_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "logged_by",
+  "nullable": true
+ },
+ {
+  "child": "public.job_problems",
+  "parent": "auth.users",
+  "conname": "job_problems_reported_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "reported_by",
+  "nullable": true
+ },
+ {
+  "child": "public.job_problems",
+  "parent": "auth.users",
+  "conname": "job_problems_resolved_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "resolved_by",
+  "nullable": true
+ },
+ {
+  "child": "public.job_rework",
+  "parent": "auth.users",
+  "conname": "job_rework_closed_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "closed_by",
+  "nullable": true
+ },
+ {
+  "child": "public.job_rework",
+  "parent": "auth.users",
+  "conname": "job_rework_finished_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "finished_by",
+  "nullable": true
+ },
+ {
+  "child": "public.job_rework",
+  "parent": "auth.users",
+  "conname": "job_rework_raised_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "raised_by",
+  "nullable": true
+ },
+ {
+  "child": "public.job_rework",
+  "parent": "auth.users",
+  "conname": "job_rework_started_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "started_by",
+  "nullable": true
+ },
+ {
+  "child": "public.job_rework_entries",
+  "parent": "auth.users",
+  "conname": "job_rework_entries_created_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "created_by",
+  "nullable": true
+ },
+ {
+  "child": "public.jobs",
+  "parent": "auth.users",
+  "conname": "jobs_assigned_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "assigned_by",
+  "nullable": true
+ },
+ {
+  "child": "public.jobs",
+  "parent": "auth.users",
+  "conname": "jobs_assigned_to_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "assigned_to",
+  "nullable": true
+ },
+ {
+  "child": "public.jobs",
+  "parent": "auth.users",
+  "conname": "jobs_created_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "created_by",
+  "nullable": true
+ },
+ {
+  "child": "public.jobs",
+  "parent": "auth.users",
+  "conname": "jobs_finished_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "finished_by",
+  "nullable": true
+ },
+ {
+  "child": "public.jobs",
+  "parent": "auth.users",
+  "conname": "jobs_inspected_by_user_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "inspected_by_user",
+  "nullable": true
+ },
+ {
+  "child": "public.jobs",
+  "parent": "auth.users",
+  "conname": "jobs_started_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "started_by",
+  "nullable": true
+ },
+ {
+  "child": "public.jobs",
+  "parent": "auth.users",
+  "conname": "jobs_updated_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "updated_by",
+  "nullable": true
+ },
+ {
+  "child": "public.labour_ops",
+  "parent": "auth.users",
+  "conname": "labour_ops_user_id_fkey",
+  "on_delete": "RESTRICT",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "user_id",
+  "nullable": false
+ },
+ {
+  "child": "public.machine_run_ops",
+  "parent": "auth.users",
+  "conname": "machine_run_ops_created_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "created_by",
+  "nullable": true
+ },
+ {
+  "child": "public.machine_runs",
+  "parent": "auth.users",
+  "conname": "machine_runs_created_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "created_by",
+  "nullable": true
+ },
+ {
+  "child": "public.machine_runs",
+  "parent": "auth.users",
+  "conname": "machine_runs_ended_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "ended_by",
+  "nullable": true
+ },
+ {
+  "child": "public.machine_runs",
+  "parent": "auth.users",
+  "conname": "machine_runs_operator_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "operator_id",
+  "nullable": true
+ },
+ {
+  "child": "public.machines",
+  "parent": "auth.users",
+  "conname": "machines_created_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "created_by",
+  "nullable": true
+ },
+ {
+  "child": "public.machines",
+  "parent": "auth.users",
+  "conname": "machines_updated_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "updated_by",
+  "nullable": true
+ },
+ {
+  "child": "public.operator_sessions",
+  "parent": "auth.users",
+  "conname": "operator_sessions_corrected_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "corrected_by",
+  "nullable": true
+ },
+ {
+  "child": "public.operator_sessions",
+  "parent": "auth.users",
+  "conname": "operator_sessions_created_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "created_by",
+  "nullable": true
+ },
+ {
+  "child": "public.operator_sessions",
+  "parent": "auth.users",
+  "conname": "operator_sessions_ended_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "ended_by",
+  "nullable": true
+ },
+ {
+  "child": "public.operator_sessions",
+  "parent": "auth.users",
+  "conname": "operator_sessions_user_id_fkey",
+  "on_delete": "RESTRICT",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "user_id",
+  "nullable": false
+ },
+ {
+  "child": "public.operator_sessions",
+  "parent": "auth.users",
+  "conname": "operator_sessions_voided_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "voided_by",
+  "nullable": true
+ },
+ {
+  "child": "public.organization_invites",
+  "parent": "auth.users",
+  "conname": "organization_invites_created_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "created_by",
+  "nullable": true
+ },
+ {
+  "child": "public.organization_members",
+  "parent": "auth.users",
+  "conname": "organization_members_user_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "user_id",
+  "nullable": false
+ },
+ {
+  "child": "public.purchase_orders",
+  "parent": "auth.users",
+  "conname": "purchase_orders_created_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "created_by",
+  "nullable": true
+ },
+ {
+  "child": "public.purchase_orders",
+  "parent": "auth.users",
+  "conname": "purchase_orders_received_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "received_by",
+  "nullable": true
+ },
+ {
+  "child": "public.purchase_orders",
+  "parent": "auth.users",
+  "conname": "purchase_orders_sent_by_user_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "sent_by_user_id",
+  "nullable": true
+ },
+ {
+  "child": "public.purchase_orders",
+  "parent": "auth.users",
+  "conname": "purchase_orders_updated_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "updated_by",
+  "nullable": true
+ },
+ {
+  "child": "public.quote_attachments",
+  "parent": "auth.users",
+  "conname": "quote_attachments_uploaded_by_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "uploaded_by",
+  "nullable": true
+ },
+ {
+  "child": "public.quotes",
+  "parent": "auth.users",
+  "conname": "quotes_accepted_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "accepted_by",
+  "nullable": true
+ },
+ {
+  "child": "public.quotes",
+  "parent": "auth.users",
+  "conname": "quotes_created_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "created_by",
+  "nullable": true
+ },
+ {
+  "child": "public.quotes",
+  "parent": "auth.users",
+  "conname": "quotes_sent_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "sent_by",
+  "nullable": true
+ },
+ {
+  "child": "public.quotes",
+  "parent": "auth.users",
+  "conname": "quotes_updated_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "updated_by",
+  "nullable": true
+ },
+ {
+  "child": "public.rfqs",
+  "parent": "auth.users",
+  "conname": "rfqs_created_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "created_by",
+  "nullable": true
+ },
+ {
+  "child": "public.rfqs",
+  "parent": "auth.users",
+  "conname": "rfqs_updated_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "updated_by",
+  "nullable": true
+ },
+ {
+  "child": "public.sales_order_line_machines",
+  "parent": "auth.users",
+  "conname": "sales_order_line_machines_created_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "created_by",
+  "nullable": true
+ },
+ {
+  "child": "public.sales_orders",
+  "parent": "auth.users",
+  "conname": "sales_orders_confirmed_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "confirmed_by",
+  "nullable": true
+ },
+ {
+  "child": "public.sales_orders",
+  "parent": "auth.users",
+  "conname": "sales_orders_created_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "created_by",
+  "nullable": true
+ },
+ {
+  "child": "public.sales_orders",
+  "parent": "auth.users",
+  "conname": "sales_orders_updated_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "updated_by",
+  "nullable": true
+ },
+ {
+  "child": "public.site_network_members",
+  "parent": "auth.users",
+  "conname": "site_network_members_updated_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "updated_by",
+  "nullable": true
+ },
+ {
+  "child": "public.site_network_members",
+  "parent": "auth.users",
+  "conname": "site_network_members_user_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "user_id",
+  "nullable": false
+ },
+ {
+  "child": "public.site_network_names",
+  "parent": "auth.users",
+  "conname": "site_network_names_renamed_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "renamed_by",
+  "nullable": true
+ },
+ {
+  "child": "public.site_network_ops",
+  "parent": "auth.users",
+  "conname": "site_network_ops_created_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "created_by",
+  "nullable": true
+ },
+ {
+  "child": "public.site_network_settings",
+  "parent": "auth.users",
+  "conname": "site_network_settings_updated_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "updated_by",
+  "nullable": true
+ },
+ {
+  "child": "public.site_networks",
+  "parent": "auth.users",
+  "conname": "site_networks_created_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "created_by",
+  "nullable": true
+ },
+ {
+  "child": "public.stock",
+  "parent": "auth.users",
+  "conname": "stock_created_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "created_by",
+  "nullable": true
+ },
+ {
+  "child": "public.stock",
+  "parent": "auth.users",
+  "conname": "stock_updated_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "updated_by",
+  "nullable": true
+ },
+ {
+  "child": "public.suppliers",
+  "parent": "auth.users",
+  "conname": "suppliers_created_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "created_by",
+  "nullable": true
+ },
+ {
+  "child": "public.suppliers",
+  "parent": "auth.users",
+  "conname": "suppliers_updated_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "updated_by",
+  "nullable": true
+ },
+ {
+  "child": "public.time_day_flag_ops",
+  "parent": "auth.users",
+  "conname": "time_day_flag_ops_created_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "created_by",
+  "nullable": true
+ },
+ {
+  "child": "public.time_day_flag_ops",
+  "parent": "auth.users",
+  "conname": "time_day_flag_ops_user_id_fkey",
+  "on_delete": "RESTRICT",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "user_id",
+  "nullable": false
+ },
+ {
+  "child": "public.time_day_flags",
+  "parent": "auth.users",
+  "conname": "time_day_flags_updated_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "updated_by",
+  "nullable": true
+ },
+ {
+  "child": "public.time_day_flags",
+  "parent": "auth.users",
+  "conname": "time_day_flags_user_id_fkey",
+  "on_delete": "RESTRICT",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "user_id",
+  "nullable": false
+ },
+ {
+  "child": "public.time_settings",
+  "parent": "auth.users",
+  "conname": "time_settings_updated_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "updated_by",
+  "nullable": true
+ },
+ {
+  "child": "public.time_sync_rejections",
+  "parent": "auth.users",
+  "conname": "time_sync_rejections_resolved_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "resolved_by",
+  "nullable": true
+ },
+ {
+  "child": "public.time_sync_rejections",
+  "parent": "auth.users",
+  "conname": "time_sync_rejections_user_id_fkey",
+  "on_delete": "RESTRICT",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "user_id",
+  "nullable": false
+ },
+ {
+  "child": "public.time_week_approvals",
+  "parent": "auth.users",
+  "conname": "time_week_approvals_approved_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "approved_by",
+  "nullable": true
+ },
+ {
+  "child": "public.time_week_approvals",
+  "parent": "auth.users",
+  "conname": "time_week_approvals_user_id_fkey",
+  "on_delete": "RESTRICT",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "user_id",
+  "nullable": false
+ },
+ {
+  "child": "public.user_preferences",
+  "parent": "auth.users",
+  "conname": "user_preferences_user_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": false,
+  "cols": "user_id",
+  "nullable": false
+ },
+ {
+  "child": "public.user_profiles",
+  "parent": "auth.users",
+  "conname": "user_profiles_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "id",
+  "nullable": false
+ },
+ {
+  "child": "security_audit.platform_admins",
+  "parent": "auth.users",
+  "conname": "platform_admins_user_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": false,
+  "cols": "user_id",
+  "nullable": false
+ },
+ {
+  "child": "security_audit.session_company",
+  "parent": "auth.users",
+  "conname": "session_company_user_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "user_id",
+  "nullable": false
+ },
+ {
+  "child": "public.credit_note_lines",
+  "parent": "public.credit_notes",
+  "conname": "credit_note_lines_credit_note_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "credit_note_id",
+  "nullable": false
+ },
+ {
+  "child": "public.import_source_rows",
+  "parent": "public.credit_notes",
+  "conname": "import_source_rows_credit_note_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "credit_note_id",
+  "nullable": true
+ },
+ {
+  "child": "public.invoice_credit_allocations",
+  "parent": "public.credit_notes",
+  "conname": "invoice_credit_allocations_credit_note_id_fkey",
+  "on_delete": "RESTRICT",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "credit_note_id",
+  "nullable": false
+ },
+ {
+  "child": "public.chase_pauses",
+  "parent": "public.customers",
+  "conname": "chase_pauses_customer_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "customer_id",
+  "nullable": true
+ },
+ {
+  "child": "public.delivery_notes",
+  "parent": "public.customers",
+  "conname": "delivery_notes_customer_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "customer_id",
+  "nullable": true
+ },
+ {
+  "child": "public.import_source_rows",
+  "parent": "public.customers",
+  "conname": "import_source_rows_customer_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "customer_id",
+  "nullable": true
+ },
+ {
+  "child": "public.sales_orders",
+  "parent": "public.customers",
+  "conname": "sales_orders_customer_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "customer_id",
+  "nullable": true
+ },
+ {
+  "child": "public.delivery_note_items",
+  "parent": "public.delivery_notes",
+  "conname": "delivery_note_items_delivery_note_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "delivery_note_id",
+  "nullable": false
+ },
+ {
+  "child": "public.document_attachments",
+  "parent": "public.delivery_notes",
+  "conname": "document_attachments_delivery_note_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "delivery_note_id",
+  "nullable": true
+ },
+ {
+  "child": "public.invoice_queue_events",
+  "parent": "public.delivery_notes",
+  "conname": "invoice_queue_events_delivery_note_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "delivery_note_id",
+  "nullable": false
+ },
+ {
+  "child": "public.chase_sends",
+  "parent": "public.email_history",
+  "conname": "chase_sends_draft_history_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "draft_history_id",
+  "nullable": true
+ },
+ {
+  "child": "public.chase_sends",
+  "parent": "public.email_history",
+  "conname": "chase_sends_sent_history_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "sent_history_id",
+  "nullable": true
+ },
+ {
+  "child": "public.import_record_keys",
+  "parent": "public.import_batches",
+  "conname": "import_record_keys_batch_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "batch_id",
+  "nullable": false
+ },
+ {
+  "child": "public.import_source_batches",
+  "parent": "public.import_batches",
+  "conname": "import_source_batches_import_batch_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "import_batch_id",
+  "nullable": true
+ },
+ {
+  "child": "public.import_stage",
+  "parent": "public.import_runs",
+  "conname": "import_stage_run_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id,import_id",
+  "nullable": false
+ },
+ {
+  "child": "public.import_source_rows",
+  "parent": "public.import_source_batches",
+  "conname": "import_source_rows_batch_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id,source_sha256,run_label,batch_entity,batch_no",
+  "nullable": false
+ },
+ {
+  "child": "public.credit_note_lines",
+  "parent": "public.invoice_line_items",
+  "conname": "credit_note_lines_invoice_line_id_fkey",
+  "on_delete": "RESTRICT",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "invoice_line_id",
+  "nullable": true
+ },
+ {
+  "child": "public.import_source_rows",
+  "parent": "public.invoice_payments",
+  "conname": "import_source_rows_payment_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "payment_id",
+  "nullable": true
+ },
+ {
+  "child": "public.invoice_payments",
+  "parent": "public.invoice_payments",
+  "conname": "invoice_payments_reverses_payment_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "reverses_payment_id",
+  "nullable": true
+ },
+ {
+  "child": "public.chase_pauses",
+  "parent": "public.invoices",
+  "conname": "chase_pauses_invoice_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "invoice_id",
+  "nullable": true
+ },
+ {
+  "child": "public.chase_sends",
+  "parent": "public.invoices",
+  "conname": "chase_sends_invoice_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "invoice_id",
+  "nullable": false
+ },
+ {
+  "child": "public.credit_notes",
+  "parent": "public.invoices",
+  "conname": "credit_notes_invoice_id_fkey",
+  "on_delete": "RESTRICT",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "invoice_id",
+  "nullable": false
+ },
+ {
+  "child": "public.customer_credit_ledger",
+  "parent": "public.invoices",
+  "conname": "customer_credit_ledger_invoice_id_fkey",
+  "on_delete": "RESTRICT",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "invoice_id",
+  "nullable": false
+ },
+ {
+  "child": "public.customer_credit_ledger",
+  "parent": "public.invoices",
+  "conname": "customer_credit_ledger_to_invoice_id_fkey",
+  "on_delete": "RESTRICT",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "to_invoice_id",
+  "nullable": true
+ },
+ {
+  "child": "public.delivery_notes",
+  "parent": "public.invoices",
+  "conname": "delivery_notes_invoice_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "invoice_id",
+  "nullable": true
+ },
+ {
+  "child": "public.import_source_rows",
+  "parent": "public.invoices",
+  "conname": "import_source_rows_invoice_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "invoice_id",
+  "nullable": true
+ },
+ {
+  "child": "public.invoice_credit_allocations",
+  "parent": "public.invoices",
+  "conname": "invoice_credit_allocations_invoice_id_fkey",
+  "on_delete": "RESTRICT",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "invoice_id",
+  "nullable": false
+ },
+ {
+  "child": "public.invoice_job_finish_legacy",
+  "parent": "public.invoices",
+  "conname": "invoice_job_finish_legacy_invoice_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "invoice_id",
+  "nullable": false
+ },
+ {
+  "child": "public.invoice_line_items",
+  "parent": "public.invoices",
+  "conname": "invoice_line_items_invoice_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "invoice_id",
+  "nullable": false
+ },
+ {
+  "child": "public.invoice_notes_legacy",
+  "parent": "public.invoices",
+  "conname": "invoice_notes_legacy_invoice_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "invoice_id",
+  "nullable": false
+ },
+ {
+  "child": "public.invoice_payments",
+  "parent": "public.invoices",
+  "conname": "invoice_payments_invoice_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "invoice_id",
+  "nullable": false
+ },
+ {
+  "child": "public.invoice_queue_events",
+  "parent": "public.invoices",
+  "conname": "invoice_queue_events_invoice_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "invoice_id",
+  "nullable": true
+ },
+ {
+  "child": "public.invoice_reminder_sends",
+  "parent": "public.invoices",
+  "conname": "invoice_reminder_sends_invoice_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": false,
+  "cols": "invoice_id",
+  "nullable": false
+ },
+ {
+  "child": "public.job_flow_events",
+  "parent": "public.job_inspections",
+  "conname": "job_flow_events_inspection_id_fkey",
+  "on_delete": "RESTRICT",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "inspection_id",
+  "nullable": true
+ },
+ {
+  "child": "public.job_rework",
+  "parent": "public.job_inspections",
+  "conname": "job_rework_inspection_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "inspection_id",
+  "nullable": true
+ },
+ {
+  "child": "public.job_rework",
+  "parent": "public.job_rework",
+  "conname": "job_rework_follow_up_of_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "follow_up_of",
+  "nullable": true
+ },
+ {
+  "child": "public.job_rework_entries",
+  "parent": "public.job_rework",
+  "conname": "job_rework_entries_rework_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "rework_id",
+  "nullable": false
+ },
+ {
+  "child": "public.job_rework_entry_values",
+  "parent": "public.job_rework_entries",
+  "conname": "job_rework_entry_values_entry_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "entry_id",
+  "nullable": false
+ },
+ {
+  "child": "public.delivery_notes",
+  "parent": "public.jobs",
+  "conname": "delivery_notes_job_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "job_id",
+  "nullable": true
+ },
+ {
+  "child": "public.invoices",
+  "parent": "public.jobs",
+  "conname": "invoices_job_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "job_id",
+  "nullable": true
+ },
+ {
+  "child": "public.job_cost_declarations",
+  "parent": "public.jobs",
+  "conname": "job_cost_declarations_job_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "job_id",
+  "nullable": false
+ },
+ {
+  "child": "public.job_cost_snapshots",
+  "parent": "public.jobs",
+  "conname": "job_cost_snapshots_job_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "job_id",
+  "nullable": false
+ },
+ {
+  "child": "public.job_files",
+  "parent": "public.jobs",
+  "conname": "job_files_job_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "job_id",
+  "nullable": false
+ },
+ {
+  "child": "public.job_flow_events",
+  "parent": "public.jobs",
+  "conname": "job_flow_events_job_id_fkey",
+  "on_delete": "RESTRICT",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "job_id",
+  "nullable": false
+ },
+ {
+  "child": "public.job_inspections",
+  "parent": "public.jobs",
+  "conname": "job_inspections_job_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "job_id",
+  "nullable": false
+ },
+ {
+  "child": "public.job_machines",
+  "parent": "public.jobs",
+  "conname": "job_machines_job_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "job_id",
+  "nullable": false
+ },
+ {
+  "child": "public.job_part_logs",
+  "parent": "public.jobs",
+  "conname": "job_part_logs_job_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "job_id",
+  "nullable": false
+ },
+ {
+  "child": "public.job_problems",
+  "parent": "public.jobs",
+  "conname": "job_problems_job_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "job_id",
+  "nullable": false
+ },
+ {
+  "child": "public.job_rework",
+  "parent": "public.jobs",
+  "conname": "job_rework_job_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "job_id",
+  "nullable": false
+ },
+ {
+  "child": "public.job_rework_entries",
+  "parent": "public.jobs",
+  "conname": "job_rework_entries_job_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "job_id",
+  "nullable": false
+ },
+ {
+  "child": "public.job_signoffs",
+  "parent": "public.jobs",
+  "conname": "job_signoffs_job_id_fkey",
+  "on_delete": "RESTRICT",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "job_id",
+  "nullable": false
+ },
+ {
+  "child": "public.job_values",
+  "parent": "public.jobs",
+  "conname": "job_values_job_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "job_id",
+  "nullable": false
+ },
+ {
+  "child": "public.jobs",
+  "parent": "public.jobs",
+  "conname": "jobs_related_job_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "related_job_id",
+  "nullable": true
+ },
+ {
+  "child": "public.labour_ops",
+  "parent": "public.jobs",
+  "conname": "labour_ops_job_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "job_id",
+  "nullable": false
+ },
+ {
+  "child": "public.machine_bookings",
+  "parent": "public.jobs",
+  "conname": "machine_bookings_job_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "job_id",
+  "nullable": true
+ },
+ {
+  "child": "public.machine_run_ops",
+  "parent": "public.jobs",
+  "conname": "machine_run_ops_job_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "job_id",
+  "nullable": false
+ },
+ {
+  "child": "public.machine_runs",
+  "parent": "public.jobs",
+  "conname": "machine_runs_job_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "job_id",
+  "nullable": false
+ },
+ {
+  "child": "public.opening_wip",
+  "parent": "public.jobs",
+  "conname": "opening_wip_job_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "job_id",
+  "nullable": true
+ },
+ {
+  "child": "public.operator_sessions",
+  "parent": "public.jobs",
+  "conname": "operator_sessions_job_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "job_id",
+  "nullable": false
+ },
+ {
+  "child": "public.paused_ack_ops",
+  "parent": "public.jobs",
+  "conname": "paused_ack_ops_job_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "job_id",
+  "nullable": false
+ },
+ {
+  "child": "public.purchase_orders",
+  "parent": "public.jobs",
+  "conname": "purchase_orders_job_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "job_id",
+  "nullable": true
+ },
+ {
+  "child": "public.sales_orders",
+  "parent": "public.jobs",
+  "conname": "sales_orders_converted_to_job_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "converted_to_job_id",
+  "nullable": true
+ },
+ {
+  "child": "public.job_machines",
+  "parent": "public.machine_bookings",
+  "conname": "job_machines_booking_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "booking_id",
+  "nullable": true
+ },
+ {
+  "child": "public.machine_runs",
+  "parent": "public.machine_bookings",
+  "conname": "machine_runs_booking_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "booking_id",
+  "nullable": true
+ },
+ {
+  "child": "public.machine_runs",
+  "parent": "public.machine_runs",
+  "conname": "machine_runs_override_of_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "override_of",
+  "nullable": true
+ },
+ {
+  "child": "public.operator_sessions",
+  "parent": "public.machine_runs",
+  "conname": "operator_sessions_machine_run_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "machine_run_id",
+  "nullable": true
+ },
+ {
+  "child": "public.paused_ack_ops",
+  "parent": "public.machine_runs",
+  "conname": "paused_ack_ops_paused_run_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "paused_run_id",
+  "nullable": false
+ },
+ {
+  "child": "public.job_costing_machine_links",
+  "parent": "public.machines",
+  "conname": "job_costing_machine_links_machine_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "machine_id",
+  "nullable": false
+ },
+ {
+  "child": "public.job_machines",
+  "parent": "public.machines",
+  "conname": "job_machines_machine_id_fkey",
+  "on_delete": "RESTRICT",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "machine_id",
+  "nullable": false
+ },
+ {
+  "child": "public.machine_bookings",
+  "parent": "public.machines",
+  "conname": "machine_bookings_machine_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "machine_id",
+  "nullable": false
+ },
+ {
+  "child": "public.machine_runs",
+  "parent": "public.machines",
+  "conname": "machine_runs_machine_id_fkey",
+  "on_delete": "RESTRICT",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "machine_id",
+  "nullable": true
+ },
+ {
+  "child": "public.paused_ack_ops",
+  "parent": "public.machines",
+  "conname": "paused_ack_ops_machine_id_fkey",
+  "on_delete": "RESTRICT",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "machine_id",
+  "nullable": false
+ },
+ {
+  "child": "public.sales_order_line_machines",
+  "parent": "public.machines",
+  "conname": "sales_order_line_machines_machine_id_fkey",
+  "on_delete": "RESTRICT",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "machine_id",
+  "nullable": false
+ },
+ {
+  "child": "public.labour_ops",
+  "parent": "public.operator_sessions",
+  "conname": "labour_ops_consumed_by_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "consumed_by",
+  "nullable": true
+ },
+ {
+  "child": "public.ai_helper_requests",
+  "parent": "public.organizations",
+  "conname": "ai_helper_requests_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.ai_helper_secrets",
+  "parent": "public.organizations",
+  "conname": "ai_helper_secrets_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.ai_helper_settings",
+  "parent": "public.organizations",
+  "conname": "ai_helper_settings_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.ai_helper_tolra_companies",
+  "parent": "public.organizations",
+  "conname": "ai_helper_tolra_companies_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.ai_helper_usage",
+  "parent": "public.organizations",
+  "conname": "ai_helper_usage_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.attendance_event_network_ips",
+  "parent": "public.organizations",
+  "conname": "attendance_event_network_ips_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.attendance_event_networks",
+  "parent": "public.organizations",
+  "conname": "attendance_event_networks_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.attendance_events",
+  "parent": "public.organizations",
+  "conname": "attendance_events_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.chase_pauses",
+  "parent": "public.organizations",
+  "conname": "chase_pauses_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.chase_sends",
+  "parent": "public.organizations",
+  "conname": "chase_sends_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.chase_steps",
+  "parent": "public.organizations",
+  "conname": "chase_steps_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.clock_in_network_exemptions",
+  "parent": "public.organizations",
+  "conname": "clock_in_network_exemptions_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.clock_in_network_locks",
+  "parent": "public.organizations",
+  "conname": "clock_in_network_locks_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.clock_in_network_refusals",
+  "parent": "public.organizations",
+  "conname": "clock_in_network_refusals_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.clock_in_network_unverified",
+  "parent": "public.organizations",
+  "conname": "clock_in_network_unverified_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.company_setup_progress",
+  "parent": "public.organizations",
+  "conname": "company_setup_progress_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.costing_defaults",
+  "parent": "public.organizations",
+  "conname": "costing_defaults_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.costing_machines",
+  "parent": "public.organizations",
+  "conname": "costing_machines_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.costing_materials",
+  "parent": "public.organizations",
+  "conname": "costing_materials_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.credit_note_lines",
+  "parent": "public.organizations",
+  "conname": "credit_note_lines_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.credit_notes",
+  "parent": "public.organizations",
+  "conname": "credit_notes_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.customer_credit_ledger",
+  "parent": "public.organizations",
+  "conname": "customer_credit_ledger_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.customers",
+  "parent": "public.organizations",
+  "conname": "customers_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.delivery_note_items",
+  "parent": "public.organizations",
+  "conname": "delivery_note_items_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.delivery_notes",
+  "parent": "public.organizations",
+  "conname": "delivery_notes_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.dln_numbering_pending",
+  "parent": "public.organizations",
+  "conname": "dln_numbering_pending_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.doc_counters",
+  "parent": "public.organizations",
+  "conname": "doc_counters_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.document_attachments",
+  "parent": "public.organizations",
+  "conname": "document_attachments_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.email_history",
+  "parent": "public.organizations",
+  "conname": "email_history_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.email_schedules",
+  "parent": "public.organizations",
+  "conname": "email_schedules_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.email_templates",
+  "parent": "public.organizations",
+  "conname": "email_templates_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.import_batches",
+  "parent": "public.organizations",
+  "conname": "import_batches_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.import_mappings",
+  "parent": "public.organizations",
+  "conname": "import_mappings_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.import_record_keys",
+  "parent": "public.organizations",
+  "conname": "import_record_keys_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.import_runs",
+  "parent": "public.organizations",
+  "conname": "import_runs_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.import_source_batches",
+  "parent": "public.organizations",
+  "conname": "import_source_batches_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.import_source_rows",
+  "parent": "public.organizations",
+  "conname": "import_source_rows_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.inbound_emails",
+  "parent": "public.organizations",
+  "conname": "inbound_emails_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.inspector_authorisations",
+  "parent": "public.organizations",
+  "conname": "inspector_authorisations_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.integration_connect_invites",
+  "parent": "public.organizations",
+  "conname": "integration_connect_invites_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.integration_connections",
+  "parent": "public.organizations",
+  "conname": "integration_connections_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.integration_contacts",
+  "parent": "public.organizations",
+  "conname": "integration_contacts_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.integration_mailbox_sync",
+  "parent": "public.organizations",
+  "conname": "integration_mailbox_sync_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.integration_mappings",
+  "parent": "public.organizations",
+  "conname": "integration_mappings_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.integration_oauth_states",
+  "parent": "public.organizations",
+  "conname": "integration_oauth_states_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.integration_secrets",
+  "parent": "public.organizations",
+  "conname": "integration_secrets_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.integration_sends",
+  "parent": "public.organizations",
+  "conname": "integration_sends_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.invoice_credit_allocations",
+  "parent": "public.organizations",
+  "conname": "invoice_credit_allocations_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.invoice_job_finish_legacy",
+  "parent": "public.organizations",
+  "conname": "invoice_job_finish_legacy_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.invoice_line_items",
+  "parent": "public.organizations",
+  "conname": "invoice_line_items_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.invoice_notes_legacy",
+  "parent": "public.organizations",
+  "conname": "invoice_notes_legacy_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.invoice_payments",
+  "parent": "public.organizations",
+  "conname": "invoice_payments_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.invoice_queue_events",
+  "parent": "public.organizations",
+  "conname": "invoice_queue_events_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.invoices",
+  "parent": "public.organizations",
+  "conname": "invoices_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.issues",
+  "parent": "public.organizations",
+  "conname": "issues_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.job_cost_declarations",
+  "parent": "public.organizations",
+  "conname": "job_cost_declarations_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.job_cost_snapshots",
+  "parent": "public.organizations",
+  "conname": "job_cost_snapshots_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.job_costing_machine_links",
+  "parent": "public.organizations",
+  "conname": "job_costing_machine_links_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.job_costing_settings",
+  "parent": "public.organizations",
+  "conname": "job_costing_settings_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.job_files",
+  "parent": "public.organizations",
+  "conname": "job_files_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.job_flow_events",
+  "parent": "public.organizations",
+  "conname": "job_flow_events_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.job_inspections",
+  "parent": "public.organizations",
+  "conname": "job_inspections_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.job_machines",
+  "parent": "public.organizations",
+  "conname": "job_machines_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.job_part_logs",
+  "parent": "public.organizations",
+  "conname": "job_part_logs_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.job_problems",
+  "parent": "public.organizations",
+  "conname": "job_problems_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.job_rework",
+  "parent": "public.organizations",
+  "conname": "job_rework_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.job_rework_entries",
+  "parent": "public.organizations",
+  "conname": "job_rework_entries_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.job_rework_entry_values",
+  "parent": "public.organizations",
+  "conname": "job_rework_entry_values_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.job_signoffs",
+  "parent": "public.organizations",
+  "conname": "job_signoffs_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.job_values",
+  "parent": "public.organizations",
+  "conname": "job_values_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.jobs",
+  "parent": "public.organizations",
+  "conname": "jobs_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.labour_ops",
+  "parent": "public.organizations",
+  "conname": "labour_ops_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.legacy_audit_log",
+  "parent": "public.organizations",
+  "conname": "legacy_audit_log_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": true
+ },
+ {
+  "child": "public.machine_bookings",
+  "parent": "public.organizations",
+  "conname": "machine_bookings_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.machine_run_ops",
+  "parent": "public.organizations",
+  "conname": "machine_run_ops_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.machine_runs",
+  "parent": "public.organizations",
+  "conname": "machine_runs_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.machines",
+  "parent": "public.organizations",
+  "conname": "machines_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.mail_poll_state",
+  "parent": "public.organizations",
+  "conname": "mail_poll_state_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.opening_wip",
+  "parent": "public.organizations",
+  "conname": "opening_wip_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.operator_sessions",
+  "parent": "public.organizations",
+  "conname": "operator_sessions_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.organization_invites",
+  "parent": "public.organizations",
+  "conname": "organization_invites_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.organization_members",
+  "parent": "public.organizations",
+  "conname": "organization_members_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.organization_settings",
+  "parent": "public.organizations",
+  "conname": "organization_settings_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.overview_owed_snapshots",
+  "parent": "public.organizations",
+  "conname": "overview_owed_snapshots_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.paused_ack_ops",
+  "parent": "public.organizations",
+  "conname": "paused_ack_ops_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.purchase_orders",
+  "parent": "public.organizations",
+  "conname": "purchase_orders_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.quote_attachments",
+  "parent": "public.organizations",
+  "conname": "quote_attachments_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.quote_line_items",
+  "parent": "public.organizations",
+  "conname": "quote_line_items_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.quotes",
+  "parent": "public.organizations",
+  "conname": "quotes_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.record_archive_state",
+  "parent": "public.organizations",
+  "conname": "record_archive_state_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.reopen_requests",
+  "parent": "public.organizations",
+  "conname": "reopen_requests_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.rfqs",
+  "parent": "public.organizations",
+  "conname": "rfqs_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.sales_order_line_machines",
+  "parent": "public.organizations",
+  "conname": "sales_order_line_machines_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.sales_order_lines",
+  "parent": "public.organizations",
+  "conname": "sales_order_lines_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.sales_orders",
+  "parent": "public.organizations",
+  "conname": "sales_orders_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.site_network_members",
+  "parent": "public.organizations",
+  "conname": "site_network_members_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.site_network_names",
+  "parent": "public.organizations",
+  "conname": "site_network_names_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.site_network_ops",
+  "parent": "public.organizations",
+  "conname": "site_network_ops_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.site_network_settings",
+  "parent": "public.organizations",
+  "conname": "site_network_settings_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.site_networks",
+  "parent": "public.organizations",
+  "conname": "site_networks_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.stock",
+  "parent": "public.organizations",
+  "conname": "stock_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.suppliers",
+  "parent": "public.organizations",
+  "conname": "suppliers_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.time_day_flag_ops",
+  "parent": "public.organizations",
+  "conname": "time_day_flag_ops_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.time_day_flags",
+  "parent": "public.organizations",
+  "conname": "time_day_flags_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.time_settings",
+  "parent": "public.organizations",
+  "conname": "time_settings_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.time_sync_rejections",
+  "parent": "public.organizations",
+  "conname": "time_sync_rejections_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.time_week_approvals",
+  "parent": "public.organizations",
+  "conname": "time_week_approvals_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.user_profiles",
+  "parent": "public.organizations",
+  "conname": "user_profiles_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.xero_send_release",
+  "parent": "public.organizations",
+  "conname": "xero_send_release_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.xero_transfer_hold",
+  "parent": "public.organizations",
+  "conname": "xero_transfer_hold_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "security_audit.audit_log",
+  "parent": "public.organizations",
+  "conname": "audit_log_organization_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": true
+ },
+ {
+  "child": "security_audit.company_email_sends",
+  "parent": "public.organizations",
+  "conname": "company_email_sends_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "security_audit.email_send_ledger",
+  "parent": "public.organizations",
+  "conname": "email_send_ledger_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "security_audit.mail_send_ledger",
+  "parent": "public.organizations",
+  "conname": "mail_send_ledger_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "security_audit.org_entry_log",
+  "parent": "public.organizations",
+  "conname": "org_entry_log_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "security_audit.session_company",
+  "parent": "public.organizations",
+  "conname": "session_company_organization_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": false,
+  "child_has_org": true,
+  "cols": "organization_id",
+  "nullable": false
+ },
+ {
+  "child": "public.document_attachments",
+  "parent": "public.purchase_orders",
+  "conname": "document_attachments_purchase_order_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "purchase_order_id",
+  "nullable": true
+ },
+ {
+  "child": "public.inbound_emails",
+  "parent": "public.purchase_orders",
+  "conname": "inbound_emails_linked_purchase_order_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "linked_purchase_order_id",
+  "nullable": true
+ },
+ {
+  "child": "public.inbound_emails",
+  "parent": "public.quotes",
+  "conname": "inbound_emails_linked_quote_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "linked_quote_id",
+  "nullable": true
+ },
+ {
+  "child": "public.jobs",
+  "parent": "public.quotes",
+  "conname": "jobs_quote_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "quote_id",
+  "nullable": true
+ },
+ {
+  "child": "public.purchase_orders",
+  "parent": "public.quotes",
+  "conname": "purchase_orders_quote_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "quote_id",
+  "nullable": true
+ },
+ {
+  "child": "public.quote_line_items",
+  "parent": "public.quotes",
+  "conname": "quote_line_items_quote_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "quote_id",
+  "nullable": false
+ },
+ {
+  "child": "public.quotes",
+  "parent": "public.quotes",
+  "conname": "quotes_previous_version_id_fkey",
+  "on_delete": "NO ACTION",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "previous_version_id",
+  "nullable": true
+ },
+ {
+  "child": "public.sales_orders",
+  "parent": "public.quotes",
+  "conname": "sales_orders_quote_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "quote_id",
+  "nullable": true
+ },
+ {
+  "child": "public.inbound_emails",
+  "parent": "public.rfqs",
+  "conname": "inbound_emails_rfq_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "rfq_id",
+  "nullable": true
+ },
+ {
+  "child": "public.quotes",
+  "parent": "public.rfqs",
+  "conname": "quotes_rfq_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "rfq_id",
+  "nullable": true
+ },
+ {
+  "child": "public.delivery_note_items",
+  "parent": "public.sales_order_lines",
+  "conname": "delivery_note_items_sales_order_line_id_fkey",
+  "on_delete": "RESTRICT",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "sales_order_line_id",
+  "nullable": true
+ },
+ {
+  "child": "public.invoice_line_items",
+  "parent": "public.sales_order_lines",
+  "conname": "invoice_line_items_sales_order_line_id_fkey",
+  "on_delete": "RESTRICT",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "sales_order_line_id",
+  "nullable": true
+ },
+ {
+  "child": "public.job_machines",
+  "parent": "public.sales_order_lines",
+  "conname": "job_machines_source_so_line_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "source_so_line_id",
+  "nullable": true
+ },
+ {
+  "child": "public.job_rework",
+  "parent": "public.sales_order_lines",
+  "conname": "job_rework_sales_order_line_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "sales_order_line_id",
+  "nullable": true
+ },
+ {
+  "child": "public.sales_order_line_machines",
+  "parent": "public.sales_order_lines",
+  "conname": "sales_order_line_machines_sales_order_line_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "sales_order_line_id",
+  "nullable": true
+ },
+ {
+  "child": "public.delivery_notes",
+  "parent": "public.sales_orders",
+  "conname": "delivery_notes_sales_order_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "sales_order_id",
+  "nullable": true
+ },
+ {
+  "child": "public.invoice_job_finish_legacy",
+  "parent": "public.sales_orders",
+  "conname": "invoice_job_finish_legacy_sales_order_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "sales_order_id",
+  "nullable": false
+ },
+ {
+  "child": "public.jobs",
+  "parent": "public.sales_orders",
+  "conname": "jobs_converted_from_sales_order_id_fkey",
+  "on_delete": "SET NULL",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "converted_from_sales_order_id",
+  "nullable": true
+ },
+ {
+  "child": "public.sales_order_line_machines",
+  "parent": "public.sales_orders",
+  "conname": "sales_order_line_machines_sales_order_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "sales_order_id",
+  "nullable": false
+ },
+ {
+  "child": "public.sales_order_lines",
+  "parent": "public.sales_orders",
+  "conname": "sales_order_lines_sales_order_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "sales_order_id",
+  "nullable": false
+ },
+ {
+  "child": "public.import_source_rows",
+  "parent": "public.suppliers",
+  "conname": "import_source_rows_supplier_id_fkey",
+  "on_delete": "CASCADE",
+  "child_in_wipe": true,
+  "child_has_org": true,
+  "cols": "supplier_id",
+  "nullable": true
+ }
+]
