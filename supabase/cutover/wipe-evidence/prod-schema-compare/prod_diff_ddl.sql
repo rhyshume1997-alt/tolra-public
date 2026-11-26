@@ -1,0 +1,7 @@
+CREATE TABLE public.issue_owner_notes ("issue_id" uuid NOT NULL, "notes" text NOT NULL DEFAULT ''::text, "pr_url" text, "updated_by" uuid, "updated_at" timestamp with time zone NOT NULL DEFAULT now());
+CREATE TABLE public.platform_roadmap_items ("id" uuid NOT NULL DEFAULT gen_random_uuid(), "title" text NOT NULL, "description" text NOT NULL DEFAULT ''::text, "status" text NOT NULL DEFAULT 'idea'::text, "sort_order" integer NOT NULL, "target_kind" text NOT NULL DEFAULT 'all'::text, "target_orgs" uuid[] NOT NULL DEFAULT '{}'::uuid[], "created_at" timestamp with time zone NOT NULL DEFAULT now(), "shipped_at" timestamp with time zone, "updated_at" timestamp with time zone NOT NULL DEFAULT now(), "created_by" uuid);
+CREATE TABLE public.platform_rollout_log ("id" uuid NOT NULL DEFAULT gen_random_uuid(), "created_at" timestamp with time zone NOT NULL DEFAULT now(), "actor_id" uuid NOT NULL, "actor_email" text NOT NULL, "switch_marker" text NOT NULL, "turned_on" boolean NOT NULL, "phase" text NOT NULL DEFAULT ''::text, "org_ids" uuid[] NOT NULL, "org_names" text[] NOT NULL, "changed_org_ids" uuid[] NOT NULL);
+ALTER TABLE public.issue_owner_notes ADD CONSTRAINT issue_owner_notes_pkey PRIMARY KEY (issue_id);
+ALTER TABLE public.platform_rollout_log ADD CONSTRAINT platform_rollout_log_pkey PRIMARY KEY (id);
+ALTER TABLE public.issue_owner_notes ADD CONSTRAINT issue_owner_notes_issue_id_fkey FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE;
+ALTER TABLE public.platform_roadmap_items ADD CONSTRAINT platform_roadmap_items_pkey PRIMARY KEY (id);

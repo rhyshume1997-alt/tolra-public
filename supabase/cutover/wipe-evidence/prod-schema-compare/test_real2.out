@@ -1,0 +1,83 @@
+psql:test_real.sql:4: NOTICE:  relation "reports" already exists, skipping
+=== TEST 2: REAL run (dry_run:false) inside an explicit transaction, then ROLLBACK
+         k         | dry_run | users_deleted |                prefixes                |                                                                              counters_previous                                                                              | audit_rows_verified | has_trigger_list 
+-------------------+---------+---------------+----------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------+---------------------+------------------
+ real_run_returned | false   |             3 | ["QUO", "J", "INV", "SO", "PO", "CRD"] | {"264fe031-5381-4d70-a8fd-113c1713bc65": {"J": 28, "PO": 9, "SO": 3, "CRD": 4, "INV": 13, "QUO": 22}, "2a213c03-c440-450d-9217-e2bbfcaff6b5": {"J": 4, "INV": 1, "QUO": 3}} | 1949                | t
+(1 row)
+
+--- inside the transaction: the 60 wipe tables, both companies
+ wipe_tables_reported | jnr_nonzero | marpet_nonzero 
+----------------------+-------------+----------------
+                   60 |           0 |              0
+(1 row)
+
+      k       | count 
+--------------+-------
+ inside: orgs |     2
+(1 row)
+
+           k            | count 
+------------------------+-------
+ inside: DATA_WIPE rows |     2
+(1 row)
+
+             k              |           organization_id            |                             cp                              
+----------------------------+--------------------------------------+-------------------------------------------------------------
+ inside: DATA_WIPE metadata | 264fe031-5381-4d70-a8fd-113c1713bc65 | {"J": 28, "PO": 9, "SO": 3, "CRD": 4, "INV": 13, "QUO": 22}
+ inside: DATA_WIPE metadata | 2a213c03-c440-450d-9217-e2bbfcaff6b5 | {"J": 4, "INV": 1, "QUO": 3}
+(2 rows)
+
+              k               | count 
+------------------------------+-------
+ inside: auth test users left |     0
+(1 row)
+
+        k         |           organization_id            | prefix | last 
+------------------+--------------------------------------+--------+------
+ inside: counters | 264fe031-5381-4d70-a8fd-113c1713bc65 | CRD    |    0
+ inside: counters | 264fe031-5381-4d70-a8fd-113c1713bc65 | DLN    |   10
+ inside: counters | 264fe031-5381-4d70-a8fd-113c1713bc65 | INV    |    0
+ inside: counters | 264fe031-5381-4d70-a8fd-113c1713bc65 | J      |    0
+ inside: counters | 264fe031-5381-4d70-a8fd-113c1713bc65 | PO     |    0
+ inside: counters | 264fe031-5381-4d70-a8fd-113c1713bc65 | QUO    |    0
+ inside: counters | 264fe031-5381-4d70-a8fd-113c1713bc65 | SO     |    0
+ inside: counters | 2a213c03-c440-450d-9217-e2bbfcaff6b5 | INV    |    0
+ inside: counters | 2a213c03-c440-450d-9217-e2bbfcaff6b5 | J      |    0
+ inside: counters | 2a213c03-c440-450d-9217-e2bbfcaff6b5 | QUO    |    0
+(10 rows)
+
+                            k                            | sum 
+---------------------------------------------------------+-----
+ inside: wipe table rows remaining for the two companies |   0
+(1 row)
+
+                 k                 | disabled 
+-----------------------------------+----------
+ inside: enabled/disabled triggers |        0
+(1 row)
+
+                   k                    | count 
+----------------------------------------+-------
+ inside: tables that differ from before |    51
+(1 row)
+
+=== after ROLLBACK
+ tbl | n_before | n_after 
+-----+----------+---------
+(0 rows)
+
+              k              | count 
+-----------------------------+-------
+ tables_equal_after_rollback |   136
+(1 row)
+
+               k               | count 
+-------------------------------+-------
+ DATA_WIPE rows after rollback |     0
+(1 row)
+
+                k                 | count 
+----------------------------------+-------
+ disabled triggers after rollback |     0
+(1 row)
+

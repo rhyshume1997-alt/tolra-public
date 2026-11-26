@@ -1,0 +1,9 @@
+DLN in counter_prefixes => REFUSED: wipe refused: counter_prefixes must be a non-empty subset of QUO, J, INV, SO, PO, CRD (DLN and 
+wrong user email => REFUSED: wipe refused: user dc05fa61-1b18-4892-9abf-43ae651535d8 does not match email wrong@test.com. No
+audit id list short by one => REFUSED: wipe refused: the audit rows of the company to delete are not exactly the approved list. Nothin
+count mismatch (jobs 26) => REFUSED: wipe refused: jobs in company 264fe031-5381-4d70-a8fd-113c1713bc65 has 27 rows, approved 26 . N
+no confirm => REFUSED: wipe refused: confirm must be WIPE OPERATIONAL DATA. Nothing changed.
+audit rows without permission => REFUSED: wipe refused: the company to delete has 2 append-only audit rows; needs allow_audit_row_delete 
+kept admin also in delete list => REFUSED: wipe refused: a kept admin is also in the delete list. Nothing changed.
+unknown prefix PAY => REFUSED: wipe refused: counter_prefixes must be a non-empty subset of QUO, J, INV, SO, PO, CRD (DLN and 
+no expected counts => REFUSED: wipe refused: p.expected (the approved row counts) is required. Nothing changed.

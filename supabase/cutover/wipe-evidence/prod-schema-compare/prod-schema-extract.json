@@ -1,0 +1,270 @@
+{
+ "roles": {
+  "timezone": "UTC",
+  "bypassrls": true,
+  "member_of": [
+   "pg_monitor",
+   "pg_signal_backend",
+   "pg_read_all_data",
+   "pg_create_subscription",
+   "anon",
+   "authenticated",
+   "service_role",
+   "authenticator",
+   "supabase_privileged_role"
+  ],
+  "createrole": true,
+  "current_user": "postgres",
+  "is_superuser": false,
+  "lock_timeout": "0",
+  "session_user": "postgres",
+  "table_owners": {
+   "postgres": 135
+  },
+  "server_version": "17.11",
+  "audit_log_owner": "postgres",
+  "auth_users_owner": "supabase_auth_admin",
+  "role_setting_role": "none",
+  "db_timezone_setting": [
+   "app.settings.jwt_exp=3600"
+  ],
+  "public_tables_total": 124,
+  "can_delete_audit_log": true,
+  "can_delete_auth_users": true,
+  "public_tables_owned_by_current_user": 124,
+  "wipe_tables_deletable_by_current_user": 124,
+  "can_disable_triggers_(is_owner_of_audit_log)": true
+ },
+ "worksheet_lock_fn": "CREATE OR REPLACE FUNCTION public.jobs_worksheet_custom_lock()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nBEGIN\n  -- Browser sessions only (like 034 and 157): the service role, the owner and the SQL editor are exempt.\n  IF coalesce(nullif(current_setting('role', TRUE), 'none'), session_user::TEXT) NOT IN ('anon', 'authenticated') THEN\n    RETURN NEW;\n  END IF;\n  IF NEW.worksheet_custom IS DISTINCT FROM OLD.worksheet_custom\n     AND EXISTS (SELECT 1 FROM public.job_signoffs s WHERE s.job_id = OLD.id AND s.kind = 'primary' AND s.worksheet_version = OLD.worksheet_version) THEN\n    RAISE EXCEPTION 'Job %: the worksheet is signed off, so its custom fields cannot be changed.', OLD.job_no\n      USING ERRCODE = '42501', HINT = 'signed_off_custom_locked';\n  END IF;\n  RETURN NEW;\nEND\n$function$\n",
+ "issues": {
+  "columns": [
+   [
+    "id",
+    "uuid",
+    true,
+    false,
+    false,
+    "gen_random_uuid()"
+   ],
+   [
+    "organization_id",
+    "uuid",
+    true,
+    false,
+    false,
+    null
+   ],
+   [
+    "user_id",
+    "uuid",
+    false,
+    false,
+    false,
+    null
+   ],
+   [
+    "page",
+    "text",
+    true,
+    false,
+    false,
+    null
+   ],
+   [
+    "body",
+    "text",
+    true,
+    false,
+    false,
+    null
+   ],
+   [
+    "urgent",
+    "boolean",
+    true,
+    false,
+    false,
+    "false"
+   ],
+   [
+    "status",
+    "text",
+    true,
+    false,
+    false,
+    "'new'::text"
+   ],
+   [
+    "created_at",
+    "timestamp with time zone",
+    true,
+    false,
+    false,
+    "now()"
+   ],
+   [
+    "updated_at",
+    "timestamp with time zone",
+    true,
+    false,
+    false,
+    "now()"
+   ],
+   [
+    "closed_at",
+    "timestamp with time zone",
+    false,
+    false,
+    false,
+    null
+   ]
+  ],
+  "constraints": {
+   "public.issues.issues_pkey": [
+    "p",
+    " ",
+    " ",
+    false,
+    false,
+    "PRIMARY KEY (id)"
+   ],
+   "public.issues.issues_status": [
+    "c",
+    " ",
+    " ",
+    false,
+    false,
+    "CHECK ((status = ANY (ARRAY['new'::text, 'looking'::text, 'fixing'::text, 'fixed'::text, 'closed'::text])))"
+   ],
+   "public.issues.issues_body_len": [
+    "c",
+    " ",
+    " ",
+    false,
+    false,
+    "CHECK (((char_length(body) >= 1) AND (char_length(body) <= 2000)))"
+   ],
+   "public.issues.issues_page_len": [
+    "c",
+    " ",
+    " ",
+    false,
+    false,
+    "CHECK (((char_length(page) >= 1) AND (char_length(page) <= 300)))"
+   ],
+   "public.issues.issues_user_id_fkey": [
+    "f",
+    "n",
+    "a",
+    false,
+    false,
+    "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL"
+   ],
+   "public.issues.issues_closed_at_fits": [
+    "c",
+    " ",
+    " ",
+    false,
+    false,
+    "CHECK (((status = 'closed'::text) = (closed_at IS NOT NULL)))"
+   ],
+   "public.issues.issues_organization_id_fkey": [
+    "f",
+    "c",
+    "a",
+    false,
+    false,
+    "FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE"
+   ],
+   "public.issue_owner_notes.issue_owner_notes_len": [
+    "c",
+    " ",
+    " ",
+    false,
+    false,
+    "CHECK ((char_length(notes) <= 4000))"
+   ],
+   "public.issue_owner_notes.issue_owner_notes_pkey": [
+    "p",
+    " ",
+    " ",
+    false,
+    false,
+    "PRIMARY KEY (issue_id)"
+   ],
+   "public.issue_owner_notes.issue_owner_notes_pr_url": [
+    "c",
+    " ",
+    " ",
+    false,
+    false,
+    "CHECK (((pr_url IS NULL) OR ((char_length(pr_url) <= 500) AND (pr_url ~ '^https://[^[:space:]]+$'::text))))"
+   ],
+   "public.issue_owner_notes.issue_owner_notes_issue_id_fkey": [
+    "f",
+    "c",
+    "a",
+    false,
+    false,
+    "FOREIGN KEY (issue_id) REFERENCES issues(id) ON DELETE CASCADE"
+   ]
+  }
+ },
+ "job_values_id": [
+  [
+   "id",
+   "uuid",
+   false,
+   true,
+   false,
+   "job_id"
+  ]
+ ],
+ "jobs_worksheet_custom": [
+  [
+   "worksheet_custom",
+   "jsonb",
+   true,
+   false,
+   false,
+   "'{}'::jsonb"
+  ]
+ ],
+ "triggers_that_differ_or_are_new": {
+  "public.invoice_line_items.invoice_lines_within_despatched": [
+   "public.invoice_lines_within_despatched",
+   29,
+   "O",
+   "CREATE TRIGGER invoice_lines_within_despatched AFTER INSERT OR DELETE OR UPDATE OF quantity, sales_order_line_id, invoice_id ON public.invoice_line_items FOR EACH ROW EXECUTE FUNCTION invoice_lines_within_despatched()",
+   "d73675ab5c7ad451380d8b57465883ca"
+  ],
+  "public.jobs.jobs_worksheet_custom_lock": [
+   "public.jobs_worksheet_custom_lock",
+   19,
+   "O",
+   "CREATE TRIGGER jobs_worksheet_custom_lock BEFORE UPDATE OF worksheet_custom ON public.jobs FOR EACH ROW EXECUTE FUNCTION jobs_worksheet_custom_lock()",
+   "14eac3b5028b035713dbc84a4f4d224e"
+  ],
+  "public.platform_rollout_log.platform_rollout_log_guard": [
+   "public.platform_rollout_log_guard",
+   27,
+   "O",
+   "CREATE TRIGGER platform_rollout_log_guard BEFORE DELETE OR UPDATE ON public.platform_rollout_log FOR EACH ROW EXECUTE FUNCTION platform_rollout_log_guard()",
+   "cc14d0bc3dd6fcceec4f3c24b057286b"
+  ],
+  "public.platform_rollout_log.platform_rollout_log_no_truncate": [
+   "public.platform_rollout_log_guard",
+   34,
+   "O",
+   "CREATE TRIGGER platform_rollout_log_no_truncate BEFORE TRUNCATE ON public.platform_rollout_log FOR EACH STATEMENT EXECUTE FUNCTION platform_rollout_log_guard()",
+   "cc14d0bc3dd6fcceec4f3c24b057286b"
+  ]
+ },
+ "counts": {
+  "tables": 135,
+  "constraints": 970,
+  "triggers": 485,
+  "functions": 520,
+  "fks_to_auth_users": 114
+ }
+}
