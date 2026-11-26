@@ -251,6 +251,8 @@ proposal_files(file, disposition) AS (
     ('supabase/proposals/builder2_chase_settings_atomic.sql', 'reviewed original of the function released as numbered phase 163 (canonical source now supabase/proposals/p163_chase_steps_atomic.sql, same function text); not applied directly on production; this file stays and its own test reads it'),
     ('supabase/proposals/p162_ai_allowance.sql', 'number 162 allocated, not yet a numbered phase; requires 150; release 161 belongs to PR #536; needs Rhys''s order decision before any apply'),
     ('supabase/proposals/builder2_costing_settings_atomic.sql', 'superseded: the hardened function ships inside numbered release 143 (after 141, before 144); this original proposal is never applied'),
+    ('supabase/proposals/p172_pricing_costing_settings.sql', 'proposed release 172 (Pricing and profit stage A1, Costing settings for one designated admin); not yet a numbered phase; scratch-rehearsed only; not applied anywhere hosted'),
+    ('supabase/proposals/p172_pricing_costing_settings.rollback.sql', 'rollback only for p172; never forward release input'),
     ('supabase/proposals/builder2_atomic_settings.rollback.sql', 'rollback only; never forward release input')
 ),
 post_release_markers(label, present) AS (
