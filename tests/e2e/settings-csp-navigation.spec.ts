@@ -23,6 +23,36 @@ async function documentCspAfter(page: Page, path: string, action: () => Promise<
   return csp(header);
 }
 
+/**
+ * What the document the person is on actually allows: does a data: fetch work, does a blob: iframe load. A probe that hits a document being replaced
+ * ("Execution context was destroyed") or one that is not on `path` yet answers null, so a poll simply tries again.
+ */
+async function behaviourOn(page: Page, path: string): Promise<{ dataFetchAllowed: boolean; blobFrameAllowed: boolean } | null> {
+  try {
+    if (new URL(page.url()).pathname !== path) return null;
+    return await page.evaluate(async () => {
+      if (document.readyState !== "complete") return null;
+      const violations: string[] = [];
+      const onViolation = (e: SecurityPolicyViolationEvent) => violations.push(e.violatedDirective);
+      document.addEventListener("securitypolicyviolation", onViolation);
+      const frame = document.createElement("iframe");
+      frame.src = URL.createObjectURL(new Blob(["x"], { type: "text/html" }));
+      document.body.appendChild(frame);
+      const dataFetchAllowed = await fetch("data:text/plain,x").then(() => true, () => false);
+      await new Promise((r) => setTimeout(r, 500));
+      document.removeEventListener("securitypolicyviolation", onViolation);
+      frame.remove();
+      return { dataFetchAllowed, blobFrameAllowed: !violations.some((v) => /^(frame-src|child-src|default-src)/.test(v)) };
+    });
+  } catch {
+    return null; // the document was replaced while probing (the boundary's reload): try again
+  }
+}
+/** Polls until the settled document on `path` behaves as `expected`. The page being replaced answers null or the other policy, never `expected`. */
+async function expectBehaviour(page: Page, path: string, settings: boolean) {
+  await expect.poll(() => behaviourOn(page, path), { timeout: 30_000, intervals: [500, 500, 1000] }).toEqual({ dataFetchAllowed: settings, blobFrameAllowed: settings });
+}
+
 function expectSettingsPolicy(value: string) {
   expect(value).toContain("frame-src blob:");
   expect(value).toMatch(/connect-src[^;]*\bdata:/);
@@ -45,27 +75,20 @@ test("Dashboard to Settings to Job Board: each document has its own route's poli
   await signIn(page, world().tenants.alpha.users.admin);
   expectSettingsPolicy(await documentCspAfter(page, "/settings", () => page.getByRole("link", { name: "Settings", exact: true }).first().click()));
   expectGlobalPolicy(await documentCspAfter(page, "/jobs", () => page.getByRole("link", { name: "Job Board" }).first().click()));
-  // The document in the page itself: blob: frames and data: fetches are refused here.
-  const blocked = await page.evaluate(async () => {
-    const violations: string[] = [];
-    document.addEventListener("securitypolicyviolation", (e) => violations.push(e.violatedDirective));
-    const frame = document.createElement("iframe");
-    frame.src = URL.createObjectURL(new Blob(["x"], { type: "text/html" }));
-    document.body.appendChild(frame);
-    const fetchBlocked = await fetch("data:text/plain,x").then(() => false, () => true);
-    await new Promise((r) => setTimeout(r, 500));
-    return { frame: violations.some((v) => /^(frame-src|child-src|default-src)/.test(v)), fetch: fetchBlocked };
-  });
-  expect(blocked).toEqual({ frame: true, fetch: true });
+  // The document in the page itself (once the boundary's reload has settled): blob: frames and data: fetches are refused here.
+  await expectBehaviour(page, "/jobs", false);
 });
 
 test("browser Back and Forward across Settings keep each document's own policy", async ({ page }) => {
   await signIn(page, world().tenants.alpha.users.admin);
   expectSettingsPolicy(await documentCspAfter(page, "/settings", () => page.getByRole("link", { name: "Settings", exact: true }).first().click()));
   expectGlobalPolicy(await documentCspAfter(page, "/jobs", () => page.getByRole("link", { name: "Job Board" }).first().click()));
-  expectSettingsPolicy(await documentCspAfter(page, "/settings", () => page.goBack({ waitUntil: "commit" })));
-  await expect(page.getByRole("heading", { name: "Settings" }).first()).toBeVisible();
-  expectGlobalPolicy(await documentCspAfter(page, "/jobs", () => page.goForward({ waitUntil: "commit" })));
+  // A history navigation is not always a network document request (cache restore, or only the boundary's replace), so the policy of the document the
+  // person ends on is checked by what it allows, not by a response header.
+  await page.goBack({ waitUntil: "commit" }).catch(() => undefined);
+  await expectBehaviour(page, "/settings", true);
+  await page.goForward({ waitUntil: "commit" }).catch(() => undefined);
+  await expectBehaviour(page, "/jobs", false);
 });
 
 test("signing out from Settings lands on a document with the global policy", async ({ page }) => {
