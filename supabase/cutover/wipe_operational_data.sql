@@ -52,7 +52,7 @@ DECLARE
     'attendance_event_networks','attendance_events','chase_steps','clock_in_network_exemptions','clock_in_network_locks','clock_in_network_refusals',
     'clock_in_network_unverified','company_setup_progress','costing_defaults','costing_machines','costing_materials','dln_numbering_pending','email_schedules',
     'email_templates','import_mappings','inspector_authorisations','integration_connect_invites','integration_connections',
-    'integration_contacts','integration_mailbox_sync','integration_mappings','integration_oauth_states','integration_secrets','integration_sends','issues',
+    'integration_contacts','iso_document_versions','integration_mailbox_sync','integration_mappings','integration_oauth_states','integration_secrets','integration_sends','issues',
     'job_costing_settings','legacy_audit_log','mail_poll_state','organization_invites','organization_settings','site_network_members','site_network_names',
     'site_network_ops','site_network_settings','site_networks','time_day_flag_ops','time_day_flags','time_settings','time_sync_rejections','time_week_approvals',
     'user_profiles','xero_send_release','xero_transfer_hold'];

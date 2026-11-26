@@ -29,3 +29,5 @@ A bug found and fixed by the rehearsal: foreign-key cycle among quotes, RFQs, sa
 2. Counters for quote (QUO), job (J), invoice (INV), sales order (SO), purchase order (PO) and credit note (CRD) reset to 0 for JNR Engineering and Marpet: `counters: "reset"`. DLN counter and DLN hold are never touched by the script.
 3. Storage: all files tied to wiped rows are removed by a separate API step after the SQL, with the owner's yes: `wipe_storage_step.md` (exact list of 4 files: 2 job drawings, 2 job photos; logos excluded) and `wipe_storage_list.sql` (read-only check to run before the wipe).
 Still as before: Rhys's clock-in records (32 attendance events, 1 week approval) are kept; the audit log keeps copies of deleted rows' old data (append-only, untouched).
+
+Note (26 Nov): `iso_document_versions` (editable ISO documents, proposal p171) is classified KEPT in the script (company records, not operational data); it is absent until p171 is applied and the script skips absent tables.
