@@ -4,6 +4,10 @@
 -- (the result is shown in the error text). Run it only after: a rehearsal on the scratch database, a backup export of both companies, a
 -- reviewer's SAFE, and the owner's explicit yes with the row counts below. Nothing in here is run by the app.
 --
+-- OWNER DECISIONS (Rhys, 26 Nov 10:36): the live company's own 2 audit rows are deleted so it is fully deleted (allow_audit_row_delete = true);
+-- counters are reset for QUO, J, INV, SO, PO and CRD to 0 for the two wiped companies (counters = 'reset'; DLN counter and hold untouched);
+-- storage files of the wiped rows are removed by the separate step in wipe_storage_step.md AFTER this SQL has run.
+--
 -- WHAT IT DOES (in this order, inside the transaction)
 --  0. Refuses unless: p.confirm = 'WIPE OPERATIONAL DATA'; every named company/user exists; the live row counts of the key tables EQUAL p.expected
 --     (the counts the owner approved); every table with an organization_id column is classified below (a new table = refusal, never silent);
