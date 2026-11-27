@@ -5,9 +5,11 @@
  * the signed-in role, the company profile and the records read by lib/iso/load-iso-evidence. Outputs: the nine draft documents (each a
  * PDF), a zip of all nine plus the gap checklist PDF, the gap checklist (also CSV) and an internal reminder of NCRs open too long.
  * Must not change: it never writes anything, reads nothing while the switch is off, shows only to admin, and the reminder (its day
- * count is held in this component only, nothing saved) never feeds the gap checklist.
+ * count is held in this component only, nothing saved) never feeds the gap checklist. Fail closed: a failed, partial or timed-out read shows the
+ * incomplete warning and every export (each PDF, the checklist PDF and CSV, the zip) stays off until a full read succeeds for THIS company; a result
+ * for another company or an older request is never shown or exported (lib/iso/iso-export-ready).
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { IsoPackRedesign } from "@/components/iso/iso-pack-redesign";
@@ -18,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { loadCompanyProfile, useCompanyProfile, type CompanyProfile } from "@/lib/company";
+import { loadCompanyProfile, type CompanyProfile } from "@/lib/company";
 import { fmtDate, toDateInput } from "@/lib/dates";
 import { DEMO_MODE } from "@/lib/demo";
 import { exportSpreadsheet } from "@/lib/export-records";
@@ -26,13 +28,17 @@ import { ISO_DOCUMENTS } from "@/lib/iso/document-list";
 import { fillDocument, TO_COMPLETE, type FillContext } from "@/lib/iso/fill";
 import { buildGapChecklist, EMPTY_EVIDENCE, GAP_CSV_COLUMNS, gapStatusLabel } from "@/lib/iso/gap-checklist";
 import { ISO_OFF_NOTICE, ISO_TEMPLATES_ON_MARKER, isoTemplatesEnabled } from "@/lib/iso/iso-switch";
+import { isoReadIsComplete } from "@/lib/iso/iso-export-ready";
 import type { IsoEvidence } from "@/lib/iso/load-iso-evidence";
-import { ISO_LOAD_LIMIT_MS, loadIsoEvidenceSafe, settleWithin } from "@/lib/iso/load-iso-evidence-safe";
+import { failedIsoEvidence, ISO_LOAD_LIMIT_MS, loadIsoEvidenceSafe, settleWithin } from "@/lib/iso/load-iso-evidence-safe";
 import { overdueNcrs, REVIEW_DAYS_DEFAULT, reviewDays } from "@/lib/iso/ncr-review-reminder";
 import { useOrgSettings } from "@/lib/org-settings";
 import { downloadFile } from "@/lib/spreadsheet";
 import { supabase } from "@/lib/supabase";
+import { getCurrentOrganizationId } from "@/lib/supabase-business";
+import { useUser } from "@/lib/use-user";
 
+type IsoLoadResult = { orgId: string; attempt: number; status: "ready" | "incomplete"; company: CompanyProfile | null; evidence: IsoEvidence };
 
 export function IsoPackView() {
   return (
@@ -47,30 +53,47 @@ function IsoPackBody() {
   const { hiddenNav, loaded } = useOrgSettings();
   const on = isoTemplatesEnabled(hiddenNav);
   const available = !DEMO_MODE && Boolean(supabase);
-  const [state, setState] = useState<"idle" | "loading" | "ready">("idle");
-  const [loadedCompany, setCompany] = useState<CompanyProfile | null>(null);
-  // The profile the app shell already holds is the fallback, so the name shows from the first paint and survives a slow or failed read here.
-  const { profile: sharedCompany } = useCompanyProfile();
-  const company = loadedCompany ?? sharedCompany;
-  const [data, setData] = useState<IsoEvidence | null>(null);
+  const { profile: userProfile } = useUser();
+  const orgId = userProfile?.organization_id ?? "";
+  const [result, setResult] = useState<IsoLoadResult | null>(null);
   // Held in this component only: nothing is saved.
   const [daysText, setDaysText] = useState(String(REVIEW_DAYS_DEFAULT));
   const [busy, setBusy] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const requestKey = `${orgId}:${attempt}`;
+  const latestRequest = useRef(requestKey);
+  latestRequest.current = requestKey;
 
   useEffect(() => {
-    if (!loaded || !on || !available) return;
+    if (!loaded || !on || !available || !orgId) return;
+    const key = `${orgId}:${attempt}`;
     let cancelled = false;
-    setState("loading");
+    const stillCurrent = () => !cancelled && latestRequest.current === key;
+    setResult(null);
     void (async () => {
-      const [profile, evidence] = await Promise.all([settleWithin(loadCompanyProfile(), ISO_LOAD_LIMIT_MS, null), loadIsoEvidenceSafe()]);
-      if (cancelled) return;
-      setCompany(profile);
-      setData(evidence);
-      setState("ready");
+      try {
+        const before = await settleWithin(getCurrentOrganizationId(), ISO_LOAD_LIMIT_MS, null);
+        if (before !== orgId) {
+          if (stillCurrent()) setResult({ orgId, attempt, status: "incomplete", company: null, evidence: failedIsoEvidence() });
+          return;
+        }
+        const [company, evidence] = await Promise.all([settleWithin(loadCompanyProfile(true), ISO_LOAD_LIMIT_MS, null), loadIsoEvidenceSafe()]);
+        const after = await settleWithin(getCurrentOrganizationId(), ISO_LOAD_LIMIT_MS, null);
+        if (!stillCurrent()) return;
+        const complete = isoReadIsComplete(orgId, before, after, company, evidence);
+        const same = before === orgId && after === orgId;
+        setResult({ orgId, attempt, status: complete ? "ready" : "incomplete", company: same ? company : null, evidence: same ? evidence : failedIsoEvidence() });
+      } catch {
+        if (stillCurrent()) setResult({ orgId, attempt, status: "incomplete", company: null, evidence: failedIsoEvidence() });
+      }
     })();
     return () => { cancelled = true; };
-  }, [loaded, on, available, attempt]);
+  }, [loaded, on, available, orgId, attempt]);
+
+  const current = result && result.orgId === orgId && result.attempt === attempt ? result : null;
+  const company = current?.company ?? null;
+  const data = current?.evidence ?? null;
+  const canExport = loaded && on && available && Boolean(orgId) && current?.status === "ready" && !busy;
 
   const ctx: FillContext = useMemo(() => ({ company, facts: data?.facts ?? null }), [company, data]);
   const gapRows = useMemo(() => buildGapChecklist(data?.evidence ?? EMPTY_EVIDENCE), [data]);
@@ -85,6 +108,7 @@ function IsoPackBody() {
   const stamp = toDateInput(new Date());
 
   async function build() {
+    if (!canExport || latestRequest.current !== requestKey) throw new Error("ISO data is not ready.");
     const [{ pdf }, { IsoDocumentPDF }, { GapChecklistPDF }] = await Promise.all([import("@react-pdf/renderer"), import("@/components/iso/iso-document-pdf"), import("@/components/iso/gap-checklist-pdf")]);
     const toBytes = async (element: Parameters<typeof pdf>[0]) => new Uint8Array(await (await pdf(element).toBlob()).arrayBuffer());
     return {
@@ -97,21 +121,29 @@ function IsoPackBody() {
   }
 
   async function downloadDocument(id: string) {
+    if (!canExport || latestRequest.current !== requestKey) return;
+    const downloadKey = requestKey;
     setBusy(true);
     try {
       const doc = ISO_DOCUMENTS.find((d) => d.id === id)!;
-      downloadFile(`${doc.filename}.pdf`, (await (await build()).document(id)) as BlobPart, "application/pdf");
-    } catch { toast.error("Couldn't make the PDF. Try again."); }
-    setBusy(false);
+      const bytes = await (await build()).document(id);
+      if (latestRequest.current === downloadKey) downloadFile(`${doc.filename}.pdf`, bytes as BlobPart, "application/pdf");
+    } catch { if (latestRequest.current === downloadKey) toast.error("Couldn't make the PDF. Try again."); } finally { setBusy(false); }
   }
 
   async function downloadChecklist() {
+    if (!canExport || latestRequest.current !== requestKey) return;
+    const downloadKey = requestKey;
     setBusy(true);
-    try { downloadFile("10-gap-checklist.pdf", (await (await build()).checklist()) as BlobPart, "application/pdf"); } catch { toast.error("Couldn't make the PDF. Try again."); }
-    setBusy(false);
+    try {
+      const bytes = await (await build()).checklist();
+      if (latestRequest.current === downloadKey) downloadFile("10-gap-checklist.pdf", bytes as BlobPart, "application/pdf");
+    } catch { if (latestRequest.current === downloadKey) toast.error("Couldn't make the PDF. Try again."); } finally { setBusy(false); }
   }
 
   async function downloadPack() {
+    if (!canExport || latestRequest.current !== requestKey) return;
+    const downloadKey = requestKey;
     setBusy(true);
     try {
       const make = await build();
@@ -119,16 +151,22 @@ function IsoPackBody() {
       const files: Record<string, Uint8Array> = {};
       for (const d of ISO_DOCUMENTS) files[`${d.filename}.pdf`] = await make.document(d.id);
       files["10-gap-checklist.pdf"] = await make.checklist();
-      downloadFile(`iso-draft-templates-${stamp}.zip`, zipSync(files) as BlobPart, "application/zip");
-    } catch { toast.error("Couldn't make the zip. Try again."); }
-    setBusy(false);
+      if (latestRequest.current === downloadKey) downloadFile(`iso-draft-templates-${stamp}.zip`, zipSync(files) as BlobPart, "application/zip");
+    } catch { if (latestRequest.current === downloadKey) toast.error("Couldn't make the zip. Try again."); } finally { setBusy(false); }
   }
 
   const contents = (
     <>
-          {data?.unread.length ? <p className="flex flex-wrap items-center gap-3 text-xs text-slate-500">Some records could not be read ({data.unread.join(", ")}). Those clauses show as not evidenced. <Button variant="outline" size="sm" className="min-h-11" onClick={() => setAttempt((n) => n + 1)}>Try reading again</Button></p> : null}
+          {current?.status === "incomplete" ? (
+            <div role="alert" data-testid="iso-incomplete" className="space-y-2 border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+              <p className="font-semibold">ISO information is incomplete</p>
+              <p>Some records couldn&apos;t be confirmed, so downloads are disabled until the required reads succeed.</p>
+              {data?.unread.length ? <p>Some records could not be read ({data.unread.join(", ")}). Those clauses show as not evidenced.</p> : null}
+              <Button variant="outline" size="sm" className="min-h-11" disabled={busy} onClick={() => setAttempt((n) => n + 1)}>Try reading again</Button>
+            </div>
+          ) : null}
           <div className="flex flex-wrap items-center gap-3">
-            <Button className="min-h-11" disabled={busy} onClick={() => void downloadPack()}>Download pack (zip)</Button>
+            <Button className="min-h-11" disabled={!canExport} onClick={() => void downloadPack()}>Download pack (zip)</Button>
             <span className="text-xs text-slate-500">All nine documents and the gap checklist, as PDFs.</span>
           </div>
           <section className="space-y-2">
@@ -140,7 +178,7 @@ function IsoPackBody() {
                   <TableRow key={d.id}>
                     <TableCell>{d.title}</TableCell>
                     <TableCell>{d.clause}</TableCell>
-                    <TableCell><Button variant="outline" className="min-h-11" disabled={busy} onClick={() => void downloadDocument(d.id)} aria-label={`Download PDF: ${d.title}`}>Download PDF</Button></TableCell>
+                    <TableCell><Button variant="outline" className="min-h-11" disabled={!canExport} onClick={() => void downloadDocument(d.id)} aria-label={`Download PDF: ${d.title}`}>Download PDF</Button></TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -150,9 +188,9 @@ function IsoPackBody() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-base font-semibold">Gap checklist</h2>
               <div className="flex gap-2">
-                <Button variant="outline" className="min-h-11" disabled={busy} onClick={() => void downloadChecklist()}>Download checklist (PDF)</Button>
+                <Button variant="outline" className="min-h-11" disabled={!canExport} onClick={() => void downloadChecklist()}>Download checklist (PDF)</Button>
                 {/* No audit entry: the checklist is not one of the audited record types (lib/audit-contract.ts). */}
-                <Button variant="outline" className="min-h-11" onClick={() => void exportSpreadsheet("csv", "iso-gap-checklist", GAP_CSV_COLUMNS, gapRows)}>Download checklist (CSV)</Button>
+                <Button variant="outline" className="min-h-11" disabled={!canExport} onClick={() => { if (canExport) void exportSpreadsheet("csv", "iso-gap-checklist", GAP_CSV_COLUMNS, gapRows); }}>Download checklist (CSV)</Button>
               </div>
             </div>
             <Table>
@@ -182,7 +220,7 @@ function IsoPackBody() {
   );
   if (redesign) {
     return (
-      <IsoPackRedesign companyName={companyName} switching={<IsoSwitchCard />} ready={state === "ready"}>
+      <IsoPackRedesign companyName={companyName} switching={<IsoSwitchCard />} ready={current !== null}>
         {contents}
       </IsoPackRedesign>
     );
@@ -195,7 +233,7 @@ function IsoPackBody() {
         <p className="mt-2 text-sm text-slate-500">Branded draft templates and a self-check list for {companyName}. Template and self-check aid. Needs company review. Not certification evidence.</p>
       </div>
       <IsoSwitchCard />
-      {state !== "ready" ? <Skeleton className="h-80" /> : (
+      {current === null ? <Skeleton className="h-80" /> : (
         contents
       )}
     </div>

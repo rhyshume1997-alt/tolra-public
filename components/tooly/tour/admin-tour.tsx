@@ -19,6 +19,7 @@
  * never the float, a sidebar/top bar button next to Log out, or the middleware.
  */
 import { useEffect, useMemo, useState } from "react";
+import { readTourResume, writeTourResume } from "@/components/tooly/tour/tour-resume";
 import { usePathname, useRouter } from "next/navigation";
 
 import { type PlannedStep, planTour } from "@/components/tooly/tour/tour-plan";
@@ -93,9 +94,11 @@ export function AdminTour({ envOn }: { envOn: boolean }) {
   const { user, activeRole, hiddenSections } = useUser();
   const { hiddenNav } = useOrgSettings();
   const wide = useIsWide();
-  const [index, setIndex] = useState(0);
+  // Kept across a full page load (the Settings CSP boundary reloads the page): tour-resume.ts.
+  const [resume] = useState(() => readTourResume());
+  const [index, setIndex] = useState(resume?.index ?? 0);
   const [closed, setClosed] = useState(false);
-  const [replay, setReplay] = useState(false);
+  const [replay, setReplay] = useState(resume?.replay ?? false);
   const [noteOpen, setNoteOpen] = useState(false);
 
   const enabled = toolyTourEnabledFor({ envOn, hiddenNav, role: activeRole });
@@ -113,6 +116,12 @@ export function AdminTour({ envOn }: { envOn: boolean }) {
   useEffect(() => {
     if (active && planned && planned.route !== pathname) router.push(planned.route);
   }, [active, planned, pathname, router]);
+
+  // Only a running tour is remembered; closing it forgets it. Nothing is written before the person is known (active is false then), so a saved step survives until used.
+  useEffect(() => {
+    if (active) writeTourResume({ index, replay });
+    else if (closed || (!!user && done && !replay)) writeTourResume(null);
+  }, [active, closed, done, index, replay, user]);
 
   // The note starts closed on every step.
   useEffect(() => { setNoteOpen(false); }, [index]);
