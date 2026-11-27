@@ -26,6 +26,30 @@ describe("login branding helpers", () => {
     expect(luminance("#000000")).toBeCloseTo(0);
   });
 
+  it("reaches WCAG AA (4.5:1) for the shell text on any brand colour, including mid-tones", () => {
+    // An independent contrast calculation (not luminance() from the code under test).
+    const lin = (v: number) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+    const lum = (hex: string) => 0.2126 * lin(parseInt(hex.slice(1, 3), 16)) + 0.7152 * lin(parseInt(hex.slice(3, 5), 16)) + 0.0722 * lin(parseInt(hex.slice(5, 7), 16));
+    const contrast = (a: string, b: string) => { const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05); };
+    // The two the owner named (they measured 4.33 and 3.99 before), and the colours that already passed keep their text colour.
+    for (const brand of ["#2f7ed8", "#777777"]) expect(contrast(textOn(brand), brand)).toBeGreaterThanOrEqual(4.5);
+    expect(textOn("#2f7ed8")).toBe("#000000");
+    expect(textOn("#777777")).toBe("#000000");
+    for (const brand of ["#1d3a6b", "#f5c518", "#ffffff", "#000000", "#475569"]) expect(contrast(textOn(brand), brand)).toBeGreaterThanOrEqual(4.5);
+    expect(textOn("#1d3a6b")).toBe("#ffffff");
+    expect(textOn("#f5c518")).toBe("#0f172a");
+    // A sweep over the whole colour cube (every 15th step of each channel, plus greys): never below 4.5.
+    const steps = Array.from({ length: 18 }, (_, i) => Math.min(255, i * 15));
+    const hex2 = (n: number) => n.toString(16).padStart(2, "0");
+    let worst = Infinity;
+    for (const r of steps) for (const g of steps) for (const b of steps) {
+      const brand = `#${hex2(r)}${hex2(g)}${hex2(b)}`;
+      worst = Math.min(worst, contrast(textOn(brand), brand));
+    }
+    for (let v = 0; v < 256; v += 1) { const brand = `#${hex2(v)}${hex2(v)}${hex2(v)}`; worst = Math.min(worst, contrast(textOn(brand), brand)); }
+    expect(worst).toBeGreaterThanOrEqual(4.5);
+  });
+
   it("reads the organisation from a tenant subdomain only", () => {
     expect(slugFromHost("jnr-engineering.example.co.uk", "example.co.uk")).toBe("jnr-engineering");
     expect(slugFromHost("JNR-Engineering.Example.co.uk:443", "example.co.uk")).toBe("jnr-engineering");
