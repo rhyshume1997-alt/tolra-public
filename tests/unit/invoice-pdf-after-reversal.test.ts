@@ -1,6 +1,6 @@
 /**
  * What the real year-end builder hands to the invoice PDF for Paid and Balance due after a part payment, after paying in full,
- * and after a payment is reversed (captured as year-end-unknown-payments.test.ts does). The printed text for the same inputs
+ * after a payment is reversed, and when an invoice is closed (captured as year-end-unknown-payments.test.ts does). The printed text for the same inputs
  * is checked in invoice-pdf-print-after-reversal.test.ts.
  */
 import { describe, expect, it, vi } from "vitest";
@@ -23,6 +23,8 @@ const TABLES: Record<string, Record<string, unknown>[]> = {
     inv("i2", "INV-0202", "paid", 120, { paid_at: "2026-05-12T12:00:00+00:00" }), // paid in two parts
     inv("i3", "INV-0203", "partial", 50), // paid in full, then the last 70 reversed
     inv("i4", "INV-0204", "issued", 0), // paid 120 and the whole payment reversed
+    inv("i5", "INV-0205", "void", 0),
+    inv("i6", "INV-0206", "written_off", 50),
   ],
   quotes: [], purchase_orders: [], delivery_notes: [],
   invoice_payments: [
@@ -71,4 +73,11 @@ describe("invoice PDF Paid and Balance due", () => {
     // Everything reversed: nothing received, nothing stamped.
     expect(pdfData["INV-0204"]).toMatchObject({ payments: 0, paid: false, paymentUnknown: false });
   });
+});
+
+it("passes closed status and known receipts to the same PDF renderer from the year-end archive", async () => {
+  await buildYearEndZip("2026-01-01", "2026-12-31", company);
+  expect(pdfData["INV-0205"]).toMatchObject({ closedStatus: "Void", payments: 0, paid: false });
+  expect(pdfData["INV-0206"]).toMatchObject({ closedStatus: "Written off", payments: 50, paid: false });
+  expect(pdfData["INV-0204"].closedStatus).toBeUndefined();
 });

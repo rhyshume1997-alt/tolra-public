@@ -62,6 +62,8 @@ export type PdfDocumentData = {
   carriage?: number;
   /** When set (invoices) the totals end with Invoice total, Paid and Balance due. */
   payments?: number;
+  /** Closed invoice: show zero due, including when receipts are unknown. */
+  balanceClosed?: boolean;
   /** Credit notes applied to the invoice: taken off the Balance due only (Paid still shows the payments). Omit for none. */
   credits?: number;
   /** Lines of the bottom-left box. Defaults to the company's standard customer message. */
@@ -83,18 +85,18 @@ export type PdfDocumentData = {
   storedTotals?: StoredTotals & { reference: string; issued: boolean };
 };
 
-export type PdfTotals = { subtotal: number; carriage: number; vat: number; total: number; payments: number | null; balance: number; vatBreakdown: VatBreakdownRow[] };
+export type PdfTotals = { subtotal: number; carriage: number; vat: number; total: number; payments: number | null; balance: number; balanceClosed?: boolean; vatBreakdown: VatBreakdownRow[] };
 
 /**
  * The closing rows of the totals block. Without payments (quotes, POs): Total. With payments (invoices): the
  * invoice's own gross total, what has been paid and the balance due, so a paid invoice never reads "Total £0.00"
  * (audit A13).
  */
-export function finalTotalRows(totals: Pick<PdfTotals, "total" | "payments" | "balance">): { label: string; value: number; bold: boolean }[] {
-  if (totals.payments === null) return [{ label: "Total", value: totals.total, bold: true }];
+export function finalTotalRows(totals: Pick<PdfTotals, "total" | "payments" | "balance" | "balanceClosed">): { label: string; value: number; bold: boolean }[] {
+  if (totals.payments === null && !totals.balanceClosed) return [{ label: "Total", value: totals.total, bold: true }];
   return [
     { label: "Invoice total", value: totals.total, bold: false },
-    { label: "Paid", value: totals.payments, bold: false },
+    ...(totals.payments === null ? [] : [{ label: "Paid", value: totals.payments, bold: false }]),
     { label: "Balance due", value: totals.balance, bold: true },
   ];
 }
@@ -320,7 +322,7 @@ export function BaseDocumentPDF({ data }: { data: PdfDocumentData }) {
   const vatRows = totals.vatBreakdown.filter((row) => !row.exempt);
   // The totals block was laid out for at most 5 rows (Subtotal, Carriage, VAT, Payments, Total). Each extra VAT-rate
   // row takes its height from the line-item table, so the bottom block still fits on page one.
-  const totalsRows = 2 + (showVat ? Math.max(1, vatRows.length) : 0) + (totals.payments === null ? 1 : 3);
+  const totalsRows = 2 + (showVat ? Math.max(1, vatRows.length) : 0) + finalTotalRows(totals).length;
   // The "Payment details" block (invoices with bank details) sits under the message box and is taken from the table the same way;
   // a document without one is laid out exactly as before.
   const paymentRows = data.paymentDetails?.length ?? 0;

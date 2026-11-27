@@ -1,3 +1,4 @@
+// Presents invoice data with the selected PDF layout. Stored invoice amounts and payment records are unchanged.
 import type { PdfDocumentData, PdfKeyValue, PdfLineItem } from "@/components/pdf/BaseDocumentPDF";
 import { DocumentPDF } from "@/components/pdf/templates/document-pdf";
 import { paymentDetailRows } from "@/lib/bank-details";
@@ -39,6 +40,7 @@ export type InvoicePdfData = {
   paid?: boolean;
   /** The amount paid isn't known (payment to confirm, or marked paid with no amount recorded): print the Total only, no Paid or Balance due rows. */
   paymentUnknown?: boolean;
+  closedStatus?: "Void" | "Written off";
   customerMessage?: string[];
   /** The customer sign-off (072) of the job its delivery notes are on, when there is one: a small block under the message box. */
   customerSignOff?: PdfCustomerSignOff;
@@ -64,7 +66,7 @@ export function InvoicePDF({ data }: { data: InvoicePdfData }) {
     ...(data.taxPoint && data.taxPoint !== data.date ? [{ label: "Tax Point", value: data.taxPoint }] : []),
     // Only when the company's setting is on and a credit has been applied; otherwise the block is exactly as it was.
     ...(data.credits && data.credits > 0 && !data.paymentUnknown ? [{ label: "Less credit notes", value: gbp(data.credits, 2) }] : []),
-    { label: "Terms", value: data.terms || company.defaultInvoiceTerms },
+    ...(!data.closedStatus ? [{ label: "Terms", value: data.terms || company.defaultInvoiceTerms }] : []),
     ...(data.quoteRef ? [{ label: "Our Quote No.", value: data.quoteRef }] : []),
     ...customerPoKeyValue(data.customerPo),
   ];
@@ -89,11 +91,14 @@ export function InvoicePDF({ data }: { data: InvoicePdfData }) {
         carriageVat: data.carriageVat,
         payments: data.paymentUnknown ? undefined : data.payments ?? 0,
         credits: data.paymentUnknown ? undefined : data.credits,
-        paid: data.paymentUnknown ? false : data.paid,
+        paid: data.paymentUnknown || data.closedStatus ? false : data.paid,
+        balanceClosed: Boolean(data.closedStatus),
         // Invoices have their own closing lines, never the quote wording (company_profile.defaultInvoiceMessage).
-        customerMessage: data.note?.trim() ? [data.note.trim(), ...(data.customerMessage ?? invoiceMessage(company, data.terms))] : data.customerMessage ?? invoiceMessage(company, data.terms),
+        customerMessage: data.closedStatus
+          ? [`${data.closedStatus}. No payment due.`]
+          : [...(data.note?.trim() ? [data.note.trim()] : []), ...(data.customerMessage ?? invoiceMessage(company, data.terms))],
         // Invoices only: quotes and the other documents never print bank details.
-        paymentDetails: paymentDetailRows(company.bankDetails),
+        paymentDetails: data.closedStatus ? undefined : paymentDetailRows(company.bankDetails),
         customerSignOff: data.customerSignOff,
         company,
         logoSrc: data.logoSrc,

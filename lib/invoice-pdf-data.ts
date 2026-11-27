@@ -2,9 +2,12 @@
  * What an invoice's PDF may say about payment (migration 032). One rule for the invoice screen's PDF and the year-end
  * export: only an amount that is known is printed. An imported invoice whose payment is still to be confirmed, or one
  * marked paid whose amount was never recorded, prints the Total with no Paid / Balance due rows and no PAID stamp: nothing
- * is assumed.
+ * is assumed. Void and written-off records provide a closed status for the invoice PDF only.
  */
 import { fromPence, toPence } from "@/lib/money";
+import type { InvoicePdfData } from "@/components/pdf/InvoicePDF";
+import { isVoid } from "@/lib/invoice-void";
+import { isWrittenOff } from "@/lib/invoice-write-off";
 import { knownPaid } from "@/lib/payments";
 import { balanceDue, invoiceLifecycle } from "@/lib/receivables";
 
@@ -27,8 +30,10 @@ export function invoicePdfCredits(invoice: { credited_amount?: number | string |
   return company.showCreditsInBalance === true && credits > 0 ? { credits: fromPence(credits) } : {};
 }
 
-export function invoicePdfPayments(invoice: { status?: string | null; amount_paid?: number | string | null; payment_unverified?: boolean | null }): { payments?: number; paid: boolean; paymentUnknown: boolean } {
+export function invoicePdfPayments(invoice: { status?: string | null; amount_paid?: number | string | null; payment_unverified?: boolean | null }): Pick<InvoicePdfData, "payments" | "paid" | "paymentUnknown" | "closedStatus"> {
+  const closed = isVoid(invoice.status) ? "Void" : isWrittenOff(invoice.status) ? "Written off" : null;
   const known = knownPaid(invoice);
+  if (closed) return { payments: known ?? undefined, paid: false, paymentUnknown: known === null, closedStatus: closed };
   if (known === null) return { paid: false, paymentUnknown: true };
   return { payments: known, paid: invoiceLifecycle(invoice.status) === "paid", paymentUnknown: false };
 }

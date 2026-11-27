@@ -1,7 +1,7 @@
 /**
  * The totals a printed document shows, without the PDF renderer: pages, the invoice details panel (lib/invoice-totals.ts) and
  * the stored-totals check import these from here, so @react-pdf/renderer is only loaded when a PDF is made
- * (components/pdf/BaseDocumentPDF.tsx re-exports them for the documents themselves).
+ * (components/pdf/BaseDocumentPDF.tsx re-exports them for the documents themselves). Closed invoice balances are presentation only.
  */
 import type { PdfDocumentData, PdfTotals } from "@/components/pdf/BaseDocumentPDF";
 import { type CompanyProfile, getCompanyProfile } from "@/lib/company";
@@ -12,15 +12,15 @@ import { documentTotals, fromPence, toPence } from "@/lib/money";
  * Subtotal, VAT (rounded per line), carriage, total and balance due. Delegates to documentTotals in lib/money.ts
  * so the quote builder preview, the saved totals and the PDF can never drift apart.
  */
-export function computePdfTotals(data: Pick<PdfDocumentData, "lineItems" | "showVat" | "carriage" | "payments" | "credits" | "carriageVat" | "standardVatRate">): PdfTotals {
+export function computePdfTotals(data: Pick<PdfDocumentData, "lineItems" | "showVat" | "carriage" | "payments" | "credits" | "balanceClosed" | "carriageVat" | "standardVatRate">): PdfTotals {
   const totals = documentTotals(
     data.lineItems.map((item) => ({ quantity: item.quantity, unitPrice: item.unitPrice ?? 0, vatPct: item.vatPct, vatExempt: item.vatExempt, vatAmount: item.vatAmount })),
     data.carriage ?? 0,
     { vatEnabled: data.showVat !== false, carriageVat: data.carriageVat, standardRate: data.standardVatRate ?? 20 },
   );
   const payments = data.payments === undefined ? null : fromPence(toPence(data.payments));
-  const balance = fromPence(toPence(totals.total) - toPence(payments ?? 0) - toPence(payments === null ? 0 : data.credits ?? 0));
-  return { subtotal: totals.subtotal, carriage: totals.carriage, vat: totals.vat, total: totals.total, payments, balance, vatBreakdown: totals.vatBreakdown };
+  const balance = data.balanceClosed ? 0 : fromPence(toPence(totals.total) - toPence(payments ?? 0) - toPence(payments === null ? 0 : data.credits ?? 0));
+  return { subtotal: totals.subtotal, carriage: totals.carriage, vat: totals.vat, total: totals.total, payments, balance, ...(data.balanceClosed ? { balanceClosed: true } : {}), vatBreakdown: totals.vatBreakdown };
 }
 
 type TotalsInput = Pick<PdfDocumentData, "lineItems" | "showVat" | "carriage" | "carriageVat" | "standardVatRate" | "company" | "columns" | "storedTotals">;
@@ -31,7 +31,7 @@ type TotalsInput = Pick<PdfDocumentData, "lineItems" | "showVat" | "carriage" | 
  * and on-screen copies of them (the invoice details panel) can never disagree.
  */
 export function resolvePdfTotals(
-  data: Pick<PdfDocumentData, "lineItems" | "showVat" | "carriage" | "carriageVat" | "standardVatRate" | "columns" | "payments" | "credits">,
+  data: Pick<PdfDocumentData, "lineItems" | "showVat" | "carriage" | "carriageVat" | "standardVatRate" | "columns" | "payments" | "credits" | "balanceClosed">,
   company: Pick<CompanyProfile, "vatRegistered" | "defaultVatRate">,
 ) {
   // A company that isn't VAT registered never prints VAT, whatever the document says.
