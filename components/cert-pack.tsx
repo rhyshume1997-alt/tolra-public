@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { auditEvent } from "@/lib/audit";
 import { fmtDate } from "@/lib/dates";
 import { friendlyError } from "@/lib/friendly-error";
-import { type CertFile, attachCert, loadCertPack, removeCert } from "@/lib/job-files";
+import { type CertFile, CertCleanupError, attachCert, loadCertPack, removeCert } from "@/lib/job-files";
 import { drawingUrl } from "@/lib/job-worksheet";
 
 /** The job's material certificates (its cert pack), listed on the delivery note screen. The delivery note itself is unchanged. */
@@ -49,7 +49,7 @@ export function CertPack({ jobNo, canRemove }: { jobNo: string; canRemove: boole
       void auditEvent({ action: "UPLOAD_ATTACHMENT", entityTable: "jobs", entityId: jobId, metadata: { file: added.file_name, kind: "cert" } });
       toast.success(`${added.file_name} added to the cert pack`);
     } catch (error) {
-      toast.error(friendlyError(error, "Couldn't add the certificate."));
+      toast.error(error instanceof CertCleanupError ? error.message : friendlyError(error, "Couldn't add the certificate."));
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = "";
