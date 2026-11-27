@@ -4,14 +4,18 @@
  * Reads go through row-level security: a workshop member gets their own clock records and job time only; admin and office the company's.
  * Clock records and job time are read EDGE_MARGIN_HOURS either side of the window so a shift crossing its edge pairs up. Changes the
  * person made that are still in this device's outbox (offline, or not sent yet) are laid over what the server returned, marked pending
- * ("saved on this device"), so the sheet shows them straight away.
+ * Inputs: Supabase client, userId/date bounds. Outputs: attendance, labour, settings, and paginated unfinished jobs for time recording.
+ * Boundary: Module 2 (Time/Workshop) read-only loader; does not modify database schema or non-time modules.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { fetchAll } from "@/lib/fetch-all";
 import type { OutboxEntry } from "@/lib/offline/outbox";
 import { type AttendanceEvent, type LabourSession, type TimeSettings, EDGE_MARGIN_HOURS, addDays, localDateOf, settingsFromRow } from "@/lib/time-sheet";
 
 export type JobInfo = { id: string; job_no: string; customer: string | null; description: string | null; finished_at: string | null };
+export type StartableJobsResult = { jobs: JobInfo[]; truncated: boolean };
+export const STARTABLE_JOBS_TRUNCATED = "Only the newest unfinished jobs could be listed. Some older unfinished jobs may be missing from the picker.";
 export type TimeData = { events: AttendanceEvent[]; labour: LabourSession[]; settings: TimeSettings; bankHolidays: Map<string, string>; jobs: Record<string, JobInfo> };
 
 export type Client = Pick<SupabaseClient, "from">;
@@ -70,10 +74,43 @@ export async function loadTimeData(client: Client, opts: { userId: string | null
   return { events, labour, settings, bankHolidays: new Map(holidays.map((h) => [h.day, h.name])), jobs };
 }
 
+/**
+ * Jobs a person can start time on: all unfinished jobs, paged past PostgREST's cap, with the caller's assigned jobs first.
+ * `truncated` is true only if the list reaches fetchAll's hard upper bound.
+ */
+export async function loadStartableJobsResult(
+  client: Client,
+  userId: string | null,
+  options?: { pageSize?: number; maxRows?: number },
+): Promise<StartableJobsResult> {
+  try {
+    const { rows: list, truncated } = await fetchAll<JobInfo & { assigned_to: string | null }>(
+      (from, to) =>
+        client
+          .from("jobs")
+          .select("id, job_no, customer, description, finished_at, assigned_to")
+          .is("finished_at", null)
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .range(from, to),
+      options,
+    );
+    const jobs = [
+      ...list.filter((j) => userId && j.assigned_to === userId),
+      ...list.filter((j) => !userId || j.assigned_to !== userId),
+    ];
+    return { jobs, truncated };
+  } catch (err) {
+    if (err && typeof err === "object" && "message" in err) {
+      throw new TimeDataError(err as { message: string; code?: string | null });
+    }
+    throw err;
+  }
+}
+
 /** Jobs a person can start time on: not finished, newest first (the caller's assigned jobs first). */
 export async function loadStartableJobs(client: Client, userId: string | null): Promise<JobInfo[]> {
-  const list = await rows<JobInfo & { assigned_to: string | null }>(client.from("jobs").select("id, job_no, customer, description, finished_at, assigned_to").is("finished_at", null).order("created_at", { ascending: false }).limit(300));
-  return [...list.filter((j) => userId && j.assigned_to === userId), ...list.filter((j) => !userId || j.assigned_to !== userId)];
+  return (await loadStartableJobsResult(client, userId)).jobs;
 }
 
 /**
