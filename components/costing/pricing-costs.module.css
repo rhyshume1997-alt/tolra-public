@@ -1,0 +1,10 @@
+/* Layout only for Settings > Costing (colours, type and controls come from components/ui/premium). Nothing here scrolls sideways at any width. */
+.stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; min-width: 0; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); gap: 1rem; min-width: 0; }
+.grid > * { min-width: 0; }
+.rows { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.75rem; min-width: 0; padding: 0; margin: 0; list-style: none; }
+.row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); gap: 0.75rem; align-items: end; padding-bottom: 0.75rem; border-bottom: 1px solid var(--ui-line); min-width: 0; }
+.row > * { min-width: 0; }
+.actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; min-width: 0; }
+.figure { font-weight: 600; overflow-wrap: anywhere; }
+.note { margin: 0; overflow-wrap: anywhere; }

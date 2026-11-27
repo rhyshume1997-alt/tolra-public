@@ -13,7 +13,7 @@ import { ColumnToggle } from "@/components/column-toggle";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { pendingForPersonWeek, type JobInfo } from "@/lib/time-data";
+import { TimeDataTruncatedError, pendingForPersonWeek, type JobInfo } from "@/lib/time-data";
 import { exportSpreadsheet } from "@/lib/export-records";
 import { WEEK_COLUMNS, weekExportRows } from "@/lib/time-week-export";
 import { useOfflineStatus } from "@/lib/offline/scope";
@@ -81,7 +81,10 @@ export function WeekReview({ redesign = false }: { redesign?: boolean } = {}) {
       if (who) setNames(who);
     } catch (err) {
       if (missingDbObject(err as { code?: string; message?: string })) setNeedsUpdate(true);
-      else setError(friendlyError(err, "Couldn't load the week."));
+      else if (err instanceof TimeDataTruncatedError) {
+        setPeople(null);
+        setError(err.message);
+      } else setError(friendlyError(err, "Couldn't load the week."));
     }
   }, [week, only, seesEveryone, me]);
   useEffect(() => { void load(); }, [load]);

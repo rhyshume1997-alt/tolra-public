@@ -1,3 +1,4 @@
+// Purchase-order actions mirror and audit confirmed updates while preserving existing transition rules.
 "use client";
 
 /** Purchase Orders presentation toggle. Both views use the existing roles, reads, selections and mutation handlers. */
@@ -44,6 +45,7 @@ import { linkedRecordId } from "@/lib/record-link";
 import { type SupplierStatus, supplierKey, supplierOrderNotice } from "@/lib/supplier-status";
 import { esc } from "@/lib/html";
 import { documentTotals, gbp } from "@/lib/money";
+import { updatePurchaseOrders } from "@/lib/purchase-order-update";
 import { PO_TOTAL_LABEL, purchaseOrderTotalIncVat } from "@/lib/purchase-order-total";
 import { allocateNumber } from "@/lib/numbering";
 import { openPrintPack } from "@/lib/print-pack";
@@ -309,18 +311,19 @@ export default function PurchaseOrdersPage() {
     return () => { current = false; window.clearTimeout(timer); };
   }, [has124, newOpen, newLink, newDescription]);
 
-  /** Writes columns to the given orders, then mirrors them on screen. Throws on failure. */
+  /** Mirrors only confirmed database writes and local demo updates. */
   async function persistPos(targets: PurchaseOrderRow[], columns: Record<string, unknown>, patch: Partial<PurchaseOrderRow>) {
     const real = targets.filter((po) => !po.demo);
+    let updatedIds: string[] = [];
     if (real.length) {
       if (!supabase) throw new Error("Supabase is not configured.");
-      const { error } = await supabase.from("purchase_orders").update(columns).in("id", real.map((po) => po.id));
-      if (error) throw error;
+      updatedIds = await updatePurchaseOrders(supabase, real.map((po) => po.id), columns);
     } else if (targets.length && !DEMO_MODE) {
       throw new Error("Supabase is not configured.");
     }
-    const ids = targets.map((po) => po.id);
-    setPurchaseOrders((current) => current.map((po) => ids.includes(po.id) ? { ...po, ...patch } : po));
+    const ids = new Set([...updatedIds, ...targets.filter((po) => po.demo).map((po) => po.id)]);
+    setPurchaseOrders((current) => current.map((po) => ids.has(po.id) ? { ...po, ...patch } : po));
+    return { ids, updatedIds };
   }
 
   async function savePo(event: React.FormEvent<HTMLFormElement>) {
@@ -473,14 +476,20 @@ export default function PurchaseOrdersPage() {
     await run(async () => {
       try {
         const receivedAt = nowIso();
-        await persistPos(targets, { status: "received", received_at: receivedAt }, { status: "received", receivedAt });
-        // Audit only after the database update succeeded.
-        void auditEvent({ action: "MARK_RECEIVED", entityTable: "purchase_orders", metadata: { ids: targets.map((po) => po.id) } });
+        const { ids: confirmed, updatedIds } = await persistPos(targets, { status: "received", received_at: receivedAt }, { status: "received", receivedAt });
+        if (updatedIds.length) {
+          void auditEvent({ action: "MARK_RECEIVED", entityTable: "purchase_orders", metadata: { ids: updatedIds } });
+        }
+        if (confirmed.size < targets.length) {
+          setSelectedIds(targets.filter((po) => !confirmed.has(po.id)).map((po) => po.id));
+          toast.warning(`${confirmed.size} of ${targets.length} purchase orders moved to Received. Refresh and check the remaining orders.`);
+          return;
+        }
         setSelectedIds([]);
         setViewing(null);
         setFilters(new Set(["received"]));
         setPhase("done"); // it moved to Done: show it there
-        toast.success(`${targets.length} purchase order(s) moved to Received`);
+        toast.success(`${confirmed.size} purchase order(s) moved to Received`);
       } catch (err) {
         toast.error(userMessage(err, "Could not mark the purchase order as received"));
       }
