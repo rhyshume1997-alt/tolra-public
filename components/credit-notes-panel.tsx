@@ -1,5 +1,7 @@
 "use client";
 
+// Uses invoice quantities and saved credits to initialise drafts. The database owns credit limits and saved totals.
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -63,8 +65,9 @@ export function CreditNotesPanel({ invoice, onChanged }: {
     // The invoice's own lines, and how much of each has been credited already (the credit takes its VAT from the invoice).
     const { data: rows, error: linesError } = await supabase.from("invoice_line_items").select("id, description, quantity, unit_price, vat_pct, vat_exempt").eq("invoice_id", invoice.id).order("position");
     if (linesError) { console.error(linesError); return setState("error"); }
-    const { data: credited } = await supabase.from("credit_note_lines").select("invoice_line_id, quantity").in("invoice_line_id", (rows ?? []).map((row) => row.id));
+    const { data: credited, error: creditedError } = await supabase.from("credit_note_lines").select("invoice_line_id, quantity").in("invoice_line_id", (rows ?? []).map((row) => row.id));
     if (!mounted.current) return;
+    if (creditedError) { console.error(creditedError); return setState("error"); }
     // £0 text-only lines (migration 073) bill nothing, so there is nothing to credit on them.
     setLines((rows ?? []).filter((row) => !isTextLine({ quantity: Number(row.quantity), unitPrice: Number(row.unit_price) })).map((row) => ({
       id: String(row.id), description: String(row.description), quantity: Number(row.quantity), unitPrice: Number(row.unit_price),
