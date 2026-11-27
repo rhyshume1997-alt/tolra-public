@@ -1581,7 +1581,7 @@ export default function InvoicesPage() {
                   setRows((rows) => rows.map((row) => row.id === id ? { ...row, paymentClaimedAt: null } : row));
                   setViewingInvoice((row) => row?.id === id ? { ...row, paymentClaimedAt: null } : row);
                 }} /> : null}
-              {viewingInvoice.id && viewingInvoice.rawStatus !== "draft" ? <ChasePauseControl target={{ kind: "invoice", id: viewingInvoice.id, name: shownInvoiceRef(viewingInvoice) }} onChange={() => void chasePauses.reload()} /> : null}
+              {viewingInvoice.id && viewingInvoice.rawStatus !== "draft" && !isVoid(viewingInvoice.rawStatus) ? <ChasePauseControl target={{ kind: "invoice", id: viewingInvoice.id, name: shownInvoiceRef(viewingInvoice) }} onChange={() => void chasePauses.reload()} /> : null}
 
               {viewError ? <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{viewError}</div> : null}
               <Table>
@@ -1694,7 +1694,7 @@ export default function InvoicesPage() {
                   {canIssueAndSend && viewingInvoice.id && isWrittenOff(viewingInvoice.rawStatus) ? <Button variant="outline" disabled={saving} onClick={() => setWriteOffFor({ invoice: viewingInvoice, mode: "reverse" })}>Reverse write-off</Button> : null}
                   <Button variant="outline" disabled={Boolean(viewProblem)} onClick={() => void downloadInvoicePdf(viewingInvoice)}>Download PDF</Button>
                   {viewingInvoice.id && !DEMO_MODE && !isVoid(viewingInvoice.rawStatus) ? <Button variant="outline" disabled={saving || Boolean(viewProblem)} onClick={() => void sendInvoice(viewingInvoice, true)}>Email now</Button> : null}
-                  <Button className="bg-brand text-brand-ink hover:bg-brand-hover" disabled={saving || Boolean(viewProblem)} onClick={() => void sendInvoice(viewingInvoice)}>{saving ? "Sending…" : "Send to Customer"}</Button>
+                  {isVoid(viewingInvoice.rawStatus) ? null : <Button className="bg-brand text-brand-ink hover:bg-brand-hover" disabled={saving || Boolean(viewProblem)} onClick={() => void sendInvoice(viewingInvoice)}>{saving ? "Sending…" : "Send to Customer"}</Button>}
                 </div>
               )}
             </div>
