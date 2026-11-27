@@ -237,11 +237,11 @@ export default function SchedulePage() {
   // Only a run with no booking at all takes plan figures: a run whose booking merely lies outside the loaded window keeps its booking's figures (here "-").
   const planRuns = useMemo(() => runningRows.filter((r) => !r.booking_id), [runningRows]);
   const unbookedSig = useMemo(() => planRuns.map((r) => r.run_id).join(","), [planRuns]);
-  const [runPlanRead, setRunPlanRead] = useState<{ sig: string; map: Map<string, RunPlan> }>({ sig: "", map: new Map() });
+  const [runPlanRead, setRunPlanRead] = useState<{ sig: string; map: Map<string, RunPlan> | null }>({ sig: "", map: new Map() });
   const runPlan = runPlanRead.sig === unbookedSig ? runPlanRead.map : null;
   useEffect(() => {
     let active = true;
-    void loadRunPlan(planRuns.map((r) => r.job_id)).then((map) => { if (active && map) setRunPlanRead({ sig: unbookedSig, map }); }, () => undefined);
+    void loadRunPlan(planRuns.map((r) => r.job_id)).then((map) => { if (active) setRunPlanRead({ sig: unbookedSig, map }); }, () => undefined);
     return () => { active = false; };
   }, [planRuns, unbookedSig]);
   const unbookedViews = useMemo(() => new Map(planRuns.map((r) => [r.machine_id, unbookedRunView(r.started_at, runPlan?.get(runPlanKey(r.job_id, r.machine_id)), machines.find((m) => m.id === r.machine_id), now)])), [planRuns, runPlan, machines, now]);

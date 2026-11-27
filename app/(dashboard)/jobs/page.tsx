@@ -299,11 +299,11 @@ export default function JobsPage() {
     return () => { active = false; };
   }, [inUse, runSig]);
   // A run with no booking takes its hours from the job's plan row for that machine (lib/run-plan), read the same way and kept with the same runs.
-  const [runPlanRead, setRunPlanRead] = useState<{ sig: string; map: Map<string, RunPlan> }>({ sig: "", map: new Map() });
+  const [runPlanRead, setRunPlanRead] = useState<{ sig: string; map: Map<string, RunPlan> | null }>({ sig: "", map: new Map() });
   const runPlan = runPlanRead.sig === runSig ? runPlanRead.map : null;
   useEffect(() => {
     let active = true;
-    void loadRunPlan(inUse.filter((row) => !row.booking_id).map((row) => row.job_id)).then((map) => { if (active && map) setRunPlanRead({ sig: runSig, map }); }, () => undefined);
+    void loadRunPlan(inUse.filter((row) => !row.booking_id).map((row) => row.job_id)).then((map) => { if (active) setRunPlanRead({ sig: runSig, map }); }, () => undefined);
     return () => { active = false; };
   }, [inUse, runSig]);
   const benchByJob = useMemo(() => new Map(bench.map((row) => [row.job_id, row])), [bench]);

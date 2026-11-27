@@ -48,9 +48,11 @@ export async function loadRunPlan(jobIds: string[]): Promise<Map<string, RunPlan
     for (let i = 0; i < unique.length; i += CHUNK) {
       const chunk = unique.slice(i, i + CHUNK);
       const plan = await fetchAll((from, to) => client.from("job_machines").select("id, job_id, machine_id, estimated_hours").in("job_id", chunk).order("id").range(from, to));
+      if (plan.truncated) return null;
       planRows.push(...(plan.rows as PlanRow[]));
-      const { rows } = await fetchAll((from, to) => client.from("machine_runs").select("id, job_id, machine_id, started_at, ended_at").in("job_id", chunk).not("ended_at", "is", null).order("id").range(from, to));
-      runRows.push(...(rows as EndedRunRow[]));
+      const runs = await fetchAll((from, to) => client.from("machine_runs").select("id, job_id, machine_id, started_at, ended_at").in("job_id", chunk).not("ended_at", "is", null).order("id").range(from, to));
+      if (runs.truncated) return null;
+      runRows.push(...(runs.rows as EndedRunRow[]));
     }
   } catch {
     return null;

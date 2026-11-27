@@ -33,6 +33,7 @@ vi.mock("@/lib/supabase", () => ({
   },
 }));
 
+import { MAX_LIST_ROWS } from "@/lib/fetch-all";
 import { buildRunPlan, loadRunPlan, planBooking, runPlanKey, unbookedRunView } from "@/lib/run-plan";
 import { runClock } from "@/lib/machine-schedule";
 
@@ -84,6 +85,15 @@ describe("loadRunPlan", () => {
     state.plan = { data: [{ id: "p1", job_id: "j0", machine_id: "m1", estimated_hours: 4 }], error: null };
     await loadRunPlan(["j0"]);
     expect(state.planRanges).toEqual([0, 1]);
+  });
+
+  it.each(["plan", "runs"] as const)("keeps elapsed-only mode when the %s read reaches the safety cap", async (source) => {
+    state.plan = { data: [{ id: "p1", job_id: "j0", machine_id: "m1", estimated_hours: 4 }], error: null };
+    state[source].data = Array.from({ length: MAX_LIST_ROWS }, (_, index) => ({
+      id: String(index), job_id: "j0", machine_id: "m1", estimated_hours: 4,
+      started_at: "2026-10-20T08:00:00Z", ended_at: "2026-10-20T09:00:00Z",
+    }));
+    expect((await loadRunPlan(["j0"])) === null).toBe(true);
   });
 
   it("no jobs: nothing to read", async () => {
