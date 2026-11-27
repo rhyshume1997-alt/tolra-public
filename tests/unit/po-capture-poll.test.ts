@@ -30,8 +30,10 @@ function builder(table: string) {
   const b: Record<string, unknown> = {};
   for (const m of ["eq", "neq", "in", "not", "order", "limit", "like", "is", "ilike"]) b[m] = () => b;
   b.select = (c: string) => { columns = c; reads.push(`${table}:${c}`); return b; };
-  // fetchAll pages: one page of rows, then an empty one.
-  b.range = (from: number) => ({ then: (ok: (r: Result) => unknown, bad: (e: unknown) => unknown) => { try { const r = result(); return Promise.resolve(from > 0 && !r.error ? { data: [], error: null } : r).then(ok, bad); } catch (e) { return Promise.reject(e).then(ok, bad); } } });
+  b.range = (from: number, to: number) => Promise.resolve().then(() => {
+    const r = result();
+    return Array.isArray(r.data) ? { ...r, data: r.data.slice(from, Math.min(to + 1, from + 1_000)) } : r;
+  });
   b.maybeSingle = () => { single = true; return Promise.resolve().then(result); };
   b.single = b.maybeSingle;
   b.then = (ok: (r: Result) => unknown, bad: (e: unknown) => unknown) => Promise.resolve().then(result).then(ok, bad);
@@ -65,6 +67,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { POST as poll } from "@/app/api/mail/poll/route";
 import { resetTokenCache } from "@/lib/m365/graph";
+import { MAX_LIST_ROWS } from "@/lib/fetch-all";
 import { suggestPoLinks } from "@/lib/po-capture-load";
 
 const db = fakeDb as unknown as SupabaseClient;
@@ -121,6 +124,19 @@ describe("suggestPoLinks", () => {
   it("the PO number alone (a stranger) gives no suggestion", async () => {
     const out = await suggestPoLinks(db, [poEmail("e1", "PO 4471 for QUO-0012", "x@other.example")]);
     expect(out).toMatchObject({ status: "ok", suggested: 0 });
+    expect(rpcCalls).toEqual([]);
+  });
+
+  it("withholds suggestions when the capped quote context omits the exact PO match", async () => {
+    tableData.quotes = [
+      acme,
+      ...Array.from({ length: MAX_LIST_ROWS - 1 }, (_, index) => ({
+        ...acme, id: `unrelated-${index}`, customer: "Other customer",
+      })),
+      { ...acme, id: "exact-po", quote_ref: "QUO-0013", customer_po: "4471" },
+    ];
+    const result = await suggestPoLinks(db, [poEmail("e1", "PO 4471")]);
+    expect(result).toMatchObject({ status: "failed", suggested: 0 });
     expect(rpcCalls).toEqual([]);
   });
 

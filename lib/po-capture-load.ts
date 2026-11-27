@@ -26,6 +26,14 @@ type Row = Record<string, unknown>;
 const text = (v: unknown) => (v == null ? "" : String(v));
 const key = (v: unknown) => text(v).trim().toLowerCase();
 
+type ContextPage = (from: number, to: number) => PromiseLike<{ data: Row[] | null; error: unknown }>;
+
+async function readCompleteContext(page: ContextPage): Promise<Row[]> {
+  const { rows, truncated } = await fetchAll(page);
+  if (truncated) throw new Error("PO matching context exceeded the read limit.");
+  return rows;
+}
+
 /** Is 125 applied? A one-row GET of the new column (a missing column means no). Any other failure is not an answer: treated as no. */
 export async function hasEmailLinks(db: SupabaseClient, scope?: PoCaptureScope): Promise<boolean> {
   const q = db.from("inbound_emails").select("link_status");
@@ -46,13 +54,13 @@ export async function loadPoCaptureContext(db: SupabaseClient, scope?: PoCapture
     own("quotes", quoteColumns(withPo)).in("status", ["sent", "accepted"]).order("created_at", { ascending: false }).order("id").range(from, to) as unknown as PromiseLike<{ data: Row[] | null; error: unknown }>;
   let quotes: Row[];
   try {
-    quotes = (await fetchAll<Row>(quotePage(true))).rows;
+    quotes = await readCompleteContext(quotePage(true));
   } catch (err) {
     if (!missingDbObject(err as { code?: string; message?: string })) throw err;
     customerPo = false; // 123 not applied: no quotes.customer_po
-    quotes = (await fetchAll<Row>(quotePage(false))).rows;
+    quotes = await readCompleteContext(quotePage(false));
   }
-  const customers = (await fetchAll<Row>((from, to) => own("customers", "id, name, email").order("id").range(from, to) as unknown as PromiseLike<{ data: Row[] | null; error: unknown }>)).rows;
+  const customers = await readCompleteContext((from, to) => own("customers", "id, name, email").order("id").range(from, to) as unknown as PromiseLike<{ data: Row[] | null; error: unknown }>);
   const rfqIds = [...new Set(quotes.map((q) => text(q.rfq_id)).filter(Boolean))];
   const rfqEmail = new Map<string, string>();
   for (let i = 0; i < rfqIds.length; i += 200) {
@@ -60,8 +68,8 @@ export async function loadPoCaptureContext(db: SupabaseClient, scope?: PoCapture
     if (error) throw error;
     for (const r of (data ?? []) as unknown as Row[]) rfqEmail.set(text(r.id), text(r.email));
   }
-  const orders = (await fetchAll<Row>((from, to) => own("purchase_orders", "id, po_ref, po_number, supplier, status").neq("status", "draft").order("id").range(from, to) as unknown as PromiseLike<{ data: Row[] | null; error: unknown }>)).rows;
-  const suppliers = (await fetchAll<Row>((from, to) => own("suppliers", "id, name, email").order("id").range(from, to) as unknown as PromiseLike<{ data: Row[] | null; error: unknown }>)).rows;
+  const orders = await readCompleteContext((from, to) => own("purchase_orders", "id, po_ref, po_number, supplier, status").neq("status", "draft").order("id").range(from, to) as unknown as PromiseLike<{ data: Row[] | null; error: unknown }>);
+  const suppliers = await readCompleteContext((from, to) => own("suppliers", "id, name, email").order("id").range(from, to) as unknown as PromiseLike<{ data: Row[] | null; error: unknown }>);
 
   const byName = (rows: Row[]) => {
     const map = new Map<string, string[]>();
