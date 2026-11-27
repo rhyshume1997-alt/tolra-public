@@ -1,6 +1,8 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+// Module 2 print entry: loads the selected jobs and their drawings for the existing workshop pack layouts. Layouts stay unchanged.
+
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Printer } from "lucide-react";
 
@@ -15,7 +17,12 @@ import { useWorksheetBuilder } from "@/lib/worksheet-builder/store";
 /** Workshop pack: ONE worksheet sheet (same form as the single worksheet) with every selected job on it, a row each. */
 function WorkshopPack() {
   const ids = (useSearchParams().get("ids") || "").split(",").filter(Boolean);
-  const key = ids.join(",");
+  const selection = ids.join(",");
+  return <WorkshopPackSelection key={selection} selection={selection} />;
+}
+
+function WorkshopPackSelection({ selection }: { selection: string }) {
+  const ids = selection.split(",").filter(Boolean);
   const [sheets, setSheets] = useState<BasicPackSheet[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -27,29 +34,43 @@ function WorkshopPack() {
   const choice = resolvePrintChoice({ company: companyLayout, override, builder });
   const layout = choice ? packLayoutOf(choice) : null;
 
-  const load = useCallback(async () => {
-    setError(null);
-    setSheets(null);
-    const jobIds = key.split(",").filter(Boolean);
-    const loaded = await Promise.all(jobIds.map(async (id) => {
-      const result = await loadWorksheet({ id, job_no: "", customer: "", description: "" });
-      if (result.error !== undefined) return { id, error: result.error };
-      const stored = result.demo ? null : await listDrawings(id);
-      return { id, worksheet: result.worksheet, traceable: result.row?.traceable === true, drawings: stored ? stored.map((file) => (file.revision ? `${file.name} (Rev ${file.revision})` : file.name)) : [] };
-    }));
-    const failed = loaded.filter((sheet) => "error" in sheet).length;
-    if (failed) {
-      setError(`Couldn't load ${failed} of ${jobIds.length} worksheet${jobIds.length === 1 ? "" : "s"}. Retry.`);
-      return;
-    }
-    setSheets(loaded as BasicPackSheet[]);
-  }, [key]);
-
   useEffect(() => {
-    if (key) void load();
-  }, [load, key, attempt]);
+    if (!selection) return;
+    let active = true;
+    async function load() {
+      setError(null);
+      setSheets(null);
+      const jobIds = selection.split(",");
+      const loaded = await Promise.all(jobIds.map(async (id) => {
+        const result = await loadWorksheet({ id, job_no: "", customer: "", description: "" });
+        if (result.error !== undefined) return { kind: "worksheet-error" as const };
+        const stored = result.demo ? [] : await listDrawings(id);
+        if (stored === null) return { kind: "drawings-unavailable" as const };
+        const sheet: BasicPackSheet = {
+          id,
+          worksheet: result.worksheet,
+          traceable: result.row?.traceable === true,
+          drawings: stored.map((file) => (file.revision ? `${file.name} (Rev ${file.revision})` : file.name)),
+        };
+        return { kind: "ready" as const, sheet };
+      }));
+      if (!active) return;
+      const failed = loaded.filter((result) => result.kind === "worksheet-error").length;
+      if (failed) {
+        setError(`Couldn't load ${failed} of ${jobIds.length} worksheet${jobIds.length === 1 ? "" : "s"}. Retry.`);
+        return;
+      }
+      if (loaded.some((result) => result.kind === "drawings-unavailable")) {
+        setError("Drawings unavailable for one or more selected jobs. Check your connection and try again.");
+        return;
+      }
+      setSheets(loaded.flatMap((result) => result.kind === "ready" ? [result.sheet] : []));
+    }
+    void load();
+    return () => { active = false; };
+  }, [selection, attempt]);
 
-  if (!key) return <p className="mx-auto w-[297mm] max-w-full text-sm text-slate-500">No jobs selected. Select jobs on the Jobs page, then Print Workshop Pack.</p>;
+  if (!selection) return <p className="mx-auto w-[297mm] max-w-full text-sm text-slate-500">No jobs selected. Select jobs on the Jobs page, then Print Workshop Pack.</p>;
 
   return (
     <>
