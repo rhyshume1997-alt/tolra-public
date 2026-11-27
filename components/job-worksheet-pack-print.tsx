@@ -13,7 +13,7 @@ const COLOURS = { grey: "#b8c0cc", paleYellow: "#fff6c2", green: "#b5dca0", yell
 const exact: CSSProperties = { WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" };
 const SHORT_CHECKS: Record<string, string> = { sizes_checked: "Sizes", threads_check: "Threads", parts_deburred: "Deburred", parts_marked: "Marked", parts_clean: "Clean", parts_counted: "Counted" };
 
-export type PackSheet = { id: string; worksheet: JobWorksheet; drawings: string[] };
+export type PackSheet = { id: string; worksheet: JobWorksheet; drawings: string[]; customerPos?: string[] };
 
 function Th({ bg, color, width, children }: { bg: string; color?: string; width?: string; children: ReactNode }) {
   return <th className="border border-black px-1 py-0.5 text-left align-bottom text-[8.5px] leading-tight font-bold uppercase" style={{ background: bg, color, width, ...exact }}>{children}</th>;
@@ -41,6 +41,7 @@ export function JobWorksheetPackPrint({ sheets }: { sheets: PackSheet[] }) {
   const { profile: company } = useCompanyProfile();
   const signOffs = usePrintedSignOffs(sheets.map((sheet) => sheet.worksheet.job_no));
   const hours = (v: string) => (v ? `${v} hr` : "");
+  const customerPos = sheets.flatMap((sheet) => sheet.customerPos?.length ? [`${sheet.worksheet.job_no}: ${sheet.customerPos.join(", ")}`] : []);
   const drawings = sheets.filter((sheet) => sheet.drawings.length);
   const overruns = sheets.filter((sheet) => sheet.worksheet.overrun_reasons.trim());
   const comments = sheets.filter((sheet) => sheet.worksheet.improvement_comments.trim());
@@ -112,6 +113,7 @@ export function JobWorksheetPackPrint({ sheets }: { sheets: PackSheet[] }) {
         </tbody>
       </table>
 
+      {customerPos.length ? <p className="mt-1 text-[9px] break-words"><strong>Customer PO attached:</strong> {customerPos.join("; ")}</p> : null}
       {drawings.length ? <p className="mt-1 text-[9px]"><strong>DRAWINGS:</strong> {drawings.map((sheet) => `${sheet.worksheet.job_no}: ${sheet.drawings.join(", ")}`).join("; ")}</p> : null}
 
       <div className="mt-1.5 grid grid-cols-2 gap-2">

@@ -1,3 +1,5 @@
+// Job file inputs and registered metadata for certificate packs and worksheet references. Storage permissions are managed separately.
+
 import { DRAWINGS_BUCKET, validateDrawing } from "@/lib/job-worksheet";
 import { supabase } from "@/lib/supabase";
 import { getCurrentOrganizationId } from "@/lib/supabase-business";
@@ -47,8 +49,20 @@ export type CustomerPoFile = { id: string; file_name: string; storage_bucket: st
 
 /** The job's customer-PO files, oldest first. Empty before 067 (the kind doesn't exist yet, so nothing matches). */
 export async function listCustomerPos(jobId: string): Promise<CustomerPoFile[]> {
-  if (!supabase) return [];
+  if (!supabase) throw new Error("Storage is not available.");
   const { data, error } = await supabase.from("job_files").select("id, file_name, storage_bucket, storage_path, created_at").eq("job_id", jobId).eq("kind", "customer_po").order("created_at").order("id");
   if (error) throw error;
   return (data ?? []) as CustomerPoFile[];
+}
+
+/** Resolves registered customer PO filenames for printing. Null means the references could not be verified. */
+export async function loadWorksheetCustomerPoNames(
+  jobId: string,
+  read: typeof listCustomerPos = listCustomerPos,
+): Promise<string[] | null> {
+  try {
+    return (await read(jobId)).map((file) => file.file_name);
+  } catch {
+    return null;
+  }
 }

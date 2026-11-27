@@ -186,6 +186,7 @@ export function BasicWorksheetPrint({ worksheet: ws, jobNo, drawings = [], custo
 export function BasicWorksheetPackPrint({ sheets }: { sheets: BasicPackSheet[] }) {
   const { profile: company } = useCompanyProfile();
   const signOffs = usePrintedSignOffs(sheets.map((sheet) => sheet.worksheet.job_no));
+  const customerPos = sheets.flatMap((sheet) => sheet.customerPos?.length ? [`${sheet.worksheet.job_no}: ${sheet.customerPos.join(", ")}`] : []);
   const drawings = sheets.filter((sheet) => sheet.drawings.length);
   const th = "border border-black px-1 py-0.5 text-left align-bottom text-[9px] leading-tight font-bold uppercase";
   const td = "border border-black px-1 py-1 break-words";
@@ -230,6 +231,7 @@ export function BasicWorksheetPackPrint({ sheets }: { sheets: BasicPackSheet[] }
         </tbody>
       </table>
 
+      {customerPos.length ? <p className="mt-1 text-[9px] break-words"><strong>Customer PO attached:</strong> {customerPos.join("; ")}</p> : null}
       {drawings.length ? <p className="mt-1 text-[9px] break-words"><strong>Drawings:</strong> {drawings.map((sheet) => `${sheet.worksheet.job_no}: ${sheet.drawings.join(", ")}`).join("; ")}</p> : null}
 
       <div className="mt-2"><Heading>Operations / notes</Heading><div className="border border-t-0 border-black" style={{ minHeight: "24mm", ...ruled }} /></div>
