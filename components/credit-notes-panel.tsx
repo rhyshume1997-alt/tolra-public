@@ -1,5 +1,7 @@
 "use client";
 
+// Shows and applies credits for one invoice. The database owns allocation and invoice totals.
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -19,6 +21,7 @@ import { downloadPdf } from "@/lib/download-pdf";
 import { friendlyError } from "@/lib/friendly-error";
 import { nudgeIntegrationSend } from "@/lib/integrations/nudge";
 import { fromPence, gbp, isTextLine, toPence } from "@/lib/money";
+import { isDefiniteRefusal } from "@/lib/payment-attempts";
 import { balanceDue, customerCredit, invoiceStatus } from "@/lib/receivables";
 import { supabase } from "@/lib/supabase";
 
@@ -47,7 +50,7 @@ export function CreditNotesPanel({ invoice, onChanged }: {
   const [quantities, setQuantities] = useState<string[]>([]);
   const [prices, setPrices] = useState<string[]>([]);
   const [reason, setReason] = useState("");
-  const [applying, setApplying] = useState<{ note: CreditNote; amount: string; requestId: string } | null>(null);
+  const [applying, setApplying] = useState<{ note: CreditNote; amount: string; requestId: string; uncertain: boolean } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   /** The draft waiting for "are you sure?" before it is deleted. */
@@ -146,7 +149,7 @@ export function CreditNotesPanel({ invoice, onChanged }: {
 
   function startApplying(note: CreditNote) {
     const left = fromPence(toPence(note.total) - toPence(note.allocated_amount));
-    setApplying({ note, amount: left.toFixed(2), requestId: crypto.randomUUID() });
+    setApplying({ note, amount: left.toFixed(2), requestId: crypto.randomUUID(), uncertain: false });
     setError(null);
   }
 
@@ -160,11 +163,25 @@ export function CreditNotesPanel({ invoice, onChanged }: {
       if (rpcError) throw rpcError;
       const result = data as { balance_due: number; customer_credit: number; status: string };
       toast.success(`${money(Number(applying.amount))} applied to ${invoice.reference}. Balance due ${money(Number(result.balance_due))}.${Number(result.customer_credit) > 0 ? ` ${money(Number(result.customer_credit))} is customer credit.` : ""}`);
-      setApplying(null);
+    } catch (err) {
+      const uncertain = applying.uncertain || !isDefiniteRefusal(err);
+      if (uncertain) {
+        setApplying({ ...applying, uncertain: true });
+        console.error(err);
+        setError("The credit may have been applied. Retry with the same amount to confirm.");
+      } else {
+        setError(friendlyError(err, "Couldn't apply the credit. Nothing was changed."));
+      }
+      setBusy(false);
+      return;
+    }
+    setApplying(null);
+    try {
       await load();
       onChanged();
     } catch (err) {
-      setError(friendlyError(err, "Couldn't apply the credit. Nothing was changed."));
+      console.error(err);
+      setError("The credit was applied. Refresh the invoice to see the updated balance.");
     } finally {
       setBusy(false);
     }
@@ -221,7 +238,7 @@ export function CreditNotesPanel({ invoice, onChanged }: {
                 <span className="ml-auto flex flex-wrap gap-1">
                   {note.status === "draft" ? <Button size="sm" variant="outline" disabled={busy} onClick={() => setDiscarding(note)}>Delete draft</Button> : null}
                   {note.status === "draft" ? <Button size="sm" className="bg-brand text-brand-ink hover:bg-brand-hover" disabled={busy} onClick={() => void issue(note)}>Issue credit note</Button> : null}
-                  {note.status === "issued" && left > 0 ? <Button size="sm" variant="outline" disabled={busy} onClick={() => startApplying(note)}>Apply credit</Button> : null}
+                  {note.status === "issued" && left > 0 ? <Button size="sm" variant="outline" disabled={busy || Boolean(applying)} onClick={() => startApplying(note)}>Apply credit</Button> : null}
                   {note.status === "issued" ? <Button size="sm" variant="outline" disabled={busy} onClick={() => void pdf(note)}>Download PDF</Button> : null}
                 </span>
                 {note.status === "draft" ? <div className="basis-full"><AiFinanceCheckPanel kind="credit_note" id={note.id} /></div> : null}
@@ -234,10 +251,10 @@ export function CreditNotesPanel({ invoice, onChanged }: {
       {applying ? (
         <div role="group" aria-label={`Apply ${applying.note.credit_ref}`} className="flex flex-wrap items-end gap-2 rounded-lg border p-3 text-sm">
           <label className="grid gap-1 text-xs text-slate-500">Amount to apply to {invoice.reference}
-            <Input aria-label="Credit amount to apply" className="h-9 w-32" inputMode="decimal" value={applying.amount} onChange={(event) => setApplying({ ...applying, amount: event.target.value })} />
+            <Input aria-label="Credit amount to apply" className="h-9 w-32" inputMode="decimal" disabled={busy || applying.uncertain} value={applying.amount} onChange={(event) => setApplying({ ...applying, amount: event.target.value })} />
           </label>
           <Button size="sm" className="bg-brand text-brand-ink hover:bg-brand-hover" disabled={busy} onClick={() => void apply()}>{busy ? "Saving…" : "Apply credit"}</Button>
-          <Button size="sm" variant="outline" disabled={busy} onClick={() => setApplying(null)}>Cancel</Button>
+          <Button size="sm" variant="outline" disabled={busy || applying.uncertain} onClick={() => setApplying(null)}>Cancel</Button>
         </div>
       ) : null}
       {making ? (
