@@ -41,13 +41,22 @@ describe("ISO sidebar link", () => {
     expect(view).toContain("loadIsoEvidenceSafe()");
     expect(view).toContain("Try reading again");
   });
+  it("the result is keyed by company and attempt, and every export is guarded", () => {
+    const view = readFileSync("components/iso/iso-pack-view.tsx", "utf8");
+    expect(view).toContain("result.orgId === orgId && result.attempt === attempt");
+    expect(view).toContain("[loaded, on, available, orgId, attempt]");
+    expect(view).toContain("isoReadIsComplete(orgId, before, after, company, evidence)");
+    expect(view.match(/if \(!canExport \|\| latestRequest\.current !== requestKey\) return;/g)).toHaveLength(3);
+    expect(view.match(/disabled=\{!canExport\}/g)).toHaveLength(4);
+    expect(view).toContain('data-testid="iso-incomplete"');
+  });
 });
 
 describe("ISO company name", () => {
   const view = readFileSync("components/iso/iso-pack-view.tsx", "utf8");
-  it("falls back to the profile the shell already holds, and shows the company name in the header", () => {
-    expect(view).toContain("useCompanyProfile()");
-    expect(view).toContain("const company = loadedCompany ?? sharedCompany;");
+  it("takes the name only from this company's confirmed read (no shared-cache fallback), and shows it in the header", () => {
+    expect(view).not.toContain("useCompanyProfile()");
+    expect(view).toContain("const company = current?.company ?? null;");
     expect(view).toContain("company?.name || company?.documentName || TO_COMPLETE");
   });
 });

@@ -1,5 +1,7 @@
 "use client";
 
+// BOUNDARY (sidebar): changed only so Account Settings' "Replay tour" calls requestTourReplay() (components/tooly/tour/tour-replay.ts) and shows via useTourReplayAvailable(); no hidden-button click, no sidebar/top bar button. Must not change: the tour gating rules.
+
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import Image from "next/image";
@@ -38,6 +40,7 @@ import { connectionState, roleLabel } from "@/lib/shell-status";
 import { ConnectionDot } from "@/components/shell-status";
 import { DisplayNameForm } from "@/components/display-name";
 import { DateFormatSettings } from "@/components/date-format-settings";
+import { requestTourReplay, useTourReplayAvailable } from "@/components/tooly/tour/tour-replay";
 
 type NavItem = {
   href: string;
@@ -100,9 +103,9 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const { profile, organizations, switchOrganization, activeRole, setActiveRole, signOut, hasAnyRole, hiddenSections } = useUser();
   const orgSettings = useOrgSettings();
-  // Account Settings dialog: the Replay tour button shows only while the Dashboard's tour offers a replay (it clicks the tour's own hidden trigger).
+  // Account Settings dialog: the Replay tour button shows while the tour offers a replay, on any page (components/tooly/tour/tour-replay.ts).
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [canReplay, setCanReplay] = useState(false);
+  const canReplay = useTourReplayAvailable();
   const { aiHelper } = useAiFeatures();
   const connection = connectionState(useOfflineStatus());
   const { profile: company, loading: companyLoading } = useShellCompany();
@@ -276,14 +279,14 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             <span className="label-mono flex flex-wrap items-center gap-x-1.5 text-brand-ink/50"><span>{roleLabel(activeRole)}</span><span className="flex min-w-0 items-center gap-1.5"><ConnectionDot tone={connection.tone} /><span data-testid="drawer-connection">{connection.label}</span></span></span>
           </div>
           <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-            <DialogTrigger asChild><button type="button" onClick={() => setCanReplay(Boolean(document.querySelector('[data-testid="tooly-tour-replay"]')))} className="-mt-2.5 flex size-10 shrink-0 items-center justify-center rounded-none pointer-coarse:-mt-3 pointer-coarse:size-11 text-brand-ink transition hover:bg-brand-ink/10 hover:text-brand-ink" aria-label="Settings"><Settings className="size-[18px]" strokeWidth={1.75} /></button></DialogTrigger>
+            <DialogTrigger asChild><button type="button" className="-mt-2.5 flex size-10 shrink-0 items-center justify-center rounded-none pointer-coarse:-mt-3 pointer-coarse:size-11 text-brand-ink transition hover:bg-brand-ink/10 hover:text-brand-ink" aria-label="Settings"><Settings className="size-[18px]" strokeWidth={1.75} /></button></DialogTrigger>
             <DialogContent>
               <DialogHeader><DialogTitle>Account Settings</DialogTitle><DialogDescription>Profile and {PRODUCT.name} preferences.</DialogDescription></DialogHeader>
               <div className="space-y-4 text-sm">
                 <div className="rounded-lg border bg-slate-50 p-4"><p className="font-semibold text-slate-950">{profile?.full_name || profile?.email || ""}</p><p className="text-slate-500">{roleLabel(profile?.role)}{company ? `, ${company.name}` : ""}</p><p className="mt-2 text-slate-600">{profile?.email}</p></div>
                 <div className="rounded-lg border p-4"><DisplayNameForm /></div>
                 <div className="rounded-lg border p-4"><DateFormatSettings /></div>
-                {canReplay ? <Button variant="outline" className="w-full" onClick={() => { setSettingsOpen(false); document.querySelector<HTMLButtonElement>('[data-testid="tooly-tour-replay"]')?.click(); }}>Replay tour</Button> : null}
+                {canReplay ? <Button variant="outline" className="min-h-12 w-full" onClick={() => { setSettingsOpen(false); requestTourReplay(); }}>Replay tour</Button> : null}
                 {canChooseView ? (
                   <Button variant="outline" className="w-full" onClick={() => { window.location.assign("/select-role"); }}>Choose admin, office, or workshop view</Button>
                 ) : profile?.secondary_role ? (
