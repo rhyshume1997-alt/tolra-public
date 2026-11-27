@@ -82,6 +82,7 @@ import { recordInvoiceSent } from "@/lib/invoice-sent";
 import { isVoid, voidOffered } from "@/lib/invoice-void";
 import { type WriteOffMode, isWrittenOff, writeOffOffered } from "@/lib/invoice-write-off";
 import { deliveryAddressLines, optionalColumn } from "@/lib/invoice-fields";
+import { type PaymentExportReader, fetchPaymentsForExport } from "@/lib/invoice-payment-export";
 import { InvoiceFromDeliveryNotes } from "@/components/invoice-from-delivery-notes";
 import { deliveryNotesPrintedLine, fetchInvoiceNotes, type InvoiceNote } from "@/lib/invoice-delivery-notes";
 import { invoiceCustomerSignOff } from "@/lib/customer-signoff-print";
@@ -675,13 +676,19 @@ export default function InvoicesPage() {
   async function exportPayments(format: "csv" | "xlsx") {
     if (!supabase) return;
     try {
-      const { rows, truncated } = await fetchAll((from, to) => supabase!.from("invoice_payments").select("*").order("created_at").order("id").range(from, to));
+      const hasSelection = selectedInvoices.length > 0;
+      const scope = hasSelection ? invoices.filter((invoice) => selectedInvoices.includes(invoice.reference)) : invoices;
+      const selectedIds = hasSelection ? scope.map((invoice) => invoice.id).filter((id): id is string => Boolean(id)) : null;
+      const { payments, truncated } = await fetchPaymentsForExport(supabase as unknown as PaymentExportReader, selectedIds);
       if (truncated) {
-        toast.error("There are too many payments to export in one go. Select some invoices and export those.");
+        toast.error(
+          hasSelection
+            ? "There are too many payments on the selected invoices to export in one go. Select fewer invoices and try again."
+            : "There are too many payments to export in one go. Select some invoices and export those.",
+        );
         return;
       }
-      const scope = selectedInvoices.length ? invoices.filter((invoice) => selectedInvoices.includes(invoice.reference)) : invoices;
-      await exportSpreadsheet(format, "Invoice Payments", PAYMENT_COLUMNS, paymentExportRows(scope, rows.map(paymentFromRow)), "invoices");
+      await exportSpreadsheet(format, "Invoice Payments", PAYMENT_COLUMNS, paymentExportRows(scope, payments), "invoices");
     } catch (err) {
       toast.error(friendlyError(err, "Couldn't load the payments to export."));
     }
