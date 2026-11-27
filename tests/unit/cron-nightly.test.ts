@@ -86,4 +86,27 @@ describe("GET /api/cron/nightly", () => {
     runOverviewSnapshot.mockResolvedValue(json({ skipped: "not configured" }));
     expect((await call(withSecret)).status).toBe(200);
   });
+
+  it("500 when a sub-task returns a 4xx status (e.g. 401/403/429), after all sub-tasks run (CR-036)", async () => {
+    runIpPurge.mockResolvedValue(json({ error: "Unauthorized" }, 401));
+    const res = await call(withSecret);
+    expect(res.status).toBe(500);
+    expect(runOverviewSnapshot).toHaveBeenCalledTimes(1);
+    expect(runAiHelperPurge).toHaveBeenCalledTimes(1);
+  });
+
+  it("500 when a sub-task returns a 200 response containing an error field (CR-036)", async () => {
+    runAiHelperPurge.mockResolvedValue(json({ error: "partial failure" }, 200));
+    const res = await call(withSecret);
+    expect(res.status).toBe(500);
+  });
+
+  it("500 when a sub-task returns a non-JSON body (CR-036)", async () => {
+    runOverviewSnapshot.mockResolvedValue(new Response("Bad Gateway", { status: 200 }));
+    const res = await call(withSecret);
+    expect(res.status).toBe(500);
+    expect(await res.json()).toMatchObject({
+      overviewSnapshot: { error: "overview snapshot returned invalid JSON" },
+    });
+  });
 });
