@@ -1,7 +1,7 @@
 /**
  * "Open drawing" on My jobs opens the job's current drawing revision exactly as the Job Board's Worksheet dialog marks it: it asks
  * the dialog's own listDrawings (the current revision of each drawing, never one an upload replaced) and signs the link with the
- * dialog's own drawingUrl. The Supabase client here is a stand-in with one job's files in it.
+ * dialog's own drawingUrl. The Supabase stand-in controls read failures without changing the signing contract.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -11,13 +11,14 @@ const state = vi.hoisted(() => ({
   signed: [] as Array<{ bucket: string; path: string; ttl: number; options: unknown }>,
   user: true,
   storageDown: false,
+  metadataDown: false,
 }));
 
 vi.mock("@/lib/supabase", () => {
   const query = () => {
     const builder: Record<string, unknown> = {};
     for (const method of ["select", "eq", "order"]) builder[method] = () => builder;
-    builder.then = (resolve: (value: unknown) => void) => resolve({ data: state.files, error: null });
+    builder.then = (resolve: (value: unknown) => void) => resolve(state.metadataDown ? { data: null, error: new Error("metadata unavailable") } : { data: state.files, error: null });
     return builder;
   };
   return {
@@ -45,6 +46,7 @@ beforeEach(() => {
   state.signed = [];
   state.user = true;
   state.storageDown = false;
+  state.metadataDown = false;
 });
 
 describe("which drawing opens", () => {
@@ -62,6 +64,32 @@ describe("which drawing opens", () => {
     // The link is the worksheet's own: five minutes, downloaded under the file's name, for that file only.
     expect(await drawingLink(plan.choice.file)).toBe("https://files.test/org1/j1/3-bracket-c.pdf?token=t");
     expect(state.signed).toEqual([{ bucket: "job-drawings", path: "org1/j1/3-bracket-c.pdf", ttl: 300, options: { download: "bracket-c.pdf" } }]);
+  });
+
+  it("withholds all files when drawing metadata fails and restores only current and legacy drawings on retry", async () => {
+    state.files = [
+      row({ id: "a", revision: "A", file_name: "bracket-a.pdf", storage_path: "org1/j1/1-bracket-a.pdf", superseded_at: "2026-10-05T09:00:00Z" }),
+      row({ id: "b", revision: "B", file_name: "bracket-b.pdf", storage_path: "org1/j1/2-bracket-b.pdf" }),
+    ];
+    state.stored = [
+      { id: "s1", name: "1-bracket-a.pdf" },
+      { id: "s2", name: "2-bracket-b.pdf" },
+      { id: "s3", name: "1700000000000-legacy.pdf" },
+    ];
+
+    state.metadataDown = true;
+    expect(await planJobDrawings("j1")).toEqual({ kind: "unavailable" });
+    expect(state.signed).toEqual([]);
+
+    state.metadataDown = false;
+    const plan = await planJobDrawings("j1");
+    expect(plan).toMatchObject({
+      kind: "many",
+      choices: [
+        { file: { name: "bracket-b.pdf", path: "org1/j1/2-bracket-b.pdf" }, label: "bracket-b.pdf · Rev B (replaces A)" },
+        { file: { name: "legacy.pdf", path: "org1/j1/1700000000000-legacy.pdf" }, label: "legacy.pdf · no revision marked" },
+      ],
+    });
   });
 
   it("several different drawings are each offered at their own current revision, named as the worksheet marks them", async () => {
