@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { jsonError, mfaRecentRequired, readJson } from "@/lib/server/auth";
-import { type AdminContext, type BanState, audit, banState, companyMayLift, deactivationBanMarker, enrolmentFlag, existingLoginScope, guard, hasVerifiedTotp, liftDeactivationBan, loginIsProtected, ownsIdentity, requireAdminEnrolment, requireRecentAal2 } from "@/lib/server/admin-users";
+import { type AdminContext, type BanState, audit, banState, companyMayLift, deactivationBanMarker, enrolmentFlag, existingLoginScope, guard, hasVerifiedTotp, liftDeactivationBan, loginIsProtected, ownsIdentity, requireAdminEnrolmentStatus, requireRecentAal2 } from "@/lib/server/admin-users";
 import { becomesAdmin, changesAdmin } from "@/lib/mfa-policy";
 import { companyAccessErrorMessage, mayAddExistingLogin, OTHER_COMPANY_LOGIN, PROTECTED_CHECK_FAILED, PROTECTED_LOGIN } from "@/lib/company-access";
 import { PRODUCT } from "@/lib/product";
@@ -248,6 +248,16 @@ export async function POST(request: Request) {
     userId = data.user.id;
   }
 
+  const grantingAdmin = role === "admin" || secondary === "admin";
+  let existingAdminEnrolled: boolean | null = null;
+  if (grantingAdmin && !created) {
+    existingAdminEnrolled = await hasVerifiedTotp(admin, userId);
+    if (existingAdminEnrolled === null) {
+      console.error("[admin/users] could not check verified MFA factors before granting admin");
+      return jsonError("Could not check two-step sign-in for this account. Try again.", 500);
+    }
+  }
+
   const rollback = async () => {
     if (created && userId) await admin.auth.admin.deleteUser(userId).catch(() => undefined);
   };
@@ -304,11 +314,25 @@ export async function POST(request: Request) {
   }
 
   // A new admin sets up an authenticator app at their first sign-in (migration 065). The admin creating them is told so.
-  // Reported (and the admin told after saving) only when the person has no verified factor and the flag was actually saved.
+  // If saving the requirement fails on a schema that supports it (not pre-065), roll back and return 500 instead of reporting success.
   let adminMfaOnboarding = false;
-  if (role === "admin" || secondary === "admin") {
-    const enrolled = created ? false : await hasVerifiedTotp(admin, userId);
-    if (enrolled !== true) adminMfaOnboarding = (await requireAdminEnrolment(admin, orgId, userId)) && enrolled === false;
+  if (grantingAdmin) {
+    const enrolled = created ? false : existingAdminEnrolled;
+    if (enrolled !== true) {
+      const enrolStatus = await requireAdminEnrolmentStatus(admin, orgId, userId);
+      if (enrolStatus === "failed") {
+        await rollback();
+        if (!created) {
+          if (reactivating) {
+            await admin.from("organization_members").update({ active: false }).eq("organization_id", orgId).eq("user_id", userId);
+          } else {
+            await admin.from("organization_members").delete().eq("organization_id", orgId).eq("user_id", userId);
+          }
+        }
+        return jsonError("Could not require two-step sign-in for this admin account. Try again.", 500);
+      }
+      adminMfaOnboarding = enrolStatus === "saved" && enrolled === false;
+    }
   }
 
   await audit(ctx, "CREATE_USER", userId, {
