@@ -39,14 +39,14 @@ export function groupBoardFiles(rows: readonly FileRow[]): Map<string, BoardFile
   return map;
 }
 
-/** Every job's current drawings and attachments in one paged read; null when they can't be read (the board still shows without them). */
+/** Every job's current drawings and attachments in one paged read; null when they can't be read completely (the board still shows without them). */
 export async function loadBoardJobFiles(): Promise<Map<string, BoardFiles> | null> {
   if (!supabase) return null;
   const client = supabase;
   try {
-    const { rows } = await fetchAll((from, to) => client.from("job_files").select("id, job_id, kind, file_name")
+    const { rows, truncated } = await fetchAll((from, to) => client.from("job_files").select("id, job_id, kind, file_name")
       .in("kind", ["drawing", "customer_po"]).is("superseded_at", null).is("deleted_at", null).order("created_at").order("id").range(from, to));
-    return groupBoardFiles(rows);
+    return truncated ? null : groupBoardFiles(rows);
   } catch {
     return null;
   }

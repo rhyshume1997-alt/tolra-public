@@ -257,6 +257,7 @@ export default function JobsPage() {
   const [machinesByJob, setMachinesByJob] = useState<Map<string, JobMachineChip[]>>(new Map());
   const [machineJob, setMachineJob] = useState<WorkshopJob | null>(null);
   // Each job's drawings and attachments (job_files): shown on every view; the board works without them when they can't be read.
+  const [fileListFailed, setFileListFailed] = useState(false);
   const [filesByJob, setFilesByJob] = useState<Map<string, BoardFiles> | null>(null);
   // Live machine use and assignment (migration 044): who is on what now, the company's people by display name, the machines to start on.
   const [inUse, setInUse] = useState<InUseRow[]>([]);
@@ -509,7 +510,11 @@ export default function JobsPage() {
         if (error) throw error;
         if (active) setJobs((data ?? []).map(rowToJob));
         void loadJobMachines().then((map) => { if (active && map) setMachinesByJob(map); });
-        void loadBoardJobFiles().then((map) => { if (active && map) setFilesByJob(map); });
+        void loadBoardJobFiles().then((map) => {
+          if (!active) return;
+          setFilesByJob(map);
+          setFileListFailed(map === null);
+        });
         void loadLive(true).catch(() => { /* the board works without the live view */ });
         void loadMachinesList();
         // This device's offline copy of the Job Board (lib/offline): refreshed on every successful load, no money fields.
@@ -1589,6 +1594,9 @@ export default function JobsPage() {
     <ProblemJobsContext.Provider value={problemIds}>
     <View actions={actions} legacyHeader={legacyHeader}>
 
+      {fileListFailed ? (
+        <Card><CardContent className="flex flex-wrap items-center justify-between gap-3 p-5"><p role="status" className="text-sm">The drawing and attachment lists could not be loaded in full.</p><Button variant="outline" onClick={() => setAttempt((n) => n + 1)}>Retry file lists</Button></CardContent></Card>
+      ) : null}
       {loadError ? (
         <Card><CardContent className="flex flex-wrap items-center justify-between gap-3 p-5"><p className="text-sm text-red-700">{loadError}</p><Button variant="outline" onClick={() => setAttempt((n) => n + 1)}>Retry</Button></CardContent></Card>
       ) : null}

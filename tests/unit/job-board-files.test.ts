@@ -1,3 +1,4 @@
+import { MAX_LIST_ROWS } from "@/lib/fetch-all";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const calls: string[] = [];
@@ -6,8 +7,7 @@ let result: { data: unknown[] | null; error: unknown } = { data: [], error: null
 vi.mock("@/lib/supabase", () => {
   const query: Record<string, unknown> = {};
   for (const name of ["select", "in", "is", "order"]) query[name] = (...args: unknown[]) => { calls.push(`${name}:${JSON.stringify(args)}`); return query; };
-  // One page of rows, then an empty page (what a real read does), so fetchAll stops.
-  query.range = async (from: number) => (from === 0 ? result : { data: [], error: null });
+  query.range = async (from: number, to: number) => ({ ...result, data: result.data?.slice(from, to + 1) ?? null });
   return { supabase: { from: (table: string) => { calls.push(`from:${table}`); return query; } } };
 });
 
@@ -56,6 +56,16 @@ describe("loadBoardJobFiles", () => {
     expect(calls).toContain('in:["kind",["drawing","customer_po"]]');
     expect(calls).toContain('is:["superseded_at",null]');
     expect(calls).toContain('is:["deleted_at",null]');
+  });
+
+  it("uses the unavailable path instead of publishing capped file metadata", async () => {
+    result = {
+      data: Array.from({ length: MAX_LIST_ROWS + 1 }, (_, index) => ({
+        id: String(index), job_id: `job-${index}`, kind: "customer_po", file_name: "Purchase order.pdf",
+      })),
+      error: null,
+    };
+    expect((await loadBoardJobFiles()) === null).toBe(true);
   });
 
   it("returns null when the read fails, so the board still shows", async () => {
