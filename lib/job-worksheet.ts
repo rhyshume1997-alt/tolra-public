@@ -233,16 +233,41 @@ export async function saveWorksheet(id: string, ws: JobWorksheet, version: numbe
   throw new WorksheetMissingError();
 }
 
-export async function loadMachineNames(): Promise<string[]> {
+export type MachineNamesResult =
+  | { status: "loaded"; names: string[] }
+  | { status: "unavailable" };
+
+export type MachineNameReader = {
+  from(table: "machines"): {
+    select(columns: "*"): PromiseLike<{ data: Record<string, unknown>[] | null; error: unknown }>;
+  };
+};
+
+/**
+ * Inputs: optional Supabase reader for the machines table.
+ * Outputs: explicit loaded machine names list or `{ status: "unavailable" }` so retrieval failures never look like an empty machine list.
+ * Boundary: Module 2 (Workshop & Jobs) only; preserves loadMachineNames() for existing callers.
+ */
+export async function loadMachineNamesResult(
+  client: MachineNameReader | null = supabase as unknown as MachineNameReader | null,
+  demoMode: boolean = DEMO_MODE,
+): Promise<MachineNamesResult> {
   try {
-    if (!supabase) throw new Error("Supabase is not configured.");
-    const { data, error } = await supabase.from("machines").select("*");
-    if (error) throw error;
+    if (!client) {
+      return demoMode ? { status: "loaded", names: DEMO_MACHINES } : { status: "unavailable" };
+    }
+    const { data, error } = await client.from("machines").select("*");
+    if (error) return { status: "unavailable" };
     const names = (data || []).map((row) => String(row.name || row.machine_name || row.machine || "")).filter(Boolean);
-    return names.length || !DEMO_MODE ? names : DEMO_MACHINES;
+    return { status: "loaded", names: names.length || !demoMode ? names : DEMO_MACHINES };
   } catch {
-    return DEMO_MODE ? DEMO_MACHINES : [];
+    return demoMode ? { status: "loaded", names: DEMO_MACHINES } : { status: "unavailable" };
   }
+}
+
+export async function loadMachineNames(): Promise<string[]> {
+  const result = await loadMachineNamesResult();
+  return result.status === "loaded" ? result.names : [];
 }
 
 async function loadOrganizationId(): Promise<string | null> {

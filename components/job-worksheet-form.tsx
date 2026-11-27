@@ -20,7 +20,7 @@ import { friendlyError } from "@/lib/friendly-error";
 import { PREFILL_LABELS, type WorksheetPrefillKey, loadWorksheetPrefillSource, prefillWorksheet } from "@/lib/job-machine-plan";
 import {
   CHECKLIST_ITEMS, type DrawingFile, type JobWorksheet, type WorksheetJobInfo,
-  drawingUrl, emptyWorksheet, isOverrun, currentWorksheetVersion, listDrawings, loadMachineNames, loadWorksheet, saveWorksheet, setDrawingRevision, setInspectionRequirements, missingTraceability, uploadDrawing, uploadNewRevision, validateDrawing,
+  drawingUrl, emptyWorksheet, isOverrun, currentWorksheetVersion, listDrawings, loadMachineNamesResult, loadWorksheet, saveWorksheet, setDrawingRevision, setInspectionRequirements, missingTraceability, uploadDrawing, uploadNewRevision, validateDrawing,
   WorksheetConflictError, WorksheetMissingError,
   signOffState, worksheetEditCheck,
 } from "@/lib/job-worksheet";
@@ -80,6 +80,7 @@ export function JobWorksheetForm({ job, onSaved, onDirtyChange }: {
   const { activeRole } = useUser();
   const { profile: company } = useCompanyProfile();
   const [machines, setMachines] = useState<string[]>([]);
+  const [machinesUnavailable, setMachinesUnavailable] = useState(false);
   const [drawings, setDrawings] = useState<DrawingFile[] | null>();
   const [drawingAttempt, setDrawingAttempt] = useState(0);
   const drawingRequest = useRef<AbortSignal | null>(null);
@@ -127,8 +128,8 @@ export function JobWorksheetForm({ job, onSaved, onDirtyChange }: {
       setLoading(true);
       setLoadError(null);
       setEditJob(null);
-      const [loaded, names, source] = await Promise.all([
-        loadWorksheet(jobRef.current), loadMachineNames(),
+      const [loaded, machineResult, source] = await Promise.all([
+        loadWorksheet(jobRef.current), loadMachineNamesResult(),
         // Reads only; null (no prefill) when it can't be read, e.g. offline.
         supabase && !DEMO_MODE ? loadWorksheetPrefillSource(supabase, jobRef.current.id).catch(() => null) : Promise.resolve(null),
       ]);
@@ -150,7 +151,13 @@ export function JobWorksheetForm({ job, onSaved, onDirtyChange }: {
       setConflict(false);
       setDemo(loaded.demo);
       setOfflineCopy(Boolean(loaded.offline));
-      setMachines(names);
+      if (machineResult.status === "loaded") {
+        setMachines(machineResult.names);
+        setMachinesUnavailable(false);
+      } else {
+        setMachines([]);
+        setMachinesUnavailable(true);
+      }
       setLoading(false);
     }
     void load();
@@ -331,6 +338,12 @@ export function JobWorksheetForm({ job, onSaved, onDirtyChange }: {
       {loading ? <p className="text-xs text-slate-500">Loading worksheet...</p> : null}
       {completeReadOnly && !loadError ? <p role="status" data-testid="worksheet-complete-readonly" className="rounded-lg border border-slate-300 bg-slate-50 p-3 text-sm text-slate-700">This job is Complete. Its worksheet is read-only for workshop users. Ask an admin or office user if a correction is needed.</p> : null}
       {pendingPrefill.length && !loadError ? <p data-testid="worksheet-prefill" className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs text-sky-900">Filled in from the job&apos;s machines, schedule bookings and machine runs: {pendingPrefill.map((key) => PREFILL_LABELS[key]).join(", ")}. Check them and Save the worksheet to keep them.</p> : null}
+      {machinesUnavailable && !loadError ? (
+        <div role="status" data-testid="worksheet-machines-unavailable" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+          <span>The machine list could not be loaded right now. You can still type machine names manually or retry.</span>
+          <Button type="button" size="sm" variant="outline" onClick={() => setAttempt((n) => n + 1)}>Retry</Button>
+        </div>
+      ) : null}
       {loadError ? null : <>
 
       <div className="space-y-1.5 bg-white text-black" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>

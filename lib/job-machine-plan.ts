@@ -146,7 +146,7 @@ export async function loadWorksheetPrefillSource(client: ReadClient, jobId: stri
     client.from("machine_runs").select("machine_id, started_at, ended_at").eq("job_id", jobId),
     client.from("machines").select("id, name"),
   ]);
-  if (plan.error || bookings.error) return null;
+  if (plan.error || bookings.error || machines.error) return null;
   const names = new Map<string, string>(((machines.data ?? []) as { id: unknown; name: unknown }[]).map((m) => [String(m.id), String(m.name ?? "")]));
   const entries = jobMachineEntries(jobId, (plan.data ?? []) as PlanLink[], ((bookings.data ?? []) as unknown[]).map(bookingFromJobRow));
   return {
