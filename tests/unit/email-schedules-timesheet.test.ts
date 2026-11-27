@@ -217,4 +217,17 @@ describe("running a period of timesheet e-mails", () => {
     expect(send).not.toHaveBeenCalled();
     expect(db.rows("timesheet_sends")).toHaveLength(0);
   });
+
+  it("never writes timesheet_sends before send succeeds, so an interruption mid-send never skips the person on retry (CR-033)", async () => {
+    const rowsDuringSend: Array<string[]> = [];
+    send.mockImplementation(async () => {
+      rowsDuringSend.push(db.rows("timesheet_sends").map((r) => String(r.user_id)));
+      return { ok: true, mode: "sent", provider: "mock" };
+    });
+    const out = await runTimesheets(db as never, schedule, occurrence, now, { send });
+    expect(out).toMatchObject({ sent: 2, failed: 0, error: null });
+    // Before A's send finishes, timesheet_sends is empty; before B's send finishes, only A is recorded.
+    expect(rowsDuringSend).toEqual([[], [A]]);
+    expect(db.rows("timesheet_sends").map((r) => r.user_id).sort()).toEqual([A, B]);
+  });
 });

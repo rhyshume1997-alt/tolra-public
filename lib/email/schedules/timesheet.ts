@@ -82,9 +82,48 @@ async function personNames(admin: Pick<SupabaseClient, "from">, ids: string[]): 
 export type TimesheetDeps = { send: typeof sendCompanyEmail; deadline?: number; clock?: () => number };
 
 /**
- * Sends one period of timesheet e-mails: one per person, to every recipient. A person is claimed in timesheet_sends BEFORE their e-mail is
- * sent and the claim is given back if the send fails, so a period that is tried again (after a failure, a crash or the time limit) e-mails
- * only the people not yet sent, never the same person twice.
+ * Inputs: service-role client, schedule id, period key, and user id.
+ * Outputs: whether this person already has a recorded send in timesheet_sends for this period.
+ * Boundary: Module 6 (Email Schedules) only; relies on sendCompanyEmail's idempotencyKey for in-flight deduplication so interruptions never strand pre-send reservations.
+ */
+async function alreadySentTimesheet(
+  admin: Pick<SupabaseClient, "from">,
+  scheduleId: string,
+  periodKey: string,
+  userId: string,
+): Promise<boolean> {
+  const { data, error } = await admin
+    .from("timesheet_sends")
+    .select("user_id")
+    .eq("schedule_id", scheduleId)
+    .eq("period_key", periodKey)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw new StoreError("read timesheet sends", error.code);
+  return Boolean(data);
+}
+
+async function recordSentTimesheet(
+  admin: Pick<SupabaseClient, "from">,
+  scheduleId: string,
+  periodKey: string,
+  userId: string,
+): Promise<void> {
+  const { error } = await admin
+    .from("timesheet_sends")
+    .upsert(
+      { schedule_id: scheduleId, period_key: periodKey, user_id: userId },
+      { onConflict: "schedule_id,period_key,user_id", ignoreDuplicates: true },
+    )
+    .select("user_id");
+  if (error) throw new StoreError("record timesheet send", error.code);
+}
+
+/**
+ * Sends one period of timesheet e-mails: one per person, to every recipient. Checks timesheet_sends read-only first and writes the
+ * timesheet_sends record ONLY AFTER deps.send succeeds (duplicate sends across crashes/retries are prevented by sendCompanyEmail's
+ * deterministic idempotencyKey in mail_send_ledger). That way an interruption or failed send never leaves an orphaned reservation
+ * that causes a person to be skipped on retry.
  */
 export async function runTimesheets(admin: SupabaseClient, schedule: EmailScheduleRow, occurrence: Occurrence, now: Date, deps: TimesheetDeps = { send: sendCompanyEmail }): Promise<ExecResult> {
   const result: ExecResult = { sent: 0, drafted: 0, skipped: 0, failed: 0, error: null, retryable: true };
@@ -109,36 +148,33 @@ export async function runTimesheets(admin: SupabaseClient, schedule: EmailSchedu
       stoppedEarly = true;
       break;
     }
-    const claim = await admin.from("timesheet_sends").upsert({ schedule_id: schedule.id, period_key: occurrence.periodKey, user_id: person.userId },
-      { onConflict: "schedule_id,period_key,user_id", ignoreDuplicates: true }).select("user_id");
-    if (claim.error) throw new StoreError("claim timesheet", claim.error.code);
-    if ((claim.data ?? []).length === 0) {
+    if (await alreadySentTimesheet(admin, schedule.id, occurrence.periodKey, person.userId)) {
       result.skipped += 1; // already e-mailed in this period
       continue;
     }
-    const release = () => admin.from("timesheet_sends").delete().eq("schedule_id", schedule.id).eq("period_key", occurrence.periodKey).eq("user_id", person.userId);
+    let sent: Awaited<ReturnType<TimesheetDeps["send"]>> | null = null;
     try {
       const name = names.get(person.userId) ?? "Unknown";
       const mail = renderTimesheet({
         personName: name, week: `${weekNumber(weekStart)} (${weekLabel(weekStart)})`, hours: person.paidMinutes / 60,
         companyName, link: site ? `${site}/time` : "",
       }, override);
-      const sent = await deps.send({
+      sent = await deps.send({
         organizationId: org, userId: null, kind: "timesheet", to: recipients, subject: mail.subject, text: mail.text, html: mail.html,
         recordType: "timesheet", recordId: `${person.userId}:${weekStart}`, idempotencyKey: scheduleEmailKey("timesheet", schedule.id, occurrence.periodKey, person.userId),
       });
-      if (sent.ok) {
-        result.sent += 1;
-        if (sent.mode === "drafted") result.drafted += 1;
-      } else {
-        await release();
-        result.failed += 1;
-        failureCodes.add(sent.code);
-      }
     } catch {
-      await Promise.resolve(release()).catch(() => undefined);
       result.failed += 1;
       failureCodes.add("unexpected");
+      continue;
+    }
+    if (sent.ok) {
+      await recordSentTimesheet(admin, schedule.id, occurrence.periodKey, person.userId);
+      result.sent += 1;
+      if (sent.mode === "drafted") result.drafted += 1;
+    } else {
+      result.failed += 1;
+      failureCodes.add(sent.code);
     }
   }
   const problems = [
