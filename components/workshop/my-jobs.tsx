@@ -17,6 +17,7 @@ import { MyJobExtras } from "@/components/workshop/my-job-extras";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MyJobParts } from "@/components/workshop/my-job-parts";
+import { OpenProblemsTruncatedNotice } from "@/components/job-problems";
 import { fmtDate } from "@/lib/dates";
 import { JOB_STATUS_BADGE, JOB_STATUS_LABELS, reworkTag, stageLabel, stageOf } from "@/lib/job-flow";
 import { jobHref } from "@/lib/job-link";
@@ -60,6 +61,7 @@ export function MyJobs({ jobs, role, canOpenJobs, initialProblems, initialParts 
         <p className="text-sm text-muted-foreground">{jobs.length} job{jobs.length === 1 ? "" : "s"}</p>
       </CardHeader>
       <CardContent className="space-y-4">
+        <OpenProblemsTruncatedNotice visible={Boolean(state.truncated)} onRetry={() => void reload()} />
         {jobs.map((job) => <MyJobCard key={job.id} job={job} role={role} canOpenJobs={canOpenJobs} available={state.available} problems={problemsFor(state.problems, job.id)} readOnly={readOnly} onReported={() => void reload()} parts={parts} onLogged={() => void reloadParts()} />)}
       </CardContent>
     </Card>

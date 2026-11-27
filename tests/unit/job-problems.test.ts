@@ -81,12 +81,61 @@ describe("reading the open problems", () => {
     const seen: string[] = [];
     const answer = await loadOpenProblems(client("present", seen), ["j1", "j2"]);
     expect(answer).toEqual({ available: true, problems: [{ id: "p1", job_id: "j1", reason: "tooling", note: "Insert snapped", reported_by: "u1", reported_at: "2026-10-14T09:00:00Z" }] });
-    expect(seen).toHaveLength(1);
+    expect(seen.length).toBeGreaterThanOrEqual(1);
     const url = decodeURIComponent(seen[0]);
     expect(url).toContain("/rest/v1/job_problems?");
     expect(url).toContain("status=eq.open");
     expect(url).toContain("job_id=in.(j1,j2)");
-    expect(url).toContain("order=reported_at.desc");
+    expect(url).toContain("order=reported_at.desc,id.desc");
+  });
+  it("CR-026: paginates past the old 500-row cap and PostgREST's 1,000-row cap", async () => {
+    const all = Array.from({ length: 1_250 }, (_, i) => ({
+      id: `p-${i + 1}`,
+      job_id: `job-${i + 1}`,
+      reason: "quality",
+      note: null,
+      reported_by: "u1",
+      reported_at: "2026-10-14T09:00:00Z",
+    }));
+    const fetch = async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      const offset = Number(url.searchParams.get("offset") ?? 0);
+      const limit = Math.min(Number(url.searchParams.get("limit") ?? 1_000), 1_000);
+      return new Response(JSON.stringify(all.slice(offset, offset + limit)), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    };
+    const db = createClient("http://localhost:54321", "anon-key", { global: { fetch }, auth: { persistSession: false, autoRefreshToken: false } });
+    const answer = await loadOpenProblems(db);
+    expect(answer.available).toBe(true);
+    expect(answer.truncated).toBeUndefined();
+    expect(answer.problems).toHaveLength(1_250);
+    expect(jobsWithProblems(answer.problems).has("job-1250")).toBe(true);
+  });
+  it("CR-026: sets truncated: true when open problems reach fetchAll's hard upper bound", async () => {
+    const all = Array.from({ length: 15 }, (_, i) => ({
+      id: `p-${i + 1}`,
+      job_id: `job-${i + 1}`,
+      reason: "material",
+      note: null,
+      reported_by: "u1",
+      reported_at: "2026-10-14T09:00:00Z",
+    }));
+    const fetch = async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      const offset = Number(url.searchParams.get("offset") ?? 0);
+      const limit = Number(url.searchParams.get("limit") ?? 5);
+      return new Response(JSON.stringify(all.slice(offset, offset + limit)), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    };
+    const db = createClient("http://localhost:54321", "anon-key", { global: { fetch }, auth: { persistSession: false, autoRefreshToken: false } });
+    const answer = await loadOpenProblems(db, undefined, { pageSize: 5, maxRows: 10 });
+    expect(answer.available).toBe(true);
+    expect(answer.truncated).toBe(true);
+    expect(answer.problems).toHaveLength(10);
   });
   it("without 117 (the table is missing): not available, no problems, no flag", async () => {
     expect(await loadOpenProblems(client("missing"))).toEqual({ available: false, problems: [] });

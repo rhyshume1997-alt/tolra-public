@@ -6,10 +6,15 @@
  * Fail closed: until 117 is applied the table and the two functions do not exist. A read that says so (missingDbObject) is "not available":
  * every Problem control stays hidden and the flags and the Needs attention rule show nothing. Any other failed read is "unknown", which also
  * hides the controls (a write waits for a real yes) and shows no flag.
+ *
+ * Inputs: Supabase client, optional jobIds, optional pagination bounds.
+ * Outputs: OpenProblems (`available`, paginated `problems`, optional `truncated: true` if upper bound reached).
+ * Boundary: Module 2 (Jobs) only; read-only loader, does not modify DB schema or non-job modules.
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { missingDbObject } from "@/lib/db-features";
+import { fetchAll } from "@/lib/fetch-all";
 import { isNetworkError } from "@/lib/offline/store";
 
 export const PROBLEM_REASONS = [
@@ -25,6 +30,8 @@ export type ProblemReason = (typeof PROBLEM_REASONS)[number]["value"];
 export const PROBLEM_NOTE_MAX = 500;
 export const RESOLUTION_NOTE_MIN = 3;
 export const NEEDS_CONNECTION = "Reporting a problem needs a connection";
+export const OPEN_PROBLEMS_TRUNCATED =
+  "Only the newest open job problems could be loaded. Some older jobs with open problems may not show a Problem tag.";
 
 export function reasonLabel(reason: string | null | undefined): string {
   return PROBLEM_REASONS.find((r) => r.value === reason)?.label ?? "Other";
@@ -33,21 +40,36 @@ export function reasonLabel(reason: string | null | undefined): string {
 export type OpenProblem = { id: string; job_id: string; reason: ProblemReason; note: string | null; reported_by: string | null; reported_at: string };
 
 /** What a read of the open problems answered: `available` is true (117 is there), false (the table is missing) or null (could not tell). */
-export type OpenProblems = { available: boolean | null; problems: OpenProblem[] };
+export type OpenProblems = { available: boolean | null; problems: OpenProblem[]; truncated?: boolean };
 
 const COLUMNS = "id, job_id, reason, note, reported_by, reported_at";
 
-/** The company's open problems, newest first, optionally only for some jobs. Never throws: a failure is `available: null`, a missing table `false`. */
-export async function loadOpenProblems(db: Pick<SupabaseClient, "from">, jobIds?: readonly string[]): Promise<OpenProblems> {
+/** The company's open problems, newest first, paged past PostgREST's cap, optionally only for some jobs. Never throws: a failure is `available: null`, a missing table `false`. */
+export async function loadOpenProblems(
+  db: Pick<SupabaseClient, "from">,
+  jobIds?: readonly string[],
+  options?: { pageSize?: number; maxRows?: number },
+): Promise<OpenProblems> {
   if (jobIds && jobIds.length === 0) return { available: null, problems: [] };
   try {
-    let query = db.from("job_problems").select(COLUMNS).eq("status", "open").order("reported_at", { ascending: false }).limit(500);
-    if (jobIds) query = query.in("job_id", [...jobIds]);
-    const { data, error } = await query;
-    if (error) return { available: missingDbObject(error) ? false : null, problems: [] };
-    return { available: true, problems: (data ?? []) as OpenProblem[] };
-  } catch {
-    return { available: null, problems: [] };
+    const { rows, truncated } = await fetchAll<OpenProblem>(
+      (from, to) => {
+        let query = db
+          .from("job_problems")
+          .select(COLUMNS)
+          .eq("status", "open")
+          .order("reported_at", { ascending: false })
+          .order("id", { ascending: false });
+        if (jobIds) query = query.in("job_id", [...jobIds]);
+        return query.range(from, to);
+      },
+      options,
+    );
+    return truncated
+      ? { available: true, problems: rows, truncated: true }
+      : { available: true, problems: rows };
+  } catch (error) {
+    return { available: missingDbObject(error as { code?: string; message?: string } | null) ? false : null, problems: [] };
   }
 }
 
