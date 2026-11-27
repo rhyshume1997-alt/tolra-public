@@ -66,6 +66,7 @@ import { allocateNumber } from "@/lib/numbering";
 import { supabase } from "@/lib/supabase";
 import { getCurrentOrganizationId } from "@/lib/supabase-business";
 import { useSaving } from "@/lib/use-saving";
+import { salesCreateErrorMessage } from "@/lib/sales-create-error";
 import { ValidationError, parseOrThrow, quoteSaveSchema, userMessage } from "@/lib/validation/schemas";
 import { fetchAll, truncationNotice } from "@/lib/fetch-all";
 import { type AcceptQuoteResult, acceptOutcome, customerPoInput, deliveryDateInput } from "@/lib/accept-quote";
@@ -662,7 +663,7 @@ export default function QuotesPage() {
         setBuilderOpen(false);
         void loadQuotes();
       } catch (err) {
-        toast.error(userMessage(err, "Could not save the quote. Nothing was saved."));
+        toast.error(salesCreateErrorMessage(err, "quote"));
       }
     });
   }

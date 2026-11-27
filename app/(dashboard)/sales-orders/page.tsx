@@ -57,6 +57,7 @@ import { useColumnVisibility } from "@/lib/org-settings";
 import { supabase } from "@/lib/supabase";
 import { getCurrentOrganizationId } from "@/lib/supabase-business";
 import { useSaving } from "@/lib/use-saving";
+import { salesCreateErrorMessage } from "@/lib/sales-create-error";
 import { ValidationError, parseOrThrow, salesOrderSaveSchema, userMessage } from "@/lib/validation/schemas";
 import { companyVat, fromVatChoice, toVatChoice, type VatChoice } from "@/lib/vat";
 import { VatRateSelect, VatToggle } from "@/components/vat-controls";
@@ -323,7 +324,7 @@ export default function SalesOrdersPage() {
         setNewOpen(false);
         void loadOrders();
       } catch (err) {
-        toast.error(userMessage(err, "Could not create the sales order. Nothing was saved."));
+        toast.error(salesCreateErrorMessage(err, "sales order"));
       }
     });
   }
