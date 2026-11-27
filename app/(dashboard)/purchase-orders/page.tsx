@@ -45,6 +45,7 @@ import { linkedRecordId } from "@/lib/record-link";
 import { type SupplierStatus, supplierKey, supplierOrderNotice } from "@/lib/supplier-status";
 import { esc } from "@/lib/html";
 import { documentTotals, gbp } from "@/lib/money";
+import { type FinanceCreateAttemptKey, createPurchaseOrderWithIdempotency, financeRequestIdForAttempt } from "@/lib/finance-create-idempotency";
 import { updatePurchaseOrders } from "@/lib/purchase-order-update";
 import { PO_TOTAL_LABEL, purchaseOrderTotalIncVat } from "@/lib/purchase-order-total";
 import { allocateNumber } from "@/lib/numbering";
@@ -153,6 +154,7 @@ export default function PurchaseOrdersPage() {
   const issueNotice = poAction?.kind === "issue" ? supplierOrderNotice(supplierStatuses.get(supplierKey(poAction.po.supplier))) : null;
   const [editDraft, setEditDraft] = useState<{ supplier: string; delivery: string; value: string; notes: string; vatOn: boolean; link: LinkTarget | null; linkedNet: string }>({ supplier: "", delivery: "", value: "", notes: "", vatOn: false, link: null, linkedNet: "" });
   const [newOpen, setNewOpen] = useState(false);
+  const createAttemptRef = useRef<FinanceCreateAttemptKey | null>(null);
   // Migration 124: "For quote / job" (optional). Off until the database has it.
   const [has124, setHas124] = useState(false);
   const [newLink, setNewLink] = useState<LinkTarget | null>(null);
@@ -345,11 +347,7 @@ export default function PurchaseOrdersPage() {
         const linkedNet = has124 && newLink ? parseLinkedNet(newLinkedNet, total) : null;
         const lineVat = fromVatChoice(newPoChoice);
         const organizationId = await getCurrentOrganizationId();
-        const poRef = await allocateNumber("PO");
-        const { error } = await supabase.from("purchase_orders").insert({
-          organization_id: organizationId,
-          po_ref: poRef,
-          po_number: poRef,
+        const poHeader = {
           supplier: input.supplier,
           order_date: toDateInput(new Date()),
           expected_delivery: input.expectedDelivery || null,
@@ -360,10 +358,18 @@ export default function PurchaseOrdersPage() {
           status: "draft",
           notes: input.notes || null,
           ...(has124 ? { ...linkColumns(newLink), linked_net: newLink ? linkedNet : null } : {}),
+        };
+        const attempt = financeRequestIdForAttempt(createAttemptRef.current, JSON.stringify(poHeader));
+        createAttemptRef.current = attempt;
+        const { poRef } = await createPurchaseOrderWithIdempotency(supabase, {
+          requestId: attempt.requestId,
+          organizationId,
+          header: poHeader,
+          allocatePoRef: () => allocateNumber("PO"),
         });
-        if (error) throw error;
-        void auditEvent({ action: "CREATE", entityTable: "purchase_orders", entityId: poRef });
-        toast.success(`Purchase order ${poRef} saved`);
+        createAttemptRef.current = null;
+        void auditEvent({ action: "CREATE", entityTable: "purchase_orders", entityId: poRef || attempt.requestId });
+        toast.success(poRef ? `Purchase order ${poRef} saved` : "Purchase order saved");
         // Reset and close only after a successful save.
         formEl.reset();
         setNewVatOn(null);
