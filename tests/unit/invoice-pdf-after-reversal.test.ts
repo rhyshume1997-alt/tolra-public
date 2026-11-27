@@ -41,7 +41,7 @@ vi.mock("@/lib/supabase", () => ({
     from: (table: string) => ({
       select: () => ({
         order: () => ({ range: async () => ({ data: TABLES[table] ?? [], error: null }) }),
-        eq: () => ({ order: async () => ({ data: [{ description: "Bush", quantity: 1, unit_price: 100, vat_pct: 20, vat_exempt: false }], error: null }) }),
+        eq: () => ({ order: () => ({ order: () => ({ range: async () => ({ data: [{ description: "Bush", quantity: 1, unit_price: 100, vat_pct: 20, vat_exempt: false }], error: null }) }) }) }),
       }),
     }),
   },

@@ -9,6 +9,7 @@
  * sum, migration 032); an invoice whose payment is unknown (imported and still to be confirmed, or marked paid with no
  * amount recorded) is left blank in both and listed in problems.txt, never filled in with a guess.
  *
+ * Document and line-item reads are paged. A capped line-item read never produces a PDF.
  * PDFs are built with the same document components the pages print with, from the details recorded at issue
  * (lib/document-snapshot). A document whose lines don't add up to its stored totals is never reprinted with
  * different amounts: it is listed in problems.txt instead and still appears in the summary with its stored totals.
@@ -159,9 +160,13 @@ async function all(table: string) {
 }
 
 async function lines(table: string, fk: string, id: string, columns: string) {
-  const { data, error } = await supabase!.from(table).select(columns).eq(fk, id).order("position");
-  if (error) throw error;
-  return (data ?? []) as unknown as Row[];
+  const { rows, truncated } = await fetchAll<Row>(async (from, to) => {
+    const { data, error } = await supabase!.from(table).select(`id, ${columns}`).eq(fk, id)
+      .order("position").order("id").range(from, to);
+    return { data: data as unknown as Row[] | null, error };
+  });
+  if (truncated) throw new Error("too many line items for a complete export");
+  return rows;
 }
 
 async function render(element: ReactElement) {

@@ -30,7 +30,7 @@ vi.mock("@/lib/supabase", () => ({
     from: (table: string) => ({
       select: () => ({
         order: () => ({ range: async () => ({ data: TABLES[table] ?? [], error: null }) }),
-        eq: (_fk: string, id: string) => ({ order: async () => ({ data: table === "quote_line_items" ? LINES[id] ?? [] : [], error: null }) }),
+        eq: (_fk: string, id: string) => ({ order: () => ({ order: () => ({ range: async () => ({ data: table === "quote_line_items" ? LINES[id] ?? [] : [], error: null }) }) }) }),
       }),
     }),
   },
