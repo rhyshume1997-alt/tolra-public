@@ -143,7 +143,9 @@ export async function loadWorksheetPrefillSource(client: ReadClient, jobId: stri
   const [plan, bookings, runs, machines] = await Promise.all([
     client.from("job_machines").select("machine_id, estimated_hours, booking_id, position").eq("job_id", jobId).order("position"),
     client.from("machine_bookings").select("id, machine_id, job_id, estimated_hours, status, start_at").eq("job_id", jobId),
-    client.from("machine_runs").select("machine_id, started_at, ended_at").eq("job_id", jobId),
+    fetchAll<{ id: string; machine_id: string | null; started_at: string; ended_at: string | null }>((from, to) => client.from("machine_runs")
+      .select("id, machine_id, started_at, ended_at").eq("job_id", jobId).order("id").range(from, to))
+      .catch(() => null),
     client.from("machines").select("id, name"),
   ]);
   if (plan.error || bookings.error) return null;
@@ -152,7 +154,8 @@ export async function loadWorksheetPrefillSource(client: ReadClient, jobId: stri
   return {
     machineNames: entries.map((e) => names.get(e.machineId) ?? "").filter(Boolean),
     plannedHours: round2(entries.reduce((sum, e) => sum + e.hours, 0)),
-    runHours: runs.error ? 0 : machineRunHours((runs.data ?? []) as { machine_id: string | null; started_at: string; ended_at: string | null }[], now),
+    // A failed or capped read cannot supply a run-time prefill. Keep independent plan fields available.
+    runHours: runs && !runs.truncated ? machineRunHours(runs.rows, now) : 0,
   };
 }
 

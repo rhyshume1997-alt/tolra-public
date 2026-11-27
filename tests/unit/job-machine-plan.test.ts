@@ -5,6 +5,7 @@
  * The case from the live sweep (N4/N5): J-0006 converted from a sales order carries "TEST Mill 0 h" (job_machines, no booking linked),
  * and was booked on the Machine Schedule for 6.5 h (machine_bookings, job_id set, not linked to the plan row).
  */
+import { createClient } from "@supabase/supabase-js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const fake = vi.hoisted(() => {
@@ -162,6 +163,39 @@ describe("opening the Machines dialog only reads (N4)", () => {
     fake.setFailing(["machine_bookings"]);
     await expect(loadJobMachinesForDialog(JOB)).rejects.toBeTruthy();
     expect(fake.calls.filter((call) => WRITES.test(call))).toEqual([]);
+  });
+
+  it("includes machine runs beyond the API response cap in worksheet prefill", async () => {
+    const start = Date.UTC(2026, 0, 1);
+    const rows = Array.from({ length: 1_001 }, (_, index) => ({
+      id: String(index), machine_id: MILL, started_at: new Date(start + index * 3_600_000).toISOString(),
+      ended_at: new Date(start + (index + 1) * 3_600_000).toISOString(),
+    }));
+    const client = createClient("http://127.0.0.1:54321", "unit-test-key", {
+      global: { fetch: async (input) => {
+        const url = new URL(String(input));
+        if (!url.pathname.endsWith("/machine_runs")) return Response.json([]);
+        const offset = Number(url.searchParams.get("offset") ?? 0);
+        return Response.json(rows.slice(offset, offset + Math.min(1_000, Number(url.searchParams.get("limit") ?? 1000))));
+      } },
+    });
+    const source = await loadWorksheetPrefillSource(client, JOB);
+    expect(source?.runHours).toBe(1_001);
+    expect(prefillWorksheet(emptyWorksheet(), source!).worksheet.run_time_hr).toBe("1001");
+  });
+
+  it("leaves run time blank when the second machine-run page fails", async () => {
+    const client = createClient("http://127.0.0.1:54321", "unit-test-key", {
+      global: { fetch: async (input) => {
+        const url = new URL(String(input));
+        if (!url.pathname.endsWith("/machine_runs")) return Response.json([]);
+        if (Number(url.searchParams.get("offset")) > 0) return Response.json({ code: "42501", message: "read failed" }, { status: 403 });
+        return Response.json([{ id: "run-1", machine_id: MILL, started_at: "2026-01-01T12:00:00Z", ended_at: "2026-01-01T13:00:00Z" }]);
+      } },
+    });
+    const source = await loadWorksheetPrefillSource(client, JOB);
+    expect(source?.runHours).toBe(0);
+    expect(prefillWorksheet(emptyWorksheet(), source!).worksheet.run_time_hr).toBe("");
   });
 
   it("the worksheet's prefill source reads only, too", async () => {
