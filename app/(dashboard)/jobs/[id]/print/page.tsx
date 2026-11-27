@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+// Module 2 print entry: loads one job and its drawings for the existing worksheet layouts. Layouts stay unchanged.
+
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Printer, X } from "lucide-react";
@@ -42,6 +44,10 @@ async function demoJobInfo(id: string): Promise<DemoJob> {
 
 export default function JobSheetPrintPage() {
   const { id } = useParams<{ id: string }>();
+  return <JobSheet key={id} id={id} />;
+}
+
+function JobSheet({ id }: { id: string }) {
   const [worksheet, setWorksheet] = useState<JobWorksheet | null>(null);
   const [traceable, setTraceable] = useState(false);
   const [drawings, setDrawings] = useState<string[]>([]);
@@ -69,26 +75,35 @@ export default function JobSheetPrintPage() {
     return () => observer.disconnect();
   }, [sheetShown]);
 
-  const load = useCallback(async () => {
-    setError(null);
-    setWorksheet(null);
-    const demo = await demoJobInfo(id);
-    const loaded = await loadWorksheet({ id, ...demo });
-    if (loaded.error !== undefined) {
-      setError(loaded.error);
-      return;
-    }
-    setWorksheet(loaded.worksheet);
-    setTraceable(loaded.row?.traceable === true);
-    setCustomValues(parseCustomValues(loaded.row?.worksheet_custom));
-    const stored = loaded.demo ? null : await listDrawings(id);
-    setDrawings(stored ? stored.map((file) => (file.revision ? `${file.name} (Rev ${file.revision})` : file.name)) : demo.drawings);
-    setCustomerPos(loaded.demo ? [] : (await listCustomerPos(id).catch(() => [])).map((file) => file.file_name));
-  }, [id]);
-
   useEffect(() => {
+    let active = true;
+    async function load() {
+      setError(null);
+      setWorksheet(null);
+      const demo = await demoJobInfo(id);
+      const loaded = await loadWorksheet({ id, ...demo });
+      if (!active) return;
+      if (loaded.error !== undefined) {
+        setError(loaded.error);
+        return;
+      }
+      const stored = loaded.demo ? [] : await listDrawings(id);
+      if (!active) return;
+      if (stored === null) {
+        setError("Drawings unavailable. Check your connection and try again.");
+        return;
+      }
+      const pos = loaded.demo ? [] : await listCustomerPos(id).catch(() => []);
+      if (!active) return;
+      setDrawings(loaded.demo ? demo.drawings : stored.map((file) => (file.revision ? `${file.name} (Rev ${file.revision})` : file.name)));
+      setCustomerPos(pos.map((file) => file.file_name));
+      setTraceable(loaded.row?.traceable === true);
+      setCustomValues(parseCustomValues(loaded.row?.worksheet_custom));
+      setWorksheet(loaded.worksheet);
+    }
     void load();
-  }, [load, attempt]);
+    return () => { active = false; };
+  }, [id, attempt]);
 
   return (
     <div className="bg-white p-4 text-black print:p-0">
