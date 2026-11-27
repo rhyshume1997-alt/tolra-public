@@ -6,7 +6,7 @@
  * its own start (by default its next free slot, as on the schedule), all in parallel. A clash is shown before saving: an admin may book
  * anyway (recorded), everyone else picks a free time. The J number is given by the server, so creating needs a connection.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 
@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ukDateTime } from "@/lib/auto-booking";
 import { friendlyError } from "@/lib/friendly-error";
+import { type JobCreateAttemptKey, createJobWithIdempotency, jobRequestIdForAttempt } from "@/lib/job-create-idempotency";
 import {
   type Machine, type ScheduledBooking, defaultJobStart, fetchSchedule, planJobBookings, scheduleAll, toLocalInputValue,
 } from "@/lib/machine-schedule";
@@ -57,10 +58,12 @@ export function NewJobDialog({ open, role, jobs, onClose, onCreated }: {
   const [loadError, setLoadError] = useState<string | null>(null);
   /** Bumped by Retry and by the browser's `online` event: loads the machines and schedule again (and clears "offline" when it works). */
   const [attempt, setAttempt] = useState(0);
+  const createAttemptRef = useRef<JobCreateAttemptKey | null>(null);
   const now = useMemo(() => new Date(), [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // A fresh form each time the dialog opens.
   useEffect(() => {
+    createAttemptRef.current = null;
     if (!open) return;
     setInternal(false); setCustomer(""); setDescription(""); setRequired(""); setRelated(""); setRows([]); setOverride(false);
   }, [open]);
@@ -125,7 +128,7 @@ export function NewJobDialog({ open, role, jobs, onClose, onCreated }: {
     try {
       // create_job files the job in the session's company: refused if another tab switched it since this page opened (S5).
       await confirmPageCompany(supabase);
-      const { data, error } = await supabase.rpc("create_job", {
+      const payload = {
         p_customer: customer.trim() || null,
         p_description: description.trim(),
         p_internal: internal,
@@ -135,12 +138,15 @@ export function NewJobDialog({ open, role, jobs, onClose, onCreated }: {
         p_clash_override: isAdmin && override,
         p_clashes: clashes,
         p_override_reason: isAdmin && override ? reason.trim() : null,
-      });
-      if (error) throw error;
+      };
+      const attemptKey = jobRequestIdForAttempt(createAttemptRef.current, JSON.stringify(payload));
+      createAttemptRef.current = attemptKey;
+      const data = await createJobWithIdempotency(supabase, attemptKey.requestId, payload);
+      createAttemptRef.current = null;
       // The bookings create_job made, each from its start (the machine's next free time unless chosen), in UK time.
       const booked = plan.bookings.filter((b) => b.hours > 0).map((b) => `${b.machine.name}: Booked on the schedule from ${ukDateTime(b.start)} until ${ukDateTime(b.finish)}`);
       if (booked.length) toast.info(booked.join(". "), { duration: 10000 });
-      onCreated(data as { job_id: string; job_no: string });
+      onCreated(data);
     } catch (error) {
       if (isNetworkError(error)) setOffline(true);
       else if ((error as { hint?: string })?.hint === "machine_clash") toast.error((error as { message?: string }).message || "A machine is already booked at that time. Pick a free time (only an admin can book over another job).");
