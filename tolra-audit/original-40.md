@@ -5,7 +5,7 @@ Baseline: `main` at `1bfe072fa98bc8c2557fd0094dea43fd2d4f1050` (includes merged 
 Open audit PRs already present at audit start (not reworked): `#651` (CR-002), `#652` (CR-004), `#655` (findings 38/39), `#690` (findings 17/19), `#691` (finding 23).
 
 Draft PRs opened during this audit cycle (one module per PR, branched from `main`, not applied to production):
-`#692`, `#693`, `#694`, `#695`, `#696` (initial table, not re-pushed), `#697`, `#698`, `#699`, `#700` (Release 173, collided with closed `#667` — superseded by `#701`, not re-pushed), `#701` (Release 174), `#702`, `#703`, `#704`, `#705`, `#706`, `#707`, `#708`, `#709`, `#710`, `#711`, `#712`, `#713`, `#714`, `#715`.
+`#692`, `#693`, `#694`, `#695`, `#697`, `#698`, `#699`, `#701` (Release 174), `#702`, `#703`, `#704`, `#705`, `#706`, `#707`, `#708`, `#709`, `#710`, `#711`, `#712`, `#713`, `#714`, `#715`, `#716` (disposition table). Superseded and closed: `#696` (superseded by `#716`), `#700` (Release 173, collided with closed `#667`, superseded by `#701`).
 
 | ID | Classification | Evidence | PR |
 | --- | --- | --- | --- |
@@ -52,16 +52,16 @@ Draft PRs opened during this audit cycle (one module per PR, branched from `main
 
 ---
 
-## Decision Briefs & Open Questions
+## Recorded Decisions
 
-### 1. Finding 21 (CR-021, PR `#709`) — Post-Release 159 `job-drawings` Storage DELETE Policy
-- **Brief**: Release 159 (`supabase/proposals/p159_drawings_update_roles.sql:48-50`) changes `"job drawings org delete"` on `storage.objects` to `USING (false)`. Pre-159, `#709` automatically deletes the uploaded cert object when `job_files` insert fails. Post-159, `#709` detects the silent 0-row Storage delete (`removed.data.length === 0`), logs the path, and throws `CertCleanupError` so staff are warned instead of leaving an unflagged orphan.
-- **Question**: Once Release 159 is applied, should certificate uploads move to an authenticated server API route (using the service role for atomic compensating delete on DB failure), or should a scoped Storage DELETE policy allow deleting unregistered `certs/` objects?
+### 1. Finding 21 (CR-021, PR `#709`) — Post-Release 159 `job-drawings` Storage Cleanup
+- **Context**: Release 159 (`supabase/proposals/p159_drawings_update_roles.sql:48-50`) sets `"job drawings org delete"` on `storage.objects` to `USING (false)`. Pre-159, `#709` automatically deletes the uploaded cert object when `job_files` insert fails; post-159, `#709` detects the silent 0-row Storage delete (`removed.data.length === 0`), logs the path, and throws `CertCleanupError`.
+- **Decision**: Cert cleanup after Release 159 uses an authenticated server route with a service-role delete. Do **not** add a browser Storage delete policy.
 
-### 2. Finding 24 (CR-024, PR `#710`) — Module 7 Dashboard Machine Fallback
-- **Brief**: `#710` fixes all Module 2 (Workshop & Jobs) machine retrieval failure sites (`lib/job-worksheet.ts`, `components/job-worksheet-form.tsx`, `lib/job-machine-plan.ts`, `app/(dashboard)/jobs/page.tsx`). One remaining secondary read lives in Module 7 (`app/(dashboard)/dashboard/page.tsx:357-359`, where a failed `machines` read inside the dashboard overview falls back to an empty name map for machine labels) and was intentionally not mixed into the Module 2 PR.
-- **Question**: Should a separate Module 7 PR add an explicit unavailable notice for `dashboard/page.tsx:357-359`, or is the existing dashboard degraded-read handling sufficient?
+### 2. Finding 24 (CR-024, PR `#710`) — Module 7 Dashboard Machine-Name Lookup
+- **Context**: `#710` fixes all Module 2 (Workshop & Jobs) machine retrieval failure sites (`lib/job-worksheet.ts`, `components/job-worksheet-form.tsx`, `lib/job-machine-plan.ts`, `app/(dashboard)/jobs/page.tsx`). One secondary read remains in Module 7 (`app/(dashboard)/dashboard/page.tsx:357-359`).
+- **Decision**: Dashboard machine-name lookup stays a degraded read. No Module 7 PR.
 
-### 3. Finding 10–13, 20 (PR `#700` vs `#701`) — Superseded Release 173 Draft
-- **Brief**: `#700` originally used Release number `173`, which collided with closed PR `#667` (`p173_approval_email_attempts.sql`). Per instructions (`do not re-push #700`), Release `174` was created cleanly in draft PR `#701`.
-- **Action needed on review**: Close `#700` when reviewing `#701` (and close `#696` when reviewing the updated disposition PR).
+### 3. Superseded Drafts Closed
+- `#700` (Release 173, collided with closed `#667`) — **closed** in favour of `#701` (Release 174).
+- `#696` (initial disposition table) — **closed** in favour of `#716` (updated disposition table).
