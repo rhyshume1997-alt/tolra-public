@@ -8,11 +8,12 @@
  *     (cf-connecting-ip) and never x-forwarded-for, and both admin functions go through 075's admin + two-step guard.
  *   * the database's refusal reaches the person as a refusal (held, not retried as "no connection"), with its own words.
  */
+import { createClient } from "@supabase/supabase-js";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
-import { CLOCK_IN_NETWORK_LOCKED, type LockDecisionInput, REFUSAL_REPORT_TIMEOUT_MS, clockInLockDecision, reportClockInRefusal } from "@/lib/clock-in-lock";
+import { CLOCK_IN_NETWORK_LOCKED, type LockDecisionInput, REFUSAL_REPORT_TIMEOUT_MS, clockInLockDecision, loadUnverifiedClockActions, reportClockInRefusal } from "@/lib/clock-in-lock";
 import { friendlyError } from "@/lib/friendly-error";
 import type { ClockOp } from "@/lib/offline/outbox";
 import { isNetworkError } from "@/lib/offline/store";
@@ -152,4 +153,23 @@ describe("the refusal reaches the person as a refusal", () => {
       vi.useRealTimers();
     }
   });
+});
+
+
+it("includes the later unverified clock actions in the weekly review read", async () => {
+  const records = Array.from({ length: 1_001 }, (_, index) => ({
+    event_id: String(index), user_id: index === 1_000 ? "later-worker" : "worker",
+    action: "clock_in", at: "2026-11-24T08:00:00Z", reason: "queued_offline",
+  }));
+  const client = createClient("http://127.0.0.1:54321", "test-key", {
+    global: { fetch: async (input) => {
+      const query = new URL(String(input)).searchParams;
+      const offset = Number(query.get("offset") ?? 0);
+      const limit = Math.min(1_000, Number(query.get("limit") ?? 1_000));
+      return Response.json(records.slice(offset, offset + limit));
+    } },
+  });
+  const actions = await loadUnverifiedClockActions(client, new Date("2026-11-23"), new Date("2026-11-30"));
+  expect(actions).toHaveLength(1_001);
+  expect(actions.at(-1)?.user_id).toBe("later-worker");
 });

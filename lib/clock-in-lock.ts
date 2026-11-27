@@ -19,6 +19,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { fetchAll } from "@/lib/fetch-all";
 import { featurePresent } from "@/lib/db-features";
 import { isNetworkError } from "@/lib/offline/store";
 import { onSavedNetwork, parseIp } from "@/lib/site-network";
@@ -158,9 +159,10 @@ export async function reportClockInRefusal(client: ReportRpc | null | undefined,
 
 /** The week's clock actions the lock could not check, [from, to). Admin and office see the company's; a person their own. Throws on error. */
 export async function loadUnverifiedClockActions(client: Db, from: Date, to: Date): Promise<UnverifiedClockAction[]> {
-  const { data, error } = await client.from("clock_in_network_unverified")
+  const { rows, truncated } = await fetchAll((offset, end) => client.from("clock_in_network_unverified")
     .select("event_id, user_id, action, at, device_at, received_at, reason")
-    .gte("at", from.toISOString()).lt("at", to.toISOString()).order("at", { ascending: true }).limit(500);
-  if (error) throw error;
-  return (data ?? []) as UnverifiedClockAction[];
+    .gte("at", from.toISOString()).lt("at", to.toISOString())
+    .order("at", { ascending: true }).order("event_id").range(offset, end));
+  if (truncated) throw new Error("The complete list of unverified clock actions exceeds the supported read limit.");
+  return rows as UnverifiedClockAction[];
 }

@@ -13,27 +13,34 @@ import { addDays, localDateOf, startOfLocalDay } from "@/lib/time-sheet";
  * Week review (114, M27): the week's clock actions the clock-in network lock could NOT check (made while clock-in was locked, by someone
  * not allowed off site, and synced later from an offline queue, or with no network address seen). They were kept; this lists them per person so
  * the office can ask about them. Office and admin only (row rules: a person would see only their own); hidden until the database has 114,
- * and when there are none. A read error hides it; the week review itself is unaffected.
+ * and when there are none. An incomplete or failed read is shown separately from the week results.
  */
 export function NetworkUnverifiedNotice({ enabled, week, nameOf }: { enabled: boolean; week: string; nameOf: (userId: string) => string }) {
   const [rows, setRows] = useState<UnverifiedClockAction[]>([]);
+  const [readFailed, setReadFailed] = useState(false);
 
   useEffect(() => {
     if (!enabled || !supabase) return;
     let active = true;
+    setRows([]);
+    setReadFailed(false);
     void (async () => {
       try {
         if (!(await databaseHas114(supabase))) return;
         const found = await loadUnverifiedClockActions(supabase!, startOfLocalDay(week), startOfLocalDay(addDays(week, 7)));
         if (active) setRows(found);
       } catch {
-        if (active) setRows([]);
+        if (active) setReadFailed(true);
       }
     })();
     return () => { active = false; };
   }, [enabled, week]);
 
-  if (!enabled || !rows.length) return null;
+  if (!enabled) return null;
+  if (readFailed) {
+    return <p role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">The unverified clock action list could not be loaded in full.</p>;
+  }
+  if (!rows.length) return null;
   const people = [...new Set(rows.map((r) => r.user_id))];
   return (
     <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" data-testid="network-unverified">
