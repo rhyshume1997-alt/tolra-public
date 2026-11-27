@@ -93,7 +93,7 @@ import { INVOICE_SHOW_NOTE, raisedCaption } from "@/lib/range-label";
 import { DRAFT_PAYMENT_REASON, balanceDue, customerCredit, daysPastDue, invoiceDetailStatusLabel, invoiceLifecycle, invoiceStatus, isPartPaid, isRaised, paidOnTime, paidOnTimeNote, paymentBlockedReason } from "@/lib/receivables";
 import { invoicePdfCredits, invoicePdfPayments } from "@/lib/invoice-pdf-data";
 import { PaymentAttempts, recordBatch, recordWithRecovery, type PaymentOutcome } from "@/lib/payment-attempts";
-import { PAYMENT_METHODS, type InvoicePayment, netPaid, paymentAmountProblem, paymentDateProblem, paymentFromRow, paymentsEmptyText } from "@/lib/payments";
+import { PAYMENT_METHODS, type InvoicePayment, loadInvoicePaymentHistory, netPaid, paymentAmountProblem, paymentDateProblem, paymentFromRow, paymentsEmptyText } from "@/lib/payments";
 import { documentTotals, fromPence, gbp, isTextLine, toPence } from "@/lib/money";
 import { companyVat, fromVatChoice, type VatChoice } from "@/lib/vat";
 import { VatRateSelect, VatToggle } from "@/components/vat-controls";
@@ -556,15 +556,16 @@ export default function InvoicesPage() {
     // Never an endless "Loading payments…": a read that hasn't settled in time says so (an answer that comes later still counts).
     const giveUp = window.setTimeout(() => { if (!cancelled) setPaymentsError("Couldn't load the payments. Reload the page to try again."); }, PAYMENTS_READ_TIMEOUT_MS);
     if (viewingInvoice?.id && supabase) {
-      void supabase.from("invoice_payments").select("*").eq("invoice_id", viewingInvoice.id).order("created_at").order("id").then(({ data, error }) => {
+      void loadInvoicePaymentHistory(supabase, viewingInvoice.id).then((payments) => {
         if (cancelled) return;
         window.clearTimeout(giveUp);
-        if (error) setPaymentsError(friendlyError(error, "Couldn't load the payments."));
-        else {
-          setPayments((data ?? []).map((row) => paymentFromRow(row as Record<string, unknown>)));
-          setPaymentsError(null);
-          setPaymentsLoaded(true);
-        }
+        setPayments(payments);
+        setPaymentsError(null);
+        setPaymentsLoaded(true);
+      }, (error: unknown) => {
+        if (cancelled) return;
+        window.clearTimeout(giveUp);
+        setPaymentsError(friendlyError(error, "Couldn't load the payments."));
       });
     } else window.clearTimeout(giveUp);
     return () => { cancelled = true; window.clearTimeout(giveUp); };

@@ -4,6 +4,9 @@
  * payments. These helpers repeat the arithmetic for the screen (the balance a dialog starts with, the status a list
  * shows, the history of one invoice) and for the exports, always in whole pence.
  */
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+import { fetchAll } from "@/lib/fetch-all";
 import { fromPence, toPence } from "@/lib/money";
 
 export const PAYMENT_METHODS = ["BACS", "cheque", "card", "cash", "other"] as const;
@@ -42,6 +45,14 @@ export function paymentFromRow(row: Record<string, unknown>): InvoicePayment {
     createdBy: row.created_by ? String(row.created_by) : null,
     createdAt: row.created_at ? String(row.created_at) : "",
   };
+}
+
+/** The complete invoice history under the signed-in user's own row rules. Partial reads cannot establish reversals or net receipts. */
+export async function loadInvoicePaymentHistory(db: Pick<SupabaseClient, "from">, invoiceId: string): Promise<InvoicePayment[]> {
+  const { rows, truncated } = await fetchAll((from, to) => db.from("invoice_payments").select("*")
+    .eq("invoice_id", invoiceId).order("created_at").order("id").range(from, to));
+  if (truncated) throw new Error("The invoice payment history exceeds the supported read limit.");
+  return rows.map(paymentFromRow);
 }
 
 /** Everything received so far, net of reversals (this is what invoices.amount_paid holds). */

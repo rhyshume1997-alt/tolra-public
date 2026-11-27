@@ -1,10 +1,46 @@
+import { createClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
 
 import { defaultInvoiceMessage, invoiceMessage, parseCompanyProfile } from "@/lib/company";
 import { issuedCompany } from "@/lib/document-snapshot";
-import { knownPaid, netPaid, paidState, paymentAmountProblem, paymentDateProblem, paymentFromRow, paymentsEmptyText, reversedIds } from "@/lib/payments";
+import { knownPaid, loadInvoicePaymentHistory, netPaid, paidState, paymentAmountProblem, paymentDateProblem, paymentFromRow, paymentsEmptyText, reversedIds } from "@/lib/payments";
 import { balanceDue, invoiceLifecycle, isPartPaid, owed } from "@/lib/receivables";
 import { JNR_PROFILE } from "@/lib/company";
+
+describe("invoice payment history", () => {
+  it("includes a reversal on the second API page in the history and net receipts", async () => {
+    const firstPage = Array.from({ length: 1_000 }, (_, index) => ({ id: `payment-${index}`, invoice_id: "invoice-1", amount: 1 }));
+    const reversal = { id: "reversal-1", invoice_id: "invoice-1", amount: -1, reverses_payment_id: "payment-0", void_reason: "Entered twice" };
+    const payments = [...firstPage, reversal];
+    const client = createClient("http://127.0.0.1:54321", "test-key", {
+      global: { fetch: async (input) => {
+        const query = new URL(String(input)).searchParams;
+        const offset = Number(query.get("offset") ?? 0);
+        expect(query.get("invoice_id")).toBe("eq.invoice-1");
+        expect(query.get("order")).toBe("created_at.asc,id.asc");
+        return Response.json(payments.slice(offset, offset + 1_000));
+      } },
+    });
+    // The previous single request ended at the API cap and hid the reversal.
+    const baseline = await client.from("invoice_payments").select("*").eq("invoice_id", "invoice-1").order("created_at").order("id");
+    expect(netPaid((baseline.data ?? []).map(paymentFromRow))).toBe(1_000);
+    const history = await loadInvoicePaymentHistory(client, "invoice-1");
+    expect(netPaid(history)).toBe(999);
+    expect(reversedIds(history)).toEqual(new Set(["payment-0"]));
+    expect(history.at(-1)?.voidReason).toBe("Entered twice");
+  });
+
+  it("rejects a later-page failure instead of returning partial receipts", async () => {
+    const client = createClient("http://127.0.0.1:54321", "test-key", {
+      global: { fetch: async (input) => {
+        const offset = new URL(String(input)).searchParams.get("offset");
+        if (offset === "1") return Response.json({ code: "57014", message: "timed out" }, { status: 500 });
+        return Response.json([{ id: "payment-0", invoice_id: "invoice-1", amount: 1 }]);
+      } },
+    });
+    await expect(loadInvoicePaymentHistory(client, "invoice-1")).rejects.toMatchObject({ message: "timed out" });
+  });
+});
 
 describe("part payments: balance and status (migration 032)", () => {
   it("works out where an invoice stands, in whole pence", () => {
