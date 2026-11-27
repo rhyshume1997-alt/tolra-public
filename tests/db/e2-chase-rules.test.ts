@@ -20,6 +20,8 @@ import { randomUUID } from "node:crypto";
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { preparePost144Fixture } from "../support/post-144-release-fixture";
+
 const h = vi.hoisted(() => ({
   state: { admin: null as unknown, user: null as unknown, organizationId: "", userId: "", support: false, adminCalls: 0 },
   transport: { calls: [] as Array<{ to: string[]; subject: string; text: string }>, outcome: "accepted" as "accepted" | "failed" | "unknown", throws: false },
@@ -169,6 +171,9 @@ const passRun = async (w: World, deps: Parameters<typeof runInvoiceReminders>[4]
 
 beforeAll(async () => {
   const identity = await verifyBackendIdentity();
+  const client = await e2Pool().connect();
+  try { await preparePost144Fixture({ through: 173, verify: verifyBackendIdentity, query: (source) => client.query(source) }); }
+  finally { client.release(); }
   evidence("database", { host: identity.database.host, port: identity.database.port, name: identity.database.name, version: identity.database.serverVersion, organizations: identity.organizations });
   const loopback = await sql<{ a: string; p: number; n: string }>("select host(inet_server_addr()) as a, inet_server_port() as p, current_database() as n");
   // The client connects to loopback (asserted below); inside the Supabase container the server sees its own private address.

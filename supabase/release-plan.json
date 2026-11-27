@@ -228,6 +228,15 @@
       "rollback": "supabase/release/170_worksheet_custom.rollback.sql",
       "verify": "supabase/verify/worksheet_custom_170.sql",
       "marker": "post-144 marker 170 worksheet_custom"
+    },
+    {
+      "number": 173,
+      "after": "170",
+      "source": "supabase/proposals/p173_approval_email_attempts.sql",
+      "release": "supabase/release/173_approval_email_attempts.release.sql",
+      "rollback": "supabase/release/173_approval_email_attempts.rollback.sql",
+      "verify": "supabase/verify/approval_email_attempts_173.sql",
+      "marker": "post-144 marker 173 approval_email_attempts"
     }
   ],
   "other_proposals": [

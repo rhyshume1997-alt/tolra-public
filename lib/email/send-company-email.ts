@@ -47,6 +47,8 @@ export interface CompanyEmailInput {
   idempotencyKey?: string;
   draftOnly?: boolean;
   requireLedger?: boolean;
+  /** The claimed approval draft, linked atomically by the reservation RPC. */
+  approvalDraftId?: string;
 }
 export type CompanyEmailResult =
   | { ok: true; mode: "sent" | "drafted"; provider: "resend" | "microsoft" | "mock" | "none"; providerMessageId?: string; historyId?: string }
@@ -181,7 +183,7 @@ export function ledgerKey(input: CompanyEmailInput): string {
   return createHash("sha256").update(JSON.stringify(parts)).digest("hex");
 }
 
-type Reservation = { send_id: string; history_id: string; status: "drafted" | "sending" | "accepted" | "failed" | "unknown"; replay: boolean };
+type Reservation = { send_id: string; history_id: string; status: "drafted" | "sending" | "accepted" | "failed" | "unknown"; replay: boolean; key?: string };
 const isMissingFunction = (error: { code?: string } | null) => error?.code === "PGRST202" || error?.code === "42883";
 
 /** The earlier answer for a key seen before (never a second send). */
@@ -209,20 +211,24 @@ export async function sendCompanyEmail(input: CompanyEmailInput, deps: CompanyEm
   }
   if (selected === "refused") return { ok: false, error: MOCK_REFUSED_MESSAGE, code: "no_provider" };
   const provider = selected;
+  if (input.approvalDraftId && !provider) return { ok: false, code: "no_provider", error: "Sending is not available. The approval draft stays for review." };
   const db = deps.db === undefined ? createSupabaseAdminClient() : deps.db;
   if (!db) return { ok: false, error: "E-mail can't be recorded here, so it wasn't sent.", code: provider ? "provider_error" : "no_provider" };
 
   const to = [...email.to, ...email.cc].join(", ");
   const related = relatedType(input.kind, input.recordType);
-  const { data: reserved, error: reserveError } = await db.rpc("reserve_company_email", {
-    p_org: input.organizationId, p_user: input.userId, p_key: key, p_to: to, p_subject: email.subject, p_body: email.text,
-    p_related_type: related, p_related_id: input.recordId ?? null, p_mode: provider ? "sending" : "drafted",
-  });
+  const args = { p_org: input.organizationId, p_user: input.userId, p_key: key, p_to: to, p_subject: email.subject, p_body: email.text,
+    p_related_type: related, p_related_id: input.recordId ?? null };
+  const { data: reserved, error: reserveError } = input.approvalDraftId
+    ? await db.rpc("reserve_approval_email", { ...args, p_draft: input.approvalDraftId })
+    : await db.rpc("reserve_company_email", { ...args, p_mode: provider ? "sending" : "drafted" });
   if (reserveError && isMissingFunction(reserveError)) {
+    if (input.approvalDraftId) return { ok: false, code: "no_provider", error: "Approval sending needs the exact-attempt database release. Nothing was sent." };
     if (input.requireLedger) return { ok: false, code: "provider_error", error: "E-mail sending is switched off until a database update (the send ledger, migration 106) is applied. Nothing was sent." };
     return sendWithoutLedger(input, email, provider, db, to, related);
   }
   if (reserveError) {
+    if (input.approvalDraftId && reserveError.code === "P0001") return { ok: false, code: "provider_error", error: "An approval attempt needs checking. No new email was sent." };
     if (reserveError.code === "PT429") return { ok: false, error: "Too many e-mails sent in the last hour. Try again later.", code: "rate_limited" };
     console.error("[company-email] not reserved", reserveError.code);
     if (reserveError.code === "42501") return { ok: false, error: "You can't send e-mail for this company.", code: "invalid" };
@@ -234,7 +240,10 @@ export async function sendCompanyEmail(input: CompanyEmailInput, deps: CompanyEm
   if (reservation.replay) return replayResult(reservation, provider?.name ?? "none");
   if (!provider) return { ok: true, mode: "drafted", provider: "none", historyId: reservation.history_id };
 
-  const result = await provider.send(email);
+  if (input.approvalDraftId && (!reservation?.key || !/^[0-9a-f]{64}$/.test(reservation.key))) {
+    return { ok: false, code: "provider_error", uncertain: true, error: UNKNOWN_OUTCOME_MESSAGE };
+  }
+  const result = await provider.send(reservation.key ? { ...email, idempotencyKey: `company-email/${reservation.key}` } : email);
   if (result.outcome !== "accepted") console.error("[company-email] send", provider.name, result.outcome, result.detail);
   const { error: completeError } = await db.rpc("complete_company_email", { p_org: input.organizationId, p_user: input.userId, p_send: reservation.send_id, p_outcome: result.outcome });
   // If this write is lost the ledger stays 'sending' and becomes 'unknown' after ten minutes: never a silent second send.

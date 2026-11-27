@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
-const S = vi.hoisted(() => ({ role: "admin", support: false, rows: [] as any[], rpc: [] as any[], updates: [] as any[], approveCalls: 0, mail: { ok: false, code: "provider_error", error: "x", uncertain: false } as any, env: { key: true }, job: "refuse" }));
+const S = vi.hoisted(() => ({ role: "admin", support: false, linked: true, rows: [] as any[], rpc: [] as any[], updates: [] as any[], approveCalls: 0, mail: { ok: false, code: "provider_error", error: "x", uncertain: false } as any, env: { key: true }, job: "refuse" }));
 vi.mock("@/lib/server/auth", () => ({
   sameOrigin: () => true, forbiddenOrigin: () => NextResponse.json({ error: "Forbidden" }, { status: 403 }), isErrorResponse: (v: unknown) => v instanceof NextResponse,
   clientIp: () => "1.2.3.4",
@@ -14,7 +14,16 @@ vi.mock("@/lib/server/auth", () => ({
   requireProfile: async (roles: string[]) => !roles.includes(S.role) ? NextResponse.json({ error: "Forbidden" }, { status: 403 }) : ({
     supabase: {
       from: (t: string) => { let rows = S.rows.filter(() => true); let patch: any = null; const q: any = { select: () => q, eq: (c: string, v: unknown) => { rows = rows.filter((r) => r[c] === v); return q; }, limit: () => q, neq: () => q, update: (p: any) => { patch = p; return q; }, maybeSingle: async () => ({ data: rows[0] ?? null, error: null }), then: (res: any) => { if (patch) { S.updates.push({ t, patch }); rows.forEach((r) => Object.assign(r, patch)); } return Promise.resolve({ data: rows.map((r) => ({ id: r.id })), error: null }).then(res); } }; return q; },
-      rpc: async (fn: string, a: any) => { S.rpc.push({ fn, a }); return { data: fn === "reserve_job_email" ? { history_id: "hh1", replay: false, status: "sending" } : null, error: null }; },
+      rpc: async (fn: string, a: any) => {
+        S.rpc.push({ fn, a });
+        if (fn === "resolve_approval_email") {
+          const row = S.rows.find((r) => r.id === a.p_history && r.organization_id === a.p_org);
+          if (!S.linked || row?.related_to_type === "job" || !["unknown", "sending"].includes(row?.status)) return { data: "held", error: null };
+          row.status = a.p_outcome === "sent" ? "sent_manually" : "drafted";
+          return { data: row.status, error: null };
+        }
+        return { data: fn === "reserve_job_email" ? { history_id: "hh1", replay: false, status: "sending" } : null, error: null };
+      },
     }, user: { id: "u1" }, profile: { id: "u1", organization_id: "o1", role: S.role }, session: { support: S.support },
   }),
 }));
@@ -72,7 +81,7 @@ describe("provider-options", () => {
 });
 
 describe("resolve route: records who and when, never sends", () => {
-  beforeEach(() => { S.role = "admin"; S.support = false; S.rows = [{ id: HID, organization_id: "o1", status: "unknown", related_to_type: "invoice" }]; S.rpc = []; S.updates = []; S.approveCalls = 0; });
+  beforeEach(() => { S.role = "admin"; S.support = false; S.linked = true; S.rows = [{ id: HID, organization_id: "o1", status: "unknown", related_to_type: "invoice" }]; S.rpc = []; S.updates = []; S.approveCalls = 0; });
   it("office cannot call it", async () => {
     const { POST } = await import("@/app/api/email/resolve/route");
     S.role = "office";
@@ -83,8 +92,17 @@ describe("resolve route: records who and when, never sends", () => {
     const { POST } = await import("@/app/api/email/resolve/route");
     const res = await POST(post("/api/email/resolve", { history_id: HID, outcome: "sent" }));
     expect(await res.json()).toEqual({ status: "sent_manually", audited: true });
-    expect(S.updates[0].patch.status).toBe("sent_manually");
-    expect(S.rpc[0]).toMatchObject({ fn: "write_audit", a: { p_entity_id: HID, p_new: { outcome: "resolved_sent" }, p_metadata: { channel: "email-resolve" }, p_ip: "1.2.3.4" } });
+    expect(S.updates).toEqual([]);
+    expect(S.rpc[0]).toEqual({ fn: "resolve_approval_email", a: { p_org: "o1", p_user: "u1", p_history: HID, p_outcome: "sent" } });
+    expect(S.rpc[1]).toMatchObject({ fn: "write_audit", a: { p_entity_id: HID, p_new: { outcome: "resolved_sent" }, p_metadata: { channel: "email-resolve" }, p_ip: "1.2.3.4" } });
+    expect(S.approveCalls).toBe(0);
+  });
+  it("keeps unlinked historical attempts held without direct history writes or a send", async () => {
+    const { POST } = await import("@/app/api/email/resolve/route");
+    S.linked = false;
+    expect((await POST(post("/api/email/resolve", { history_id: HID, outcome: "not_sent" }))).status).toBe(409);
+    expect(S.rows[0].status).toBe("unknown");
+    expect(S.updates).toEqual([]);
     expect(S.approveCalls).toBe(0);
   });
   it("not sent: back to drafted for a fresh approval; a drafted or job row is refused", async () => {

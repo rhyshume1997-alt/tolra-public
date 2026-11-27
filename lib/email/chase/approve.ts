@@ -16,7 +16,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchAll } from "@/lib/fetch-all";
 import { pauseActive } from "@/lib/email/chase/steps";
 import type { CompanyEmailInput, CompanyEmailResult } from "@/lib/email/send-company-email";
-import { attemptKey } from "@/lib/email/chase/attempt";
+import { approvalAttemptStatus } from "@/lib/email/chase/attempt";
 import { recordSendAudit } from "@/lib/email/chase/send-audit";
 import { balanceDue, invoiceLifecycle } from "@/lib/receivables";
 
@@ -126,10 +126,9 @@ export async function approveChaseDraft(input: ApproveInput, deps: ApproveDeps):
 
   let provider: unknown;
   if (input.provider === "resend") {
-    const earlier = await db.from("email_history").select("status").eq("organization_id", org).eq("related_to_id", chase.invoice_id).in("status", ["failed", "unknown"]);
-    const statuses = earlier.error ? ["unknown"] : (earlier.data ?? []).map((r: { status: string }) => r.status);
-    if (statuses.includes("unknown")) return refused(409, "An earlier attempt has an unknown outcome. Check Email history first; nothing is sent another way until it is settled.");
-    if (!statuses.includes("failed")) return refused(409, "Another provider can only be chosen for an email whose send failed.");
+    const status = await approvalAttemptStatus(db, org, input.userId, draft.id);
+    if (status === "held") return refused(409, "An earlier attempt needs checking. Nothing is sent another way until it is settled.");
+    if (status !== "failed") return refused(409, "Another provider can only be chosen for an email whose send failed.");
     provider = deps.resend?.() ?? null;
     if (!provider) return refused(503, "Resend is not set up for this company, so it can't be used. The draft stays for manual sending.");
   } else {
@@ -168,7 +167,7 @@ export async function approveChaseDraft(input: ApproveInput, deps: ApproveDeps):
   let sent: CompanyEmailResult;
   try { sent = await deps.send({
     organizationId: org, userId: input.userId, kind: "invoice_reminder", to, subject, text: body,
-    recordType: "invoice", recordId: chase.invoice_id, idempotencyKey: await attemptKey(db, org, approveKey(draft.id), chase.invoice_id, draft.id),
+    recordType: "invoice", recordId: chase.invoice_id, idempotencyKey: approveKey(draft.id), approvalDraftId: draft.id, requireLedger: true,
   }, provider); } catch { await settleClaim("unknown"); await recordSendAudit(db, { outcome: "unknown", historyId: draft.id, channel: "chase-approve", code: "thrown" }); return needsChecking(); }
   if (!sent.ok) {
     if (sent.uncertain) { await settleClaim("unknown"); await recordSendAudit(db, { outcome: "unknown", historyId: draft.id, channel: "chase-approve", code: sent.code }); return needsChecking(); }

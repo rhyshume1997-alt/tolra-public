@@ -130,11 +130,11 @@ export default function ApprovalPage() {
         const ids = new Set(chase.error ? [] : (chase.data ?? []).map((row: any) => String(row.draft_history_id)));
         for (const item of items) item.chase = ids.has(item.id);
       }
-      // Earlier refused sends (status 'failed') for these records, and the held ones (unknown / stuck sending). Reads only.
+      // A provider switch is offered only after this draft’s own attempt failed.
       if (items.length) {
-        const failed = await supabase.from("email_history").select("related_to_id").eq("status", "failed").in("related_to_id", items.map((item) => item.related).filter(Boolean));
-        const failedIds = new Set(failed.error ? [] : (failed.data ?? []).map((row: any) => String(row.related_to_id)));
-        for (const item of items) item.failedBefore = failedIds.has(item.related);
+        const failed = await supabase.rpc("approval_email_failed_drafts", { p_drafts: items.map((item) => item.id) });
+        const failedIds = new Set<string>(!failed.error && Array.isArray(failed.data) ? failed.data : []);
+        for (const item of items) item.failedBefore = failedIds.has(item.id);
       }
       const held = await needsChecking(supabase.from("email_history").select("id, to_email, subject, status, related_to_type, drafted_at")).order("drafted_at", { ascending: false });
       setChecking(held.error ? [] : (held.data ?? []).map((row: any) => ({ id: String(row.id), to: row.to_email || "Recipient", subject: row.subject || "", status: String(row.status), related: String(row.related_to_type ?? ""), drafted: row.drafted_at ? fmtDate(row.drafted_at) : "" })));

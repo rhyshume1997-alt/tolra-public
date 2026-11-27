@@ -16,6 +16,7 @@ let auditMode: "ok" | "error" | "throw";
 let hookAfterClaim: (() => void) | null;
 let sends: Array<{ to: string[]; subject: string; text: string; provider: string }>;
 let answer: CompanyEmailResult | "throw";
+let linkedAttempt: "new" | "failed" | "held";
 let providerCalls: number, resendCalls: number, providerThrows: boolean, resendConfigured: boolean;
 
 // FakeDb has no ilike (E2/E1 files are not edited): add the one the statement code uses, here only.
@@ -43,6 +44,7 @@ const db = {
   },
   async rpc(fn: string, args: Record<string, unknown>) {
     rpcCalls.push({ fn, args });
+    if (fn === "approval_email_attempt_status") { expect(args.p_draft).toBe(DRAFT); return { data: linkedAttempt, error: null }; }
     if (fn === "customer_credit") return { data: [], error: null };
     if (fn === "write_audit") { if (auditMode === "throw") throw new Error("audit down"); return { data: null, error: auditMode === "error" ? { code: "42501" } : null }; }
     throw new Error(`unexpected rpc ${fn}`);
@@ -63,6 +65,7 @@ const approve = (extra: Record<string, unknown> = {}) => { const r = history(); 
 const auditRows = () => rpcCalls.filter((c) => c.fn === "write_audit").map((c) => c.args);
 
 beforeEach(async () => {
+  linkedAttempt = "new";
   rpcCalls = []; auditMode = "ok"; hookAfterClaim = null; sends = []; providerCalls = 0; resendCalls = 0; providerThrows = false; resendConfigured = true;
   answer = { ok: true, mode: "sent", provider: "microsoft", historyId: "sent-1" };
   fake = new FakeDb({ customers: [{ id: CUST, organization_id: ORG, name: "Practice Customer", email: "buyer@customer.test" }], invoices: [], email_history: [] });
@@ -173,27 +176,29 @@ describe("no automatic provider switch; an admin may pick Resend for one confirm
     expect(history().status).toBe("drafted");
   });
   it("an explicit Resend choice needs an admin", async () => {
-    fake.rows("email_history").push({ id: "old", organization_id: ORG, status: "failed", related_to_id: history().related_to_id });
+    linkedAttempt = "failed";
     expect((await approve({ provider: "resend", isAdmin: false })).status).toBe(403);
     expect(sends).toEqual([]);
   });
-  it("is refused for a message that has not failed", async () => {
+  it("is refused for a message that has not failed even if an unrelated message failed", async () => {
+    fake.rows("email_history").push({ id: "other", organization_id: ORG, status: "failed", related_to_id: history().related_to_id });
     expect((await approve({ provider: "resend", isAdmin: true })).status).toBe(409);
     expect(sends).toEqual([]);
   });
   it("is refused when an earlier attempt's outcome is unknown", async () => {
+    linkedAttempt = "held";
     fake.rows("email_history").push({ id: "o1", organization_id: ORG, status: "failed", related_to_id: history().related_to_id }, { id: "o2", organization_id: ORG, status: "unknown", related_to_id: history().related_to_id });
     expect((await approve({ provider: "resend", isAdmin: true })).status).toBe(409);
     expect(sends).toEqual([]);
   });
   it("is refused when Resend is not configured", async () => {
     resendConfigured = false;
-    fake.rows("email_history").push({ id: "old", organization_id: ORG, status: "failed", related_to_id: history().related_to_id });
+    linkedAttempt = "failed";
     expect((await approve({ provider: "resend", isAdmin: true })).status).toBe(503);
     expect(sends).toEqual([]);
   });
   it("a confirmed failure: the admin's Resend choice sends that one message through Resend, once, and is audited", async () => {
-    fake.rows("email_history").push({ id: "old", organization_id: ORG, status: "failed", related_to_id: history().related_to_id });
+    linkedAttempt = "failed";
     const r = history();
     const out = await approve({ provider: "resend", isAdmin: true });
     expect(out.status).toBe(200);

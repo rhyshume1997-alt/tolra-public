@@ -61,16 +61,16 @@ describe("the scheduled pass makes drafts while the provider is down", () => {
 
 describe("chase approve: failed and unknown sends, audit rows, explicit Resend", () => {
   const ORG = "org-a", DRAFT = "dr-1", INV = "inv-1";
-  let fake: FakeDb; let audit: Array<Record<string, unknown>>; let auditError: boolean; let sent: Array<{ provider?: unknown }>; let result: unknown;
+  let linkedFailure: boolean; let fake: FakeDb; let audit: Array<Record<string, unknown>>; let auditError: boolean; let sent: Array<{ provider?: unknown }>; let result: unknown;
   const deps = (): ApproveDeps => ({
-    db: { from: (t: string) => fake.from(t), rpc: async (fn: string, a: Record<string, unknown>) => { if (fn === "write_audit") { audit.push(a); if (auditError) throw new Error("down"); } return { data: null, error: null }; } } as never,
+    db: { from: (t: string) => fake.from(t), rpc: async (fn: string, a: Record<string, unknown>) => { if (fn === "approval_email_attempt_status") { expect(a.p_draft).toBe(DRAFT); return { data: linkedFailure ? "failed" : "new", error: null }; } if (fn === "write_audit") { audit.push(a); if (auditError) throw new Error("down"); } return { data: null, error: null }; } } as never,
     admin: { from: (t: string) => fake.from(t), rpc: async () => ({ error: null }) } as never,
     provider: async () => ({ name: "microsoft" }), resend: () => ({ name: "resend" }),
     send: async (_i, p) => { sent.push({ provider: p }); return result as never; }, allowlisted: () => false,
   });
   const go = (extra: Record<string, unknown> = {}) => { const d = fake.rows("email_history").find((r) => r.id === DRAFT)!; return approveChaseDraft({ organizationId: ORG, userId: "u", draftId: DRAFT, expectedTo: String(d.to_email), expectedSubject: String(d.subject), expectedBody: String(d.body), today: "2026-11-05", ...extra } as never, deps()); };
   beforeEach(() => {
-    audit = []; auditError = false; sent = []; result = { ok: true, mode: "sent", provider: "microsoft", historyId: "sent-1" };
+    linkedFailure = false; audit = []; auditError = false; sent = []; result = { ok: true, mode: "sent", provider: "microsoft", historyId: "sent-1" };
     fake = new FakeDb({
       email_history: [{ id: DRAFT, organization_id: ORG, to_email: "pay@acme.test", subject: "Reminder INV-1", body: "Please pay", status: "drafted", related_to_type: "invoice", related_to_id: INV }],
       chase_sends: [{ id: "cs1", organization_id: ORG, invoice_id: INV, status: "drafted", draft_history_id: DRAFT }],
@@ -100,6 +100,8 @@ describe("chase approve: failed and unknown sends, audit rows, explicit Resend",
     fake.rows("email_history").push({ id: "old", organization_id: ORG, status: "failed", related_to_id: INV });
     expect(await go({ provider: "resend", isAdmin: false })).toMatchObject({ http: 403 });
     expect(sent).toHaveLength(0);
+    expect(await go({ provider: "resend", isAdmin: true })).toMatchObject({ http: 409 });
+    linkedFailure = true;
     expect(await go({ provider: "resend", isAdmin: true })).toMatchObject({ status: "sent" });
     expect(sent).toEqual([{ provider: { name: "resend" } }]);
     expect(audit[0]).toMatchObject({ p_new: { outcome: "provider_override", provider: "resend" } });

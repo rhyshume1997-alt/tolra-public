@@ -19,7 +19,7 @@ describe("no proposal silently disappears from release preflight", () => {
   it("orders the post-144 phases 145, 146, 147, 148, 149, 150, 151, 152 and leaves the numbered cutover and its catalogue alone", () => {
     const plan = JSON.parse(readFileSync(path.join(root, "supabase/release-plan.json"), "utf8"));
     expect(plan.numbered_through).toBe(144);
-    expect(plan.phases.map((p: { number: number; after: string }) => [p.number, p.after])).toEqual([[145, "144"], [146, "145"], [147, "146"], [148, "147"], [149, "148"], [150, "149"], [151, "150"], [152, "151"], [153, "152"], [154, "153"], [156, "154"], [157, "156"], [158, "157"], [159, "158"], [160, "159"], [163, "160"], [164, "163"], [165, "164"], [167, "165"], [170, "167"]]);
+    expect(plan.phases.map((p: { number: number; after: string }) => [p.number, p.after])).toEqual([[145, "144"], [146, "145"], [147, "146"], [148, "147"], [149, "148"], [150, "149"], [151, "150"], [152, "151"], [153, "152"], [154, "153"], [156, "154"], [157, "156"], [158, "157"], [159, "158"], [160, "159"], [163, "160"], [164, "163"], [165, "164"], [167, "165"], [170, "167"], [173, "170"]]);
     const c17 = plan.phases[2];
     expect(c17).toMatchObject({ source: "supabase/proposals/c17_job_delivery_note.sql", release: "supabase/release/147_job_delivery_note.release.sql", rollback: "supabase/release/147_job_delivery_note.rollback.sql", verify: "supabase/verify/job_delivery_note_147.sql", marker: "post-144 marker 147 job_delivery_note" });
     const preflight = readFileSync(path.join(root, "supabase/verify/release_preflight.sql"), "utf8");
@@ -125,7 +125,7 @@ describe("release preflight rows, limitation ids and the release chain stay uniq
     const chainOk = (order: number[]) => duplicates(order).length === 0 && order.every((n, i) => i === 0 || n > order[i - 1])
       && [157, 158, 159].every(n => order.includes(n) && order.indexOf(n) < order.indexOf(160)) && order.indexOf(160) === order.indexOf(159) + 1;
     for (const [name, order] of [["plan", plan.phases.map(p => p.number)], ["fixture", fixture]] as const) {
-      expect(order.slice(-10), name).toEqual([156, 157, 158, 159, 160, 163, 164, 165, 167, 170]);
+      expect(order.slice(-11), name).toEqual([156, 157, 158, 159, 160, 163, 164, 165, 167, 170, 173]);
       expect(chainOk(order), name).toBe(true);
     }
     expect(plan.phases.find(p => p.number === 160)?.after).toBe("159");

@@ -55,6 +55,7 @@ vi.mock("@/lib/email/send-company-email", async (importOriginal) => {
 import { runInvoiceReminders } from "@/lib/email/schedules/reminders";
 import { closeWaPool, pgClient, waPool } from "../support/wa-pg-client";
 import { SYNTHETIC_SLUG_PREFIX } from "../support/isolation";
+import { preparePost144Fixture } from "../support/post-144-release-fixture";
 import { verifyBackendIdentity } from "../support/fixtures";
 
 const run = randomUUID().slice(0, 8);
@@ -130,6 +131,9 @@ const resolve = async (w: World, id: string, outcome: "sent" | "not_sent", who: 
 
 beforeAll(async () => {
   const identity = await verifyBackendIdentity();
+  const client = await waPool().connect();
+  try { await preparePost144Fixture({ through: 173, verify: verifyBackendIdentity, query: (source) => client.query(source) }); }
+  finally { client.release(); }
   const loopback = await sql<{ a: string; p: number; n: string }>("select host(inet_server_addr()) as a, inet_server_port() as p, current_database() as n");
   evidence("database", { host: identity.database.host, port: identity.database.port, name: identity.database.name, version: identity.database.serverVersion, server: loopback[0] });
   // The client connects to loopback (asserted below / by verifyBackendIdentity); inside the Supabase container the server sees its own private address.
@@ -271,17 +275,35 @@ describe("unknown outcome: held, never auto-retried, no provider switch until a 
     const trail = await auditOf(w);
     expect(trail.find((r) => r.new_data?.outcome === "unknown")).toMatchObject({ metadata: { channel: "chase-approve" }, actor_user_id: w.office.id });
     expect(JSON.stringify(trail)).not.toMatch(/invalid|Reminder|Dear|Hello/);
+    // A distinct unlinked historical send on this invoice must stay unknown.
+    const other = (await sql<{ id: string }>(
+      "insert into public.email_history (organization_id, to_email, subject, body, status, related_to_type, related_to_id) values ($1,$2,'A separate message','Other body','unknown','invoice',$3) returning id",
+      [w.org, w.custEmail, w.invoiceId],
+    ))[0].id;
+    await sql("insert into security_audit.company_email_sends (organization_id, idempotency_key, history_id, status) values ($1, repeat('b',64), $2, 'unknown')", [w.org, other]);
+    expect((await resolve(w, other, "not_sent")).status).toBe(409);
     // an office user cannot resolve it; an admin can, and it only records
     expect((await resolve(w, d.id, "not_sent", "office")).status).toBe(403);
     const resolved = await resolve(w, d.id, "not_sent");
     expect(resolved.json).toEqual({ status: "drafted", audited: true });
     expect(h.transport.calls).toHaveLength(1);
+    const historyStatus = async (id: string) => (await sql<{ status: string }>("select status from public.email_history where id = $1", [id]))[0].status;
+    expect(await historyStatus(other)).toBe("unknown");
+    const linked = await sql<{ history_id: string; approval_attempt: number; status: string; approval_resolution: string }>(
+      "select history_id, approval_attempt, status, approval_resolution from security_audit.company_email_sends where approval_draft_id = $1 order by approval_attempt", [d.id],
+    );
+    expect(linked).toHaveLength(1);
+    expect(linked[0]).toMatchObject({ approval_attempt: 1, status: "unknown", approval_resolution: "not_sent" });
+    expect(await historyStatus(linked[0].history_id)).toBe("failed");
     const resolveAudit = (await auditOf(w)).find((r) => r.new_data?.outcome === "resolved_not_sent");
     expect(resolveAudit).toMatchObject({ actor_user_id: w.admin.id, metadata: { channel: "email-resolve" } });
     // now ONE new approval attempt goes through under a new attempt key and sends exactly once
     const retry = await approve(w, d.id);
     expect(retry.status).toBe(200);
     expect(h.transport.calls).toHaveLength(2);
+    expect(await historyStatus(other)).toBe("unknown");
+    expect(await sql("select approval_attempt, status from security_audit.company_email_sends where approval_draft_id = $1 order by approval_attempt", [d.id]))
+      .toEqual([{ approval_attempt: 1, status: "unknown" }, { approval_attempt: 2, status: "accepted" }]);
     expect(await sentRows(w)).toBe(1);
     // and a second approval of the same draft cannot send again
     const third = await approve(w, d.id);

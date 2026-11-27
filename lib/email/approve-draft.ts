@@ -2,7 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { EmailProvider } from "@/lib/email/providers/types";
 import { checkInput, type CompanyEmailInput, type CompanyEmailResult } from "@/lib/email/send-company-email";
-import { attemptKey } from "@/lib/email/chase/attempt";
+import { approvalAttemptStatus } from "@/lib/email/chase/attempt";
 import { recordSendAudit } from "@/lib/email/chase/send-audit";
 import { customerStatement, STATEMENT_PREFIX } from "@/lib/email/customer-statement";
 import { reminderCandidates, type ReminderInvoiceRow } from "@/lib/email/schedules/reminders";
@@ -57,15 +57,14 @@ export async function approveDraft(input: DraftApproval, deps: DraftApprovalDeps
   const verified = await verify();
   if ("out" in verified) return verified.out;
   const kind = verified.kind;
-  const mail: CompanyEmailInput = { organizationId: input.org, userId: input.user, kind, to: [draft.to_email], subject: draft.subject, text: draft.body, recordType: draft.related_to_type, recordId: draft.related_to_id, idempotencyKey: await attemptKey(db, input.org, `approve-draft:${draft.id}`, draft.related_to_id, draft.id), requireLedger: true };
+  const mail: CompanyEmailInput = { organizationId: input.org, userId: input.user, kind, to: [draft.to_email], subject: draft.subject, text: draft.body, recordType: draft.related_to_type, recordId: draft.related_to_id, idempotencyKey: `approve-draft:${draft.id}`, approvalDraftId: draft.id, requireLedger: true };
   const checked = checkInput(mail, process.env);
   if ("error" in checked || !("email" in checked) || checked.email.subject !== draft.subject || checked.email.to.join(", ") !== draft.to_email) return fail(400, "Save a valid subject, address and complete message before approving.");
   let provider: Awaited<ReturnType<DraftApprovalDeps["provider"]>>;
   if (input.provider === "resend") {
-    const earlier = await db.from("email_history").select("status").eq("organization_id", input.org).eq("related_to_id", draft.related_to_id).in("status", ["failed", "unknown"]);
-    const statuses = earlier.error ? ["unknown"] : (earlier.data ?? []).map((r: { status: string }) => r.status);
-    if (statuses.includes("unknown")) return fail(409, "An earlier attempt has an unknown outcome. Check Email history first; nothing is sent another way until it is settled.");
-    if (!statuses.includes("failed")) return fail(409, "Another provider can only be chosen for an email whose send failed.");
+    const status = await approvalAttemptStatus(db, input.org, input.user, draft.id);
+    if (status === "held") return fail(409, "An earlier attempt needs checking. Nothing is sent another way until it is settled.");
+    if (status !== "failed") return fail(409, "Another provider can only be chosen for an email whose send failed.");
     try { provider = (await deps.resend?.(input.org)) ?? null; } catch { provider = null; }
     if (!provider) return fail(503, "Resend is not set up for this company, so it can't be used. The draft stays for manual sending.");
   } else {

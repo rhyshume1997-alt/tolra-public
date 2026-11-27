@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
@@ -38,14 +39,21 @@ const db = {
   async rpc(fn: string, p: any) {
     state.calls.push(fn);
     if (fn === "customer_credit") return { data: [{ customer: "Practice Customer", credit: state.credit }], error: null };
-    if (fn === "reserve_company_email") {
+    if (fn === "reserve_company_email" || fn === "reserve_approval_email") {
+      if (fn === "reserve_approval_email") {
+        const linked = [...state.ledger.values()].filter((entry) => entry.draft === p.p_draft);
+        const last = linked.at(-1);
+        if (last && last.status !== "failed") return { data: null, error: { code: "P0001" } };
+        const key = linked.length ? createHash("sha256").update(`${p.p_key}:${linked.length + 1}`).digest("hex") : p.p_key;
+        p = { ...p, p_key: key, p_mode: "sending" };
+      }
       expect(p.p_org).toBe(state.org);
       const prior = state.ledger.get(p.p_key);
       if (prior && prior.status !== "failed") return { data: { ...prior, replay: true }, error: null };
       const history = prior ? state.tables.email_history.find((r) => r.id === prior.history_id) : { id: nextId() };
       Object.assign(history, { organization_id: p.p_org, to_email: p.p_to, subject: p.p_subject, body: p.p_body, related_to_type: p.p_related_type, related_to_id: p.p_related_id, drafted_by: p.p_user, status: p.p_mode });
       if (!prior) state.tables.email_history.push(history);
-      const entry = { send_id: prior?.send_id ?? nextId(), history_id: history.id, status: p.p_mode, replay: false };
+      const entry = { send_id: prior?.send_id ?? nextId(), history_id: history.id, status: p.p_mode, replay: false, key: p.p_draft ? p.p_key : undefined, draft: p.p_draft };
       state.ledger.set(p.p_key, entry);
       return { data: entry, error: null };
     }
@@ -149,11 +157,11 @@ describe("statement -> existing Approvals -> configured provider (mocks only)", 
     const changed = state.tables.email_history[0]; const out = await Promise.all([approveRow(changed), approveRow(changed)]);
     expect(out.map((r) => r.status).sort()).toEqual([200, 409]); expect(state.sends).toHaveLength(1);
   });
-  it.each([400, 401, 403, 429])("keeps definite Resend refusal %i retryable under the same ledger key", async (status) => {
+  it.each([400, 401, 403, 429])("keeps definite Resend refusal %i retryable through a new linked ledger key", async (status) => {
     const r = await reviewedDraft(); state.status = status;
     expect((await approveRow(r)).status).toBe(status === 429 ? 429 : 502); expect(state.tables.email_history.find((x) => x.id === r.id).status).toBe("drafted");
     const key = state.sends[0].options.idempotencyKey; state.status = 200;
-    expect((await approveRow(r)).status).toBe(200); expect(state.sends[1].options.idempotencyKey).toBe(key);
+    expect((await approveRow(r)).status).toBe(200); expect(state.sends[1].options.idempotencyKey).not.toBe(key);
   });
   it.each([408, 409, 500, 503])("holds ambiguous Resend response %i as unknown and never resends", async (status) => {
     const r = await reviewedDraft(); state.status = status;
