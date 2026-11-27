@@ -1,5 +1,7 @@
 "use client";
 
+// Loads invoice credit quantities for the draft builder. The database still owns saved limits and totals.
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -16,6 +18,7 @@ import { resolveCustomerAddress } from "@/lib/customers";
 import { issuedBillTo, issuedCompany } from "@/lib/document-snapshot";
 import { creditPreview, startingQuantity } from "@/lib/credit-draft";
 import { downloadPdf } from "@/lib/download-pdf";
+import { fetchAll } from "@/lib/fetch-all";
 import { friendlyError } from "@/lib/friendly-error";
 import { nudgeIntegrationSend } from "@/lib/integrations/nudge";
 import { fromPence, gbp, isTextLine, toPence } from "@/lib/money";
@@ -63,13 +66,21 @@ export function CreditNotesPanel({ invoice, onChanged }: {
     // The invoice's own lines, and how much of each has been credited already (the credit takes its VAT from the invoice).
     const { data: rows, error: linesError } = await supabase.from("invoice_line_items").select("id, description, quantity, unit_price, vat_pct, vat_exempt").eq("invoice_id", invoice.id).order("position");
     if (linesError) { console.error(linesError); return setState("error"); }
-    const { data: credited } = await supabase.from("credit_note_lines").select("invoice_line_id, quantity").in("invoice_line_id", (rows ?? []).map((row) => row.id));
+    const client = supabase;
+    const priorCredits = await fetchAll((from, to) => client.from("credit_note_lines")
+      .select("id, invoice_line_id, quantity, credit_notes!inner(invoice_id)").eq("credit_notes.invoice_id", invoice.id)
+      .order("id").range(from, to)).catch((error: unknown) => {
+        console.error(error);
+        return null;
+      });
     if (!mounted.current) return;
+    if (!priorCredits || priorCredits.truncated) return setState("error");
+    const credited = priorCredits.rows;
     // £0 text-only lines (migration 073) bill nothing, so there is nothing to credit on them.
     setLines((rows ?? []).filter((row) => !isTextLine({ quantity: Number(row.quantity), unitPrice: Number(row.unit_price) })).map((row) => ({
       id: String(row.id), description: String(row.description), quantity: Number(row.quantity), unitPrice: Number(row.unit_price),
       vatPct: Number(row.vat_pct ?? 20), vatExempt: Boolean(row.vat_exempt),
-      credited: (credited ?? []).filter((c) => c.invoice_line_id === row.id).reduce((sum, c) => sum + Number(c.quantity), 0),
+      credited: credited.filter((c) => c.invoice_line_id === row.id).reduce((sum, c) => sum + Number(c.quantity), 0),
     })));
     setState("ready");
   }, [invoice.id]);
