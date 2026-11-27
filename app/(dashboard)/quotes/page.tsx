@@ -1,5 +1,7 @@
 "use client";
 
+// Coordinates quote decisions and UI state. The quote RPCs own snapshots, acceptance and downstream records.
+
 import { AiDraftFlags, LegacyQuotesView, QuotesRedesign } from "@/components/quotes/quotes-redesign";
 import { useCompanyUiSwitch } from "@/lib/use-company-ui-switch";
 import { StatTile } from "@/components/stat-tile";
@@ -72,7 +74,7 @@ import { type AcceptQuoteResult, acceptOutcome, customerPoInput, deliveryDateInp
 import { CUSTOMER_PO_LABEL, customerPoBeside, customerPoText } from "@/lib/customer-po";
 import { databaseHas068 } from "@/lib/db-features";
 import { useDatabaseHas068 } from "@/lib/use-database-has-068";
-import { acceptedLineIds, baseQuoteRef, type DeclinedLineRow, declinedValueByQuote, describedLine, lineReference, partField, versionChain } from "@/lib/quote-versions";
+import { acceptedLineIds, baseQuoteRef, type DeclinedLineRow, declinedValueByQuote, describedLine, lineReference, partField, refreshedAcceptedLineIds, versionChain } from "@/lib/quote-versions";
 
 
 type QuoteRow = {
@@ -453,7 +455,7 @@ export default function QuotesPage() {
     if (!supabase || !quote.id) return DEMO_MODE ? loadDemoItems(quote.ref) : [];
     // Part / drawing / revision and declined only once 068 is applied; before it, the lines as they were.
     const columns: string = `id, description, quantity, unit_price, source, vat_pct, vat_exempt${await databaseHas068() ? ", part_number, drawing_number, drawing_revision, declined" : ""}`;
-    const { data, error } = await supabase.from("quote_line_items").select(columns).eq("quote_id", quote.id).order("position");
+    const { data, error } = await supabase.from("quote_line_items").select(columns).eq("quote_id", quote.id).order("position").order("id");
     if (error) throw error;
     return ((data ?? []) as unknown as Array<Record<string, unknown>>).map((row) => ({
       id: String(row.id), description: String(row.description || ""), quantity: Number(row.quantity || 0), unitPrice: Number(row.unit_price || 0), source: String(row.source || "manual"),
@@ -710,20 +712,33 @@ export default function QuotesPage() {
    * they are retaken on the server: replace_draft_quote re-saves the draft's own lines unchanged and snapshots the
    * company profile and customer record as they are now. Issued quotes are never touched: their snapshot is history.
    */
-  async function freshDraft(quote: QuoteRow, header: { valid_until?: string } = {}): Promise<QuoteRow> {
-    if (quote.rawStatus !== "draft" || !supabase || !quote.id) return quote;
+  async function freshDraft(quote: QuoteRow, header: { valid_until?: string } = {}, reloadLines = false): Promise<{ quote: QuoteRow; refreshedItems?: QuoteItem[]; priorIds?: string[] }> {
+    if (quote.rawStatus !== "draft" || !supabase || !quote.id) return { quote };
     if (!quote.updatedAt) throw new ValidationError("Reload the quotes and try again.");
     // Every field replace_draft_quote takes back, part / drawing / revision included (068), so re-saving changes nothing.
-    const { data: lines, error } = await supabase.from("quote_line_items").select(`description, quantity, unit_price, vat_pct, vat_exempt, source${await databaseHas068() ? ", part_number, drawing_number, drawing_revision" : ""}`).eq("quote_id", quote.id).order("position");
+    const columns = "id, description, quantity, unit_price, vat_pct, vat_exempt, source";
+    const table = supabase.from("quote_line_items");
+    const lineQuery = await databaseHas068()
+      ? table.select(`${columns}, part_number, drawing_number, drawing_revision`)
+      : table.select(columns);
+    const { data: lines, error } = await lineQuery.eq("quote_id", quote.id).order("position").order("id");
     if (error) throw error;
-    const { error: saveError } = await supabase.rpc("replace_draft_quote", { p_quote: quote.id, p_expected_updated_at: quote.updatedAt, p_header: header, p_lines: lines ?? [] });
+    const { data: revision, error: saveError } = await supabase.rpc("replace_draft_quote", {
+      p_quote: quote.id, p_expected_updated_at: quote.updatedAt, p_header: header,
+      p_lines: lines ?? [],
+    });
     if (saveError) throw saveError;
-    const { data: row, error: readError } = await supabase.from("quotes").select("updated_at, issuer_snapshot, customer_snapshot").eq("id", quote.id).single();
+    const refreshedItems = reloadLines ? await fetchQuoteItems(quote) : undefined;
+    const headerQuery = supabase.from("quotes").select("updated_at, issuer_snapshot, customer_snapshot").eq("id", quote.id);
+    // Verify the refreshed line IDs came from our own rewrite, before translating the selection.
+    if (reloadLines && !revision) throw new ValidationError("Reload the quote and choose its lines again.");
+    const { data: row, error: readError } = await (reloadLines ? headerQuery.eq("updated_at", revision) : headerQuery).maybeSingle();
     if (readError) throw readError;
+    if (!row) throw new ValidationError(reloadLines ? "Reload the quote and choose its lines again." : "Reload the quote and try again.");
     const fresh: QuoteRow = { ...quote, ...(header.valid_until ? { validUntil: header.valid_until } : {}), updatedAt: row.updated_at ? String(row.updated_at) : undefined, issuerSnapshot: row.issuer_snapshot ?? undefined, customerSnapshot: row.customer_snapshot ?? undefined };
     setQuotes((current) => current.map((item) => (item.id === quote.id ? fresh : item)));
     setViewingQuote((current) => (current && current.id === quote.id ? fresh : current));
-    return fresh;
+    return { quote: fresh, refreshedItems, priorIds: (lines ?? []).map((line) => String(line.id)) };
   }
 
   /** A send of a rejected quote refused: told to the person (unless the caller does) and kept in the audit log as a SEND marked refused. */
@@ -802,7 +817,7 @@ export default function QuotesPage() {
         const items = quote === viewingQuote && viewItems.length ? viewItems : await fetchQuoteItems(quote);
         // The PDF the customer gets is made from details as they are now (R4); the draft keeps that snapshot, and the default
         // valid-until date when it had none (saved on the draft before the PDF is made, so the PDF and the record agree).
-        quote = await freshDraft(quote, validUntil && quote.rawStatus === "draft" && !quote.validUntil ? { valid_until: validUntil } : {});
+        ({ quote } = await freshDraft(quote, validUntil && quote.rawStatus === "draft" && !quote.validUntil ? { valid_until: validUntil } : {}));
         // The stored status, read again: the row may have been rejected elsewhere since this list was loaded.
         let storedStatus = quote.rawStatus;
         if (supabase && quote.id && quote.rawStatus !== "draft") {
@@ -925,18 +940,27 @@ export default function QuotesPage() {
       try {
         if (!supabase || !quote.id) throw new ValidationError("This quote must be saved before a decision can be recorded.");
         if (!canRecordDecision(quote.rawStatus)) throw new ValidationError(`${quote.ref} is already ${quote.rawStatus}.`);
-        // A decision on a draft is its first issue: snapshot the details as they are now (R4).
-        const current = await freshDraft(quote);
-        const decided = (item: QuoteRow) => ({ ...item, rawStatus: outcome, status: outcome });
+        let items: QuoteItem[] = [];
+        let lines: string[] | null = null;
         if (outcome === "accepted") {
-          // The lines the customer's PO covers (068): null = all of them (sent only when some are unticked, so the call is 058's otherwise).
-          const items = quote === viewingQuote || (viewingQuote && sameQuote(quote, viewingQuote)) ? viewItems : await fetchQuoteItems(quote);
+          items = viewingQuote && sameQuote(quote, viewingQuote) ? viewItems : await fetchQuoteItems(quote);
           const ids = items.map((item) => item.id).filter((id): id is string => Boolean(id));
-          let lines: string[] | null = null;
+          if ([...decisionUnticked].some((id) => !ids.includes(id))) {
+            throw new ValidationError("Reload the quote and choose its lines again.");
+          }
           try {
             lines = ids.length ? acceptedLineIds(ids, new Set(ids.filter((id) => !decisionUnticked.has(id)))) : null;
           } catch (err) {
             throw new ValidationError(err instanceof Error ? err.message : "Tick at least one line the customer ordered.");
+          }
+        }
+        // A decision on a draft is its first issue. Refresh snapshots before recording it (R4).
+        const { quote: current, refreshedItems, priorIds } = await freshDraft(quote, {}, lines !== null);
+        const decided = (item: QuoteRow) => ({ ...item, rawStatus: outcome, status: outcome });
+        if (outcome === "accepted") {
+          if (lines && refreshedItems && priorIds) {
+            lines = refreshedAcceptedLineIds(priorIds, refreshedItems.map((item) => item.id ?? ""), lines);
+            items = refreshedItems;
           }
           // One database call (accept_quote, migration 058): the quote accepted, its sales order made and, when the company's setting is
           // automatic, its job (not started). Audited there (ACCEPT, once). A quote one order can't hold is still accepted: the toast
@@ -958,7 +982,7 @@ export default function QuotesPage() {
             : undefined;
           setQuotes((rows) => rows.map((item) => sameQuote(item, quote) ? { ...decided(item), ...(declinedValue !== undefined ? { declinedValue } : {}) } : item));
           setViewingQuote((viewing) => viewing && sameQuote(viewing, quote) ? decided(viewing) : viewing);
-          if (lines) setViewItems((items) => items.map((item) => ({ ...item, declined: !lines!.includes(item.id ?? "") })));
+          if (lines) setViewItems(items.map((item) => ({ ...item, declined: !lines!.includes(item.id ?? "") })));
           setDecision(null);
           setDecisionPo("");
           setDecisionDue("");

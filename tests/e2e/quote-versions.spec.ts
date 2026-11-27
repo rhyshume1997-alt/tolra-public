@@ -9,10 +9,10 @@ import { signIn, world } from "./helpers";
 
 const w = world();
 
-test("revise a sent quote as v2, accept v2 for one line only", async ({ page }) => {
+(["draft", "sent"] as const).forEach((status) => test(`revise a sent quote as v2, accept the ${status} v2 for one line only`, async ({ page }) => {
   const tag = w.runId;
-  const customer = `Versions Co ${tag}`;
-  const ref = `QUO-${tag.slice(0, 4).replace(/\D/g, "6")}8`;
+  const customer = `Versions Co ${status} ${tag}`;
+  const ref = `QUO-${tag.slice(0, 4).replace(/\D/g, "6")}${status === "draft" ? "9" : "8"}`;
   expect((await adminClient().from("customers").insert({ organization_id: w.tenants.beta.id, name: customer })).error).toBeNull();
   const admin = await signedInClient(w.tenants.beta.users.admin);
   const { data: quoteId, error } = await admin.rpc("create_with_lines", {
@@ -43,8 +43,9 @@ test("revise a sent quote as v2, accept v2 for one line only", async ({ page }) 
   await expect.poll(async () => (await adminClient().from("quotes").select("status").eq("id", quoteId).single()).data?.status).toBe("superseded");
   const { data: v2 } = await adminClient().from("quotes").select("id, version, status, previous_version_id").eq("quote_ref", `${ref} v2`).eq("organization_id", w.tenants.beta.id).single();
   expect(v2).toMatchObject({ version: 2, status: "draft", previous_version_id: quoteId });
-  // The customer gets v2 (recorded as sent here; the send flow is its own spec).
-  expect((await admin.from("quotes").update({ status: "sent", sent_at: new Date().toISOString() }).eq("id", v2!.id)).error).toBeNull();
+  if (status === "sent") {
+    expect((await admin.from("quotes").update({ status: "sent", sent_at: new Date().toISOString() }).eq("id", v2!.id)).error).toBeNull();
+  }
 
   await page.reload();
   await page.locator('[data-slot="card"]', { hasText: `${ref} v2` }).getByRole("button", { name: "View" }).click();
@@ -78,4 +79,4 @@ test("revise a sent quote as v2, accept v2 for one line only", async ({ page }) 
   await expect(v1details.getByTestId("quote-superseded")).toContainText(`Replaced by ${ref} v2`);
   await expect(v1details.getByRole("button", { name: "Mark Accepted" })).toHaveCount(0);
   await expect(v1details.getByRole("button", { name: "Send to Customer" })).toHaveCount(0);
-});
+}));

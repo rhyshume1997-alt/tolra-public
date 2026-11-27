@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { acceptOutcome, type AcceptQuoteResult } from "@/lib/accept-quote";
 import { orderTermsFromQuote, type QuoteLineRow } from "@/lib/order-from-quote";
 import { canRecordDecision, quoteFigures, sentSince, statusCounts, storedQuoteStatus } from "@/lib/quote-status";
-import { acceptedLineIds, baseQuoteRef, declinedValueByQuote, describedLine, lineReference, partField, versionChain } from "@/lib/quote-versions";
+import { acceptedLineIds, baseQuoteRef, declinedValueByQuote, describedLine, lineReference, partField, refreshedAcceptedLineIds, versionChain } from "@/lib/quote-versions";
 
 describe("a quote's number across versions", () => {
   it("is the number itself for version 1, and the number without ' vN' after", () => {
@@ -84,6 +84,16 @@ describe("one row per part", () => {
 });
 
 describe("partial acceptance", () => {
+  it("keeps the selected lines when refreshing a draft recreates their IDs", () => {
+    expect(refreshedAcceptedLineIds(["a", "b", "c"], ["new-a", "new-b", "new-c"], ["a", "c"]))
+      .toEqual(["new-a", "new-c"]);
+  });
+
+  it("refuses stale selections and incomplete refreshed lines", () => {
+    expect(() => refreshedAcceptedLineIds(["a", "b"], ["new-a", "new-b"], ["old-a"])).toThrow(/choose its lines again/);
+    expect(() => refreshedAcceptedLineIds(["a", "b"], ["new-a"], ["a"])).toThrow(/choose its lines again/);
+  });
+
   it("sends no line list when every line is ticked (the whole quote, as before), else the ticked lines in quote order", () => {
     expect(acceptedLineIds(["a", "b", "c"], new Set(["c", "b", "a"]))).toBeNull();
     expect(acceptedLineIds(["a", "b", "c"], new Set(["c", "a"]))).toEqual(["a", "c"]);

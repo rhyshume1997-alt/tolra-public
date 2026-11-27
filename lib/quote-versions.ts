@@ -10,6 +10,7 @@
  * the others are "declined" and go no further than the quote.
  */
 
+import { ValidationError } from "@/lib/validation/schemas";
 import { documentTotals } from "@/lib/money";
 
 /** A declined quote line as read for the figures (quote_line_items where declined). */
@@ -75,6 +76,18 @@ export function acceptedLineIds(lineIds: string[], ticked: ReadonlySet<string>):
   const chosen = lineIds.filter((id) => ticked.has(id));
   if (!chosen.length) throw new Error("Tick at least one line the customer ordered.");
   return chosen.length === lineIds.length ? null : chosen;
+}
+
+/**
+ * Maps a partial selection through the draft snapshot rewrite. The server recreates the input lines in order.
+ * Refuse a stale selection or incomplete reread rather than accepting the wrong lines.
+ */
+export function refreshedAcceptedLineIds(before: string[], after: string[], chosen: string[]): string[] {
+  const positions = chosen.map((id) => before.indexOf(id));
+  if (before.length !== after.length || after.some((id) => !id) || positions.some((position) => position < 0)) {
+    throw new ValidationError("Reload the quote and choose its lines again.");
+  }
+  return positions.map((position) => after[position]);
 }
 
 /** The versions of one quote, oldest first, found by following previous_version_id links (rows of any quotes, in any order). */
