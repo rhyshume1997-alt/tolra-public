@@ -1,3 +1,4 @@
+// Invoice send confirmation mirrors and audits acknowledged writes. Existing invoice lifecycle rules still apply.
 "use client";
 
 import { AGING, InvoiceNotices, InvoicesRedesign, LegacyInvoicesView } from "@/components/invoices/invoices-redesign";
@@ -77,6 +78,7 @@ import { useDatabaseHas073 } from "@/lib/use-database-has-073";
 import { VoidInvoiceDialog } from "@/components/void-invoice-dialog";
 import { WriteOffInvoiceDialog } from "@/components/write-off-invoice-dialog";
 import { chipsForPhase, isFinalInvoice } from "@/lib/invoice-phase-filters";
+import { recordInvoiceSent } from "@/lib/invoice-sent";
 import { isVoid, voidOffered } from "@/lib/invoice-void";
 import { type WriteOffMode, isWrittenOff, writeOffOffered } from "@/lib/invoice-write-off";
 import { deliveryAddressLines, optionalColumn } from "@/lib/invoice-fields";
@@ -1116,8 +1118,7 @@ export default function InvoicesPage() {
         if (invoice.rawStatus === "draft") throw new ValidationError("Issue the invoice before sending it.");
         const sentAt = nowIso();
         if (supabase && invoice.id) {
-          const { error } = await supabase.from("invoices").update({ sent_date: sentAt }).eq("id", invoice.id);
-          if (error) throw error;
+          await recordInvoiceSent(supabase, invoice.id, sentAt);
         } else if (!DEMO_MODE) {
           throw new Error("Supabase is not configured.");
         }
@@ -1127,7 +1128,7 @@ export default function InvoicesPage() {
         setSendConfirm(null);
         toast.success(`${invoice.reference} recorded as sent`);
       } catch (err) {
-        toast.error(friendlyError(err, "Couldn't record the invoice as sent."));
+        toast.error(userMessage(err, "Couldn't record the invoice as sent."));
       }
     });
   }
