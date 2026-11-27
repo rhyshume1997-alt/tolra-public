@@ -64,6 +64,8 @@ export type RunSummary = {
   unmapped: string[];
 };
 
+export type RunOptions = { maxDocuments?: number; budgetMs?: number; only?: { docType: "invoice" | "credit_note"; docId: string }; onRecorded?: (sendId: string) => void };
+
 type Result = { status: "sent" | "failed" | "needs_check" | "pending" | "skipped"; externalId?: string | null; externalNumber?: string | null; error?: string | null; retryAt?: Date | null; stop?: string };
 
 /** Xero no longer accepts this company's sign-in (or its access to the organisation): pause the company until an admin connects again. */
@@ -74,7 +76,7 @@ const RECONNECT_REASON = "Xero refused this company's access (the connection may
  * Without it (an admin's Send now, the daily sweep) the whole queue, retries included.
  */
 export async function runSends(org: string, providerId: ProviderId, deps: EngineDeps,
-                               opts: { maxDocuments?: number; budgetMs?: number; only?: { docType: "invoice" | "credit_note"; docId: string } } = {}): Promise<RunSummary> {
+                               opts: RunOptions = {}): Promise<RunSummary> {
   const now = deps.now ?? Date.now;
   const started = now();
   const maxDocuments = opts.maxDocuments ?? 10;
@@ -100,20 +102,20 @@ export async function runSends(org: string, providerId: ProviderId, deps: Engine
       } catch (err) {
         if (!(err instanceof TransfersHeldError)) throw err;
         // Switched off after the claim (release 149): nothing was sent, so the row goes back and the run stops. Never left in 'sending'.
-        await record(deps.db, send, { status: "pending", retryAt: new Date(now() + 60_000), error: err.message });
+        await record(deps.db, send, { status: "pending", retryAt: new Date(now() + 60_000), error: err.message }, opts.onRecorded);
         summary.blocked = "launch_hold";
         break;
       }
     }
     if (!token) {
       // The claim runs out and the row becomes needs_check... unless it is put back now: nothing was sent.
-      await record(deps.db, send, { status: "pending", retryAt: new Date(now() + 60_000), error: "Xero sign-in is not available: connect again." });
+      await record(deps.db, send, { status: "pending", retryAt: new Date(now() + 60_000), error: "Xero sign-in is not available: connect again." }, opts.onRecorded);
       summary.blocked = "no_token";
       break;
     }
     mappings ??= await deps.db.mappings(org, providerId);
     const result = await processOne(org, providerId, send, deps.provider(token, send.tenant_id), mappings, deps.db, now);
-    await record(deps.db, send, result);
+    await record(deps.db, send, result, opts.onRecorded);
     if (result.status === "sent") summary.sent += 1;
     else if (result.status === "failed") summary.failed += 1;
     else if (result.status === "needs_check") summary.needsCheck += 1;
@@ -141,11 +143,12 @@ export async function runSends(org: string, providerId: ProviderId, deps: Engine
   return summary;
 }
 
-async function record(db: EngineDb, send: ClaimedSend, r: Result) {
-  await db.rpc("integration_record_result", {
+async function record(db: EngineDb, send: ClaimedSend, r: Result, onRecorded?: RunOptions["onRecorded"]) {
+  const answer = await db.rpc<{ recorded: boolean }>("integration_record_result", {
     p_send: send.id, p_claim: send.claim, p_status: r.status, p_external_id: r.externalId ?? null, p_external_number: r.externalNumber ?? null,
     p_error: r.error ?? null, p_retry_at: r.retryAt ? r.retryAt.toISOString() : null,
   });
+  if (answer?.recorded === true) onRecorded?.(send.id);
 }
 
 /** Sent when the provider's totals are Tolra's to the penny; failed with the difference otherwise (the document is at the provider). */

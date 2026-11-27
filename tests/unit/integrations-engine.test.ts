@@ -33,7 +33,7 @@ const inXero = (over: Partial<ProviderDocument> = {}): ProviderDocument => ({ ex
 type Recorded = { p_status: string; p_external_id: string | null; p_error: string | null; p_retry_at: string | null };
 
 /** A fake database: a queue of claims, the document, the stored contact; records every rpc. */
-function fakeDb(opts: { claims: Array<{ blocked: string | null; unmapped?: string[]; send: Partial<ClaimedSend> | null }>; document?: IntegrationDocument | null; contact?: { state: "ok" | "problem"; external_contact_id: string | null; problem: string | null } | null }) {
+function fakeDb(opts: { claims: Array<{ blocked: string | null; unmapped?: string[]; send: Partial<ClaimedSend> | null }>; document?: IntegrationDocument | null; contact?: { state: "ok" | "problem"; external_contact_id: string | null; problem: string | null } | null; acceptResult?: boolean }) {
   const calls: Array<{ fn: string; args: Record<string, unknown> }> = [];
   const claims = [...opts.claims];
   const db: EngineDb = {
@@ -45,7 +45,7 @@ function fakeDb(opts: { claims: Array<{ blocked: string | null; unmapped?: strin
       }
       if (fn === "integration_document") return (opts.document === undefined ? doc() : opts.document) as T;
       if (fn === "integration_contact_record") return (args.p_problem ? { state: "problem", external_contact_id: null, problem: args.p_problem } : { state: "ok", external_contact_id: args.p_external_contact_id, problem: null }) as T;
-      return { recorded: true } as T;
+      return { recorded: opts.acceptResult ?? true } as T;
     },
     mappings: async () => mappings,
     contact: async () => opts.contact ?? null,
@@ -53,6 +53,13 @@ function fakeDb(opts: { claims: Array<{ blocked: string | null; unmapped?: strin
   const recorded = () => calls.filter((c) => c.fn === "integration_record_result").map((c) => c.args as unknown as Recorded);
   return { db, calls, recorded };
 }
+
+it.each([true, false])("reports the send ID only when result recording is acknowledged: %s", async (accepted) => {
+  const { db } = fakeDb({ claims: [{ blocked: null, send: {} }], acceptResult: accepted });
+  const onRecorded = vi.fn();
+  await runSends(ORG, "xero", { db, accessToken: async () => "token", provider: () => fakeProvider(), now: () => NOW }, { onRecorded });
+  expect(onRecorded.mock.calls).toEqual(accepted ? [["s-1"]] : []);
+});
 
 function fakeProvider(over: Partial<AccountingProvider> = {}) {
   const p = {

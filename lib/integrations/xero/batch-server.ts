@@ -157,13 +157,11 @@ export interface ChunkDeps {
   /** Queues a failed row again as the signed-in admin (integration_retry_send: admin and two-step checked by the database). */
   retry(sendId: string): Promise<void>;
   /** One engine run for one document: `only` = its first attempt only; without it the engine's normal claim (the company's OLDEST due row). */
-  run(only: { docType: BatchDocType; docId: string } | null): Promise<RunSummary>;
+  run(only: { docType: BatchDocType; docId: string } | null, onRecorded: (sendId: string) => void): Promise<RunSummary>;
   /** The company's due rows the engine could claim, in its claim order (oldest first): a short head of the queue. */
   dueQueue(): Promise<BatchSend[]>;
-  /** The latest updated_at of any of the company's send rows (every claim, result, retry and skip sets it), or null. The database's own clock. */
-  latestChange(): Promise<string | null>;
-  /** Every send row of the company changed after `since` (updated_at later than it), without a limit on how far down the queue. */
-  changedSince(since: string | null): Promise<BatchSend[]>;
+  /** Reads the recorded outcomes by their exact send IDs, scoped to the batch's company. */
+  loadRecordedSends(ids: string[]): Promise<BatchSend[]>;
   now(): number;
 }
 
@@ -234,14 +232,12 @@ export async function runBatchChunk(deps: ChunkDeps, items: Array<{ docType: Bat
         continue;
       }
     }
-    // Anything the run changes among the company's send rows other than this document's (an older row the engine claimed instead, a row
-    // that fell due after the queue was read, a skip) is found by the database's own change stamps and reported, wherever it was in the queue.
-    const mark = await deps.latestChange();
-    const summary = await deps.run(only);
+    const recordedIds = new Set<string>();
+    const summary = await deps.run(only, (id) => recordedIds.add(id));
     send = await deps.loadSend(doc.docType, doc.id);
     const blocked = summary.blocked;
-    for (const other of await deps.changedSince(mark)) {
-      if (other.id === send?.id) continue;
+    if (send) recordedIds.delete(send.id);
+    for (const other of await deps.loadRecordedSends([...recordedIds])) {
       const extra = resultFor({ ...doc, id: other.docId, docType: other.docType, ref: other.docRef ?? null }, other);
       results.push({ ...extra, detail: ["Also processed from the waiting queue, ahead of this batch's documents.", extra.detail].filter(Boolean).join(" ") });
     }

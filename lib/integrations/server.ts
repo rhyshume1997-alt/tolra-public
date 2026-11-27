@@ -4,7 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { getAppCredentials } from "@/lib/integrations/app-credentials";
 import { KEY_VERSION, encryptSecret, encryptionKey, decryptSecret } from "@/lib/integrations/crypto";
-import { type EngineDb, type EngineDeps, type RunSummary, runSends } from "@/lib/integrations/engine";
+import { type EngineDb, type EngineDeps, type RunOptions, type RunSummary, runSends } from "@/lib/integrations/engine";
 import { createTokenSource } from "@/lib/integrations/tokens";
 import { type AccountingProvider, type Mappings, type ProviderId, TransfersHeldError } from "@/lib/integrations/types";
 import { XERO_HOLD_MESSAGE, heldXeroProvider, xeroTransfersEnabled } from "@/lib/integrations/xero/launch-hold";
@@ -112,7 +112,7 @@ export async function companyXeroToken(service: SupabaseClient, org: string, rea
 
 /** Sends what one company has queued (bounded: a few documents per call; the rest go on the next call). */
 export async function sendQueued(client: SupabaseClient, org: string, ready: { config: XeroConfig; key: Buffer },
-                                 opts?: { maxDocuments?: number; budgetMs?: number; only?: { docType: "invoice" | "credit_note"; docId: string } }): Promise<RunSummary> {
+                                 opts?: RunOptions): Promise<RunSummary> {
   // Release 149: the company's transfer switch. Off (or unreadable) is answered here before any token or Xero work; the database's claim judges it again.
   const enabled = () => xeroTransfersEnabled(client, org);
   if (!(await enabled())) return { sent: 0, failed: 0, needsCheck: 0, retryLater: 0, skipped: 0, blocked: "launch_hold", unmapped: [] };

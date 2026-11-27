@@ -56,16 +56,10 @@ export function batchDeps(opts: { user: SupabaseClient; service: SupabaseClient;
       const { error } = await user.rpc("integration_retry_send", { p_send: sendId });
       if (error) throw new Error(error.message);
     },
-    async latestChange() {
-      const { data, error } = await service.from("integration_sends").select("updated_at").eq("organization_id", org).eq("provider", "xero")
-        .order("updated_at", { ascending: false }).limit(1);
-      if (error) throw new Error(error.message);
-      return ((data ?? [])[0] as { updated_at?: string } | undefined)?.updated_at ?? null;
-    },
-    async changedSince(since) {
-      let query = service.from("integration_sends").select(SEND_COLUMNS).eq("organization_id", org).eq("provider", "xero");
-      if (since) query = query.gt("updated_at", since);
-      const { data, error } = await query.order("updated_at").limit(200);
+    async loadRecordedSends(ids) {
+      if (!ids.length) return [];
+      const { data, error } = await service.from("integration_sends").select(SEND_COLUMNS)
+        .eq("organization_id", org).eq("provider", "xero").in("id", ids);
       if (error) throw new Error(error.message);
       return ((data ?? []) as Array<Parameters<typeof toBatchSend>[0]>).map(toBatchSend);
     },
@@ -85,7 +79,7 @@ export function batchDeps(opts: { user: SupabaseClient; service: SupabaseClient;
         .filter((c) => c.external_id && (c.status === "sent" || c.status === "failed")).map((c) => c.doc_id));
       return rows.filter((r) => r.action !== "void" || ready.has(r.docId));
     },
-    run: (only) => sendQueued(service, org, ready, { maxDocuments: 1, budgetMs: 15_000, ...(only ? { only } : {}) }),
+    run: (only, onRecorded) => sendQueued(service, org, ready, { maxDocuments: 1, budgetMs: 15_000, onRecorded, ...(only ? { only } : {}) }),
     now: () => Date.now(),
   };
 }
