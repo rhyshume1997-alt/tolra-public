@@ -1,3 +1,4 @@
+// Maps password setup responses to the next available action. The server still authorizes every request.
 "use client";
 
 import { useEffect, useState } from "react";
@@ -128,6 +129,7 @@ export default function SetPasswordPage() {
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (partial) return;
     const form = new FormData(event.currentTarget);
     const password = String(form.get("password") || "");
     const confirm = String(form.get("confirmPassword") || "");
@@ -145,8 +147,11 @@ export default function SetPasswordPage() {
     const response = await fetch("/api/auth/change-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).catch(() => null);
     const result = (await response?.json().catch(() => ({}))) as { ok?: boolean; error?: string; partial?: boolean; code?: string } | undefined;
     if (!response?.ok || !result?.ok) {
-      setMessage(result?.error || "Couldn't save your password. Try again.");
-      setPartial(Boolean(result?.partial));
+      const finishing = "finish" in body;
+      setMessage(result?.error || (finishing ? "Couldn't finish setting up your account. Try again." : "Couldn't save your password. Try again."));
+      // A failed finish response does not invalidate the earlier confirmation that the password was saved.
+      // The finish endpoint returns 409 when it cannot verify that confirmation and needs a new password.
+      setPartial(Boolean(result?.partial) || (finishing && response?.status !== 409));
       setSecondStep(needsSecondStep(response?.status, result));
       setStage("ready");
       return;
