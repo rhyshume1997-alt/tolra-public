@@ -253,7 +253,8 @@ proposal_files(file, disposition) AS (
     ('supabase/proposals/builder2_costing_settings_atomic.sql', 'superseded: the hardened function ships inside numbered release 143 (after 141, before 144); this original proposal is never applied'),
     ('supabase/proposals/p172_pricing_costing_settings.sql', 'proposed release 172 (Pricing and profit stage A1, Costing settings for one designated admin); not yet a numbered phase; scratch-rehearsed only; not applied anywhere hosted'),
     ('supabase/proposals/p172_pricing_costing_settings.rollback.sql', 'rollback only for p172; never forward release input'),
-    ('supabase/proposals/builder2_atomic_settings.rollback.sql', 'rollback only; never forward release input')
+    ('supabase/proposals/builder2_atomic_settings.rollback.sql', 'rollback only; never forward release input'),
+    ('supabase/proposals/p173_create_idempotency.sql', 'CR-010/011/012/013/020 proposed release 173 (forward-only creation idempotency for quotes, invoices, sales orders, purchase orders, and jobs); release/rollback/verify shipped; pending review before apply')
 ),
 post_release_markers(label, present) AS (
   VALUES
