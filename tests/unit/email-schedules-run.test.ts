@@ -1,3 +1,4 @@
+import { createClient } from "@supabase/supabase-js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
@@ -82,6 +83,44 @@ describe("listing the schedules", () => {
     const listed = await listEnabledSchedules(db as never);
     expect("rows" in listed && listed.rows.map((r) => r.id)).toEqual(["1"]);
   });
+  it("loads enabled schedules beyond the PostgREST response cap", async () => {
+    const rows = Array.from({ length: 1_001 }, (_, index) => row(String(index).padStart(4, "0")));
+    const requests: URL[] = [];
+    const db = createClient("http://127.0.0.1:54321", "unit-test-key", {
+      global: { fetch: async (input) => {
+        const url = new URL(String(input));
+        requests.push(url);
+        const offset = Number(url.searchParams.get("offset") ?? 0);
+        return Response.json(rows.slice(offset, offset + Math.min(1_000, Number(url.searchParams.get("limit") ?? 1000))));
+      } },
+    });
+    const claimed: string[] = [];
+    const summary = await runDueSchedules({
+      list: () => listEnabledSchedules(db),
+      claim: async (id) => { claimed.push(id); return "claimed"; },
+      execute: async () => ok,
+      finish: async () => {},
+      note: async () => {},
+    }, NOW);
+    expect(summary).toMatchObject({ schedules: 1_001, ran: 1_001 });
+    expect(claimed.at(-1)).toBe("1000");
+    expect(requests.map((url) => Number(url.searchParams.get("offset") ?? 0))).toEqual([0, 1_000, 1_001]);
+    expect(requests.every((url) => url.searchParams.get("order") === "id.asc"
+      && url.searchParams.get("enabled") === "eq.true"
+      && url.searchParams.get("organizations.status") === "eq.active")).toBe(true);
+  });
+
+  it("does not run a partial list when a later page fails", async () => {
+    const db = createClient("http://127.0.0.1:54321", "unit-test-key", {
+      global: { fetch: async (input) => {
+        const offset = new URL(String(input)).searchParams.get("offset");
+        if (offset === "1") return Response.json({ code: "PGRST205", message: "Schedule table unavailable" }, { status: 404 });
+        return Response.json([row("first")]);
+      } },
+    });
+    await expect(listEnabledSchedules(db)).rejects.toThrow(/list schedules failed/);
+  });
+
   it("says 108 isn't applied when the table is missing, and throws for any other failure", async () => {
     const db = new FakeDb();
     db.failing.email_schedules = { code: "PGRST205", message: "Could not find the table 'public.email_schedules' in the schema cache" };

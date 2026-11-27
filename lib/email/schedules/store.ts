@@ -2,6 +2,7 @@
 // scoped by the schedule's company. Nothing here reads a document or an address into a log; errors are kept as short codes.
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { fetchAll } from "@/lib/fetch-all";
 import type { EmailScheduleKind, ScheduleTiming } from "@/lib/email/schedules/due";
 
 /** What the cron route answers while migration 108 is not applied (production applies migrations by hand AFTER the app deploys). */
@@ -29,12 +30,24 @@ export class StoreError extends Error {
   }
 }
 
-/** Every enabled schedule of an active company. `notApplied` when migration 108 is not in the database. */
+/** Every enabled schedule of an active company. Reject incomplete reads before the runner claims any schedule. */
 export async function listEnabledSchedules(admin: SupabaseClient): Promise<{ rows: EmailScheduleRow[] } | { notApplied: true }> {
-  const { data, error } = await admin.from("email_schedules").select(`${COLUMNS}, organizations!inner(status)`).eq("enabled", true).eq("organizations.status", "active");
-  if (isMissingTable(error)) return { notApplied: true };
-  if (error) throw new StoreError("list schedules", error.code);
-  return { rows: ((data ?? []) as unknown as EmailScheduleRow[]).map((row) => ({ ...row, recipients: row.recipients ?? null })) };
+  let notApplied = false;
+  const { rows, truncated } = await fetchAll<EmailScheduleRow>(async (from, to) => {
+    const { data, error } = await admin.from("email_schedules").select(`${COLUMNS}, organizations!inner(status)`)
+      .eq("enabled", true).eq("organizations.status", "active").order("id").range(from, to);
+    if (error) {
+      if (from === 0 && isMissingTable(error)) {
+        notApplied = true;
+        return { data: [], error: null };
+      }
+      throw new StoreError("list schedules", error.code);
+    }
+    return { data: data as unknown as EmailScheduleRow[] | null, error: null };
+  });
+  if (notApplied) return { notApplied: true };
+  if (truncated) throw new StoreError("list schedules", "schedule row cap reached");
+  return { rows: rows.map((row) => ({ ...row, recipients: row.recipients ?? null })) };
 }
 
 export type ClaimResult = "claimed" | "done" | "busy";
