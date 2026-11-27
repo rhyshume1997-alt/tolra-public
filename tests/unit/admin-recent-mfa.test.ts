@@ -47,6 +47,8 @@ const state = {
   failTable: null as string | null,
   /** Times the service-role client was created. */
   adminClients: 0,
+  /** Auth user IDs removed by deleteUser so getUserById reflects deletion. */
+  deletedUsers: new Set<string>(),
 };
 
 function table(name: string): Row[] {
@@ -86,7 +88,9 @@ const admin = {
   rpc: async (fn: string) => { state.writes.push(`admin.rpc.${fn}`); return { data: fn === "issue_password_change_ticket" ? "ticket-1" : null, error: null }; },
   auth: {
     admin: {
-      getUserById: async (id: string) => ({ data: { user: { id, email: "target@example.test", banned_until: state.banned ? "2125-01-01T00:00:00Z" : null, app_metadata: state.banned ? { deactivation_ban: true, deactivation_ban_org: ORG_A } : {} } }, error: null }),
+      getUserById: async (id: string) => state.deletedUsers.has(id)
+        ? { data: { user: null }, error: { status: 404, code: "user_not_found", message: "User not found" } }
+        : { data: { user: { id, email: "target@example.test", banned_until: state.banned ? "2125-01-01T00:00:00Z" : null, app_metadata: state.banned ? { deactivation_ban: true, deactivation_ban_org: ORG_A } : {} } }, error: null },
       updateUserById: async (_id: string, attrs: { ban_duration?: string }) => {
         state.writes.push("auth.updateUserById");
         if (attrs.ban_duration === "none") state.banned = false;
@@ -94,7 +98,7 @@ const admin = {
         return { data: { user: {} }, error: null };
       },
       createUser: async () => { state.writes.push("auth.createUser"); state.profiles.push({ id: "99999999-9999-4999-8999-999999999999", must_change_password: true }); return { data: { user: { id: "99999999-9999-4999-8999-999999999999" } }, error: null }; },
-      deleteUser: async () => { state.writes.push("auth.deleteUser"); return { error: null }; },
+      deleteUser: async (id: string) => { state.writes.push("auth.deleteUser"); state.deletedUsers.add(id); return { error: null }; },
       listUsers: async () => ({ data: { users: [] }, error: null }),
       mfa: {
         listFactors: async () => ({ data: { factors: [{ id: "f1", factor_type: "totp", status: "verified" }] }, error: null }),
@@ -174,7 +178,7 @@ const FRESH = () => [{ method: "password", timestamp: now() - 120 }, { method: "
 const STALE = () => [{ method: "password", timestamp: now() - 3600 }, { method: "totp", timestamp: now() - 16 * 60 }];
 
 function reset() {
-  Object.assign(state, { level: "aal2", amr: FRESH(), signedIn: true, support: false, banned: false, writes: [], adminClients: 0, dbRefuses: null, dbRefusesOrg: null, failTable: null });
+  Object.assign(state, { level: "aal2", amr: FRESH(), signedIn: true, support: false, banned: false, writes: [], adminClients: 0, dbRefuses: null, dbRefusesOrg: null, failTable: null, deletedUsers: new Set<string>() });
   state.members = [
     { user_id: ADMIN, organization_id: ORG_A, role: "admin", secondary_role: null, active: true, support: false },
     { user_id: TARGET, organization_id: ORG_A, role: "office", secondary_role: null, active: true, support: false, hidden_sections: [] },

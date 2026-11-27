@@ -8,6 +8,7 @@ import { companyAccessErrorMessage, mayAddExistingLogin, OTHER_COMPANY_LOGIN, PR
 import { PRODUCT } from "@/lib/product";
 import { passwordProblem, PASSWORD_MAX } from "@/lib/password";
 import { setMustChange } from "@/lib/server/password-setup";
+import { CREATE_ROLLBACK_UNCERTAIN_MESSAGE, type PriorMembershipSnapshot, rollbackUserCreation } from "@/lib/server/admin-user-create-rollback";
 import { MEMBER_SECTION_KEYS } from "@/lib/sections";
 import { USERNAME_PATTERN, USERNAME_RULES } from "@/lib/username";
 import { DISPLAY_NAME_MAX, normaliseDisplayName } from "@/lib/display-name";
@@ -190,18 +191,30 @@ export async function POST(request: Request) {
   if (!userId) userId = await findUserIdByEmail(admin, email);
   const created = !userId;
   let reactivating = false;
+  let priorMembership: PriorMembershipSnapshot | null = null;
+  let banBefore: BanState | null = null;
 
   if (userId) {
     // The e-mail already has a login (a member of another organisation, or a former member here): add the
     // membership only. Their password belongs to them and to their other organisations, so it isn't touched.
-    const { data: existing } = await admin
+    const { data: existing, error: existingError } = await admin
       .from("organization_members")
-      .select("active")
+      .select("role, secondary_role, active, hidden_sections")
       .eq("user_id", userId)
       .eq("organization_id", orgId)
       .maybeSingle();
+    if (existingError) return jsonError("Could not check existing membership. Try again.", 500);
     if (existing?.active) return jsonError("That person is already a member of this organisation", 409);
     reactivating = Boolean(existing);
+    if (existing) {
+      const record = existing as Record<string, unknown>;
+      priorMembership = {
+        active: Boolean(record.active),
+        ...(typeof record.role === "string" ? { role: record.role } : {}),
+        ...(record.secondary_role !== undefined ? { secondary_role: record.secondary_role === null ? null : String(record.secondary_role) } : {}),
+        ...(Array.isArray(record.hidden_sections) ? { hidden_sections: record.hidden_sections.map(String) } : {}),
+      };
+    }
     // Only the caller themself, or a login all of whose companies the caller administers (an admin of
     // JNR and Marpet adds a JNR login to Marpet; a Marpet-only admin can't). Otherwise the login would become shared and JNR could no
     // longer reset its password, username or two-step sign-in (ownsIdentity). Checked before anything is written or the ban is read.
@@ -227,6 +240,7 @@ export async function POST(request: Request) {
     const ban = await banState(admin, userId);
     if (!ban) return jsonError("Could not check whether that login is active. Try again.", 500);
     if (ban.banned && !(reactivating && ban.appBan)) return jsonError(LOGIN_DISABLED, 409);
+    banBefore = ban;
   } else {
     if (!full_name) return jsonError("Enter a name.", 400);
     const problem = passwordProblem(password ?? "");
@@ -248,17 +262,33 @@ export async function POST(request: Request) {
     userId = data.user.id;
   }
 
-  const rollback = async () => {
-    if (created && userId) await admin.auth.admin.deleteUser(userId).catch(() => undefined);
+  let memberAdded = false;
+  let restoredBanOrg: string | null | undefined;
+  const rollbackOrUncertain = async (cleanFailure: NextResponse) => {
+    if (!userId) return cleanFailure;
+    const reverted = await rollbackUserCreation({
+      admin,
+      orgId,
+      userId,
+      created,
+      memberAdded,
+      reactivating,
+      priorMembership,
+      ...(restoredBanOrg !== undefined ? { restoredBanOrg } : {}),
+    });
+    if (!reverted.ok) {
+      return NextResponse.json({ error: CREATE_ROLLBACK_UNCERTAIN_MESSAGE, uncertain: true }, { status: 500 });
+    }
+    return cleanFailure;
   };
 
   // add_member: membership (role, active), and a profile with this organisation as current one only if none exists.
   const { error: addError } = await admin.rpc("add_member", { p_org: orgId, p_email: email, p_role: role });
   if (addError) {
     console.error("[admin/users] add member failed", addError.code);
-    await rollback();
-    return jsonError("Could not create the user", 500);
+    return await rollbackOrUncertain(jsonError("Could not create the user", 500));
   }
+  memberAdded = true;
 
   // Secondary role and page access through the caller's own client: the same checks as editing.
   if (secondary || hidden.length || reactivating) {
@@ -269,8 +299,7 @@ export async function POST(request: Request) {
       p_hidden_sections: hidden,
     });
     if (accessError) {
-      await rollback();
-      return memberAccessError(accessError);
+      return await rollbackOrUncertain(memberAccessError(accessError));
     }
   }
 
@@ -280,17 +309,20 @@ export async function POST(request: Request) {
     // A new login must not keep an admin-chosen password by accident: no stored requirement, no user.
     if (!(await setMustChange(admin, userId, must_change_password))) {
       console.error("[admin/users] must_change_password not saved");
-      await rollback();
-      return jsonError("Could not create the user. Try again.", 500);
+      return await rollbackOrUncertain(jsonError("Could not create the user. Try again.", 500));
     }
   } else {
     // Existing login: keep their profile and fill a missing name. Only lift a ban when this organisation is
     // reactivating its own former member (the ban came from deactivating them here); a ban set for any other
     // reason, or by another organisation, stays.
-    if (parsed.data.full_name) await admin.from("user_profiles").update({ full_name }).eq("id", userId).is("full_name", null);
+    if (parsed.data.full_name) {
+      const { error: nameError } = await admin.from("user_profiles").update({ full_name }).eq("id", userId).is("full_name", null);
+      if (nameError) console.error("[admin/users] existing profile name fill failed", nameError.code ?? "no-code");
+    }
     if (reactivating) {
       const result = await liftDeactivationBan(admin, userId, [orgId]);
       if (result.error) console.error("[admin/users] unban failed");
+      if (result.lifted) restoredBanOrg = banBefore?.appBan ? banBefore.banOrg : orgId;
       loginDisabled = result.stillBanned;
     }
   }
@@ -298,8 +330,7 @@ export async function POST(request: Request) {
   if (username) {
     const usernameError = await setUsername(admin, userId, username);
     if (usernameError) {
-      await rollback();
-      return usernameError;
+      return await rollbackOrUncertain(usernameError);
     }
   }
 
