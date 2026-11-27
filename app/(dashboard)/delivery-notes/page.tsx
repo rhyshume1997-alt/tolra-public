@@ -1,3 +1,4 @@
+// Delivery-note actions mirror and audit acknowledged writes while preserving database transitions.
 "use client";
 
 /** Delivery Notes presentation toggle. Both views use the existing roles, reads, selections and mutation handlers. */
@@ -41,6 +42,7 @@ import { type TemplateVars, renderTemplate } from "@/lib/email/templates/default
 import { loadTemplateOverride } from "@/lib/email/templates/store";
 import { requireCompanyProfile, useCompanyProfile } from "@/lib/company";
 import { resolveCustomer, resolveCustomerAddress } from "@/lib/customers";
+import { updateDeliveryNotes } from "@/lib/delivery-note-update";
 import { deliveryNoteSignOffLines } from "@/lib/delivery-note-print";
 import { deliveryNoteCustomerSignOff } from "@/lib/customer-signoff-print";
 import { DEMO_MODE } from "@/lib/demo";
@@ -269,18 +271,19 @@ export default function DeliveryNotesPage() {
     return () => { active = false; };
   }, [canEmail, sentKey]);
 
-  /** Writes columns to one or more delivery notes, then mirrors them on screen. Throws on failure. */
+  /** Mirrors acknowledged writes and local demo updates. */
   async function persistNotes(targets: DeliveryNoteRow[], columns: Record<string, unknown>, patch: Partial<DeliveryNoteRow>) {
     const real = targets.filter((note) => !note.demo);
+    let updatedIds: string[] = [];
     if (real.length) {
       if (!supabase) throw new Error("Supabase is not configured.");
-      const { error } = await supabase.from("delivery_notes").update(columns).in("id", real.map((note) => note.id));
-      if (error) throw error;
+      updatedIds = await updateDeliveryNotes(supabase, real.map((note) => note.id), columns);
     } else if (targets.length && !DEMO_MODE) {
       throw new Error("Supabase is not configured.");
     }
-    const ids = targets.map((note) => note.id);
-    setNotes((current) => current.map((note) => ids.includes(note.id) ? { ...note, ...patch } : note));
+    const confirmed = new Set([...updatedIds, ...targets.filter((note) => note.demo).map((note) => note.id)]);
+    setNotes((current) => current.map((note) => confirmed.has(note.id) ? { ...note, ...patch } : note));
+    return { confirmed, updatedIds };
   }
 
   async function markSentOut(note: DeliveryNoteRow) {
@@ -341,18 +344,26 @@ export default function DeliveryNotesPage() {
           signatureNotes: String(form.get("signature_notes") || ""),
         });
         const signedAt = dateToIso(input.signedAt);
-        await persistNotes(
+        const { confirmed, updatedIds } = await persistNotes(
           targets,
           { status: "signed", signed_by_name: input.signedByName, signed_at: signedAt, signature_notes: input.signatureNotes || null },
           { status: "signed", signed_by_name: input.signedByName, signed_at: signedAt, signature_notes: input.signatureNotes },
         );
-        void auditEvent({ action: "MARK_SIGNED", entityTable: "delivery_notes", metadata: { ids: targets.map((note) => note.id), signed_by: input.signedByName } });
+        if (updatedIds.length) {
+          void auditEvent({ action: "MARK_SIGNED", entityTable: "delivery_notes", metadata: { ids: updatedIds, signed_by: input.signedByName } });
+        }
+        if (confirmed.size < targets.length) {
+          setSelectedIds((current) => current.filter((id) => !confirmed.has(id)));
+          setSigningIds([]);
+          toast.warning(`${confirmed.size} of ${targets.length} delivery notes were signed. Refresh the list and check the remaining notes.`);
+          return;
+        }
         setSelectedIds([]);
         setViewing(null);
         setSigningIds([]);
         setFilters(new Set(["signed"]));
         setPhase("done"); // it moved to Done: show it there
-        toast.success(`${targets.length} delivery note(s) moved to Signed`);
+        toast.success(`${confirmed.size} delivery note(s) moved to Signed`);
       } catch (err) {
         toast.error(userMessage(err, "Could not mark delivery note as signed"));
       }
@@ -467,8 +478,11 @@ export default function DeliveryNotesPage() {
   async function stampEmailed(note: DeliveryNoteRow) {
     if (!supabase) return;
     const sentAt = nowIso();
-    const { error } = await supabase.from("delivery_notes").update({ emailed_at: sentAt }).eq("id", note.id);
-    if (error) return void toast.info(`${note.ref} was sent, but its e-mailed time couldn't be recorded. It is in Email history.`);
+    try {
+      await updateDeliveryNotes(supabase, [note.id], { emailed_at: sentAt });
+    } catch {
+      return void toast.info(`${note.ref} was sent, but its e-mailed time couldn't be recorded. It is in Email history.`);
+    }
     setNotes((current) => current.map((row) => row.id === note.id ? { ...row, emailed_at: sentAt } : row));
   }
 
