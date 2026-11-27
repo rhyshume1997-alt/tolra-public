@@ -39,7 +39,10 @@ describe("traceability (8.5.2)", () => {
 
   it("a customer's traceable default is read when the database has it and sent only when read", async () => {
     const customers = [{ id: "c1", name: "Aero", contactName: "", email: "", phone: "", address: "", notes: "" }, { id: "c2", name: "Plain", contactName: "", email: "", phone: "", address: "", notes: "" }];
-    const reader = (result: { data: unknown[] | null; error: { code?: string; message?: string } | null }): TraceableReader => ({ from: () => ({ select: () => Promise.resolve(result) }) });
+    const reader = (result: { data: Record<string, unknown>[] | null; error: { code?: string; message?: string } | null }): TraceableReader => {
+      const query = { order: () => query, range: async (from: number) => from === 0 ? result : { data: [], error: null } };
+      return { from: () => ({ select: () => query }) };
+    };
     const read = await withTraceableDefaults(reader({ data: [{ id: "c1", traceable_default: true }, { id: "c2", traceable_default: false }], error: null }), customers);
     expect(read.map((c) => c.traceableDefault)).toEqual([true, false]);
     // Before 082: the column is missing, the records are as they were (and the field is never sent).

@@ -23,7 +23,8 @@ function fakeDatabase(start: Row, opts: { inUse?: boolean } = {}) {
   let tick = 0;
   const writes: Array<Record<string, unknown>> = [];
   const result = (data: unknown, error: unknown = null) => Promise.resolve({ data, error } as { data: unknown; error: { code?: string; message?: string; hint?: string } | null });
-  const reader: CustomerReader = { from: () => ({ select: () => ({ order: () => Promise.resolve({ data: [{ ...row }], error: null }) }) }) };
+  const readQuery = { order: () => readQuery, range: async (from: number) => ({ data: from === 0 ? [{ ...row }] : [], error: null }) };
+  const reader: CustomerReader = { from: () => ({ select: () => readQuery }) };
   const writer: CustomerWriter = {
     from: () => ({
       insert: (values) => ({ select: () => ({ single: () => result({ ...values, id: "new-1", updated_at: "2026-10-30T09:00:00+00:00" }), maybeSingle: () => result(null) }) }),

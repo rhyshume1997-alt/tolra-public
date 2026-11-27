@@ -84,28 +84,40 @@ function toCustomerRecord(row: CustomerDbRow): CustomerRecord {
   };
 }
 
-/** The reads the customer list needs (an injected client keeps it testable). */
-export type CustomerReader = {
-  from: (table: "customers") => { select: (columns: string) => { order: (column: string) => PromiseLike<{ data: unknown[] | null; error: { code?: string; message?: string } | null }> } };
+type CustomerReadQuery = {
+  order: (column: string) => CustomerReadQuery;
+  range: (from: number, to: number) => PromiseLike<{
+    data: Record<string, unknown>[] | null;
+    error: { code?: string; message?: string } | null;
+  }>;
 };
 
-/**
- * Every customer, with the mobile when the database has it (`has073`, from the cached databaseHas073 probe): before 073 the list is
- * read without it, so no request fails. If the column is missing anyway (the probe was wrong, or the update was rolled back) the
- * list is read again without it, never an error for that.
- */
+/** The reads the customer list needs (an injected client keeps it testable). */
+export type CustomerReader = {
+  from: (table: "customers") => { select: (columns: string) => CustomerReadQuery };
+};
+
+async function readCustomerRows(client: CustomerReader, columns: string, byName = false) {
+  const { rows, truncated } = await fetchAll((from, to) => {
+    const query = client.from("customers").select(columns);
+    return (byName ? query.order("name") : query).order("id").range(from, to);
+  });
+  if (truncated) throw new Error("The complete customer directory exceeds the supported read limit.");
+  return rows;
+}
+
+/** Read the complete customer directory, falling back when the mobile column is unavailable. */
 export async function readCustomers(client: CustomerReader, has073 = true): Promise<CustomerRecord[]> {
-  if (!has073) {
-    const { data, error } = await client.from("customers").select(CUSTOMER_COLUMNS).order("name");
-    if (error) throw error;
-    return (data || []).map((row) => toCustomerRecord(row as CustomerDbRow));
+  if (has073) {
+    try {
+      const rows = await readCustomerRows(client, CUSTOMER_COLUMNS_073, true);
+      return rows.map((row) => toCustomerRecord(row as CustomerDbRow));
+    } catch (error) {
+      if (!missingDbObject(error as { code?: string; message?: string })) throw error;
+    }
   }
-  const withMobile = await client.from("customers").select(CUSTOMER_COLUMNS_073).order("name");
-  if (!withMobile.error) return (withMobile.data || []).map((row) => toCustomerRecord(row as CustomerDbRow));
-  if (!missingDbObject(withMobile.error)) throw withMobile.error;
-  const without = await client.from("customers").select(CUSTOMER_COLUMNS).order("name");
-  if (without.error) throw without.error;
-  return (without.data || []).map((row) => toCustomerRecord(row as CustomerDbRow));
+  const rows = await readCustomerRows(client, CUSTOMER_COLUMNS, true);
+  return rows.map((row) => toCustomerRecord(row as CustomerDbRow));
 }
 
 /** The row written on save. The mobile is included only when it was read (or the form offered it): never a blank over a real one. */
@@ -123,23 +135,18 @@ export function customerPayload(customer: CustomerRecord, organizationId: string
   };
 }
 
-/** The reads the traceable defaults need (an injected client keeps it testable). */
-export type TraceableReader = {
-  from: (table: "customers") => { select: (columns: string) => PromiseLike<{ data: unknown[] | null; error: { code?: string; message?: string } | null }> };
-};
+export type TraceableReader = CustomerReader;
 
-/**
- * Each customer's traceable default (migration 082) added to the records. Before 082 (a missing column) the records are returned as
- * they were, without it; any other failure is thrown.
- */
+/** Add the saved traceability defaults. Before migration 082, return the directory without them. */
 export async function withTraceableDefaults(client: TraceableReader, customers: CustomerRecord[]): Promise<CustomerRecord[]> {
-  const { data, error } = await client.from("customers").select("id, traceable_default");
-  if (error) {
-    if (missingDbObject(error)) return customers;
+  try {
+    const rows = await readCustomerRows(client, "id, traceable_default");
+    const byId = new Map(rows.map((row) => [String(row.id), Boolean(row.traceable_default)]));
+    return customers.map((customer) => (customer.id && byId.has(customer.id) ? { ...customer, traceableDefault: byId.get(customer.id) } : customer));
+  } catch (error) {
+    if (missingDbObject(error as { code?: string; message?: string })) return customers;
     throw error;
   }
-  const byId = new Map((data ?? []).map((row) => [String((row as { id: unknown }).id), Boolean((row as { traceable_default?: unknown }).traceable_default)]));
-  return customers.map((customer) => (customer.id && byId.has(customer.id) ? { ...customer, traceableDefault: byId.get(customer.id) } : customer));
 }
 
 /** Throws when Supabase is unavailable so callers can show the demo-data banner. */

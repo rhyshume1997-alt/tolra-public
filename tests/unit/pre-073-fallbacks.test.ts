@@ -202,9 +202,16 @@ describe("£0 text lines in the totals and on the PDF", () => {
 });
 
 describe("the customer's mobile before and after 073", () => {
-  function reader(responses: Array<{ data: unknown[] | null; error: { code?: string; message?: string } | null }>) {
+  function reader(responses: Array<{ data: Record<string, unknown>[] | null; error: { code?: string; message?: string } | null }>) {
     const asked: string[] = [];
-    const client: CustomerReader = { from: () => ({ select: (columns: string) => ({ order: () => { asked.push(columns); return Promise.resolve(responses.shift()!); } }) }) };
+    const client: CustomerReader = { from: () => ({ select: (columns) => {
+      const query = { order: () => query, range: async (from: number) => {
+        if (from > 0) return { data: [], error: null };
+        asked.push(columns);
+        return responses.shift()!;
+      } };
+      return query;
+    } }) };
     return { client, asked };
   }
   const ROW = { id: "c1", name: "Acme", contact_name: null, email: null, phone: "01482 000000", address: "1 Road", notes: null };
