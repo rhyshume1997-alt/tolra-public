@@ -44,7 +44,7 @@ import { JobMachinesDialog } from "@/components/job-machines-dialog";
 import { type JobMachineChip, chipBookingSuffix, loadBoardJobMachines } from "@/lib/job-machine-plan";
 import { MachinePicker, type PickerMachine } from "@/components/machine-picker";
 import { PausedMachineDialog } from "@/components/paused-machine-dialog";
-import { type BenchRow, type InUseRow, type JobRunFacts, type PausedRow, type RunStartAnswer, SERVER_UPGRADE_REASON, benchAfter, benchRows, benchState, groupJobsByMachine, inUseRows, indexInUse, isServerTooOld, isStale, missingRunsReason, newClientOpId, pausedAckPayload, pausedFor, pausedRows, releaseFacts, requestedRunsPresent, runFactsByJob, runRefusal, withReleaseReasons } from "@/lib/machine-runs";
+import { type BenchRow, type InUseRow, type JobRunFacts, type PausedRow, type RunStartAnswer, SERVER_UPGRADE_REASON, benchAfter, benchRows, benchState, groupJobsByMachine, inUseRows, indexInUse, isServerTooOld, isStale, missingRunsReason, newClientOpId, pausedAckPayload, pausedFor, pausedRows, releaseFacts, requestedRunsPresent, runFactsByJob, runRefusal } from "@/lib/machine-runs";
 import { conflictEntries, pendingEntries, rejectedEntries, setReplayMachineNames, type OutboxEntry, type RunPauseOp, type RunStartOp } from "@/lib/offline/outbox";
 import { offlineScope } from "@/lib/offline/scope";
 import { onSyncComplete, runStartArgs } from "@/lib/offline/sync";
@@ -93,6 +93,7 @@ import { canListDeliveryNotes } from "@/lib/delivery-notes-for";
 import { canOpenDestination } from "@/lib/destinations";
 import { useOrgSettings } from "@/lib/org-settings";
 import { type WorkshopJob, rowToJob } from "@/lib/jobs/row-to-job";
+import { loadBoardRunFacts } from "@/lib/job-board-run-facts";
 import { fetchAll, truncationNotice } from "@/lib/fetch-all";
 import { type BoardFiles, boardDescription, shownJobColumns, jobBoardFiles, loadBoardJobFiles } from "@/lib/job-board-files";
 import { useColumnVisibility } from "@/lib/org-settings";
@@ -109,31 +110,6 @@ async function loadJobMachines(): Promise<Map<string, JobMachineChip[]> | null> 
   // Kept on the device (migration 044), so an offline Start still asks which planned machine the job runs on.
   if (map) void saveOfflineSnapshot("job_machines", [...map]);
   return map;
-}
-
-/**
- * Each unfinished job's runs, read straight from machine_runs (plan R2.3: SELECT for the four roles, no SQL): whether it ever ran, what is
- * open, how its latest run ended and what it last ran on. One paged read joined to the job (unfinished jobs only), not one per id chunk.
- * Null when it can't be read.
- */
-async function loadRunFacts(): Promise<Record<string, unknown>[] | null> {
-  if (!supabase) return null;
-  const client = supabase;
-  try {
-    const { rows } = await fetchAll((from, to) => client.from("machine_runs").select("id, job_id, machine_id, started_at, ended_at, end_reason, ended_by, jobs!inner(finished_at)")
-      .is("jobs.finished_at", null).order("id").range(from, to));
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    let runs: Record<string, unknown>[] = rows.map(({ jobs: _job, ...run }) => run);
-    // 092: why an admin released a job's machine (on the job time it ended). Not readable (before 092, other people's time): no reason.
-    const released = [...new Set(runs.filter((r) => r.end_reason === "admin_released").map((r) => r.job_id as string))];
-    for (let i = 0; i < released.length; i += 200) {
-      const reasons = await client.from("operator_sessions").select("job_id, ended_at, end_reason").eq("end_source", "admin_released").in("job_id", released.slice(i, i + 200));
-      if (!reasons.error) runs = withReleaseReasons(runs, reasons.data);
-    }
-    return runs;
-  } catch {
-    return null;
-  }
 }
 
 /** File names on the board (drawings or attachments), wrapped in full; the same on the table, list and cards. */
@@ -378,7 +354,7 @@ export default function JobsPage() {
         const [runsRes, benchRes, pausedRes, whoRes, canRes, facts] = await Promise.all([
           client.rpc("machines_in_use"), client.rpc("bench_runs_state"), client.rpc("paused_machines"),
           withPeople ? loadCompanyPeople(client, { usernames: canReadUsernames(profile) }) : Promise.resolve(null), withPeople ? client.rpc("assignable_people") : Promise.resolve(null),
-          loadRunFacts(),
+          loadBoardRunFacts(supabase),
         ]);
         if (!runsRes.error) {
           const rows = inUseRows(runsRes.data);
