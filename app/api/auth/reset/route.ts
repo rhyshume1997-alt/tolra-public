@@ -4,10 +4,12 @@ import { z } from "zod";
 
 import { setPasswordUrl } from "@/lib/auth-links";
 import { forbiddenOrigin, readJson, sameOrigin } from "@/lib/server/auth";
-import { LimiterUnavailableError, LoginLookupError, clientIp, limiterUnavailableResponse, resolveLoginEmail, withinLimit } from "@/lib/server/login";
+import { LimiterUnavailableError, clientIp, limiterUnavailableResponse, withinLimit } from "@/lib/server/login";
+import { RESET_UNAVAILABLE_MESSAGE, executePasswordReset } from "@/lib/server/password-reset";
 import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
 
-// "Forgot password" with a username OR an e-mail. Always answers the same, whether or not the account exists.
+// "Forgot password" with a username OR an e-mail. Unknown accounts answer the same as successful sends,
+// while real lookup or delivery failures answer 503 so users are never told a reset email was sent when delivery failed.
 // The reset e-mail's link opens /auth/set-password (works from any device: the tokens come back in the link).
 const schema = z.object({ identifier: z.string().trim().min(1).max(254) });
 const LIMIT_WINDOW = 15 * 60;
@@ -39,20 +41,17 @@ export async function POST(request: Request) {
       && (await withinLimit(admin, "reset_id", identifier.toLowerCase(), LIMIT_WINDOW, 3));
   } catch (err) {
     // Fails safe: no reset e-mail is sent while the limiter can't be used.
-    if (err instanceof LimiterUnavailableError) return limiterUnavailableResponse("Password reset is temporarily unavailable. Try again shortly.");
+    if (err instanceof LimiterUnavailableError) return limiterUnavailableResponse(RESET_UNAVAILABLE_MESSAGE);
     throw err;
   }
   if (!allowed) return NextResponse.json({ error: "Too many reset requests. Wait a few minutes and try again." }, { status: 429 });
 
-  // A failed lookup answers like "no such account" here (the reply never depends on the account); nothing is sent.
-  const email = await resolveLoginEmail(admin, identifier).catch((err) => {
-    if (err instanceof LoginLookupError) return null;
-    throw err;
-  });
-  if (email) {
+  const outcome = await executePasswordReset(admin, identifier, redirectTo, async (email, targetUrl) => {
     const auth = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false, flowType: "implicit" } });
-    const { error } = await auth.auth.resetPasswordForEmail(email, { redirectTo });
-    if (error) console.error("[auth/reset] reset email failed", error.status);
+    return auth.auth.resetPasswordForEmail(email, { redirectTo: targetUrl });
+  });
+  if (outcome.kind === "unavailable") {
+    return limiterUnavailableResponse(RESET_UNAVAILABLE_MESSAGE);
   }
   return NextResponse.json(DONE);
 }
