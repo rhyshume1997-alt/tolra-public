@@ -64,7 +64,7 @@ import { loadOfflineSnapshot, queueOffline, reportOffline, saveOfflineSnapshot }
 import { isNetworkError, stripJobMoney } from "@/lib/offline/store";
 import { ListFilterNotice, useListFilter } from "@/components/list-filter-notice";
 import { unbilledJobsOf } from "@/lib/attention-load";
-import { JobProblemsPanel, ProblemJobsContext, ProblemTag } from "@/components/job-problems";
+import { JobProblemsPanel, OpenProblemsTruncatedNotice, ProblemJobsContext, ProblemTag } from "@/components/job-problems";
 import { jobsWithProblems, loadOpenProblems } from "@/lib/job-problems";
 import { jobMatchesFilter } from "@/lib/list-filter";
 import { fmtDate, fmtDateTime, nowIso, toDateInput } from "@/lib/dates";
@@ -551,11 +551,16 @@ export default function JobsPage() {
 
   // 117: the jobs with an open Problem (the tag on their rows, and the "Problems reported" filter from the dashboard). Empty until the database has 117.
   const [problemIds, setProblemIds] = useState<ReadonlySet<string>>(new Set());
+  const [problemsTruncated, setProblemsTruncated] = useState(false);
   const [problemsAttempt, setProblemsAttempt] = useState(0);
   useEffect(() => {
     if (!supabase) return;
     let active = true;
-    void loadOpenProblems(supabase).then((answer) => { if (active) setProblemIds(answer.available ? jobsWithProblems(answer.problems) : new Set()); });
+    void loadOpenProblems(supabase).then((answer) => {
+      if (!active) return;
+      setProblemIds(answer.available ? jobsWithProblems(answer.problems) : new Set());
+      setProblemsTruncated(Boolean(answer.available && answer.truncated));
+    });
     return () => { active = false; };
   }, [attempt, problemsAttempt]);
 
@@ -1592,6 +1597,7 @@ export default function JobsPage() {
       {loadError ? (
         <Card><CardContent className="flex flex-wrap items-center justify-between gap-3 p-5"><p className="text-sm text-red-700">{loadError}</p><Button variant="outline" onClick={() => setAttempt((n) => n + 1)}>Retry</Button></CardContent></Card>
       ) : null}
+      <OpenProblemsTruncatedNotice visible={problemsTruncated} onRetry={() => setProblemsAttempt((n) => n + 1)} />
 
       {redesign && loading ? <LoadingState label="Loading jobs" /> : null}
 

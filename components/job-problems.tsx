@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { canReadUsernames, loadCompanyPeople } from "@/lib/company-people";
 import { fmtDateTime } from "@/lib/dates";
 import { friendlyError } from "@/lib/friendly-error";
-import { loadOpenProblems, problemControls, problemsFor, reasonLabel, resolveJobProblem, RESOLUTION_NOTE_MIN, type OpenProblem } from "@/lib/job-problems";
+import { OPEN_PROBLEMS_TRUNCATED, loadOpenProblems, problemControls, problemsFor, reasonLabel, resolveJobProblem, RESOLUTION_NOTE_MIN, type OpenProblem } from "@/lib/job-problems";
 import { type PeopleMap, personName } from "@/lib/people";
 import { supabase } from "@/lib/supabase";
 import { useMaybeUser } from "@/lib/use-user";
@@ -23,6 +23,17 @@ export function ProblemTag({ jobId, className }: { jobId: string | undefined; cl
   const jobs = useContext(ProblemJobsContext);
   if (!jobId || !jobs.has(jobId)) return null;
   return <StatusBadge data-testid="problem-tag" status="problem" label="Problem" className={className} />;
+}
+
+/** Warning shown when open job problem retrieval reached fetchAll's hard upper bound. */
+export function OpenProblemsTruncatedNotice({ visible, onRetry }: { visible: boolean; onRetry?: () => void }) {
+  if (!visible) return null;
+  return (
+    <div role="status" data-testid="open-problems-truncated" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+      <span>{OPEN_PROBLEMS_TRUNCATED}</span>
+      {onRetry ? <button type="button" onClick={onRetry} className="font-semibold underline">Retry</button> : null}
+    </div>
+  );
 }
 
 /**
