@@ -2,6 +2,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 
 import { PROTECTED_CHECK_FAILED, PROTECTED_LOGIN } from "@/lib/company-access";
+import { missingDbObject } from "@/lib/db-features";
 import { adminMfaRequired, recentSecondStep } from "@/lib/mfa-policy";
 import { forbiddenOrigin, isErrorResponse, jsonError, mfaRecentRequired, mfaRequired, requireProfile, sameOrigin } from "@/lib/server/auth";
 import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
@@ -166,15 +167,36 @@ export async function enrolmentFlag(admin: AdminContext["admin"], orgId: string,
   return !error && (data as { mfa_enrolment_required?: boolean } | null)?.mfa_enrolment_required === true;
 }
 
+export type AdminEnrolmentStatus = "saved" | "unsupported" | "failed";
+
+/**
+ * Inputs: service-role admin client, organization ID, and target user ID.
+ * Outputs: "saved" if mfa_enrolment_required was stored, "unsupported" on pre-065 schemas lacking the column, or "failed" on DB write errors.
+ * Boundary: Module 1 (Auth & Admin) only; preserves requireAdminEnrolment boolean wrapper for existing callers.
+ */
+export async function requireAdminEnrolmentStatus(
+  admin: AdminContext["admin"],
+  orgId: string,
+  userId: string,
+): Promise<AdminEnrolmentStatus> {
+  const { error } = await admin
+    .from("organization_members")
+    .update({ mfa_enrolment_required: true })
+    .eq("user_id", userId)
+    .eq("organization_id", orgId);
+  if (!error) return "saved";
+  if (missingDbObject(error)) return "unsupported";
+  console.error("[admin/users] enrolment flag not saved", error.code ?? "no-code");
+  return "failed";
+}
+
 /**
  * Marks a membership "must set up an authenticator app at next sign-in" (organization_members.mfa_enrolment_required, migration
  * 065) with the service role. The database keeps it only on an active admin membership. Best effort: before 065 is applied the
  * column does not exist and nothing changes (the person is simply not sent to set-up); the result says whether it was saved.
  */
 export async function requireAdminEnrolment(admin: AdminContext["admin"], orgId: string, userId: string): Promise<boolean> {
-  const { error } = await admin.from("organization_members").update({ mfa_enrolment_required: true }).eq("user_id", userId).eq("organization_id", orgId);
-  if (error) console.error("[admin/users] enrolment flag not saved", error.code ?? "no-code");
-  return !error;
+  return (await requireAdminEnrolmentStatus(admin, orgId, userId)) === "saved";
 }
 
 export type BanState = {
