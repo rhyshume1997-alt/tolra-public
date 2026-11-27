@@ -6,6 +6,9 @@
  *     Shown on the invoice screen so a note made from it is visible straight away; never printed.
  * A note already on another invoice is never listed here.
  */
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { fetchAll } from "@/lib/fetch-all";
+
 export type NoteRow = Record<string, unknown>;
 
 export type InvoiceNote = {
@@ -76,13 +79,12 @@ export function deliveryNotesPrintedLine(notes: InvoiceNote[], max = 2): string 
   return refs.length > max ? `${refs.slice(0, max).join(", ")} +${refs.length - max} more` : refs.join(", ");
 }
 
-type Query = { select: (columns: string) => { or: (filter: string) => { order: (column: string) => { limit: (n: number) => PromiseLike<{ data: unknown; error: unknown }> } } } };
-
-/** One query; row security decides what the signed-in person may see. */
-export async function fetchInvoiceNotes(db: { from: (table: string) => unknown }, invoice: { id: string; jobId?: string | null }): Promise<InvoiceNote[]> {
+/** Read every matching note under the caller's row security. Partial results cannot establish a single job. */
+export async function fetchInvoiceNotes(db: Pick<SupabaseClient, "from">, invoice: { id: string; jobId?: string | null }): Promise<InvoiceNote[]> {
   const filter = invoiceNotesFilter(invoice.id, invoice.jobId);
   if (!filter) return [];
-  const { data, error } = await (db.from("delivery_notes") as Query).select(NOTE_COLUMNS).or(filter).order("dn_number").limit(100);
-  if (error) throw error;
-  return toInvoiceNotes((data ?? []) as NoteRow[], invoice);
+  const { rows, truncated } = await fetchAll((from, to) => db.from("delivery_notes").select(NOTE_COLUMNS)
+    .or(filter).order("dn_number").order("id").range(from, to));
+  if (truncated) throw new Error("Too many delivery notes to verify the complete list for this invoice.");
+  return toInvoiceNotes(rows, invoice);
 }
