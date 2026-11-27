@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+// Exercises statement and reminder routes with synthetic records. Providers and the database stay mocked.
 import { NextResponse } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
@@ -121,6 +122,32 @@ describe("statement -> existing Approvals -> configured provider (mocks only)", 
     expect(state.sends).toHaveLength(0); await create(); expect(state.tables.email_history).toHaveLength(1);
     expect(state.tables.invoices).toEqual(before);
   });
+  it("refuses a missing stored total without drafting and can be retried once the amount is available", async () => {
+    state.tables.invoices[0].total = null;
+    const result = await create();
+    expect(result.status).toBe(400);
+    expect(await result.json()).toEqual({ error: "Invoice INV-1 is missing its total. Nothing was drafted." });
+    expect(state.tables.email_history).toHaveLength(0);
+    expect(state.ledger.size).toBe(0);
+    expect(state.sends).toHaveLength(0);
+
+    state.tables.invoices[0].total = 120;
+    expect((await reviewedDraft()).body).toContain("Total outstanding invoices: £90.00");
+  });
+
+  it("accepts a recorded zero total and includes no outstanding item for it", async () => {
+    Object.assign(state.tables.invoices[0], { total: 0, amount_paid: null, credited_amount: null, refunded_amount: null });
+    expect((await reviewedDraft()).body).toContain("Total outstanding invoices: £0.00");
+  });
+
+  it("holds an existing statement draft when another collectible invoice has no stored total", async () => {
+    const draft = await reviewedDraft();
+    state.tables.invoices.push({ ...state.tables.invoices[0], id: nextId(), invoice_ref: "INV-2", total: null });
+    expect((await approveRow(draft)).status).toBe(409);
+    expect(state.tables.email_history[0].status).toBe("drafted");
+    expect(state.sends).toHaveLength(0);
+  });
+
   it.each(["none", "connected"])("sends the exact approved text once through token mode %s", async (token) => {
     state.token = token;
     const before = structuredClone(state.tables.invoices), r = await reviewedDraft();

@@ -1,3 +1,4 @@
+// Builds a customer statement from scoped invoice and credit reads. Draft approval and sending stay with their callers.
 import "server-only";
 import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -22,6 +23,10 @@ export async function customerStatement(db: SupabaseClient, org: string, custome
   const items: Array<{ id: string; reference: string; due: string; pence: number }> = [];
   for (const row of rows) {
     if (invoiceLifecycle(String(row.status)) !== "collectible" || row.payment_unverified) continue;
+    if (row.total == null || row.total === "") {
+      const label = row.invoice_ref ? `Invoice ${row.invoice_ref}` : "A collectible invoice";
+      throw new Error(`${label} is missing its total. Nothing was drafted.`);
+    }
     const values = [row.total, row.amount_paid, row.credited_amount, row.refunded_amount].map((v) => v == null ? 0 : Number(v));
     if (values.some((v) => !Number.isFinite(v))) throw new Error("An invoice amount is invalid. Nothing was drafted.");
     const pence = toPence(balanceDue(values[0], values[1], values[2], values[3]));
