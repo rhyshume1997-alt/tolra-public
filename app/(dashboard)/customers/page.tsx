@@ -27,7 +27,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { type Phase, type PhaseFilterValue, useArchive } from "@/lib/archive";
 import { auditEvent } from "@/lib/audit";
-import { CUSTOMER_CHANGED, fetchKnownCustomers, loadDemoCustomers, newCustomerDraft, saveCustomer, type CustomerRecord, type KnownCustomer } from "@/lib/customers";
+import { CUSTOMER_CHANGED, fetchKnownCustomers, formatFailedCustomerSources, loadDemoCustomers, newCustomerDraft, saveCustomer, type CustomerRecord, type KnownCustomer } from "@/lib/customers";
 import { DEMO_MODE } from "@/lib/demo";
 import { friendlyError } from "@/lib/friendly-error";
 import { linkedRecordId } from "@/lib/record-link";
@@ -41,7 +41,7 @@ import { useDatabaseHas073 } from "@/lib/use-database-has-073";
 import { ValidationError } from "@/lib/validation/schemas";
 
 const NOT_SAVED_LABEL = "Not saved as a customer yet";
-const DOCUMENT_NAMES_TRUNCATED = "Only part of the names found on RFQs, quotes, sales orders and invoices could be listed: some may be missing here.";
+const DOCUMENT_NAMES_TRUNCATED = "Only part of the names found on documents (RFQs, quotes, sales orders, invoices, jobs, delivery notes and credit notes) could be listed: some may be missing here.";
 
 export default function CustomersPage() {
   const redesign = useCompanyUiSwitch("ui-customers-v2:on");
@@ -59,6 +59,9 @@ export default function CustomersPage() {
   const savedCustomers = customers.filter((customer) => !customer.notSaved);
   /** A document table had more rows than the list reads: some names found only on documents may be missing. */
   const [namesTruncated, setNamesTruncated] = useState(false);
+  /** Document tables that could not be read during discovery: warned explicitly rather than omitted silently. */
+  const [failedSources, setFailedSources] = useState<string[]>([]);
+  const sourceWarning = formatFailedCustomerSources(failedSources);
   const { saving, run } = useSaving();
   /** The customer's mobile needs migration 073: a new customer offers it only once the database has it. */
   const has073 = useDatabaseHas073() === true;
@@ -92,11 +95,15 @@ export default function CustomersPage() {
     setError(null);
     try {
       // Trust the database, including an empty result. Sample rows only exist in DEMO_MODE.
-      if (!supabase && DEMO_MODE) setCustomers(await loadDemoCustomers());
-      else {
+      if (!supabase && DEMO_MODE) {
+        setCustomers(await loadDemoCustomers());
+        setNamesTruncated(false);
+        setFailedSources([]);
+      } else {
         const known = await fetchKnownCustomers();
         setCustomers(known.customers);
         setNamesTruncated(known.documentNamesTruncated);
+        setFailedSources(known.failedDocumentSources);
       }
       if (supabase) {
         const { data } = await supabase.rpc("customer_credit");
@@ -223,6 +230,7 @@ export default function CustomersPage() {
           emptyTitle={customers.length ? (phase === "archived" ? "No archived customers." : "Every customer is archived: see Show > Archived.") : "No customers yet."}
           emptyDetail={customers.length ? undefined : customersEmptyHint()}
           notice={namesTruncated ? DOCUMENT_NAMES_TRUNCATED : undefined}
+          sourceWarning={sourceWarning}
           add={() => setEditing(newDraft(""))}
           toolbar={toolbar}
           phaseFilter={phaseFilter}
@@ -259,6 +267,7 @@ export default function CustomersPage() {
         {phaseFilter}
         {error ? <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error} <button onClick={load} className="font-semibold underline">Retry</button></div> : null}
         {namesTruncated ? <p className="text-sm text-amber-800" data-testid="customer-names-truncated">{DOCUMENT_NAMES_TRUNCATED}</p> : null}
+        {sourceWarning ? <p className="text-sm text-amber-800" data-testid="customer-sources-incomplete">{sourceWarning}</p> : null}
         {loading ? <Skeleton className="h-72" /> : (
           <Card><CardContent className="p-0">
             <Table data-view={view}>

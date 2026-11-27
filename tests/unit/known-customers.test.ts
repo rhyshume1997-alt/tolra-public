@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/supabase", () => ({ supabase: null }));
 
-import { type DocumentNameReader, mergeKnownCustomers, newCustomerDraft, readDocumentCustomerNames } from "@/lib/customers";
+import { type DocumentNameReader, formatFailedCustomerSources, mergeKnownCustomers, newCustomerDraft, readDocumentCustomerNames } from "@/lib/customers";
 import { MAX_LIST_ROWS } from "@/lib/fetch-all";
 
 const saved = (name: string, id = name) => ({ id, name, contactName: "", email: "", phone: "", address: "", notes: "" });
@@ -56,31 +56,61 @@ describe("mergeKnownCustomers", () => {
 });
 
 describe("readDocumentCustomerNames", () => {
-  it("reads the customer column of RFQs, quotes, sales orders and invoices, page by page in id order", async () => {
-    const client = reader({ rfqs: [{ customer: "R" }], quotes: [{ customer: "Q" }], sales_orders: [{ customer: "S" }], invoices: [{ customer: "I" }] });
-    const { names, truncated } = await readDocumentCustomerNames(client);
-    expect(names.sort()).toEqual(["I", "Q", "R", "S"]);
+  it("reads the customer column of RFQs, quotes, sales orders, invoices, jobs, delivery notes and credit notes, page by page in id order (CR-040)", async () => {
+    const client = reader({
+      rfqs: [{ customer: "R" }],
+      quotes: [{ customer: "Q" }],
+      sales_orders: [{ customer: "S" }],
+      invoices: [{ customer: "I" }],
+      jobs: [{ customer: "J" }],
+      delivery_notes: [{ customer: "D" }],
+      credit_notes: [{ customer: "C" }],
+    });
+    const { names, truncated, failedSources } = await readDocumentCustomerNames(client);
+    expect(names.sort()).toEqual(["C", "D", "I", "J", "Q", "R", "S"]);
     expect(truncated).toBe(false);
-    expect(client.reads.filter((read) => read.endsWith(":0-999")).sort()).toEqual(["invoices:id, customer:id:0-999", "quotes:id, customer:id:0-999", "rfqs:id, customer:id:0-999", "sales_orders:id, customer:id:0-999"]);
+    expect(failedSources).toEqual([]);
+    expect(client.reads.filter((read) => read.endsWith(":0-999")).sort()).toEqual([
+      "credit_notes:id, customer:id:0-999",
+      "delivery_notes:id, customer:id:0-999",
+      "invoices:id, customer:id:0-999",
+      "jobs:id, customer:id:0-999",
+      "quotes:id, customer:id:0-999",
+      "rfqs:id, customer:id:0-999",
+      "sales_orders:id, customer:id:0-999",
+    ]);
   });
 
   it("finds a name that is only past row 1,000 (the API answers at most 1,000 rows a request)", async () => {
     const quotes = Array.from({ length: 1_500 }, (_, i) => ({ customer: i === 1_249 ? "Late Row Ltd" : "Common Co" }));
-    const { names } = await readDocumentCustomerNames(reader({ rfqs: [], quotes, sales_orders: [], invoices: [] }));
+    const { names, failedSources } = await readDocumentCustomerNames(reader({ rfqs: [], quotes, sales_orders: [], invoices: [], jobs: [], delivery_notes: [], credit_notes: [] }));
     expect(names).toContain("Late Row Ltd");
     expect(names).toHaveLength(1_500);
+    expect(failedSources).toEqual([]);
     expect(mergeKnownCustomers([saved("Common Co")], names).map((c) => c.name)).toEqual(["Common Co", "Late Row Ltd"]);
   });
 
   it("says so when a table has more rows than the list reads", async () => {
     const invoices = Array.from({ length: MAX_LIST_ROWS + 5 }, () => ({ customer: "Busy Co" }));
-    const { truncated } = await readDocumentCustomerNames(reader({ rfqs: [], quotes: [], sales_orders: [], invoices }));
+    const { truncated } = await readDocumentCustomerNames(reader({ rfqs: [], quotes: [], sales_orders: [], invoices, jobs: [], delivery_notes: [], credit_notes: [] }));
     expect(truncated).toBe(true);
   });
 
-  it("a table that cannot be read adds nothing and never fails the list", async () => {
-    const client = reader({ rfqs: "error", quotes: "throw", sales_orders: [{ customer: null }, { customer: "S" }], invoices: [] });
-    expect((await readDocumentCustomerNames(client)).names).toEqual(["", "S"]);
+  it("reports unreadable tables in failedSources instead of silently omitting them, while still returning partial names (CR-040)", async () => {
+    const client = reader({
+      rfqs: "error",
+      quotes: "throw",
+      sales_orders: [{ customer: null }, { customer: "S" }],
+      invoices: [],
+      jobs: [{ customer: "J" }],
+      delivery_notes: "error",
+      credit_notes: [],
+    });
+    const res = await readDocumentCustomerNames(client);
+    expect(res.names).toEqual(["", "S", "J"]);
+    expect(res.failedSources).toEqual(["rfqs", "quotes", "delivery_notes"]);
+    expect(formatFailedCustomerSources(res.failedSources)).toContain("RFQs, quotes, delivery notes");
+    expect(formatFailedCustomerSources([])).toBeUndefined();
   });
 });
 

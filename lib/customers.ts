@@ -206,8 +206,35 @@ export function newCustomerDraft(name = "", has073 = false): CustomerRecord {
   return { name, contactName: "", email: "", phone: "", address: "", notes: "", ...(has073 ? { mobile: "" } : {}) };
 }
 
+/**
+ * Inputs: DocumentNameReader client reading customer-bearing document tables.
+ * Outputs: discovered customer names, truncation indicator, and explicit list of any failed document sources.
+ * Boundary: Module 5 (Customers) only; pickers continue using fetchCustomers() without reading document tables.
+ */
 /** The tables that hold the customer as text. Admin and office read all of them (the same access as the customers table). */
-const DOCUMENT_TABLES = ["rfqs", "quotes", "sales_orders", "invoices"] as const;
+export const DOCUMENT_TABLES = ["rfqs", "quotes", "sales_orders", "invoices", "jobs", "delivery_notes", "credit_notes"] as const;
+export type DocumentCustomerTable = (typeof DOCUMENT_TABLES)[number];
+
+const DOCUMENT_SOURCE_LABELS: Record<DocumentCustomerTable, string> = {
+  rfqs: "RFQs",
+  quotes: "quotes",
+  sales_orders: "sales orders",
+  invoices: "invoices",
+  jobs: "jobs",
+  delivery_notes: "delivery notes",
+  credit_notes: "credit notes",
+};
+
+/** Formats a user-facing warning when one or more document sources could not be read during customer discovery. */
+export function formatFailedCustomerSources(failedSources: readonly string[]): string | undefined {
+  if (!failedSources.length) return undefined;
+  const labels = failedSources.map((table) =>
+    Object.prototype.hasOwnProperty.call(DOCUMENT_SOURCE_LABELS, table)
+      ? DOCUMENT_SOURCE_LABELS[table as DocumentCustomerTable]
+      : table,
+  );
+  return `Could not read customer names from ${labels.join(", ")}. Some document-only customers may be missing until you retry.`;
+}
 
 type NamePage = PromiseLike<{ data: Record<string, unknown>[] | null; error: unknown }>;
 /** The reads the document names need (an injected client keeps it testable). */
@@ -233,29 +260,44 @@ export function mergeKnownCustomers(saved: CustomerRecord[], documentNames: Arra
 }
 
 /**
- * Customer names on RFQs, quotes, sales orders and invoices: every row, page by page past the API's 1,000-row cap (lib/fetch-all).
- * A table that can't be read adds nothing; it never fails the list. `truncated`: a table reached fetchAll's upper bound.
+ * Customer names on RFQs, quotes, sales orders, invoices, jobs, delivery notes and credit notes: every row, page by page past the
+ * API's 1,000-row cap (lib/fetch-all). A table that can't be read never fails the whole list, but is reported in `failedSources`
+ * so the caller can warn that discovery is incomplete. `truncated`: a table reached fetchAll's upper bound.
  */
-export async function readDocumentCustomerNames(client: DocumentNameReader): Promise<{ names: string[]; truncated: boolean }> {
+export async function readDocumentCustomerNames(
+  client: DocumentNameReader,
+): Promise<{ names: string[]; truncated: boolean; failedSources: DocumentCustomerTable[] }> {
   const results = await Promise.all(DOCUMENT_TABLES.map(async (table) => {
     try {
       const { rows, truncated } = await fetchAll((from, to) => client.from(table).select("id, customer").order("id").range(from, to));
-      return { names: rows.map((row) => String(row.customer ?? "")), truncated };
+      return { table, names: rows.map((row) => String(row.customer ?? "")), truncated, failed: false as const };
     } catch {
-      return { names: [], truncated: false };
+      return { table, names: [] as string[], truncated: false, failed: true as const };
     }
   }));
-  return { names: results.flatMap((result) => result.names), truncated: results.some((result) => result.truncated) };
+  return {
+    names: results.flatMap((result) => result.names),
+    truncated: results.some((result) => result.truncated),
+    failedSources: results.filter((result) => result.failed).map((result) => result.table),
+  };
 }
 
 /**
  * The Customers page's list: saved customers plus names that exist only on documents. Only that page reads the documents; every
  * customer picker keeps the saved list (fetchCustomers).
  */
-export async function fetchKnownCustomers(): Promise<{ customers: KnownCustomer[]; documentNamesTruncated: boolean }> {
+export async function fetchKnownCustomers(): Promise<{
+  customers: KnownCustomer[];
+  documentNamesTruncated: boolean;
+  failedDocumentSources: DocumentCustomerTable[];
+}> {
   const saved = await fetchCustomers();
-  const { names, truncated } = await readDocumentCustomerNames(supabase as unknown as DocumentNameReader);
-  return { customers: mergeKnownCustomers(saved, names), documentNamesTruncated: truncated };
+  const { names, truncated, failedSources } = await readDocumentCustomerNames(supabase as unknown as DocumentNameReader);
+  return {
+    customers: mergeKnownCustomers(saved, names),
+    documentNamesTruncated: truncated,
+    failedDocumentSources: failedSources,
+  };
 }
 
 /** The writes saveCustomer makes (an injected client keeps it testable). */
