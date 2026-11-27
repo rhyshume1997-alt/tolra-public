@@ -5,7 +5,7 @@
 import { ActivityPanel } from "@/components/activity-panel";
 import { EmptyList } from "@/components/empty-list";
 import { salesOrdersEmptyHint } from "@/lib/empty-hints";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ClipboardList, Plus } from "lucide-react";
@@ -57,12 +57,13 @@ import { useColumnVisibility } from "@/lib/org-settings";
 import { supabase } from "@/lib/supabase";
 import { getCurrentOrganizationId } from "@/lib/supabase-business";
 import { useSaving } from "@/lib/use-saving";
+import { type CreateAttemptKey, createSalesOrderWithIdempotency, requestIdForAttempt } from "@/lib/sales-create-idempotency";
 import { ValidationError, parseOrThrow, salesOrderSaveSchema, userMessage } from "@/lib/validation/schemas";
 import { companyVat, fromVatChoice, toVatChoice, type VatChoice } from "@/lib/vat";
 import { VatRateSelect, VatToggle } from "@/components/vat-controls";
 import { VatTotals } from "@/components/vat-totals";
 import { fetchAll, truncationNotice } from "@/lib/fetch-all";
-import { type AcceptQuoteResult, awaitsCustomerPo, customerPoInput, manualOrderIdentity } from "@/lib/accept-quote";
+import { type AcceptQuoteResult, awaitsCustomerPo, customerPoInput } from "@/lib/accept-quote";
 import { jobHref } from "@/lib/job-link";
 
 type SalesOrder = {
@@ -120,6 +121,7 @@ export default function SalesOrdersPage() {
   const [editing, setEditing] = useState<SalesOrder | null>(null);
   const [editDraft, setEditDraft] = useState<{ customer: string; delivery: string; value: string; vatOn: boolean; vat: VatChoice }>({ customer: "", delivery: "", value: "", vatOn: false, vat: "20" });
   const [newOpen, setNewOpen] = useState(false);
+  const createAttemptRef = useRef<CreateAttemptKey | null>(null);
   const [form, setForm] = useState({ ...emptyForm, orderDate: toDateInput(new Date()) });
   const [quoteLink, setQuoteLink] = useState<{ state: "none" | "loading" | "ready" | "error"; quoteId?: string; message?: string }>({ state: "none" });
   // New order: VAT follows the company settings until changed on the form.
@@ -295,12 +297,7 @@ export default function SalesOrdersPage() {
           return;
         }
         const organizationId = await getCurrentOrganizationId();
-        // The order is referenced by the customer's own PO number; with none yet, a provisional SO-#### number (the PO is added later).
-        const identity = await manualOrderIdentity(input.customerPo, () => allocateNumber("SO"));
-        const { error } = await supabase.from("sales_orders").insert({
-          organization_id: organizationId,
-          so_number: identity.soNumber,
-          customer_po: identity.customerPo,
+        const orderHeader = {
           customer: input.customer,
           // No linked quote (an order from a quote is made by accept_quote above).
           quote_id: null,
@@ -313,8 +310,18 @@ export default function SalesOrdersPage() {
           vat_exempt: fromVatChoice(formVatChoice).vatExempt,
           status: "open",
           notes: form.notes.trim() || null,
+        };
+        const attempt = requestIdForAttempt(createAttemptRef.current, JSON.stringify({ customerPo: input.customerPo, orderHeader }));
+        createAttemptRef.current = attempt;
+        // The order is referenced by the customer's own PO number; with none yet, a provisional SO-#### number (the PO is added later).
+        const identity = await createSalesOrderWithIdempotency(supabase, {
+          requestId: attempt.requestId,
+          organizationId,
+          customerPo: input.customerPo,
+          header: orderHeader,
+          allocateOrderRef: () => allocateNumber("SO"),
         });
-        if (error) throw error;
+        createAttemptRef.current = null;
         void auditEvent({ action: "CREATE", entityTable: "sales_orders", entityId: identity.soNumber });
         toast.success(`Sales order ${identity.soNumber} created${identity.customerPo ? "" : ". Add the customer PO when it arrives."}`);
         // Reset and close only after a successful save.

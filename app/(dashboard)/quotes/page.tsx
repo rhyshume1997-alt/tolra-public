@@ -66,6 +66,7 @@ import { allocateNumber } from "@/lib/numbering";
 import { supabase } from "@/lib/supabase";
 import { getCurrentOrganizationId } from "@/lib/supabase-business";
 import { useSaving } from "@/lib/use-saving";
+import { type CreateAttemptKey, createQuoteWithIdempotency, requestIdForAttempt } from "@/lib/sales-create-idempotency";
 import { ValidationError, parseOrThrow, quoteSaveSchema, userMessage } from "@/lib/validation/schemas";
 import { fetchAll, truncationNotice } from "@/lib/fetch-all";
 import { type AcceptQuoteResult, acceptOutcome, customerPoInput, deliveryDateInput } from "@/lib/accept-quote";
@@ -349,6 +350,7 @@ export default function QuotesPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [lineItems, setLineItems] = useState<BuilderLine[]>([defaultLine()]);
   const [builderOpen, setBuilderOpen] = useState(false);
+  const createAttemptRef = useRef<CreateAttemptKey | null>(null);
   const [builderCustomer, setBuilderCustomer] = useState("");
   /** Builder opened to correct a draft (edit) or to start from an existing quote (copy). */
   const [builderPreset, setBuilderPreset] = useState<{ mode: "edit" | "copy"; quote: QuoteRow } | null>(null);
@@ -617,40 +619,41 @@ export default function QuotesPage() {
           void loadQuotes();
           return;
         }
-        const quoteRef = await allocateNumber("QUO");
-        const { error } = await supabase.rpc("create_with_lines", {
-          p_parent: "quotes",
-          p_header: {
-            quote_ref: quoteRef,
-            customer: input.customer,
-            description: input.description,
-            customer_notes: input.customerNotes || null,
-            internal_notes: input.internalNotes || null,
-            total_value: totals.total,
-            vat_enabled: builderVat,
-            valid_until: input.validUntil || null,
-            terms: input.terms || null,
-            // Sent only when there is one, so a quote with none saves as before.
-            ...(customerPo ? { customer_po: customerPo } : {}),
-            status: "draft",
-            ...(fromRfq ? { rfq_id: fromRfq.id } : {}),
-          },
-          p_child: "quote_line_items",
-          p_fk: "quote_id",
-          p_lines: input.lines.map((line, position) => ({
-            position,
-            description: line.description,
-            quantity: line.quantity,
-            unit_price: line.unitPrice,
-            vat_pct: lineVats[position].vatPct,
-            vat_exempt: lineVats[position].vatExempt,
-            source: rows[position]?.source ?? "manual",
-            ...linePartFields(rows[position]),
-          })),
+        const quoteHeader = {
+          customer: input.customer,
+          description: input.description,
+          customer_notes: input.customerNotes || null,
+          internal_notes: input.internalNotes || null,
+          total_value: totals.total,
+          vat_enabled: builderVat,
+          valid_until: input.validUntil || null,
+          terms: input.terms || null,
+          // Sent only when there is one, so a quote with none saves as before.
+          ...(customerPo ? { customer_po: customerPo } : {}),
+          status: "draft",
+          ...(fromRfq ? { rfq_id: fromRfq.id } : {}),
+        };
+        const quoteLines = input.lines.map((line, position) => ({
+          position,
+          description: line.description,
+          quantity: line.quantity,
+          unit_price: line.unitPrice,
+          vat_pct: lineVats[position].vatPct,
+          vat_exempt: lineVats[position].vatExempt,
+          source: rows[position]?.source ?? "manual",
+          ...linePartFields(rows[position]),
+        }));
+        const attempt = requestIdForAttempt(createAttemptRef.current, JSON.stringify({ quoteHeader, quoteLines }));
+        createAttemptRef.current = attempt;
+        const { quoteRef } = await createQuoteWithIdempotency(supabase, {
+          requestId: attempt.requestId,
+          header: quoteHeader,
+          lines: quoteLines,
+          allocateQuoteRef: () => allocateNumber("QUO"),
         });
-        if (error) throw error;
-        void auditEvent({ action: "CREATE", entityTable: "quotes", entityId: quoteRef });
-        toast.success(`Quote ${quoteRef} saved`);
+        createAttemptRef.current = null;
+        void auditEvent({ action: "CREATE", entityTable: "quotes", entityId: quoteRef || attempt.requestId });
+        toast.success(quoteRef ? `Quote ${quoteRef} saved` : "Quote saved");
         if (fromRfq && input.customer.trim().toLowerCase() === fromRfq.customer.trim().toLowerCase()) await carryRfqEmail(fromRfq.customer, fromRfq.email);
         // Reset only after a successful save.
         formEl.reset();
