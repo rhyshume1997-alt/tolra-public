@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { HEIC_MESSAGE, isHeic } from "@/lib/job-photos";
 import { enqueue, pendingEntries, photoBlobKey, readAttachment, rejectedEntries, replayOutbox, retryHeld, type PhotoOp } from "@/lib/offline/outbox";
-import { confirmUnsyncedDiscard, setOfflineScope, wipeOfflineData } from "@/lib/offline/scope";
+import { confirmSignOut, confirmUnsyncedDiscard, setOfflineScope, wipeOfflineData } from "@/lib/offline/scope";
 import { executePhotoOp, PHOTO_MISMATCH_REASON } from "@/lib/offline/sync";
 import { discardedMessage, memoryBackend, setOfflineBackend, setSupportSession, takeDiscardedNotice, unsyncedIdsForUser, wipeAllOffline, wipeScope } from "@/lib/offline/store";
 
@@ -75,6 +75,24 @@ describe("explicit sign-out (everything on the device)", () => {
     expect(data.size).toBe(0);
   });
 
+  it.each([0, 2, null])("keeps queued and held photos when the requested export is incomplete (%s)", async (exported) => {
+    const w = await world();
+    const ask = vi.fn(() => true);
+    const notify = vi.fn();
+    const exportPhotos = vi.fn(async () => {
+      if (exported === null) throw new Error("Photo read failed");
+      return exported;
+    });
+
+    await expect(confirmSignOut(async () => undefined, ask, notify, { exportPhotos })).resolves.toBeNull();
+    expect(exportPhotos).toHaveBeenCalledTimes(1);
+    expect(ask).toHaveBeenCalledTimes(1);
+    expect(notify).toHaveBeenCalledWith(expect.stringContaining("kept on this device"));
+    expect(await blobsLeft(w.all)).toBe(4);
+    expect(await rejectedEntries(alice)).toHaveLength(1);
+    expect(await pendingEntries(alice)).toHaveLength(2);
+  });
+
   it("a held photo alone (nothing waiting) is still asked about", async () => {
     await queue(alice, photo());
     await fail(alice);
@@ -102,6 +120,19 @@ describe("company switch (that company only)", () => {
     expect(await wipeScope(alice)).toBe(3);
     expect(await blobsLeft(w.all)).toBe(1);
     expect(await pendingEntries(aliceElsewhere)).toHaveLength(1);
+  });
+
+  it("does not proceed when one or more photos could not be exported", async () => {
+    const w = await world();
+    const ask = vi.fn(() => true);
+    const notify = vi.fn();
+
+    await expect(confirmUnsyncedDiscard("Switching company", async () => undefined, ask, {
+      exportPhotos: async () => 1, notify,
+    })).resolves.toBe(false);
+    expect(ask).toHaveBeenCalledTimes(1);
+    expect(notify).toHaveBeenCalledWith(expect.stringContaining("Only 1 of 3 photo downloads"));
+    expect(await blobsLeft(w.all)).toBe(4);
   });
 
   it("nothing waiting or held: no question", async () => {

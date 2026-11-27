@@ -1,3 +1,4 @@
+// Coordinates offline sync and recovery. Failed photo exports do not authorize discarding the device queue.
 "use client";
 
 /**
@@ -186,7 +187,7 @@ export async function discardOfflinePending(id: string) {
   await refreshCounts();
 }
 
-/** Saves photos still on the device as JPEG files (the browser's downloads). Returns how many were saved. */
+/** Starts browser downloads of photos on the device. Returns the number of downloads started. */
 export async function downloadPhotos(photos: UnsyncedSummary["photos"]) {
   const { readAttachment } = await import("@/lib/offline/outbox");
   let saved = 0;
@@ -209,8 +210,10 @@ export async function downloadPhotos(photos: UnsyncedSummary["photos"]) {
 export type DiscardOptions = {
   /** Sign-out: everything on the device is removed, so everything on it is counted (not only the current company's). */
   everything?: boolean;
-  /** Saves the photos before they go (default: browser downloads). */
+  /** Returns the number of photo downloads started before discarding. */
   exportPhotos?: (photos: UnsyncedSummary["photos"]) => Promise<number>;
+  /** Explains why a requested export prevented the discard. */
+  notify?: (message: string) => void;
 };
 
 /**
@@ -249,8 +252,19 @@ export async function confirmUnsyncedDiscard(action: string, sync: () => Promise
   const otherPeople = "";
   if (mine.photos.length) {
     const count = mine.photos.length;
-    if (ask(`${changes} synced yet.${detail}\n\nExport the ${count === 1 ? "photo" : `${count} photos`} first? OK saves ${count === 1 ? "it" : "them"} to this device as ${count === 1 ? "a file" : "files"}; Cancel goes on without saving.`)) {
-      await (options.exportPhotos ?? downloadPhotos)(mine.photos);
+    if (ask(`${changes} synced yet.${detail}\n\nExport the ${count === 1 ? "photo" : `${count} photos`} first? OK starts ${count === 1 ? "the download" : "the downloads"}; Cancel goes on without exporting.`)) {
+      const notify = options.notify ?? ((message: string) => window.alert(message));
+      let exported: number;
+      try {
+        exported = await (options.exportPhotos ?? downloadPhotos)(mine.photos);
+      } catch {
+        notify("The photo export failed. Your offline changes were kept on this device. Try exporting again or reconnect and sync.");
+        return false;
+      }
+      if (exported !== count) {
+        notify(`Only ${exported} of ${count} photo downloads could start. Your offline changes were kept on this device. Try exporting again or reconnect and sync.`);
+        return false;
+      }
     }
   }
   const head = n ? `${changes} synced yet. ${action} removes ${n === 1 ? "it" : "them"} from this device for good.${detail}` : `${action} removes unsynced changes from this device for good.`;
@@ -302,7 +316,7 @@ export async function wipeOfflineData(confirmed?: ReadonlySet<string>) {
 export async function confirmSignOut(sync: () => Promise<unknown>, ask?: (message: string) => boolean, notify: (message: string) => void = (m) => window.alert(m), options: DiscardOptions = {}): Promise<Set<string> | null> {
   const userId = currentScope?.userId;
   const recorded = userId ? await unsyncedIdsForUser(userId) : new Set<string>();
-  if (!(await confirmUnsyncedDiscard("Signing out", sync, ask, { ...options, everything: true }))) return null;
+  if (!(await confirmUnsyncedDiscard("Signing out", sync, ask, { ...options, everything: true, notify: options.notify ?? notify }))) return null;
   const now = userId ? await unsyncedIdsForUser(userId) : new Set<string>();
   const added = [...now].filter((id) => !recorded.has(id)).length;
   if (added) {
