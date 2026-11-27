@@ -1,7 +1,7 @@
 /**
  * Drawings on the job and the cert pack (migration 034, W3), in the browser: a drawing carried over from the quote shows on the
  * worksheet with its revision, a newer revision replaces it, and a material certificate attached on the delivery note screen
- * stays with the job.
+ * stays with the job. A failed drawing metadata read blocks stale downloads and printing until retry.
  */
 import { expect, test } from "@playwright/test";
 
@@ -68,6 +68,75 @@ test("a drawing carried from the quote shows its revision on the worksheet; a ne
   await expect(again.getByText("bracket.png", { exact: true })).toHaveCount(0);
 
   await service.storage.from("quote-attachments").remove([quotePath]);
+});
+
+test("a failed drawing metadata refresh removes stale downloads and blocks both print routes until retry", async ({ page }) => {
+  const org = w.tenants.alpha.id;
+  const no = `J-DWG-FAIL-${tag()}`;
+  const service = adminClient();
+  const { data: jobs, error } = await service.from("jobs").insert([
+    { organization_id: org, job_no: no, customer: "Drawing Co", description: "Bracket" },
+    { organization_id: org, job_no: `J-DWG-EMPTY-${tag()}`, customer: "Drawing Co", description: "Empty drawing folder" },
+  ]).select("id, job_no");
+  expect(error).toBeNull();
+  const id = jobs!.find((job) => job.job_no === no)!.id;
+  const emptyId = jobs!.find((job) => job.job_no !== no)!.id;
+  const name = "bracket-current.png";
+  const path = `${org}/${id}/1700000000000-${name}`;
+  expect((await service.storage.from("job-drawings").upload(path, PNG, { contentType: "image/png" })).error).toBeNull();
+  expect((await service.from("job_files").insert({
+    organization_id: org, job_id: id, kind: "drawing", ref: "bracket", revision: "B",
+    file_name: name, storage_bucket: "job-drawings", storage_path: path,
+  })).error).toBeNull();
+
+  await signIn(page, w.tenants.alpha.users.workshop);
+  let metadataDown = false;
+  await page.route((url) => url.pathname.endsWith("/rest/v1/job_files") &&
+    url.searchParams.get("job_id") === `eq.${id}` && url.searchParams.get("kind") === "eq.drawing", async (route) => {
+    if (metadataDown) {
+      await route.fulfill({ status: 500, json: { message: "Drawing metadata unavailable" } });
+    } else {
+      await route.continue();
+    }
+  });
+
+  await page.goto("/jobs");
+  await page.getByRole("row").filter({ hasText: no }).getByRole("button", { name: "Worksheet" }).click();
+  const sheet = page.getByRole("dialog", { name: `Worksheet - ${no}` });
+  const download = sheet.getByRole("button", { name: "Download", exact: true });
+  await expect(download).toBeVisible();
+  await expect(sheet.getByRole("button", { name: "Save Worksheet" })).toBeEnabled();
+  expect((await service.from("jobs").update({ heat_cast_no: "THEIRS" }).eq("id", id)).error).toBeNull();
+  await sheet.getByLabel("Heat / Cast #").fill("MINE");
+  await sheet.getByRole("button", { name: "Save Worksheet" }).click();
+  const reload = sheet.getByRole("button", { name: "Load their version (discards yours)" });
+  await expect(reload).toBeVisible();
+
+  metadataDown = true;
+  await reload.click();
+  await expect(sheet.getByRole("alert").filter({ hasText: "Drawings unavailable" })).toBeVisible();
+  await expect(download).toHaveCount(0);
+  await expect(sheet.getByText(name, { exact: true })).toHaveCount(0);
+  await expect(sheet.getByText("No drawings uploaded yet.")).toHaveCount(0);
+
+  metadataDown = false;
+  await sheet.getByRole("button", { name: "Retry drawings" }).click();
+  await expect(download).toBeVisible();
+  await expect(sheet.getByText(name, { exact: true })).toBeVisible();
+
+  for (const route of [`/jobs/${id}/print`, `/jobs/print?ids=${id},${emptyId}`]) {
+    metadataDown = true;
+    await page.goto(route);
+    await expect(page.getByText(/^Drawings unavailable/)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Print Now" })).toBeDisabled();
+    await expect(page.getByText(no, { exact: false })).toHaveCount(0);
+    await expect(page.getByText(`${name} (Rev B)`, { exact: false })).toHaveCount(0);
+
+    metadataDown = false;
+    await page.getByRole("button", { name: "Retry", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Print Now" })).toBeEnabled();
+    await expect(page.getByText(`${name} (Rev B)`, { exact: false })).toBeVisible();
+  }
 });
 
 test("a certificate attached on the delivery note screen is in the job's cert pack", async ({ page }) => {

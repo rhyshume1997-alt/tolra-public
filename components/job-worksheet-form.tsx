@@ -1,6 +1,6 @@
 "use client";
 
-// Module 2 worksheet presentation: consumes the loaded row's edit check; server permissions and parent Jobs page stay unchanged.
+// Module 2 worksheet presentation: loads worksheet and drawing state for the given job. Server permissions and the parent Jobs page stay unchanged.
 
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -80,7 +80,9 @@ export function JobWorksheetForm({ job, onSaved, onDirtyChange }: {
   const { activeRole } = useUser();
   const { profile: company } = useCompanyProfile();
   const [machines, setMachines] = useState<string[]>([]);
-  const [drawings, setDrawings] = useState<DrawingFile[]>((job.drawings || []).map((name) => ({ name })));
+  const [drawings, setDrawings] = useState<DrawingFile[] | null>();
+  const [drawingAttempt, setDrawingAttempt] = useState(0);
+  const drawingRequest = useRef<AbortSignal | null>(null);
   /** The customer's PO carried from the quote (migration 067): part of the job pack, read-only here. */
   const [customerPos, setCustomerPos] = useState<CustomerPoFile[]>([]);
   useEffect(() => {
@@ -102,13 +104,31 @@ export function JobWorksheetForm({ job, onSaved, onDirtyChange }: {
   const jobRef = useRef(job);
 
   useEffect(() => {
+    const request = new AbortController();
+    drawingRequest.current = request.signal;
+    const currentJob = jobRef.current;
+    setDrawings(undefined);
+    setRevising(null);
+    setNewRevision("");
+    setNewRevisionFile(null);
+    if (!supabase) {
+      setDrawings((currentJob.drawings ?? []).map((name) => ({ name })));
+    } else {
+      void listDrawings(currentJob.id).then((stored) => {
+        if (!request.signal.aborted) setDrawings(stored);
+      });
+    }
+    return () => request.abort();
+  }, [job.id, attempt, drawingAttempt]);
+
+  useEffect(() => {
     let active = true;
     async function load() {
       setLoading(true);
       setLoadError(null);
       setEditJob(null);
-      const [loaded, names, stored, source] = await Promise.all([
-        loadWorksheet(jobRef.current), loadMachineNames(), listDrawings(jobRef.current.id),
+      const [loaded, names, source] = await Promise.all([
+        loadWorksheet(jobRef.current), loadMachineNames(),
         // Reads only; null (no prefill) when it can't be read, e.g. offline.
         supabase && !DEMO_MODE ? loadWorksheetPrefillSource(supabase, jobRef.current.id).catch(() => null) : Promise.resolve(null),
       ]);
@@ -131,7 +151,6 @@ export function JobWorksheetForm({ job, onSaved, onDirtyChange }: {
       setDemo(loaded.demo);
       setOfflineCopy(Boolean(loaded.offline));
       setMachines(names);
-      if (stored && !loaded.demo) setDrawings(stored);
       setLoading(false);
     }
     void load();
@@ -206,7 +225,7 @@ export function JobWorksheetForm({ job, onSaved, onDirtyChange }: {
       }
       try {
         const stored = await uploadDrawing(job.id, file);
-        setDrawings((current) => [...current, stored]);
+        setDrawings((current) => current && [...current, stored]);
         void auditEvent({ action: "UPLOAD_DRAWING", entityTable: "jobs", entityId: job.id, metadata: { file: stored.name } });
         toast.success(`${stored.name} uploaded`);
       } catch (error) {
@@ -248,7 +267,7 @@ export function JobWorksheetForm({ job, onSaved, onDirtyChange }: {
     if (!file.id || label.trim() === (file.revision ?? "")) return;
     try {
       await setDrawingRevision(file.id, label);
-      setDrawings((current) => current.map((item) => (item.id === file.id ? { ...item, revision: label.trim() || null } : item)));
+      setDrawings((current) => current?.map((item) => (item.id === file.id ? { ...item, revision: label.trim() || null } : item)) ?? current);
       await takeNewVersion();
       void auditEvent({ action: "UPDATE", entityTable: "jobs", entityId: job.id, metadata: { drawing: file.name, revision: label.trim() } });
       toast.success(`${file.name}: revision ${label.trim()}`);
@@ -264,7 +283,7 @@ export function JobWorksheetForm({ job, onSaved, onDirtyChange }: {
     }
     try {
       const done = await uploadNewRevision(revising, job.id, newRevisionFile, newRevision);
-      setDrawings((current) => current.map((item) => (item.id === revising.id ? done : item)));
+      setDrawings((current) => current?.map((item) => (item.id === revising.id ? done : item)) ?? current);
       await takeNewVersion();
       void auditEvent({ action: "UPLOAD_DRAWING", entityTable: "jobs", entityId: job.id, metadata: { file: done.name, revision: done.revision } });
       toast.success(`${done.name} is now revision ${done.revision}. A job that had been released goes back to awaiting inspection.`);
@@ -279,7 +298,9 @@ export function JobWorksheetForm({ job, onSaved, onDirtyChange }: {
   async function download(file: DrawingFile) {
     try {
       if (!file.path) throw new Error("This drawing is a demo entry with no stored file.");
-      window.open(await drawingUrl(file.path, file.name, file.bucket), "_blank", "noopener");
+      const request = drawingRequest.current;
+      const url = await drawingUrl(file.path, file.name, file.bucket);
+      if (request && !request.aborted) window.open(url, "_blank", "noopener");
     } catch (error) {
       toast.error(friendlyError(error, "Could not download drawing"));
     }
@@ -390,7 +411,12 @@ export function JobWorksheetForm({ job, onSaved, onDirtyChange }: {
       <div className="border border-black px-2 py-1.5">
         <div className="mb-1 flex items-center justify-between"><p className="text-[10px] font-bold uppercase">Drawings</p>{canEdit ? <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()}><Upload className="size-4" /> Upload</Button> : null}</div>
         <input ref={fileRef} type="file" multiple accept="application/pdf,image/png,image/jpeg,image/webp" className="hidden" onChange={(event) => void onUpload(event.target.files)} />
-        {drawings.length ? (
+        {drawings === undefined ? <p className="text-xs text-slate-500">Loading drawings...</p> : drawings === null ? (
+          <div role="alert" className="flex flex-wrap items-center justify-between gap-2 text-xs text-red-800">
+            <span>Drawings unavailable. Check your connection and try again.</span>
+            <Button type="button" size="sm" variant="outline" onClick={() => setDrawingAttempt((n) => n + 1)}>Retry drawings</Button>
+          </div>
+        ) : drawings.length ? (
           <ul className="space-y-1">
             {drawings.map((file) => (
               <li key={file.id ?? file.path ?? file.name} className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs">
