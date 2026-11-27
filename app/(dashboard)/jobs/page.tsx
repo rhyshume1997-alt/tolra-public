@@ -435,14 +435,19 @@ export default function JobsPage() {
   }, [loadLive, refreshPending, confirmQueuedFinishes]);
   const loadMachinesList = useCallback(async () => {
     if (!supabase) { setMachinesLoaded(true); return; }
-    const { data, error } = await supabase.from("machines").select("id, name, active").order("name");
-    if (error) { setMachinesLoadError(true); setMachinesLoaded(true); return; }
-    setMachinesLoadError(false);
-    setMachinesLoaded(true);
-    const list = (data ?? []).filter((m) => m.active !== false).map((m) => ({ id: String(m.id), name: String(m.name) }));
-    setMachinesList(list);
-    // Kept on the device, so an offline Start can still name the machine.
-    void saveOfflineSnapshot("machines", list);
+    try {
+      const { data, error } = await supabase.from("machines").select("id, name, active").order("name");
+      if (error) { setMachinesLoadError(true); setMachinesLoaded(true); return; }
+      setMachinesLoadError(false);
+      setMachinesLoaded(true);
+      const list = (data ?? []).filter((m) => m.active !== false).map((m) => ({ id: String(m.id), name: String(m.name) }));
+      setMachinesList(list);
+      // Kept on the device, so an offline Start can still name the machine.
+      void saveOfflineSnapshot("machines", list);
+    } catch {
+      setMachinesLoadError(true);
+      setMachinesLoaded(true);
+    }
   }, []);
   // A related-job link was followed: that row is scrolled to and highlighted for a moment.
   const [highlightId, setHighlightId] = useState<string | null>(null);
