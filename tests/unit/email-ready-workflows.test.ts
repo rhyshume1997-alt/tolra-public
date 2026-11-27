@@ -35,9 +35,15 @@ function query(table: string) {
 }
 const db = {
   from: query,
-  async rpc(fn: string, p: any) {
+  rpc(fn: string, p: any) {
+    if (fn !== "customer_credit") return db.runRpc(fn, p);
     state.calls.push(fn);
-    if (fn === "customer_credit") return { data: [{ customer: "Practice Customer", credit: state.credit }], error: null };
+    const credits = state.tables.customer_credit ?? [{ customer: "Practice Customer", credit: state.credit }];
+    const range = async (from: number, to: number) => ({ data: credits.slice(from, Math.min(to + 1, from + 1_000)), error: null });
+    return Object.assign(range(0, 999), { order: () => ({ range }) });
+  },
+  async runRpc(fn: string, p: any) {
+    state.calls.push(fn);
     if (fn === "reserve_company_email") {
       expect(p.p_org).toBe(state.org);
       const prior = state.ledger.get(p.p_key);
@@ -205,6 +211,15 @@ describe("statement -> existing Approvals -> configured provider (mocks only)", 
     const out = await sendCompanyEmail({ organizationId: A, userId: null, kind: "invoice_reminder", to: ["buyer@customer.test"], subject: "Reminder", text: "Please review", recordType: "invoice", recordId: I }, { db: db as never });
     expect(out).toMatchObject({ ok: true, mode: "drafted" }); expect(state.sends).toHaveLength(0);
   });
+  it("includes credit when the statement customer is past the first RPC page", async () => {
+    state.tables.customer_credit = [
+      ...Array.from({ length: 1_000 }, (_, index) => ({ customer: `Customer ${index}`, credit: 10 })),
+      { customer: "Practice Customer", credit: 15 },
+    ];
+    const statement = await customerStatement(db as never, A, C);
+    expect(statement.text).toContain("Unallocated credit (shown separately): £15.00");
+  });
+
   it("checks a statement's fingerprint again after customer address changes", async () => {
     const first = await customerStatement(db as never, A, C); state.tables.customers[0].email = "changed@customer.test";
     expect((await customerStatement(db as never, A, C)).recordId).not.toBe(first.recordId);

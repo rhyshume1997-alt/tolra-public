@@ -1,4 +1,5 @@
 import "server-only";
+// Builds a statement from the selected company and customer. Existing credit and balance rules govern the amounts.
 import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchAll } from "@/lib/fetch-all";
@@ -29,8 +30,12 @@ export async function customerStatement(db: SupabaseClient, org: string, custome
     if (!row.invoice_ref) throw new Error("An outstanding invoice has no number. Nothing was drafted.");
     items.push({ id: String(row.id), reference: String(row.invoice_ref), due: String(row.due_date ?? "No due date"), pence });
   }
-  const { data: credits, error: creditError } = await db.rpc("customer_credit");
-  if (creditError || !Array.isArray(credits)) throw new Error("Customer credits could not be checked. Nothing was drafted.");
+  const { rows: credits, truncated: creditTruncated } = await fetchAll<{ customer?: string; credit?: number | string | null }>(async (from, to) => {
+    const { data, error } = await db.rpc("customer_credit").order("customer").range(from, to);
+    if (error || !Array.isArray(data)) throw new Error("Customer credits could not be checked. Nothing was drafted.");
+    return { data, error: null };
+  });
+  if (creditTruncated) throw new Error("Too many customer credit records to verify a complete statement. Nothing was drafted.");
   const available = credits.filter((r: { customer?: string }) => r.customer?.trim().toLowerCase() === String(customer.name).trim().toLowerCase());
   if (available.length > 1) throw new Error("Customer credit is ambiguous. Nothing was drafted.");
   const credit = Number(available[0]?.credit ?? 0);

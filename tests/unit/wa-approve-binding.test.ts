@@ -41,9 +41,12 @@ const db = {
     }
     return q;
   },
-  async rpc(fn: string, args: Record<string, unknown>) {
+  rpc(fn: string, args: Record<string, unknown>) {
     rpcCalls.push({ fn, args });
-    if (fn === "customer_credit") return { data: [], error: null };
+    if (fn === "customer_credit") return { order: () => ({ range: async () => ({ data: [], error: null }) }) };
+    return db.runRpc(fn);
+  },
+  async runRpc(fn: string) {
     if (fn === "write_audit") { if (auditMode === "throw") throw new Error("audit down"); return { data: null, error: auditMode === "error" ? { code: "42501" } : null }; }
     throw new Error(`unexpected rpc ${fn}`);
   },
