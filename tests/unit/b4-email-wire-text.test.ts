@@ -33,6 +33,7 @@ beforeEach(() => {
     chase_pauses: [], email_schedules: [], user_profiles: [],
   }), { rpc: vi.fn(async (name: string, args: Record<string, unknown>) => {
     if (name === "reserve_company_email") return { data: { send_id: "send", history_id: "sent-history", status: "sending", replay: false }, error: null };
+    if (name === "reserve_approval_email") return { data: { send_id: "send", history_id: "sent-history", status: "sending", replay: false, key: args.p_key }, error: null };
     if (name === "reserve_job_email") return { data: { history_id: "sent-history", status: "sending", replay: false }, error: null };
     if (name === "chase_record_sent") return { data: { recorded: true }, error: null };
     void args; return { data: null, error: null };
@@ -65,8 +66,9 @@ describe.each(["microsoft", "resend"])("%s wire payload", provider => {
         expect(h.resendSend.mock.calls[0][0].html).toBeUndefined();
         expect(graph).not.toHaveBeenCalled();
       }
-      const reserved = db.rpc.mock.calls.find(c => ["reserve_company_email", "reserve_job_email"].includes(String(c[0])))!;
+      const reserved = db.rpc.mock.calls.find(c => ["reserve_company_email", "reserve_job_email", "reserve_approval_email"].includes(String(c[0])))!;
       expect(reserved[1]).toMatchObject({ p_subject: SUBJECT, p_body: body });
+      if (path.name === "chase") expect(reserved).toEqual(["reserve_approval_email", expect.objectContaining({ p_draft: DRAFT })]);
     });
   });
 });

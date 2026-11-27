@@ -67,7 +67,7 @@ describe("release 170", () => {
     ]);
   });
   it("is phase 170 after 167 in the plan, with its marker in release preflight, and is no longer a loose proposal", () => {
-    expect(plan.phases.at(-1)).toEqual({ number: 170, after: "167", source: "supabase/proposals/p170_worksheet_custom.sql", release: "supabase/release/170_worksheet_custom.release.sql", rollback: "supabase/release/170_worksheet_custom.rollback.sql", verify: "supabase/verify/worksheet_custom_170.sql", marker: "post-144 marker 170 worksheet_custom" });
+    expect(plan.phases.find((phase) => phase.number === 170)).toEqual({ number: 170, after: "167", source: "supabase/proposals/p170_worksheet_custom.sql", release: "supabase/release/170_worksheet_custom.release.sql", rollback: "supabase/release/170_worksheet_custom.rollback.sql", verify: "supabase/verify/worksheet_custom_170.sql", marker: "post-144 marker 170 worksheet_custom" });
     expect(plan.other_proposals.map((p) => p.source)).not.toContain("supabase/proposals/p170_worksheet_custom.sql");
     const preflight = read("supabase/verify/release_preflight.sql");
     expect(preflight).toContain("'post-144 marker 170 worksheet_custom'");
