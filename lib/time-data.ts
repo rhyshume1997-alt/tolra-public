@@ -9,6 +9,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { OutboxEntry } from "@/lib/offline/outbox";
+import { fetchAll } from "@/lib/fetch-all";
 import { type AttendanceEvent, type LabourSession, type TimeSettings, EDGE_MARGIN_HOURS, addDays, localDateOf, settingsFromRow } from "@/lib/time-sheet";
 
 export type JobInfo = { id: string; job_no: string; customer: string | null; description: string | null; finished_at: string | null };
@@ -72,8 +73,15 @@ export async function loadTimeData(client: Client, opts: { userId: string | null
 
 /** Jobs a person can start time on: not finished, newest first (the caller's assigned jobs first). */
 export async function loadStartableJobs(client: Client, userId: string | null): Promise<JobInfo[]> {
-  const list = await rows<JobInfo & { assigned_to: string | null }>(client.from("jobs").select("id, job_no, customer, description, finished_at, assigned_to").is("finished_at", null).order("created_at", { ascending: false }).limit(300));
-  return [...list.filter((j) => userId && j.assigned_to === userId), ...list.filter((j) => !userId || j.assigned_to !== userId)];
+  const { rows: list, truncated } = await fetchAll<JobInfo & { assigned_to: string | null }>(async (from, to) => {
+    const { data, error } = await client.from("jobs").select("id, job_no, customer, description, finished_at, assigned_to")
+      .is("finished_at", null).order("created_at", { ascending: false }).order("id").range(from, to);
+    if (error) throw new TimeDataError(error);
+    return { data, error: null };
+  });
+  if (truncated) throw new TimeDataError({ message: "The complete list of startable jobs exceeds the supported read limit." });
+  if (!userId) return list;
+  return [...list.filter((job) => job.assigned_to === userId), ...list.filter((job) => job.assigned_to !== userId)];
 }
 
 /**
