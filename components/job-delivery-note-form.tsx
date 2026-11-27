@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { auditEvent } from "@/lib/audit";
 import { toDateInput } from "@/lib/dates";
 import { friendlyError } from "@/lib/friendly-error";
+import { jobCreateErrorMessage } from "@/lib/job-create-error";
 import { JOB_DELIVERY_NOTE_RPC, buildJobDeliveryNoteArgs, customerForJob } from "@/lib/job-delivery-note-no-order";
 import { supabase } from "@/lib/supabase";
 
@@ -61,7 +62,7 @@ export function JobDeliveryNoteForm({ job, onCreated }: { job: { id: string; job
       toast.success(`Delivery note ${made.dn_number} created`);
       onCreated();
     } catch (err) {
-      setError(friendlyError(err, "Couldn't create the delivery note. Nothing was saved."));
+      setError(jobCreateErrorMessage(err, "delivery note"));
     } finally {
       inFlight.current = false;
       setSaving(false);

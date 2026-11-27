@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { fmtDateTime } from "@/lib/dates";
 import { cleanName, UNKNOWN } from "@/lib/people";
 import { friendlyError } from "@/lib/friendly-error";
+import { jobCreateErrorMessage } from "@/lib/job-create-error";
 import { DISPOSITION_LABELS, type Disposition, type FailureDetails, INSPECTION_LABELS, type InspectionContext, type InspectionRecord, type InspectionResult, loadInspectionContext, loadInspections, recordInspection } from "@/lib/inspection";
 import { drawingUrl } from "@/lib/job-worksheet";
 import { supabase } from "@/lib/supabase";
@@ -134,7 +135,7 @@ export function InspectionDialog({ job, isAdmin, onClose, onRecorded }: Props) {
         disposition: result === "fail" ? disposition : undefined, overrideReason: result !== "fail" && ownWork ? override.trim() : undefined, me: context.me });
       onRecorded(done);
     } catch (err) {
-      setError(friendlyError(err, "Couldn't record the inspection. Nothing was saved."));
+      setError(jobCreateErrorMessage(err, "inspection"));
     } finally {
       setBusy(false);
     }
