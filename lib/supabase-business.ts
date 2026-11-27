@@ -1,7 +1,10 @@
 "use client";
 
+// Business records use the signed-in session and existing company checks.
+
 import { CONFIRMED_USER_REUSE_MS, confirmedUser } from "@/lib/confirmed-user";
 import { missingDbObject } from "@/lib/db-features";
+import { fetchAll } from "@/lib/fetch-all";
 import { assertPageCompany } from "@/lib/page-company";
 import { supabase } from "@/lib/supabase";
 import { isSupplierStatus, type SupplierStatus } from "@/lib/supplier-status";
@@ -83,12 +86,22 @@ export async function getCurrentUserAndOrganization(): Promise<{ userId: string;
 export async function fetchSuppliersFromSupabase() {
   if (!supabase) throw new Error("Supabase is not configured.");
 
-  const withStatus = await supabase.from("suppliers").select(SUPPLIER_COLUMNS_082).order("name");
-  if (!withStatus.error) return (withStatus.data || []).map((row) => toSupplierRecord(row as SupplierDbRow));
-  if (!missingDbObject(withStatus.error)) throw withStatus.error;
-  const { data, error } = await supabase.from("suppliers").select(SUPPLIER_COLUMNS).order("name");
-  if (error) throw error;
-  return (data || []).map((row) => toSupplierRecord(row as SupplierDbRow));
+  const client = supabase;
+  async function load(columns: string): Promise<SupplierRecord[]> {
+    const { rows, truncated } = await fetchAll<SupplierDbRow>(async (from, to) => {
+      const { data, error } = await client.from("suppliers").select(columns).order("name").order("id").range(from, to);
+      return { data: data as unknown as SupplierDbRow[] | null, error };
+    });
+    if (truncated) throw new Error("The complete supplier directory exceeds the supported read limit.");
+    return rows.map(toSupplierRecord);
+  }
+
+  try {
+    return await load(SUPPLIER_COLUMNS_082);
+  } catch (error) {
+    if (!missingDbObject(error as { code?: string; message?: string })) throw error;
+    return load(SUPPLIER_COLUMNS);
+  }
 }
 
 export async function saveSupplierToSupabase(supplier: SupplierRecord) {
