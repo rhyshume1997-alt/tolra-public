@@ -244,6 +244,14 @@
       "disposition": "number 162 allocated (Rhys); not yet a numbered phase (no rollback, verify or preflight marker file): tier allowance (small 100, medium 400, large 1500 requests per UTC month) over 150's reserve functions; release 161 belongs to PR #536; not applied; AI stays off"
     },
     {
+      "source": "supabase/proposals/p172_pricing_costing_settings.sql",
+      "disposition": "proposed release 172 (Pricing and profit stage A1, the Costing settings visible to one designated admin only, owner-approved 26 Nov); not yet a numbered phase (no release, verify or preflight marker file); rehearsed on the scratch database only (p172_pricing_costing_settings.rehearsal.md); not applied anywhere hosted; the app treats the missing table as 'not available yet'"
+    },
+    {
+      "source": "supabase/proposals/p172_pricing_costing_settings.rollback.sql",
+      "disposition": "rollback only for p172; never forward release input; refuses while any costing figure exists"
+    },
+    {
       "source": "supabase/proposals/builder2_atomic_settings.rollback.sql",
       "disposition": "rollback only; never forward release input"
     }

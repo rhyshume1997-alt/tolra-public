@@ -3,7 +3,7 @@
  * The tour card (components/tooly/tour/admin-tour.tsx) for the three views. Proves, with the real card and faked sign-in, company settings,
  * route and done flag: the tour shows by default and nothing shows only when the server's emergency switch is off (company markers are not read); admin, office and workshop each
  * get their own first step and step count; a viewer and a person who has already finished see nothing; the card only offers Back, Next, the note
- * toggle and Skip tour; the note opens on request; a person who has seen it gets only a Replay button, on the Dashboard; and it never presses anything on the page behind it (a button on the page is not clicked while the tour moves through its steps).
+ * toggle and Skip tour; the note opens on request; a person who has seen it can replay from Account Settings on any page (tour-replay.ts); and it never presses anything on the page behind it (a button on the page is not clicked while the tour moves through its steps).
  * Must not change: this file proves; the plan and switch rules are proved in tooly-role-tours.test.ts and tooly-tour.test.ts.
  */
 import { act, createElement } from "react";
@@ -26,6 +26,7 @@ vi.mock("@/lib/view-mode", () => ({ useIsWide: () => true }));
 vi.mock("@/lib/supabase", () => ({ supabase: {} }));
 vi.mock("@/lib/auth/tour-flag", () => ({ isTourDone: () => state.done, markTourDone: (...args: unknown[]) => markDone(...args) }));
 
+import { requestTourReplay, tourReplayAvailable } from "@/components/tooly/tour/tour-replay";
 import { AdminTour } from "@/components/tooly/tour/admin-tour";
 import { TOOLY_GAME_TOUR_ON_MARKER, TOOLY_OFFICE_TOUR_ON_MARKER, TOOLY_TOUR_ON_MARKER, TOOLY_WORKSHOP_TOUR_ON_MARKER } from "@/components/tooly/tour/tour-switch";
 
@@ -115,37 +116,49 @@ describe("who sees which tour", () => {
 });
 
 describe("seen once, then replay", () => {
-  it("a person who has seen it gets a Replay button on the Dashboard only, and replay starts at step 1", async () => {
+  it("a person who has seen it can replay from any page; no hidden button exists; replay starts at step 1", async () => {
     state.hiddenNav = [TOOLY_OFFICE_TOUR_ON_MARKER];
     state.done = true;
+    for (const path of ["/dashboard", "/jobs", "/settings"]) {
+      state.path = path;
+      await show(true);
+      expect(card(), path).toBeNull();
+      expect(host.querySelector('[data-testid="tooly-tour-replay"]')).toBeNull();
+      expect(tourReplayAvailable(), path).toBe(true);
+    }
+    state.path = "/jobs";
     await show(true);
-    expect(card()).toBeNull();
-    expect(host.querySelector('[data-testid="tooly-tour-replay"]')).not.toBeNull();
-    await press("tooly-tour-replay");
+    await act(async () => { expect(requestTourReplay()).toBe(true); });
     expect(count()).toBe("Step 1 of 17");
     await press("tooly-tour-next");
     await press("tooly-tour-stop");
     expect(card()).toBeNull();
     expect(markDone).toHaveBeenCalledTimes(1);
   });
-  it("no Replay button on another page, with the switches off, or for a viewer", async () => {
+  it("no replay with the switches off or for a viewer, and nothing happens when asked", async () => {
     state.hiddenNav = [TOOLY_OFFICE_TOUR_ON_MARKER];
     state.done = true;
-    state.path = "/jobs";
-    await show(true);
-    expect(host.querySelector('[data-testid="tooly-tour-replay"]')).toBeNull();
-    state.path = "/dashboard";
     await show(false);
-    expect(host.querySelector('[data-testid="tooly-tour-replay"]')).toBeNull();
+    expect(tourReplayAvailable()).toBe(false);
+    expect(requestTourReplay()).toBe(false);
+    expect(card()).toBeNull();
     state.role = "viewer";
     await show(true);
-    expect(host.querySelector('[data-testid="tooly-tour-replay"]')).toBeNull();
+    expect(tourReplayAvailable()).toBe(false);
   });
   it("opens by itself for a person who has not seen it, without a Replay button", async () => {
     state.hiddenNav = [TOOLY_OFFICE_TOUR_ON_MARKER];
     await show(true);
     expect(card()).not.toBeNull();
-    expect(host.querySelector('[data-testid="tooly-tour-replay"]')).toBeNull();
+    expect(tourReplayAvailable()).toBe(false);
+  });
+  it("the sidebar has no hidden-button click path and the replay is offered in Account Settings only", async () => {
+    const { readFileSync } = await import("node:fs");
+    const side = readFileSync("components/sidebar.tsx", "utf8");
+    expect(side).not.toMatch(/tooly-tour-replay|querySelector/);
+    expect(side).toMatch(/requestTourReplay\(\)/);
+    expect(side.match(/>Replay tour</g)?.length).toBe(1);
+    expect(readFileSync("components/tooly/tour/admin-tour.tsx", "utf8")).not.toMatch(/data-testid="tooly-tour-replay"/);
   });
 });
 
@@ -250,7 +263,7 @@ describe("the game look", () => {
     state.hiddenNav = [TOOLY_OFFICE_TOUR_ON_MARKER, TOOLY_GAME_TOUR_ON_MARKER];
     state.done = true;
     await show(true);
-    await press("tooly-tour-replay");
+    await act(async () => { requestTourReplay(); });
     expect(card()?.getAttribute("data-mode")).toBe("game");
     expect(count()).toBe("Step 1 of 17");
   });
