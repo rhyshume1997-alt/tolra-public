@@ -8,23 +8,25 @@
  * the done flag. It is on by default for every company (tour-switch.ts: only TOOLY_TOUR_DISABLED="true" turns it off; no company marker is
  * read); it shows the tour for the person's view (admin, office or workshop); a viewer never sees one. It opens by itself until the person has seen it once (the done flag, saved per person), and each step has
  * a note the person can open ("What happens here and how it gets produced", tour-notes.ts). "Skip tour" closes it and saves the same
- * flag. Once seen, a hidden replay trigger exists on the Dashboard only (the visible "Replay tour" button lives in the sidebar's Account Settings dialog and clicks it, so nothing floats over the page); replaying starts at step 1 and saves the flag again.
+ * flag. Once seen, a replay is offered through tour-replay.ts (the visible "Replay tour" button lives in the sidebar's Account Settings dialog and works on any page; this host is mounted on every dashboard route, so nothing floats over the page and no hidden button exists); replaying starts at step 1 and saves the flag again.
  * It POINTS only: the ring ignores the mouse, no app button is ever pressed, no dialog is opened, no form is touched. Moving to the
  * next page is plain navigation. It works with AI off and calls no API.
  * Game look: when the company's third marker (tooly-game-tour:on) is also on, the same steps, notes, Skip and Replay are shown by
  * tour-stage.tsx (full-screen dim, spotlight, Tooly and a speech bubble) instead of the small card; the target is scrolled into view
  * (scrolling only). Without that marker the small card is used, unchanged.
  * Must not change: the "points, never clicks" rule, the off-by-default gate (tour-switch.ts), or that all 23 steps are mandatory
- * (Back, Next, the note toggle and Skip tour are offered; there is no skipping a single step). The Replay button lives here, never in
- * the float, the sidebar or the middleware.
+ * (Back, Next, the note toggle and Skip tour are offered; there is no skipping a single step). The Replay action's only entry is Account Settings,
+ * never the float, a sidebar/top bar button next to Log out, or the middleware.
  */
 import { useEffect, useMemo, useState } from "react";
+import { readTourResume, writeTourResume } from "@/components/tooly/tour/tour-resume";
 import { usePathname, useRouter } from "next/navigation";
 
 import { type PlannedStep, planTour } from "@/components/tooly/tour/tour-plan";
 import { tourNoteFor } from "@/components/tooly/tour/tour-notes";
 import { poseForStep } from "@/components/tooly/tour/tour-poses";
 import { TourStage } from "@/components/tooly/tour/tour-stage";
+import { setTourReplayHost } from "@/components/tooly/tour/tour-replay";
 import { toolyGameTourOn, toolyTourEnabledFor } from "@/components/tooly/tour/tour-switch";
 import type { TourTarget } from "@/components/tooly/tour/tour-steps";
 import { isTourDone, markTourDone } from "@/lib/auth/tour-flag";
@@ -92,9 +94,11 @@ export function AdminTour({ envOn }: { envOn: boolean }) {
   const { user, activeRole, hiddenSections } = useUser();
   const { hiddenNav } = useOrgSettings();
   const wide = useIsWide();
-  const [index, setIndex] = useState(0);
+  // Kept across a full page load (the Settings CSP boundary reloads the page): tour-resume.ts.
+  const [resume] = useState(() => readTourResume());
+  const [index, setIndex] = useState(resume?.index ?? 0);
   const [closed, setClosed] = useState(false);
-  const [replay, setReplay] = useState(false);
+  const [replay, setReplay] = useState(resume?.replay ?? false);
   const [noteOpen, setNoteOpen] = useState(false);
 
   const enabled = toolyTourEnabledFor({ envOn, hiddenNav, role: activeRole });
@@ -113,16 +117,24 @@ export function AdminTour({ envOn }: { envOn: boolean }) {
     if (active && planned && planned.route !== pathname) router.push(planned.route);
   }, [active, planned, pathname, router]);
 
+  // Only a running tour is remembered; closing it forgets it. Nothing is written before the person is known (active is false then), so a saved step survives until used.
+  useEffect(() => {
+    if (active) writeTourResume({ index, replay });
+    else if (closed || (!!user && done && !replay)) writeTourResume(null);
+  }, [active, closed, done, index, replay, user]);
+
   // The note starts closed on every step.
   useEffect(() => { setNoteOpen(false); }, [index]);
 
-  const startReplay = () => { setIndex(0); setNoteOpen(false); setClosed(false); setReplay(true); };
+  // A replay is offered on every page under the same rules as before (switch on, seen once, a plan for the role); Account Settings starts it.
+  const canReplay = enabled && done && !active && plan.length > 0;
+  useEffect(() => {
+    if (!canReplay) return;
+    const start = () => { setIndex(0); setNoteOpen(false); setClosed(false); setReplay(true); };
+    setTourReplayHost(start);
+    return () => setTourReplayHost(null);
+  }, [canReplay]);
 
-  if (enabled && done && !active && plan.length > 0 && pathname === "/dashboard") {
-    return (
-      <button type="button" onClick={startReplay} className="sr-only print:hidden" tabIndex={-1} aria-hidden="true" data-testid="tooly-tour-replay">Replay tour</button>
-    );
-  }
   if (!active || !planned) return null;
   const note = tourNoteFor(planned.step.id);
 
