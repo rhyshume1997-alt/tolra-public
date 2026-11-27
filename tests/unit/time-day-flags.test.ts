@@ -13,6 +13,7 @@ import {
   DAY_FLAGS_LOADING, type DayFlagsLoadState, NO_FLAGS, type SavedDayFlags, createDayFlagsLoader, databaseHasDayFlags, dayFlagsEditable,
   effectiveDayFlags, flagTotals, flagTotalsSnapshot, flagsShort, loadDayFlags, resetDayFlagsCache, saveDayFlags, suggestDayFlags, weekDayFlags,
 } from "@/lib/time-day-flags";
+import { MAX_LIST_ROWS } from "@/lib/fetch-all";
 import { TimeDataError } from "@/lib/time-data";
 import { type AttendanceEvent, DEFAULT_TIME_SETTINGS, approvalSnapshot, dayTotals, localInstant, weekTotals } from "@/lib/time-sheet";
 import { loadWeek } from "@/lib/time-week";
@@ -277,9 +278,49 @@ describe("before 074 is applied", () => {
     const methods: string[] = [];
     expect(await loadDayFlags(clientWithout074(methods), { userId: "u", from: "2026-10-19", to: "2026-10-25" })).toEqual({ present: false, rows: [] });
     expect(methods).toEqual(["GET"]);
-    const failing = { from: () => { const chain = { select: () => chain, gte: () => chain, lte: () => chain, eq: () => chain, order: () => chain, limit: async () => ({ data: null, error: { code: "42501", message: "permission denied for table time_day_flags" } }) }; return chain; } };
+    const failing = { from: () => { const chain = { select: () => chain, gte: () => chain, lte: () => chain, eq: () => chain, order: () => chain, range: async () => ({ data: null, error: { code: "42501", message: "permission denied for table time_day_flags" } }) }; return chain; } };
     const err = await loadDayFlags(failing as never, { userId: null, from: "2026-10-19", to: "2026-10-25" }).catch((e) => e);
     expect(err).toBeInstanceOf(TimeDataError);
+  });
+
+  it("reads saved ticks past the API cap, including rows with the same day", async () => {
+    const rows = Array.from({ length: 1_001 }, (_, index) => ({
+      ...saved("2026-10-19", { overtime: index === 1000 }),
+      id: String(index).padStart(4, "0"),
+      user_id: `user-${index}`,
+    }));
+    const offsets: number[] = [];
+    const client = createClient("http://127.0.0.1:54321", "test-key", {
+      global: { fetch: async (input) => {
+        const url = new URL(String(input));
+        const offset = Number(url.searchParams.get("offset") ?? 0);
+        offsets.push(offset);
+        expect(url.searchParams.get("order")).toBe("day.asc,id.asc");
+        return Response.json(rows.slice(offset, offset + 1_000));
+      } },
+    });
+    const flags = await loadDayFlags(client, { userId: null, from: "2026-10-19", to: "2026-10-25" });
+    expect(flags.present).toBe(true);
+    expect(flags.rows).toHaveLength(1_001);
+    expect(flags.rows.at(-1)).toMatchObject({ user_id: "user-1000", overtime: true });
+    expect(offsets).toEqual([0, 1000, 1001]);
+  });
+
+  it("refuses to return partial ticks when the safety limit is reached", async () => {
+    const client = createClient("http://127.0.0.1:54321", "test-key", {
+      global: { fetch: async (input) => {
+        const url = new URL(String(input));
+        const offset = Number(url.searchParams.get("offset") ?? 0);
+        const limit = Number(url.searchParams.get("limit"));
+        return Response.json(Array.from({ length: Math.min(limit, MAX_LIST_ROWS - offset) }, (_, index) => ({
+          ...saved("2026-10-19", { overtime: true }),
+          id: String(offset + index),
+          user_id: `user-${offset + index}`,
+        })));
+      } },
+    });
+    await expect(loadDayFlags(client, { userId: null, from: "2026-10-19", to: "2026-10-25" }))
+      .rejects.toThrow("Too many saved day flags");
   });
 
   it("the weekly review loads as before: no day ticks, no error", async () => {

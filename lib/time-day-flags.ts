@@ -25,6 +25,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { fmtWeekdayDay } from "@/lib/dates";
+import { fetchAll } from "@/lib/fetch-all";
 import { featurePresent, missingDbObject } from "@/lib/time-features";
 import { TimeDataError } from "@/lib/time-data";
 import { type DayTotals, type WeekTotals, roundMinutes, weekdayOf } from "@/lib/time-sheet";
@@ -196,21 +197,29 @@ export function resetDayFlagsCache() {
   pending = null;
 }
 
-const COLUMNS = "user_id, day, overtime, saturday, sunday, bank_holiday, updated_by, updated_at";
+const COLUMNS = "id, user_id, day, overtime, saturday, sunday, bank_holiday, updated_by, updated_at";
 
 /**
  * Saved ticks for days `from` to `to` (local dates, inclusive) and one person (null: everyone the caller may see). Before 074 is
- * applied: present false and no rows (never an error page). Any other failure is thrown like the other time reads.
+ * applied: present false and no rows (never an error page). A failed or incomplete read cannot supply weekly totals.
  */
 export async function loadDayFlags(client: Pick<SupabaseClient, "from">, opts: { userId: string | null; from: string; to: string }): Promise<{ present: boolean; rows: SavedDayFlags[] }> {
-  let query = client.from("time_day_flags").select(COLUMNS).gte("day", opts.from).lte("day", opts.to);
-  if (opts.userId) query = query.eq("user_id", opts.userId);
-  const { data, error } = await query.order("day").limit(5000);
-  if (error) {
-    if (missingDbObject(error)) return { present: false, rows: [] };
-    throw new TimeDataError(error);
-  }
-  return { present: true, rows: (data ?? []) as SavedDayFlags[] };
+  let present = true;
+  const { rows, truncated } = await fetchAll<SavedDayFlags & { id: string }>(async (from, to) => {
+    let query = client.from("time_day_flags").select(COLUMNS).gte("day", opts.from).lte("day", opts.to);
+    if (opts.userId) query = query.eq("user_id", opts.userId);
+    const result = await query.order("day").order("id").range(from, to);
+    if (result.error) {
+      if (from === 0 && missingDbObject(result.error)) {
+        present = false;
+        return { data: [], error: null };
+      }
+      throw new TimeDataError(result.error);
+    }
+    return result;
+  });
+  if (truncated) throw new TimeDataError({ message: "Too many saved day flags to load the complete week." });
+  return { present, rows };
 }
 
 /** Saves one day's four ticks (online only; the key makes a retry safe). Resolves with the stored row. */
