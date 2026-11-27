@@ -254,6 +254,10 @@
     {
       "source": "supabase/proposals/builder2_atomic_settings.rollback.sql",
       "disposition": "rollback only; never forward release input"
+    },
+    {
+      "source": "supabase/proposals/p174_create_idempotency.sql",
+      "disposition": "CR-010/011/012/013/020 proposed release 174 (renumbered from 173 to avoid collision with #667; forward-only creation idempotency for quotes, invoices, sales orders, purchase orders, and jobs); release, rollback, and verify files shipped; pending review before apply"
     }
   ]
 }
