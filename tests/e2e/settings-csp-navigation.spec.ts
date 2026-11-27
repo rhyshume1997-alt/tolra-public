@@ -25,13 +25,13 @@ async function documentCspAfter(page: Page, path: string, action: () => Promise<
 
 /**
  * What the document the person is on actually allows: does a data: fetch work, does a blob: iframe load. A probe that hits a document being replaced
- * ("Execution context was destroyed") or one that is not on `path` yet answers null, so a poll simply tries again.
+ * ("Execution context was destroyed") or one that is not on `path` yet answers { waiting: why, with the URL }, so a poll tries again and a failure says where the page was.
  */
-async function behaviourOn(page: Page, path: string): Promise<{ dataFetchAllowed: boolean; blobFrameAllowed: boolean } | null> {
+async function behaviourOn(page: Page, path: string): Promise<{ dataFetchAllowed: boolean; blobFrameAllowed: boolean } | { waiting: string }> {
   try {
-    if (new URL(page.url()).pathname !== path) return null;
+    if (new URL(page.url()).pathname !== path) return { waiting: `on ${page.url()}, wanted ${path}` };
     return await page.evaluate(async () => {
-      if (document.readyState !== "complete") return null;
+      if (document.readyState !== "complete") return { waiting: `readyState ${document.readyState}` };
       const violations: string[] = [];
       const onViolation = (e: SecurityPolicyViolationEvent) => violations.push(e.violatedDirective);
       document.addEventListener("securitypolicyviolation", onViolation);
@@ -45,7 +45,7 @@ async function behaviourOn(page: Page, path: string): Promise<{ dataFetchAllowed
       return { dataFetchAllowed, blobFrameAllowed: !violations.some((v) => /^(frame-src|child-src|default-src)/.test(v)) };
     });
   } catch {
-    return null; // the document was replaced while probing (the boundary's reload): try again
+    return { waiting: `document replaced while probing, on ${page.url()}` }; // the boundary's reload: try again
   }
 }
 /**
@@ -92,6 +92,9 @@ test("browser Back and Forward across Settings keep each document's own policy",
   await signIn(page, world().tenants.alpha.users.admin);
   expectSettingsPolicy(await documentCspAfter(page, "/settings", () => page.getByRole("link", { name: "Settings", exact: true }).first().click()));
   expectGlobalPolicy(await documentCspAfter(page, "/jobs", () => page.getByRole("link", { name: "Job Board" }).first().click()));
+  // Settle on /jobs first: the boundary's reload follows the client navigation by a moment, and a history move made while it is in flight is superseded by it
+  // and lost. (A person cannot press Back in that fraction of a second; this is a limit of the test's speed, not of the app.)
+  await expectBehaviour(page, "/jobs", false);
   // A history navigation is not always a network document request (cache restore, or only the boundary's replace), so the policy of the document the
   // person ends on is checked by what it allows, not by a response header.
   await historyMove(page, "back");
