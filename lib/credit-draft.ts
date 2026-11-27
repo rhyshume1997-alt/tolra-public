@@ -15,6 +15,13 @@ export function creditableQuantity(line: Pick<CreditableLine, "quantity" | "cred
 /** The form's starting text for a line: the full creditable quantity ("0" when nothing is left). */
 export const startingQuantity = (line: Pick<CreditableLine, "quantity" | "credited">): string => String(creditableQuantity(line));
 
+/** The registration rule used by create_credit_note (034). Legacy invoices need the current registration. */
+export function creditPreviewVatEnabled(invoice: { vatEnabled: boolean; issuerSnapshot?: unknown }, currentRegistration: boolean | undefined): boolean | undefined {
+  if (!invoice.vatEnabled) return false;
+  if (invoice.issuerSnapshot == null) return currentRegistration;
+  return (invoice.issuerSnapshot as { vatRegistered?: unknown }).vatRegistered !== false;
+}
+
 /** Net, VAT and total of what is typed (a blank or invalid quantity or price counts as nothing), VAT at each line's own rate when the invoice charges VAT. */
 export function creditPreview(lines: CreditableLine[], quantities: string[], prices: string[], vatEnabled: boolean) {
   const typed = lines.map((line, index) => ({

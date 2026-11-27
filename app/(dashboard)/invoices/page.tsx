@@ -1,3 +1,4 @@
+// Supplies issued invoice tax context to the credit preview. Stored amounts remain authoritative.
 "use client";
 
 import { AGING, InvoiceNotices, InvoicesRedesign, LegacyInvoicesView } from "@/components/invoices/invoices-redesign";
@@ -1669,7 +1670,7 @@ export default function InvoicesPage() {
               ) : null}
               {viewingInvoice.id ? <InvoiceDeliveryNotes key={`dn-${viewingInvoice.id}`} invoiceId={viewingInvoice.id} jobId={viewingInvoice.jobId} /> : null}
               {viewingInvoice.rawStatus !== "draft" && viewingInvoice.id ? (
-                <CreditNotesPanel key={viewingInvoice.id} invoice={{ id: viewingInvoice.id, reference: viewingInvoice.reference, customer: viewingInvoice.customer, vatEnabled: viewingInvoice.vatEnabled, rawStatus: viewingInvoice.rawStatus }} onChanged={() => { void refreshCredits(viewingInvoice); void loadInvoices(); }} />
+                <CreditNotesPanel key={viewingInvoice.id} invoice={{ id: viewingInvoice.id, reference: viewingInvoice.reference, customer: viewingInvoice.customer, vatEnabled: viewingInvoice.vatEnabled, rawStatus: viewingInvoice.rawStatus, issuerSnapshot: viewingInvoice.issuerSnapshot }} companyVatRegistered={company?.vatRegistered} onChanged={() => { void refreshCredits(viewingInvoice); void loadInvoices(); }} />
               ) : null}
               {viewingInvoice.status === "unverified" ? (
                 <div role="status" className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">

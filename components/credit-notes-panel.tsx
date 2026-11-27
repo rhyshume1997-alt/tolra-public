@@ -1,3 +1,4 @@
+// Previews draft credits using the invoice tax context. The database controls saved amounts.
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -14,7 +15,7 @@ import { requireCompanyProfile } from "@/lib/company";
 import { fmtDate, toDateInput } from "@/lib/dates";
 import { resolveCustomerAddress } from "@/lib/customers";
 import { issuedBillTo, issuedCompany } from "@/lib/document-snapshot";
-import { creditPreview, startingQuantity } from "@/lib/credit-draft";
+import { creditPreview, creditPreviewVatEnabled, startingQuantity } from "@/lib/credit-draft";
 import { downloadPdf } from "@/lib/download-pdf";
 import { friendlyError } from "@/lib/friendly-error";
 import { nudgeIntegrationSend } from "@/lib/integrations/nudge";
@@ -36,8 +37,9 @@ const money = (value: number) => gbp(value, 2);
  * works out the totals and refuses a credit above the invoice. What the invoice still owed is settled by the credit; any more is
  * customer credit on the invoice, shown and refundable like any other (the Customer credit box above), never left unapplied.
  */
-export function CreditNotesPanel({ invoice, onChanged }: {
-  invoice: { id: string; reference: string; customer: string; vatEnabled: boolean; rawStatus: string };
+export function CreditNotesPanel({ invoice, companyVatRegistered, onChanged }: {
+  invoice: { id: string; reference: string; customer: string; vatEnabled: boolean; rawStatus: string; issuerSnapshot?: unknown };
+  companyVatRegistered?: boolean;
   onChanged: () => void;
 }) {
   const [notes, setNotes] = useState<CreditNote[]>([]);
@@ -258,7 +260,9 @@ export function CreditNotesPanel({ invoice, onChanged }: {
           </table>
           <p className="text-right text-xs text-slate-700" data-testid="credit-preview">
             {(() => {
-              const preview = creditPreview(lines, quantities, prices, invoice.vatEnabled);
+              const vatEnabled = creditPreviewVatEnabled(invoice, companyVatRegistered);
+              if (vatEnabled === undefined) return "VAT preview unavailable until company VAT settings can be read.";
+              const preview = creditPreview(lines, quantities, prices, vatEnabled);
               return `Net ${money(preview.subtotal)} + VAT ${money(preview.vat)} = ${money(preview.total)}`;
             })()}
           </p>
