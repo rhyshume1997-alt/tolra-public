@@ -10,6 +10,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { missingDbObject } from "@/lib/db-features";
+import { fetchAll } from "@/lib/fetch-all";
 import { isNetworkError } from "@/lib/offline/store";
 
 export const PROBLEM_REASONS = [
@@ -41,11 +42,18 @@ const COLUMNS = "id, job_id, reason, note, reported_by, reported_at";
 export async function loadOpenProblems(db: Pick<SupabaseClient, "from">, jobIds?: readonly string[]): Promise<OpenProblems> {
   if (jobIds && jobIds.length === 0) return { available: null, problems: [] };
   try {
-    let query = db.from("job_problems").select(COLUMNS).eq("status", "open").order("reported_at", { ascending: false }).limit(500);
-    if (jobIds) query = query.in("job_id", [...jobIds]);
-    const { data, error } = await query;
-    if (error) return { available: missingDbObject(error) ? false : null, problems: [] };
-    return { available: true, problems: (data ?? []) as OpenProblem[] };
+    let available = true;
+    const { rows, truncated } = await fetchAll<OpenProblem>(async (from, to) => {
+      let query = db.from("job_problems").select(COLUMNS).eq("status", "open").order("reported_at", { ascending: false }).order("id");
+      if (jobIds) query = query.in("job_id", [...jobIds]);
+      const { data, error } = await query.range(from, to);
+      if (error && from === 0 && missingDbObject(error)) {
+        available = false;
+        return { data: [], error: null };
+      }
+      return { data: data as OpenProblem[] | null, error };
+    });
+    return truncated ? { available: null, problems: [] } : { available, problems: rows };
   } catch {
     return { available: null, problems: [] };
   }

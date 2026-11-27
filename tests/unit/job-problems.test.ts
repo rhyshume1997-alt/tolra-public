@@ -81,13 +81,30 @@ describe("reading the open problems", () => {
     const seen: string[] = [];
     const answer = await loadOpenProblems(client("present", seen), ["j1", "j2"]);
     expect(answer).toEqual({ available: true, problems: [{ id: "p1", job_id: "j1", reason: "tooling", note: "Insert snapped", reported_by: "u1", reported_at: "2026-10-14T09:00:00Z" }] });
-    expect(seen).toHaveLength(1);
+    expect(seen).toHaveLength(2);
     const url = decodeURIComponent(seen[0]);
     expect(url).toContain("/rest/v1/job_problems?");
     expect(url).toContain("status=eq.open");
     expect(url).toContain("job_id=in.(j1,j2)");
-    expect(url).toContain("order=reported_at.desc");
+    expect(url).toContain("order=reported_at.desc,id.asc");
   });
+  it("includes older open problems beyond the first API page", async () => {
+    const problems = Array.from({ length: 1_001 }, (_, index) =>
+      problem({ id: `p-${index}`, job_id: `job-${index}` }));
+    const db = createClient("http://localhost:54321", "anon-key", {
+      global: { fetch: async (input) => {
+        const query = new URL(String(input)).searchParams;
+        const offset = Number(query.get("offset") ?? 0);
+        const limit = Math.min(1_000, Number(query.get("limit") ?? 1_000));
+        return Response.json(problems.slice(offset, offset + limit));
+      } },
+    });
+    const result = await loadOpenProblems(db);
+    expect(result.available).toBe(true);
+    expect(result.problems).toHaveLength(1_001);
+    expect(jobsWithProblems(result.problems).has("job-1000")).toBe(true);
+  });
+
   it("without 117 (the table is missing): not available, no problems, no flag", async () => {
     expect(await loadOpenProblems(client("missing"))).toEqual({ available: false, problems: [] });
   });
