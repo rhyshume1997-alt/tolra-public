@@ -26,11 +26,13 @@ type Row = Record<string, unknown>;
 const text = (v: unknown) => (v == null ? "" : String(v));
 const key = (v: unknown) => text(v).trim().toLowerCase();
 
-/** Is 125 applied? A one-row GET of the new column (a missing column means no). Any other failure is not an answer: treated as no. */
+/** Is 125 applied? A one-row GET distinguishes missing schema from a failed read. */
 export async function hasEmailLinks(db: SupabaseClient, scope?: PoCaptureScope): Promise<boolean> {
   const q = db.from("inbound_emails").select("link_status");
   const { error } = await (scope ? q.eq("organization_id", scope.org) : q).limit(1);
-  return !error;
+  if (missingDbObject(error)) return false;
+  if (error) throw error;
+  return true;
 }
 
 /** The company's quotes (sent, accepted) and purchase orders (not draft), with the addresses we hold for their customer or supplier. */

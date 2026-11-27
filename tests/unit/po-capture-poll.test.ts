@@ -124,6 +124,12 @@ describe("suggestPoLinks", () => {
     expect(rpcCalls).toEqual([]);
   });
 
+  it("reports a failed feature check without pretending PO matching is off", async () => {
+    tableErrors.inbound_emails = () => ({ code: "57014", message: "statement timeout" });
+    await expect(suggestPoLinks(db, [poEmail()])).resolves.toMatchObject({ status: "failed", suggested: 0 });
+    expect(rpcCalls).toEqual([]);
+  });
+
   it("a failure while loading never throws: status failed", async () => {
     throwOn = "customers";
     await expect(suggestPoLinks(db, [poEmail()])).resolves.toMatchObject({ status: "failed", suggested: 0 });
