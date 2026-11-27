@@ -208,20 +208,22 @@ const nameOf = (raw: unknown) => {
 /**
  * Every job's machines for the Job Board, in two reads (the plan, and the bookings that name a job), joined by jobMachineEntries: a
  * machine booked on the schedule shows its booked hours and "(booked)" even when the plan row isn't linked to it. Null when the plan
- * can't be read; when only the bookings can't be read, the plan is shown as it is. Reads only.
+ * can't be read completely; when only the bookings can't be read completely, the plan is shown as it is. Reads only.
  */
 export async function loadBoardJobMachines(): Promise<Map<string, JobMachineChip[]> | null> {
   if (!supabase) return null;
   const client = supabase;
   const [plan, bookings] = await Promise.all([
-    client.from("job_machines").select("job_id, machine_id, estimated_hours, booking_id, position, machines(name)").order("position"),
+    fetchAll((from, to) => client.from("job_machines").select("id, job_id, machine_id, estimated_hours, booking_id, position, machines(name)")
+      .order("position").order("id").range(from, to))
+      .catch((error: unknown) => { console.error(error); return null; }),
     fetchAll((from, to) => client.from("machine_bookings").select("id, job_id, machine_id, estimated_hours, status, start_at, machines(name)").not("job_id", "is", null).order("start_at").order("id").range(from, to))
-      .then((result) => result.rows as Record<string, unknown>[], () => [] as Record<string, unknown>[]),
+      .then((result) => result.truncated ? [] : result.rows, () => []),
   ]);
-  if (plan.error) { console.error(plan.error); return null; }
+  if (!plan || plan.truncated) return null;
   const names = new Map<string, string>();
   const linksByJob = new Map<string, PlanLink[]>();
-  for (const row of (plan.data ?? []) as Record<string, unknown>[]) {
+  for (const row of plan.rows) {
     names.set(String(row.machine_id), nameOf(row.machines));
     const jobId = String(row.job_id);
     linksByJob.set(jobId, [...(linksByJob.get(jobId) ?? []), { machine_id: String(row.machine_id), estimated_hours: Number(row.estimated_hours) || 0, booking_id: row.booking_id ? String(row.booking_id) : null, position: Number(row.position) || 0 }]);

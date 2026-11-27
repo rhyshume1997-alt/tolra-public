@@ -19,7 +19,7 @@ const fake = vi.hoisted(() => {
       get(_target, prop) {
         if (prop === "then") {
           const rows = tables[table] ?? [];
-          const data = slice ? rows.slice(slice[0], slice[1] + 1) : rows;
+          const data = slice ? rows.slice(slice[0], Math.min(slice[1] + 1, slice[0] + 1_000)) : rows.slice(0, 1_000);
           const answer = failing.has(table) ? { data: null, error: { message: `${table} unavailable` } } : { data, error: null };
           return (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) => Promise.resolve(answer).then(resolve, reject);
         }
@@ -41,7 +41,7 @@ const fake = vi.hoisted(() => {
 vi.mock("@/lib/supabase", () => ({ supabase: fake.client }));
 
 import {
-  type JobBooking, jobMachineEntries, keepsBooking, loadJobMachinesForDialog, machinesSaveReady, loadWorksheetPrefillSource, machineRunHours, planMachinesSave, prefillWorksheet,
+  type JobBooking, jobMachineEntries, keepsBooking, loadBoardJobMachines, loadJobMachinesForDialog, machinesSaveReady, loadWorksheetPrefillSource, machineRunHours, planMachinesSave, prefillWorksheet,
 } from "@/lib/job-machine-plan";
 import { emptyWorksheet } from "@/lib/job-worksheet";
 import { stageAfterStart, stagesBeforeStart } from "@/lib/job-actions";
@@ -169,6 +169,20 @@ describe("opening the Machines dialog only reads (N4)", () => {
     const source = await loadWorksheetPrefillSource(fake.client as any, JOB);
     expect(source).toEqual({ machineNames: ["TEST Mill"], plannedHours: 6.5, runHours: 0 });
     expect(fake.calls.filter((call) => WRITES.test(call))).toEqual([]);
+  });
+});
+
+describe("Job Board machine plans", () => {
+  it("includes the machine plan past the first API page", async () => {
+    fake.setFailing([]);
+    fake.setTables({ job_machines: Array.from({ length: 1_001 }, (_, index) => ({
+      id: `plan-${index}`, job_id: `job-${index}`, machine_id: MILL, estimated_hours: 2, position: 0, machines: { name: "Mill" },
+    })) });
+    const plans = await loadBoardJobMachines();
+    expect(plans?.size).toBe(1_001);
+    expect(plans?.get("job-1000")).toEqual([
+      { machine_id: MILL, name: "Mill", hours: 2, booked: false, state: null, planned: true },
+    ]);
   });
 });
 
