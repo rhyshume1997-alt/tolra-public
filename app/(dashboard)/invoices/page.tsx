@@ -9,6 +9,7 @@ import { ActivityPanel } from "@/components/activity-panel";
 import { AiFinanceCheckPanel } from "@/components/ai-finance-check-panel";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { financeCreateErrorMessage } from "@/lib/finance-create-error";
 import { Banknote, Plus, Send, Trash2, TrendingDown } from "lucide-react";
 
 import { FilterBar } from "@/components/filter-bar";
@@ -768,7 +769,7 @@ export default function InvoicesPage() {
         setOpen(false);
         void loadInvoices();
       } catch (err) {
-        toast.error(userMessage(err, "Could not save the invoice. Nothing was saved."));
+        toast.error(financeCreateErrorMessage(err, "invoice"));
       }
     });
   }

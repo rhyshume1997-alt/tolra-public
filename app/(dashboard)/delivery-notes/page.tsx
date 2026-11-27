@@ -8,6 +8,7 @@ import { deliveryNotesEmptyHint } from "@/lib/empty-hints";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { financeCreateErrorMessage } from "@/lib/finance-create-error";
 import { useRouter } from "next/navigation";
 import { PenLine, Plus, Truck, type LucideIcon } from "lucide-react";
 
@@ -540,10 +541,14 @@ export default function DeliveryNotesPage() {
         });
         if (error) throw error;
         const { data: made, error: readError } = await supabase.from("delivery_notes").select("dn_number").eq("id", String(madeId)).single();
-        if (readError) throw readError;
-        const ref = String(made.dn_number);
-        void auditEvent({ action: "CREATE", entityTable: "delivery_notes", entityId: ref });
-        toast.success(`Delivery note ${ref} created`);
+        if (readError || !made?.dn_number) {
+          void auditEvent({ action: "CREATE", entityTable: "delivery_notes", entityId: String(madeId) });
+          toast.warning("Delivery note was saved, but its number could not be loaded. Refresh the list to view it.");
+        } else {
+          const ref = String(made.dn_number);
+          void auditEvent({ action: "CREATE", entityTable: "delivery_notes", entityId: ref });
+          toast.success(`Delivery note ${ref} created`);
+        }
         // Reset and close only after a successful save.
         formEl.reset();
         setManualJob(null);
@@ -551,7 +556,7 @@ export default function DeliveryNotesPage() {
         setNewOpen(false);
         void loadNotes();
       } catch (err) {
-        toast.error(userMessage(err, "Could not create delivery note. Nothing was saved."));
+        toast.error(financeCreateErrorMessage(err, "delivery note"));
       }
     });
   }
