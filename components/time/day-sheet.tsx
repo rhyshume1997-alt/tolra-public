@@ -29,7 +29,7 @@ import { scopeKey } from "@/lib/offline/store";
 import { executeClockOp, executeLabourOp, syncNow } from "@/lib/offline/sync";
 import { type PeopleMap, UNKNOWN } from "@/lib/people";
 import { supabase } from "@/lib/supabase";
-import { type JobInfo, type SendNotice, type TimeData, deviceLabel, loadStartableJobs, loadTimeData, overlayPending, syncPassRan, timeSendNotice } from "@/lib/time-data";
+import { type JobInfo, type SendNotice, STARTABLE_JOBS_TRUNCATED, type TimeData, deviceLabel, loadStartableJobsResult, loadTimeData, overlayPending, syncPassRan, timeSendNotice } from "@/lib/time-data";
 import { type AttendanceEvent, type LabourSession, FLAG_TEXT, addDays, clockStateOf, dayTotals,hm, hmSigned, localDateOf, localDayBounds, localTimeOf, weekStartOf, zoneLabel } from "@/lib/time-sheet";
 import { fmtDateText } from "@/lib/dates";
 import { TIME_NEEDS_DATABASE_UPDATE, databaseHasTime, missingDbObject, timeOpsAllowed } from "@/lib/time-features";
@@ -84,6 +84,7 @@ export function DaySheet({ redesign = false }: { redesign?: boolean } = {}) {
   const [data, setData] = useState<TimeData | null>(null);
   const [people, setPeople] = useState<PeopleMap>({});
   const [jobs, setJobs] = useState<JobInfo[]>([]);
+  const [jobsTruncated, setJobsTruncated] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** The database doesn't have 050 to 052 yet (the app can be deployed first): say so, record nothing. */
   const [needsUpdate, setNeedsUpdate] = useState(false);
@@ -113,11 +114,12 @@ export function DaySheet({ redesign = false }: { redesign?: boolean } = {}) {
       const [loaded, who, startable] = await Promise.all([
         loadTimeData(supabase, { userId: personId, from: bounds.start, to: bounds.end }),
         loadCompanyPeople(supabase),
-        loadStartableJobs(supabase, personId),
+        loadStartableJobsResult(supabase, personId),
       ]);
       setData(loaded);
       if (who) setPeople(who);
-      setJobs(startable);
+      setJobs(startable.jobs);
+      setJobsTruncated(startable.truncated);
     } catch (err) {
       if (missingDbObject(err as { code?: string; message?: string })) setNeedsUpdate(true);
       else setError(friendlyError(err, "Couldn't load your hours."));
@@ -345,6 +347,7 @@ export function DaySheet({ redesign = false }: { redesign?: boolean } = {}) {
                   <Button disabled={!startJob || busy} onClick={() => { const j = jobById[startJob]; if (j) { void labour(j, "start"); setStartJob(""); } }} data-testid="labour-start"><Play className="size-4" /> Start</Button>
                 </div>
               ) : null}
+              {jobsTruncated ? <p className="text-xs text-amber-800" data-testid="startable-jobs-truncated">{STARTABLE_JOBS_TRUNCATED}</p> : null}
               {/* Below 1024px each job is a stacked card (data-tablet-cards in app/globals.css, labels from data-label), so a phone never scrolls sideways. */}
               {day.jobs.length ? (
                 <table role="table" className="w-full text-sm" data-testid="job-lines" data-tablet-cards>
