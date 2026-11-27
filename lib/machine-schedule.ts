@@ -689,16 +689,16 @@ function bookingFromRow(row: any): Booking {
 export async function fetchSchedule(): Promise<{ machines: Machine[]; bookings: Booking[]; jobs: ScheduleJob[] }> {
   if (!supabase) throw new Error("Supabase is not configured.");
   const client = supabase;
-  // Bookings and jobs: every row, page by page (lib/fetch-all); the API returns at most 1,000 per request.
-  const [machinesRes, bookings, jobsAll] = await Promise.all([
-    client.from("machines").select("*"),
+  // Read every source under the caller's row rules. Reject incomplete results before they reach the calendar or its cache.
+  const [machines, bookings, jobsAll] = await Promise.all([
+    fetchAll((from, to) => client.from("machines").select("*").order("id").range(from, to)),
     fetchAll((from, to) => client.from("machine_bookings").select("*").order("start_at", { ascending: true }).order("id").range(from, to)),
     fetchAll((from, to) => client.from("jobs").select("*").order("created_at", { ascending: false }).order("id").range(from, to)),
   ]);
-  if (machinesRes.error) throw machinesRes.error;
-  const bookingsRes = { data: bookings.rows };
-  const jobsRes = { data: jobsAll.rows };
-  const jobs: ScheduleJob[] = (jobsRes.data || []).map((row: any) => {
+  if (machines.truncated || bookings.truncated || jobsAll.truncated) {
+    throw new Error("The complete machine schedule exceeds the supported read limit.");
+  }
+  const jobs: ScheduleJob[] = jobsAll.rows.map((row) => {
     const setup = Number(row.setup_time_hr) || 0;
     const run = Number(row.run_time_hr) || 0;
     const quoted = Number(row.job_time_quoted_hr) || 0;
@@ -714,8 +714,8 @@ export async function fetchSchedule(): Promise<{ machines: Machine[]; bookings: 
     };
   });
   return {
-    machines: (machinesRes.data || []).map(machineFromRow).sort((a, b) => a.name.localeCompare(b.name)),
-    bookings: (bookingsRes.data || []).map(bookingFromRow),
+    machines: machines.rows.map(machineFromRow).sort((a, b) => a.name.localeCompare(b.name)),
+    bookings: bookings.rows.map(bookingFromRow),
     jobs,
   };
 }

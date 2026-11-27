@@ -1,9 +1,43 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   DEFAULT_WORKING_DAYS, addDaysToDate, bookedNotStarted, computeFinish, dayPlanFromRow, daysBetweenDates, findOverlaps, formatDayPlan, machineStatus, planSegments, scheduleAll, scheduleBooking, selfCheckFinish,
-  dayHoursSplit, dayMinutes, formatMinutes, localMoment, validateDayPlan, worksOn, type Booking, type DayPlanEntry, type Machine,
+  dayHoursSplit, dayMinutes, fetchSchedule, formatMinutes, localMoment, validateDayPlan, worksOn, type Booking, type DayPlanEntry, type Machine,
 } from "@/lib/machine-schedule";
+
+import { MAX_LIST_ROWS } from "@/lib/fetch-all";
+
+const scheduleFetch = vi.hoisted(() => vi.fn<typeof fetch>());
+vi.mock("@/lib/supabase", async () => {
+  const { createClient } = await import("@supabase/supabase-js");
+  return { supabase: createClient("http://127.0.0.1:54321", "test-key", { global: { fetch: scheduleFetch } }) };
+});
+
+describe("loading the Machine Schedule", () => {
+  it("refuses a capped booking calendar rather than reporting it as complete", async () => {
+    scheduleFetch.mockImplementation(async (input) => {
+      const url = new URL(String(input));
+      if (!url.pathname.endsWith("/machine_bookings")) return Response.json([]);
+      const offset = Number(url.searchParams.get("offset") ?? 0);
+      return Response.json(Array.from({ length: Math.min(1_000, MAX_LIST_ROWS + 1 - offset) }, (_, index) => ({
+        id: `booking-${offset + index}`, machine_id: "mill", start_at: "2026-11-27T08:00:00Z",
+      })));
+    });
+    await expect(fetchSchedule()).rejects.toThrow(/complete machine schedule/i);
+  });
+
+  it("includes machines past the API response cap", async () => {
+    scheduleFetch.mockImplementation(async (input) => {
+      const url = new URL(String(input));
+      if (!url.pathname.endsWith("/machines")) return Response.json([]);
+      const offset = Number(url.searchParams.get("offset") ?? 0);
+      return Response.json(Array.from({ length: Math.min(1_000, 1_001 - offset) }, (_, index) => ({
+        id: `machine-${offset + index}`, name: `Machine ${offset + index}`,
+      })));
+    });
+    expect((await fetchSchedule()).machines).toHaveLength(1_001);
+  });
+});
 
 /** A day of a plan from 08:00 (or `start`) for `hours` whole or part hours. */
 const d = (date: string, hours: number, start = "08:00"): DayPlanEntry => {
