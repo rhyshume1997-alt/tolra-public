@@ -28,6 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { type Phase, type PhaseFilterValue, useArchive } from "@/lib/archive";
 import { auditEvent } from "@/lib/audit";
 import { CUSTOMER_CHANGED, fetchKnownCustomers, loadDemoCustomers, newCustomerDraft, saveCustomer, type CustomerRecord, type KnownCustomer } from "@/lib/customers";
+import { CUSTOMER_CREDITS_UNAVAILABLE, type CustomerCreditsState, loadCustomerCredits } from "@/lib/customer-credits";
 import { DEMO_MODE } from "@/lib/demo";
 import { friendlyError } from "@/lib/friendly-error";
 import { linkedRecordId } from "@/lib/record-link";
@@ -54,7 +55,8 @@ export default function CustomersPage() {
   const [editing, setEditing] = useState<CustomerRecord | null>(null);
   const chasePauses = useChasePauses();
   /** Customer credit by customer name (migration 034): what they have paid or been credited beyond their invoices. */
-  const [credits, setCredits] = useState<Map<string, number>>(new Map());
+  const [creditsState, setCreditsState] = useState<CustomerCreditsState>({ status: "loaded", credits: new Map() });
+  const credits = creditsState.status === "loaded" ? creditsState.credits : null;
   /** Names on documents with no customer record are listed but are not exported: an export holds saved customers only. */
   const savedCustomers = customers.filter((customer) => !customer.notSaved);
   /** A document table had more rows than the list reads: some names found only on documents may be missing. */
@@ -99,8 +101,9 @@ export default function CustomersPage() {
         setNamesTruncated(known.documentNamesTruncated);
       }
       if (supabase) {
-        const { data } = await supabase.rpc("customer_credit");
-        setCredits(new Map(((data ?? []) as Array<{ customer: string; credit: number }>).map((row) => [row.customer, Number(row.credit)])));
+        setCreditsState(await loadCustomerCredits(supabase));
+      } else {
+        setCreditsState({ status: "loaded", credits: new Map() });
       }
     } catch (err) {
       setError(friendlyError(err, "Couldn't load customers."));
@@ -223,6 +226,7 @@ export default function CustomersPage() {
           emptyTitle={customers.length ? (phase === "archived" ? "No archived customers." : "Every customer is archived: see Show > Archived.") : "No customers yet."}
           emptyDetail={customers.length ? undefined : customersEmptyHint()}
           notice={namesTruncated ? DOCUMENT_NAMES_TRUNCATED : undefined}
+          creditNotice={creditsState.status === "unavailable" ? CUSTOMER_CREDITS_UNAVAILABLE : undefined}
           add={() => setEditing(newDraft(""))}
           toolbar={toolbar}
           phaseFilter={phaseFilter}
@@ -230,7 +234,7 @@ export default function CustomersPage() {
           details={(customer) => (
             <>
               {customer.notSaved && <span className="block text-xs font-normal" data-testid="customer-not-saved">{NOT_SAVED_LABEL}</span>}
-              {credits.get(customer.name) ? <span className="block text-xs font-normal text-amber-700" data-testid="customer-credit">Customer credit {gbp(credits.get(customer.name) ?? 0, 2)}</span> : null}
+              {credits?.get(customer.name) ? <span className="block text-xs font-normal text-amber-700" data-testid="customer-credit">Customer credit {gbp(credits.get(customer.name) ?? 0, 2)}</span> : null}
               {chasePauses.customers.has(customer.name.trim().toLowerCase()) && <ChasePausedBadge />}
             </>
           )}
@@ -259,6 +263,7 @@ export default function CustomersPage() {
         {phaseFilter}
         {error ? <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error} <button onClick={load} className="font-semibold underline">Retry</button></div> : null}
         {namesTruncated ? <p className="text-sm text-amber-800" data-testid="customer-names-truncated">{DOCUMENT_NAMES_TRUNCATED}</p> : null}
+        {creditsState.status === "unavailable" ? <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900" data-testid="customer-credits-unavailable">{CUSTOMER_CREDITS_UNAVAILABLE} <button type="button" onClick={load} className="font-semibold underline">Retry</button></div> : null}
         {loading ? <Skeleton className="h-72" /> : (
           <Card><CardContent className="p-0">
             <Table data-view={view}>
@@ -266,7 +271,7 @@ export default function CustomersPage() {
               <TableBody>
                 {shown.map((customer) => (
                   <TableRow key={customer.id || customer.name} className="block md:table-row">
-                    {isVisible("name") ? <TableCell data-label="Name" className="block font-semibold md:table-cell">{customer.name}{customer.notSaved ? <span className="block text-xs font-normal text-slate-500" data-testid="customer-not-saved">{NOT_SAVED_LABEL}</span> : null}{credits.get(customer.name) ? <span className="block text-xs font-normal text-amber-700" data-testid="customer-credit">Customer credit {gbp(credits.get(customer.name) ?? 0, 2)}</span> : null}{chasePauses.customers.has(customer.name.trim().toLowerCase()) ? <span className="block font-normal"><ChasePausedBadge /></span> : null}</TableCell> : null}
+                    {isVisible("name") ? <TableCell data-label="Name" className="block font-semibold md:table-cell">{customer.name}{customer.notSaved ? <span className="block text-xs font-normal text-slate-500" data-testid="customer-not-saved">{NOT_SAVED_LABEL}</span> : null}{credits?.get(customer.name) ? <span className="block text-xs font-normal text-amber-700" data-testid="customer-credit">Customer credit {gbp(credits.get(customer.name) ?? 0, 2)}</span> : null}{chasePauses.customers.has(customer.name.trim().toLowerCase()) ? <span className="block font-normal"><ChasePausedBadge /></span> : null}</TableCell> : null}
                     {isVisible("contact") ? <TableCell data-label="Contact" className="block md:table-cell">{customer.contactName || "-"}</TableCell> : null}
                     {isVisible("email") ? <TableCell data-label="Email" className="block md:table-cell">{customer.email || "-"}</TableCell> : null}
                     {isVisible("phone") ? <TableCell data-label="Phone" className="block md:table-cell">{customer.phone || "-"}{customer.mobile ? <span className="block text-xs text-slate-600">Mobile {customer.mobile}</span> : null}</TableCell> : null}
