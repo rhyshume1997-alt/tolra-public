@@ -54,7 +54,7 @@ import { loadTemplateOverride } from "@/lib/email/templates/store";
 import { EXPORT_TITLES, exportRows, exportSpreadsheet } from "@/lib/export-records";
 import { QUOTE_COLUMNS } from "@/lib/import-columns";
 import { exportScopeRows, exportScopeTitle } from "@/lib/spreadsheet";
-import { type QuoteAttachmentReader, type QuoteAttachmentRow, listQuoteAttachments } from "@/lib/quote-attachments";
+import { type QuoteAttachmentReader, type QuoteAttachmentRow, type QuoteAttachmentUploader, listQuoteAttachments, uploadQuoteAttachment } from "@/lib/quote-attachments";
 import { friendlyError } from "@/lib/friendly-error";
 import { issuedBillTo, issuedCompany } from "@/lib/document-snapshot";
 import { canOfferSend, canRecordDecision, defaultValidUntil, effectiveQuoteStatus, newestFirst, quoteAcceptBlock, quoteFigures, quoteRejectedSendBlock, quoteSendBlock, uploadSummary, quoteValidityDays, type QuoteStatus, storedQuoteStatus } from "@/lib/quote-status";
@@ -191,46 +191,31 @@ function QuoteAttachments({ quoteRef }: { quoteRef: string }) {
     input.value = "";
     if (!picked.length) return;
     setUploading(true);
+    let uploaded = 0;
     try {
       if (!supabase) throw new Error("Supabase is not configured.");
       const organizationId = await getCurrentOrganizationId();
       const { data: userData } = await supabase.auth.getUser();
       const skipped: string[] = [];
-      let uploaded = 0;
       for (const file of picked) {
         if (file.size > MAX_ATTACHMENT_BYTES) { skipped.push(file.name); continue; }
-        const safeName = file.name.replace(/[^\w.\- ()]+/g, "_");
-        let path = `${organizationId}/${quoteRef}/${safeName}`;
-        let result = await supabase.storage.from("quote-attachments").upload(path, file, { contentType: file.type || undefined });
-        if (result.error && /exists|duplicate/i.test(result.error.message)) {
-          path = `${organizationId}/${quoteRef}/${Date.now()}-${safeName}`;
-          result = await supabase.storage.from("quote-attachments").upload(path, file, { contentType: file.type || undefined });
-        }
-        if (result.error) {
-          if (/bucket.*not found/i.test(result.error.message)) throw new ValidationError("File storage is not set up yet. Ask an admin to create the quote-attachments bucket.");
-          throw result.error;
-        }
-        const { error } = await supabase.from("quote_attachments").insert({
-          organization_id: organizationId,
-          quote_ref: quoteRef,
-          file_path: path,
-          file_name: file.name,
-          size_bytes: file.size,
-          uploaded_by: userData.user?.id ?? null,
-          // The customer's PO travels to the job made from this quote (job pack); plain files keep the default.
-          ...(kind === "customer_po" ? { kind } : {}),
+        await uploadQuoteAttachment(supabase as unknown as QuoteAttachmentUploader, {
+          organizationId,
+          quoteRef,
+          file,
+          uploadedBy: userData.user?.id ?? null,
+          kind,
         });
-        if (error) throw error;
         void auditEvent({ action: "UPLOAD_ATTACHMENT", entityTable: "quote_attachments", entityId: quoteRef, metadata: { file: file.name, size: file.size, kind } });
         uploaded += 1;
       }
       const message = uploadSummary(uploaded, skipped);
       if (uploaded) toast.success(message); else toast.error(message);
       if (uploaded && skipped.length) toast.error(`Not uploaded (over 20 MB): ${skipped.join(", ")}`);
-      await load();
     } catch (err) {
       toast.error(userMessage(err, "Could not upload attachment"));
     } finally {
+      if (uploaded > 0) await load();
       setUploading(false);
     }
   }
