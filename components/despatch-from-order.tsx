@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { auditEvent } from "@/lib/audit";
 import { toDateInput } from "@/lib/dates";
 import { friendlyError } from "@/lib/friendly-error";
+import { financeCreateErrorMessage } from "@/lib/finance-create-error";
 import { jobReadyForDeliveryNote } from "@/lib/job-delivery-note";
 import { supabase } from "@/lib/supabase";
 
@@ -102,7 +103,7 @@ export function DespatchFromOrder({ source, presetId, onCreated }: { source: "or
       toast.success(`Delivery note ${made.dn_number} created`);
       onCreated();
     } catch (err) {
-      setError(friendlyError(err, "Couldn't create the delivery note. Nothing was saved."));
+      setError(financeCreateErrorMessage(err, "delivery note"));
     } finally {
       setSaving(false);
     }

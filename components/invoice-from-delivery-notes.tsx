@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { auditEvent } from "@/lib/audit";
 import { fmtDate, toDateInput } from "@/lib/dates";
-import { friendlyError } from "@/lib/friendly-error";
+import { financeCreateErrorMessage } from "@/lib/finance-create-error";
 import { supabase } from "@/lib/supabase";
 import { REASON_LABEL, customerKey, isMissingFunction, toUninvoiced, type UninvoicedReason } from "@/lib/uninvoiced";
 
@@ -71,7 +71,7 @@ export function InvoiceFromDeliveryNotes({ open, onClose, terms, termsDays, onCr
       toast.success("Draft invoice saved from the delivery notes. Check it, then issue it to give it a number.");
       onCreated(made.invoice_id);
     } catch (err) {
-      setError(friendlyError(err, "Couldn't make the invoice. Nothing was saved."));
+      setError(financeCreateErrorMessage(err, "invoice"));
     } finally {
       setSaving(false);
     }

@@ -17,6 +17,7 @@ import { issuedBillTo, issuedCompany } from "@/lib/document-snapshot";
 import { creditPreview, startingQuantity } from "@/lib/credit-draft";
 import { downloadPdf } from "@/lib/download-pdf";
 import { friendlyError } from "@/lib/friendly-error";
+import { financeCreateErrorMessage } from "@/lib/finance-create-error";
 import { nudgeIntegrationSend } from "@/lib/integrations/nudge";
 import { fromPence, gbp, isTextLine, toPence } from "@/lib/money";
 import { balanceDue, customerCredit, invoiceStatus } from "@/lib/receivables";
@@ -101,7 +102,7 @@ export function CreditNotesPanel({ invoice, onChanged }: {
       setMaking(false);
       await load();
     } catch (err) {
-      setError(friendlyError(err, "Couldn't save the credit note. Nothing was saved."));
+      setError(financeCreateErrorMessage(err, "credit note"));
     } finally {
       setBusy(false);
     }

@@ -10,6 +10,7 @@ import { DocumentAttachments } from "@/components/document-attachments";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { financeCreateErrorMessage } from "@/lib/finance-create-error";
 import { CircleCheck, Plus, ShoppingCart, TriangleAlert } from "lucide-react";
 
 import { FilterBar } from "@/components/filter-bar";
@@ -373,7 +374,7 @@ export default function PurchaseOrdersPage() {
         setNewPoOpen(false);
         await loadPurchaseOrders();
       } catch (err) {
-        toast.error(userMessage(err, "Could not save the purchase order. Nothing was saved."));
+        toast.error(financeCreateErrorMessage(err, "purchase order"));
       }
     });
   }
