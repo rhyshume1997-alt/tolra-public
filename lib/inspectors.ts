@@ -4,6 +4,7 @@
  * offline replays included). Admins add and remove people with set_authorised_inspector, giving a reason; every change, by any
  * path, is a row of inspector_authorisations (never changed or removed). Hidden until the database has 083 (databaseHas083).
  */
+import { fetchAll } from "@/lib/fetch-all";
 import { featurePresent } from "@/lib/db-features";
 import { supabase } from "@/lib/supabase";
 
@@ -52,10 +53,12 @@ export function currentAuthorisations(history: InspectorChange[], onList: Readon
 
 export async function loadInspectorHistory(): Promise<InspectorChange[]> {
   if (!supabase) return [];
-  const { data, error } = await supabase.from("inspector_authorisations").select("id, user_id, change, scope, reason, changed_by, changed_at")
-    .order("changed_at", { ascending: false }).limit(500);
-  if (error) throw error;
-  return (data ?? []) as InspectorChange[];
+  const client = supabase;
+  const { rows, truncated } = await fetchAll((from, to) => client.from("inspector_authorisations")
+    .select("id, user_id, change, scope, reason, changed_by, changed_at")
+    .order("changed_at", { ascending: false }).order("id").range(from, to));
+  if (truncated) throw new Error("The complete inspector history exceeds the supported read limit.");
+  return rows as InspectorChange[];
 }
 
 export async function setAuthorisedInspector(userId: string, authorised: boolean, reason: string, scope = ""): Promise<void> {

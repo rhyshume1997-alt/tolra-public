@@ -41,6 +41,7 @@ export function AuthorisedInspectors({ people, onChanged }: { people: InspectorC
       setHistory(await loadInspectorHistory());
       setLoadError(null);
     } catch (err) {
+      setHistory(null);
       setLoadError(friendlyError(err, "Couldn't load the inspectors list's history."));
     }
   }, []);
@@ -99,7 +100,7 @@ export function AuthorisedInspectors({ people, onChanged }: { people: InspectorC
                   <div className="min-w-0">
                     <p className="font-medium text-slate-900">{person.name} {person.active ? null : <Badge className="ml-1 bg-slate-100 text-slate-600">Inactive</Badge>}</p>
                     <p className="text-xs text-slate-500">
-                      {since ? `Added ${fmtDateTime(since.changed_at)} by ${nameOf(since.changed_by)}` : "Added before the list's history began"}
+                      {since ? `Added ${fmtDateTime(since.changed_at)} by ${nameOf(since.changed_by)}` : loadError ? "Authorisation history unavailable" : "Added before the list's history began"}
                       {since?.scope ? ` · Scope: ${since.scope}` : ""}
                     </p>
                     {since ? <p className="mt-0.5 break-words text-xs text-slate-600">Reason: {since.reason}</p> : null}
