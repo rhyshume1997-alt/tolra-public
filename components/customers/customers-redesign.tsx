@@ -20,6 +20,7 @@ interface Props {
   emptyTitle: string;
   emptyDetail?: string;
   notice?: string;
+  sourceWarning?: string;
   add: () => void;
   toolbar: ReactNode;
   phaseFilter: ReactNode;
@@ -35,7 +36,7 @@ const customerFields = [
   { key: "address", label: "Address", value: (customer: KnownCustomer) => customer.address },
 ];
 
-export function CustomersRedesign({ customers, isVisible, view, setView, loading, error, load, emptyTitle, emptyDetail, notice, add, toolbar, phaseFilter, dialog, details, actions }: Props) {
+export function CustomersRedesign({ customers, isVisible, view, setView, loading, error, load, emptyTitle, emptyDetail, notice, sourceWarning, add, toolbar, phaseFilter, dialog, details, actions }: Props) {
   const isPhone = useIsPhone();
   const fields = customerFields.filter((field) => isVisible(field.key));
   const title = (customer: KnownCustomer) => <>{customer.name}{details(customer)}</>;
@@ -54,6 +55,7 @@ export function CustomersRedesign({ customers, isVisible, view, setView, loading
       {toolbar}
       {phaseFilter}
       {notice && <Callout tone="warn" data-testid="customer-names-truncated">{notice}</Callout>}
+      {sourceWarning && <Callout tone="warn" data-testid="customer-sources-incomplete">{sourceWarning}</Callout>}
       {loading ? <LoadingState label="Loading customers" /> : error ? (
         <FailedState title="Couldn’t load customers" detail={error} onRetry={() => void load()} retryLabel="Retry" headingLevel={2} />
       ) : !customers.length ? (
