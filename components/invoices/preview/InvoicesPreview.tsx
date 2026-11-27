@@ -288,7 +288,10 @@ export function creditHeldOf(rows: readonly InvoiceRow[]): { total: number; cust
 /** lib/invoice-list-totals (mirrored): the compact list's net, VAT and the foot sums, in whole pence; void and cancelled add nothing. */
 export function netAndVat(i: { amount: number; subtotal?: number; vatAmount?: number }): { net: number; vat: number } {
   const vat = i.vatAmount ?? 0;
-  return { net: i.subtotal ?? fromPence(toPence(i.amount) - toPence(vat)), vat };
+  const net = i.vatAmount === undefined && i.subtotal !== undefined
+    ? i.subtotal
+    : fromPence(toPence(i.amount) - toPence(vat));
+  return { net, vat };
 }
 export function compactTotals(rows: readonly InvoiceRow[]) {
   let net = 0, vat = 0, gross = 0, paid = 0, outstanding = 0;

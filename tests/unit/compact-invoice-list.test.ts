@@ -1,3 +1,4 @@
+// Covers compact invoice display from stored figures. Invoice persistence and payment rules are outside this test.
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { createElement } from "react";
@@ -7,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CompactInvoiceList, type CompactInvoice } from "@/components/invoices/compact-invoice-list";
 import { compactListKey, readCompactList, writeCompactList } from "@/lib/compact-list-pref";
 import { compactInvoiceTotals, netAndVat } from "@/lib/invoice-list-totals";
+import { documentTotals } from "@/lib/money";
 import { viewModeKey } from "@/lib/view-mode";
 
 const row = (over: Partial<CompactInvoice>): CompactInvoice => ({
@@ -46,6 +48,24 @@ describe("compact invoice totals", () => {
   it("falls back to total less VAT, then to all net, when no subtotal is stored", () => {
     expect(netAndVat({ amount: 120, vatAmount: 20 })).toEqual({ net: 100, vat: 20 });
     expect(netAndVat({ amount: 120 })).toEqual({ net: 120, vat: 0 });
+  });
+
+  it.each([[true, 22, 132], [false, 20, 130]])(
+    "includes carriage in the rendered net and footer when carriage VAT is %s",
+    (carriageVat, vat, gross) => {
+      const stored = documentTotals([{ quantity: 1, unitPrice: 100, vatPct: 20 }], 10, { carriageVat });
+      expect(stored).toMatchObject({ subtotal: 100, carriage: 10, vat, total: gross });
+      const withCarriage = row({ amount: stored.total, subtotal: stored.subtotal, vatAmount: stored.vat });
+      const html = renderToStaticMarkup(createElement(CompactInvoiceList, { rows: [withCarriage, part], onOpen: () => {} }));
+      expect(html).toMatch(/data-label="Net"[^>]*>£110\.00</);
+      expect(html).toContain('data-total="net">£610.00<');
+      expect(compactInvoiceTotals([withCarriage, part])).toMatchObject({ net: 610, vat: 100 + vat, gross: 600 + gross });
+    },
+  );
+
+  it("includes carriage on an invoice with stored zero VAT and preserves the legacy subtotal when VAT is absent", () => {
+    expect(netAndVat({ amount: 110, subtotal: 100, vatAmount: 0 })).toEqual({ net: 110, vat: 0 });
+    expect(netAndVat({ amount: 120, subtotal: 100 })).toEqual({ net: 100, vat: 0 });
   });
 
   it("is empty-safe", () => {

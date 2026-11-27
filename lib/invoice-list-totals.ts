@@ -1,3 +1,4 @@
+// Compact Invoices list figures from stored amounts. Invoice persistence and payment rules are unchanged.
 import { isVoid } from "@/lib/invoice-void";
 import { fromPence, toPence } from "@/lib/money";
 
@@ -16,10 +17,12 @@ export type CompactInvoiceFigures = {
   balance: number;
 };
 
-/** The net and VAT of one invoice, in pence-exact pounds: the stored subtotal and VAT, else the total less VAT (demo data has neither: all net). */
+/** Net includes carriage. Use stored gross less stored VAT, with the legacy subtotal fallback when VAT was not recorded. */
 export function netAndVat(invoice: Pick<CompactInvoiceFigures, "amount" | "subtotal" | "vatAmount">): { net: number; vat: number } {
   const vat = invoice.vatAmount ?? 0;
-  const net = invoice.subtotal ?? fromPence(toPence(invoice.amount) - toPence(vat));
+  const net = invoice.vatAmount === undefined && invoice.subtotal !== undefined
+    ? invoice.subtotal
+    : fromPence(toPence(invoice.amount) - toPence(vat));
   return { net, vat };
 }
 
