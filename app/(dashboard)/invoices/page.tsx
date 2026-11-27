@@ -65,6 +65,7 @@ import { EXPORT_TITLES, exportRows, exportSpreadsheet } from "@/lib/export-recor
 import { INVOICE_COLUMNS, PAYMENT_COLUMNS, paymentExportRows } from "@/lib/import-columns";
 import { exportScopeRows, exportScopeTitle } from "@/lib/spreadsheet";
 import { friendlyError } from "@/lib/friendly-error";
+import { type InvoiceCreditHeldState, loadInvoiceCreditHeld } from "@/lib/invoice-credit";
 import { linkedInvoiceId } from "@/lib/invoice-link";
 import { useUser } from "@/lib/use-user";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -405,7 +406,8 @@ export default function InvoicesPage() {
   /** Bumped after every load so "Sent but not invoiced" reads again. */
   const [backlogKey, setBacklogKey] = useState(0);
   /** Customer credit held across all customers (migration 034), shown above the list. */
-  const [creditHeld, setCreditHeld] = useState<{ total: number; customers: number }>({ total: 0, customers: 0 });
+  const [creditHeld, setCreditHeld] = useState<InvoiceCreditHeldState>({ status: "loaded", total: 0, customers: 0 });
+  const [creditRetryKey, setCreditRetryKey] = useState(0);
   const [formDate, setFormDate] = useState(today);
   const [formDue, setFormDue] = useState(addDays(today, 30));
   const [dueTouched, setDueTouched] = useState(false);
@@ -508,11 +510,12 @@ export default function InvoicesPage() {
   useEffect(() => { void loadInvoices(); }, [loadInvoices]);
   useEffect(() => {
     if (!supabase) return;
-    void supabase.rpc("customer_credit").then(({ data }) => {
-      const rows = (data ?? []) as Array<{ credit: number }>;
-      setCreditHeld({ total: rows.reduce((sum, row) => sum + Math.round(Number(row.credit) * 100), 0) / 100, customers: rows.length });
+    let cancelled = false;
+    void loadInvoiceCreditHeld(supabase).then((result) => {
+      if (!cancelled) setCreditHeld(result);
     });
-  }, [rows]);
+    return () => { cancelled = true; };
+  }, [rows, creditRetryKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1202,7 +1205,7 @@ export default function InvoicesPage() {
   }
 
   const View = redesign ? InvoicesRedesign : LegacyInvoicesView;
-  const notices = <InvoiceNotices draftsWaiting={draftsWaiting} oldDrafts={drafts.old} creditHeld={creditHeld} />;
+  const notices = <InvoiceNotices draftsWaiting={draftsWaiting} oldDrafts={drafts.old} creditHeld={creditHeld} onRetryCredit={() => setCreditRetryKey((key) => key + 1)} />;
   const actions = (
     <div className="flex flex-wrap gap-2">
           <Button variant="outline" className={overdueInvoices.length ? "border-amber-500 bg-amber-500 text-[#1c1917] hover:border-amber-400 hover:bg-amber-400" : undefined} disabled={saving || loading || !overdueInvoices.length} onClick={() => void chaseOverdue()} title={overdueInvoices.length ? "Draft a chaser email for every overdue invoice" : "No overdue invoices"}>
