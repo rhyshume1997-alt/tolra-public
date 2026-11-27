@@ -65,6 +65,7 @@ import { EXPORT_TITLES, exportRows, exportSpreadsheet } from "@/lib/export-recor
 import { INVOICE_COLUMNS, PAYMENT_COLUMNS, paymentExportRows } from "@/lib/import-columns";
 import { exportScopeRows, exportScopeTitle } from "@/lib/spreadsheet";
 import { friendlyError } from "@/lib/friendly-error";
+import { type FinanceCreateAttemptKey, createInvoiceWithIdempotency, financeRequestIdForAttempt } from "@/lib/finance-create-idempotency";
 import { linkedInvoiceId } from "@/lib/invoice-link";
 import { useUser } from "@/lib/use-user";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -300,6 +301,7 @@ export default function InvoicesPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const createAttemptRef = useRef<FinanceCreateAttemptKey | null>(null);
   // Create form VAT: null = follow the company settings.
   const [formVat, setFormVat] = useState<boolean | null>(null);
   const [formVatChoice, setFormVatChoice] = useState<VatChoice | null>(null);
@@ -719,36 +721,38 @@ export default function InvoicesPage() {
         // A draft: no number yet. Issuing gives it the next INV number (issue_invoice, migration 027).
         // create_with_lines files it in the session's company: refused if another tab switched it since this page opened (S5).
         await confirmPageCompany(supabase);
-        const { data: newId, error } = await supabase.rpc("create_with_lines", {
-          p_parent: "invoices",
-          p_header: {
-            customer: input.customer,
-            description: line.description,
-            quantity: line.quantity,
-            unit_price: line.unitPrice,
-            subtotal: totals.subtotal,
-            carriage: totals.carriage,
-            vat: totals.vat,
-            total: totals.total,
-            vat_enabled: vatOn,
-            carriage_vat: vatOn,
-            invoice_date: input.invoiceDate,
-            terms: input.terms || profile.defaultInvoiceTerms,
-            quote_ref: input.quoteRef || null,
-            customer_po: input.customerPo || null,
-            ...(formJob ? { job_id: formJob.id } : {}),
-            due_date: input.dueDate,
-            // Only when it differs from the invoice date; fixed once the invoice is issued.
-            tax_point: input.taxPoint && input.taxPoint !== input.invoiceDate ? input.taxPoint : null,
-            status: "draft",
-            amount_paid: 0,
-          },
-          p_child: "invoice_line_items",
-          p_fk: "invoice_id",
-          p_lines: input.lines.map((l, position) => ({ position, description: l.description, quantity: l.quantity, unit_price: l.unitPrice, vat_pct: lineVats[position].vatPct, vat_exempt: lineVats[position].vatExempt })),
+        const invoiceHeader = {
+          customer: input.customer,
+          description: line.description,
+          quantity: line.quantity,
+          unit_price: line.unitPrice,
+          subtotal: totals.subtotal,
+          carriage: totals.carriage,
+          vat: totals.vat,
+          total: totals.total,
+          vat_enabled: vatOn,
+          carriage_vat: vatOn,
+          invoice_date: input.invoiceDate,
+          terms: input.terms || profile.defaultInvoiceTerms,
+          quote_ref: input.quoteRef || null,
+          customer_po: input.customerPo || null,
+          ...(formJob ? { job_id: formJob.id } : {}),
+          due_date: input.dueDate,
+          // Only when it differs from the invoice date; fixed once the invoice is issued.
+          tax_point: input.taxPoint && input.taxPoint !== input.invoiceDate ? input.taxPoint : null,
+          status: "draft",
+          amount_paid: 0,
+        };
+        const invoiceLines = input.lines.map((l, position) => ({ position, description: l.description, quantity: l.quantity, unit_price: l.unitPrice, vat_pct: lineVats[position].vatPct, vat_exempt: lineVats[position].vatExempt }));
+        const attempt = financeRequestIdForAttempt(createAttemptRef.current, JSON.stringify({ invoiceHeader, invoiceLines }));
+        createAttemptRef.current = attempt;
+        const { invoiceId: newId } = await createInvoiceWithIdempotency(supabase, {
+          requestId: attempt.requestId,
+          header: invoiceHeader,
+          lines: invoiceLines,
         });
-        if (error) throw error;
-        void auditEvent({ action: "CREATE", entityTable: "invoices", entityId: String(newId) });
+        createAttemptRef.current = null;
+        void auditEvent({ action: "CREATE", entityTable: "invoices", entityId: newId });
         toast.success("Draft invoice saved. Check it, then issue it to give it a number.");
         // Reset and close only after a successful save.
         formEl.reset();
