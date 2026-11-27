@@ -46,6 +46,8 @@ const world = {
   factors: {} as Record<string, string[]>,
   passwordWrites: [] as string[],
   factorDeletes: [] as string[],
+  enrolmentWrite: "ok" as "ok" | "error" | "empty",
+  enrolmentAtFactorDelete: [] as boolean[],
   rpcCalls: [] as string[],
   aal: "aal2" as "aal1" | "aal2",
   /** The database has no admin_login_is_protected yet (093 not applied): PostgREST answers PGRST202. */
@@ -65,6 +67,10 @@ function query(table: string) {
   let patch: Row | null = null;
   const rows = () => tableRows(table).filter((row) => filters.every((f) => f(row)));
   const result = () => {
+    if (patch && "mfa_enrolment_required" in patch) {
+      if (world.enrolmentWrite === "error") return { data: [], error: { code: "XX000" } };
+      if (world.enrolmentWrite === "empty") return { data: [], error: null };
+    }
     if (patch) { const hit = rows(); for (const row of hit) Object.assign(row, patch); return { data: hit.map((row) => ({ ...row })), error: null }; }
     return { data: rows().map((row) => ({ ...row })), error: null };
   };
@@ -75,7 +81,7 @@ function query(table: string) {
     neq: (column: string, value: unknown) => { filters.push((row) => row[column] !== value); return chain; },
     is: (column: string, value: unknown) => { filters.push((row) => (row[column] ?? null) === value); return chain; },
     limit: () => chain,
-    maybeSingle: async () => { const r = result(); return { data: r.data[0] ?? null, error: null }; },
+    maybeSingle: async () => { const r = result(); return { data: r.data[0] ?? null, error: r.error }; },
     then: (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) => Promise.resolve(result()).then(resolve, reject),
   };
   return chain;
@@ -95,7 +101,7 @@ const admin = {
       getUserById: async (id: string) => ({ data: { user: { id, banned_until: null, app_metadata: {} } }, error: null }),
       mfa: {
         listFactors: async ({ userId }: { userId: string }) => ({ data: { factors: (world.factors[userId] ?? []).map((id) => ({ id, factor_type: "totp", status: "verified" })) }, error: null }),
-        deleteFactor: async ({ id, userId }: { id: string; userId: string }) => { world.factorDeletes.push(id); world.factors[userId] = (world.factors[userId] ?? []).filter((f) => f !== id); return { error: null }; },
+        deleteFactor: async ({ id, userId }: { id: string; userId: string }) => { world.factorDeletes.push(id); world.enrolmentAtFactorDelete.push(world.memberships.some((m) => m.user_id === userId && m.mfa_enrolment_required === true)); world.factors[userId] = (world.factors[userId] ?? []).filter((f) => f !== id); return { error: null }; },
       },
     },
   },
@@ -164,6 +170,8 @@ beforeEach(() => {
   world.factors = { [OWNER]: ["f-owner"], [OWNER2]: ["f-owner2"], [FORMER]: ["f-former"], [MEM]: ["f-mem"] };
   world.passwordWrites = [];
   world.factorDeletes = [];
+  world.enrolmentAtFactorDelete = [];
+  world.enrolmentWrite = "ok";
   world.rpcCalls = [];
   world.aal = "aal2";
   world.rpcMissing = false;
@@ -218,6 +226,19 @@ describe("Reset two-step sign-in refuses a platform owner's login and one with a
     expect((await response.json()).error).toBe(PROTECTED_LOGIN);
     expect(world.factorDeletes).toEqual([]);
   });
+  it.each(["error", "empty"] as const)("keeps an admin's authenticator if the enrolment requirement write returns %s", async (result) => {
+    world.memberships.find((m) => m.user_id === MEM)!.secondary_role = "admin";
+    world.enrolmentWrite = result;
+    expect((await twoStep(MEM)).status).toBe(500);
+    expect(world.factorDeletes).toEqual([]);
+  });
+
+  it("confirms the admin's enrolment requirement before removing a factor", async () => {
+    world.memberships.find((m) => m.user_id === MEM)!.role = "admin";
+    expect((await twoStep(MEM)).status).toBe(200);
+    expect(world.enrolmentAtFactorDelete).toEqual([true]);
+  });
+
   it("an ordinary member of A: 200, their factor removed", async () => {
     const response = await twoStep(MEM);
     expect(response.status).toBe(200);

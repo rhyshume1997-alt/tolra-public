@@ -6,7 +6,7 @@ import { adminMfaRequired, recentSecondStep } from "@/lib/mfa-policy";
 import { forbiddenOrigin, isErrorResponse, jsonError, mfaRecentRequired, mfaRequired, requireProfile, sameOrigin } from "@/lib/server/auth";
 import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
 
-// Shared by the Admin > Users routes: the caller must be an active admin of their current organisation.
+// Shared by the Admin > Users routes. Inputs are scoped to the caller’s company; preserve the active admin and MFA guards.
 
 export type AdminContext = { auth: Exclude<Awaited<ReturnType<typeof requireProfile>>, NextResponse>; admin: NonNullable<ReturnType<typeof createSupabaseAdminClient>> };
 
@@ -130,7 +130,9 @@ export type MfaResetResult = { ok: true; removed: number } | { ok: false; status
  */
 export async function resetMfa(admin: AdminContext["admin"], orgId: string, callerId: string, targetId: string, isProtected?: () => Promise<boolean | null>): Promise<MfaResetResult> {
   if (targetId === callerId) return { ok: false, status: 400, error: "Ask another admin to reset your two-step sign-in." };
-  const { data: member } = await admin.from("organization_members").select("user_id, support").eq("user_id", targetId).eq("organization_id", orgId).eq("active", true).maybeSingle();
+  const { data: member, error: memberError } = await admin.from("organization_members")
+    .select("user_id, support, role, secondary_role").eq("user_id", targetId).eq("organization_id", orgId).eq("active", true).maybeSingle();
+  if (memberError) return { ok: false, status: 500, error: "Couldn't check membership for the reset. Try again." };
   if (!member) return { ok: false, status: 404, error: "User not found" };
   if ((member as { support?: boolean }).support === true) return { ok: false, status: 403, error: PROTECTED_LOGIN };
   if (!(await ownsIdentity(admin, targetId, orgId))) return { ok: false, status: 403, error: "This login is shared with another company, so its two-step sign-in can't be reset from here." };
@@ -141,15 +143,16 @@ export async function resetMfa(admin: AdminContext["admin"], orgId: string, call
   }
   const { data, error } = await admin.auth.admin.mfa.listFactors({ userId: targetId });
   if (error) return { ok: false, status: 500, error: "Couldn't reset two-step sign-in. Try again." };
+  // Confirm re-enrolment before Auth removes any factor. Auth and the membership database cannot roll back together.
+  if ((member.role === "admin" || member.secondary_role === "admin") && !(await requireAdminEnrolment(admin, orgId, targetId))) {
+    return { ok: false, status: 500, error: "Couldn't require authenticator setup for this admin. Their current authenticator was kept." };
+  }
   let removed = 0;
   for (const factor of data?.factors ?? []) {
     const { error: deleteError } = await admin.auth.admin.mfa.deleteFactor({ id: factor.id, userId: targetId });
     if (deleteError) return { ok: false, status: 500, error: "Couldn't reset two-step sign-in. Try again." };
     removed += 1;
   }
-  // An admin whose authenticator was removed sets up a new one at their next sign-in (migration 065), even while
-  // REQUIRE_ADMIN_MFA is off. The database clears this for anyone who does not hold admin.
-  await requireAdminEnrolment(admin, orgId, targetId);
   return { ok: true, removed };
 }
 
@@ -172,9 +175,10 @@ export async function enrolmentFlag(admin: AdminContext["admin"], orgId: string,
  * column does not exist and nothing changes (the person is simply not sent to set-up); the result says whether it was saved.
  */
 export async function requireAdminEnrolment(admin: AdminContext["admin"], orgId: string, userId: string): Promise<boolean> {
-  const { error } = await admin.from("organization_members").update({ mfa_enrolment_required: true }).eq("user_id", userId).eq("organization_id", orgId);
+  const { data, error } = await admin.from("organization_members").update({ mfa_enrolment_required: true })
+    .eq("user_id", userId).eq("organization_id", orgId).eq("active", true).select("mfa_enrolment_required").maybeSingle();
   if (error) console.error("[admin/users] enrolment flag not saved", error.code ?? "no-code");
-  return !error;
+  return !error && data?.mfa_enrolment_required === true;
 }
 
 export type BanState = {
