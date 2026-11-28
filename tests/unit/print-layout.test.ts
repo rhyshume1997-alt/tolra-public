@@ -57,6 +57,7 @@ import { JobWorksheetPackPrint } from "@/components/job-worksheet-pack-print";
 import { JobWorksheetPrint } from "@/components/job-worksheet-print";
 import { WorksheetInLayout, WorksheetPackInLayout } from "@/components/print-layout-picker";
 import { printLayoutStatus } from "@/components/print-layout-settings-card";
+import { loadWorksheetCustomerPoNames } from "@/lib/job-files";
 import { parseCompanyProfile, saveCompanyProfile } from "@/lib/company";
 import { type CompanyPrintLayout, type PrintLayout, JNR_ORG_SLUG, chosenPrintLayout, defaultPrintLayout, loadCompanyPrintLayout, resolvePrintLayout, saveCompanyPrintLayout, withStoredPrintLayout } from "@/lib/print-layout";
 import JobSheetPrintPage from "@/app/(dashboard)/jobs/[id]/print/page";
@@ -313,5 +314,24 @@ describe("the print pages pick the layout", () => {
     expect(renderToStaticMarkup(createElement(WorksheetPackInLayout, { layout: "jnr", sheets: PACK }))).toBe(renderToStaticMarkup(createElement(JobWorksheetPackPrint, { sheets: PACK })));
     expect(jnr(renderToStaticMarkup(createElement(WorksheetPackInLayout, { layout: "jnr", sheets: PACK })))).toBe(true);
     expect(basic(renderToStaticMarkup(createElement(WorksheetPackInLayout, { layout: "basic", sheets: PACK })))).toBe(true);
+  });
+});
+
+describe("customer purchase orders on printed worksheets", () => {
+  it("distinguishes a failed customer PO read from a confirmed empty result", async () => {
+    const read = vi.fn().mockRejectedValueOnce(new Error("unavailable")).mockResolvedValueOnce([]);
+    await expect(loadWorksheetCustomerPoNames("job-1", read)).resolves.toBeNull();
+    await expect(loadWorksheetCustomerPoNames("job-1", read)).resolves.toEqual([]);
+    expect(read).toHaveBeenCalledWith("job-1");
+  });
+
+  it.each(["basic", "jnr"] as const)("prints registered filenames against their jobs in the %s pack", async (layout) => {
+    const names = await loadWorksheetCustomerPoNames("job-1", async () => [{
+      id: "po-file", file_name: "PO-77.pdf", storage_bucket: "quote-attachments", storage_path: "private/PO-77.pdf", created_at: "",
+    }]);
+    const sheets = PACK.map((sheet, index) => ({ ...sheet, customerPos: index === 0 ? names ?? [] : [] }));
+    const printed = renderToStaticMarkup(createElement(WorksheetPackInLayout, { sheets, layout }));
+    expect(printed).toContain("J-0101: PO-77.pdf");
+    expect(printed).not.toContain("private/PO-77.pdf");
   });
 });
