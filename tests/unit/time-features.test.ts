@@ -74,7 +74,7 @@ describe("the loader keeps the server's code", () => {
   it("a missing table surfaces as TimeDataError with its code, so the page says 'needs a database update'", async () => {
     const chain: Record<string, unknown> = {};
     const answer = { data: null, error: { code: "PGRST205", message: "Could not find the table 'public.attendance_events' in the schema cache" } };
-    for (const m of ["select", "gte", "lt", "eq", "or", "order", "limit", "lte", "in", "is"]) chain[m] = () => chain;
+    for (const m of ["select", "gte", "lt", "eq", "or", "order", "range", "lte", "in", "is"]) chain[m] = () => chain;
     chain.then = (resolve: (v: unknown) => unknown) => resolve(answer);
     chain.maybeSingle = async () => answer;
     const client = { from: () => chain } as unknown as Parameters<typeof loadTimeData>[0];
@@ -88,21 +88,24 @@ describe("the loader keeps the server's code", () => {
     const selects: string[] = [];
     const chain = (table: string): Record<string, unknown> => {
       let columns = "";
+      let offset = 0;
       const c: Record<string, unknown> = {};
-      for (const m of ["gte", "lt", "eq", "or", "order", "limit", "lte", "in", "is"]) c[m] = () => c;
+      for (const m of ["gte", "lt", "eq", "or", "order", "lte", "in", "is"]) c[m] = () => c;
+      c.range = (from: number) => { offset = from; return c; };
       c.select = (cols: string) => { columns = cols; if (table === "operator_sessions") selects.push(cols); return c; };
       c.then = (resolve: (v: unknown) => unknown) => resolve(table === "operator_sessions" && columns.includes("end_reason")
         ? { data: null, error: { code: "42703", message: "column operator_sessions.end_reason does not exist" } }
-        : { data: table === "operator_sessions" ? [{ id: "s1", user_id: "u", job_id: "j", started_at: "2026-10-22T13:00:00Z", ended_at: null }] : [], error: null });
+        : { data: table === "operator_sessions" && offset === 0 ? [{ id: "s1", user_id: "u", job_id: "j", started_at: "2026-10-22T13:00:00Z", ended_at: null }] : [], error: null });
       c.maybeSingle = async () => ({ data: null, error: null });
       return c;
     };
     const client = { from: (table: string) => chain(table) } as unknown as Parameters<typeof loadTimeData>[0];
     const data = await loadTimeData(client, { userId: "u", from: new Date(), to: new Date() });
     expect(data.labour.map((l) => l.id)).toEqual(["s1"]);
-    expect(selects).toHaveLength(2);
+    expect(selects).toHaveLength(3);
     expect(selects[0]).toMatch(/, ended_by, end_reason$/);
     expect(selects[1]).not.toMatch(/end_reason|ended_by/);
     expect(selects[1]).toContain("end_source");
+    expect(selects[2]).toBe(selects[1]);
   });
 });

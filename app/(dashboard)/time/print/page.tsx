@@ -13,7 +13,7 @@ import { UNKNOWN } from "@/lib/people";
 import { supabase } from "@/lib/supabase";
 import { type DayFlags, loadDayFlags, pickFlags } from "@/lib/time-day-flags";
 import { missingDbObject } from "@/lib/time-features";
-import { type TimeData, loadTimeData } from "@/lib/time-data";
+import { TimeDataTruncatedError, type TimeData, loadTimeData } from "@/lib/time-data";
 import { dayTotals, localDateOf, localDayBounds } from "@/lib/time-sheet";
 import { useUser } from "@/lib/use-user";
 
@@ -33,7 +33,7 @@ function DayPrint() {
     const bounds = localDayBounds(date);
     Promise.all([loadTimeData(supabase, { userId: personId, from: bounds.start, to: bounds.end }), loadCompanyPeople(supabase)])
       .then(([loaded, people]) => { setData(loaded); setName(people?.[personId] ?? UNKNOWN); })
-      .catch((err) => (missingDbObject(err) ? setNeedsUpdate(true) : setError(friendlyError(err, "Couldn't load the hours."))));
+      .catch((err) => (missingDbObject(err) ? setNeedsUpdate(true) : setError(err instanceof TimeDataTruncatedError ? err.message : friendlyError(err, "Couldn't load the hours."))));
   }, [date, personId]);
 
   // The day's SAVED ticks (074), best effort: nothing is shown before 074 or when they can't be read.

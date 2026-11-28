@@ -10,7 +10,7 @@ import type { ExecResult } from "@/lib/email/schedules/reminders";
 import { scheduleEmailKey } from "@/lib/email/schedules/keys";
 import { renderTimesheet } from "@/lib/email/schedules/render";
 import { sendCompanyEmail } from "@/lib/email/send-company-email";
-import { type TimeData, loadTimeData } from "@/lib/time-data";
+import { type TimeData, TimeDataTruncatedError, loadTimeData } from "@/lib/time-data";
 import { addDays, startOfLocalDay, weekTotals } from "@/lib/time-sheet";
 
 /** Tables that hold a company's rows and must be read for one company only (the rest, bank holidays, are shared). */
@@ -96,7 +96,12 @@ export async function runTimesheets(admin: SupabaseClient, schedule: EmailSchedu
     result.error = "no recipient: the company has no admin e-mail address";
     return result;
   }
-  const people = await loadPeopleHours(admin, org, weekStart, now);
+  const people = await loadPeopleHours(admin, org, weekStart, now).catch((err: unknown) => {
+    if (!(err instanceof TimeDataTruncatedError)) throw err;
+    result.error = err.message;
+    return null;
+  });
+  if (!people) return result;
   if (!people.length) return result;
   const [names, companyName, override] = await Promise.all([personNames(admin, people.map((p) => p.userId)), loadCompanyName(admin, org), loadTemplateOverride(admin, org, "timesheet")]);
   const site = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/+$/, "");
