@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { createClient } from "@supabase/supabase-js";
+import { singleJobOfNotes } from "@/lib/customer-signoff-print";
 import { describe, expect, it } from "vitest";
 
 import { canCreateDeliveryNote, canOfferCreateDeliveryNote, deliveryNoteSource, deliveryNotesPrintedLine, fetchInvoiceNotes, invoiceNotesFilter, toInvoiceNotes } from "@/lib/invoice-delivery-notes";
@@ -73,20 +76,39 @@ describe("delivery notes on an invoice", () => {
     expect(deliveryNotesPrintedLine(many, 4)).toBe("DLN-0001, DLN-0002, DLN-0003, DLN-0004 +2 more");
   });
 
-  it("reads the table once, and passes a database error on", async () => {
-    const calls: string[] = [];
-    const db = (result: { data: unknown; error: unknown }) => ({
-      from: (table: string) => ({
-        select: (columns: string) => ({
-          or: (filter: string) => ({ order: (column: string) => ({ limit: async (n: number) => { calls.push(`${table}|${columns.split(",").length}|${filter}|${column}|${n}`); return result; } }) }),
-        }),
-      }),
+  it("counts every linked note and refuses a single-job sign-off when a later note belongs to another job", async () => {
+    const rows = Array.from({ length: 101 }, (_, index) => row({
+      id: `id-${index}`, dn_number: `DLN-${String(index + 1).padStart(4, "0")}`,
+      invoice_id: INV, job_id: index === 100 ? OTHER_JOB : JOB,
+    }));
+    const db = createClient("http://127.0.0.1:54321", "unit-test-key", {
+      global: { fetch: async (input) => {
+        const url = new URL(String(input));
+        const offset = Number(url.searchParams.get("offset") ?? 0);
+        return Response.json(rows.slice(offset, offset + Math.min(100, Number(url.searchParams.get("limit") ?? 100))));
+      } },
     });
-    const notes = await fetchInvoiceNotes(db({ data: [row({ invoice_id: INV })], error: null }), { id: INV });
-    expect(notes).toHaveLength(1);
-    expect(calls).toEqual([`delivery_notes|7|invoice_id.eq.${INV}|dn_number|100`]);
-    await expect(fetchInvoiceNotes(db({ data: null, error: new Error("denied") }), { id: INV })).rejects.toThrow("denied");
-    expect(await fetchInvoiceNotes(db({ data: [], error: null }), { id: "bad" })).toEqual([]);
-    expect(calls).toHaveLength(2);
+    const notes = await fetchInvoiceNotes(db, { id: INV });
+    expect(deliveryNotesPrintedLine(notes)).toBe("DLN-0001, DLN-0002 +99 more");
+    expect(singleJobOfNotes(notes)).toBeNull();
+  });
+
+  it("awaits the delivery note read without an empty-list fallback before building an invoice PDF", () => {
+    const page = readFileSync("app/(dashboard)/invoices/page.tsx", "utf8");
+    const builder = page.slice(page.indexOf("async function buildInvoicePdf"), page.indexOf("async function downloadInvoicePdf"));
+    expect(builder).toMatch(/await fetchInvoiceNotes\(supabase, \{ id: invoice.id \}\)\s*:\s*\[\]/);
+  });
+
+  it("passes a database error on and makes no request for an invalid invoice ID", async () => {
+    let calls = 0;
+    const db = createClient("http://127.0.0.1:54321", "unit-test-key", {
+      global: { fetch: async () => {
+        calls++;
+        return Response.json({ message: "denied", code: "42501" }, { status: 403 });
+      } },
+    });
+    await expect(fetchInvoiceNotes(db, { id: INV })).rejects.toMatchObject({ message: "denied" });
+    expect(await fetchInvoiceNotes(db, { id: "bad" })).toEqual([]);
+    expect(calls).toBe(1);
   });
 });

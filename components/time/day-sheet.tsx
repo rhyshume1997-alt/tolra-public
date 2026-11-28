@@ -29,7 +29,7 @@ import { scopeKey } from "@/lib/offline/store";
 import { executeClockOp, executeLabourOp, syncNow } from "@/lib/offline/sync";
 import { type PeopleMap, UNKNOWN } from "@/lib/people";
 import { supabase } from "@/lib/supabase";
-import { type JobInfo, type SendNotice, type TimeData, deviceLabel, loadStartableJobs, loadTimeData, overlayPending, syncPassRan, timeSendNotice } from "@/lib/time-data";
+import { TimeDataTruncatedError, type JobInfo, type SendNotice, type TimeData, deviceLabel, loadStartableJobs, loadTimeData, overlayPending, syncPassRan, timeSendNotice } from "@/lib/time-data";
 import { type AttendanceEvent, type LabourSession, FLAG_TEXT, addDays, clockStateOf, dayTotals,hm, hmSigned, localDateOf, localDayBounds, localTimeOf, weekStartOf, zoneLabel } from "@/lib/time-sheet";
 import { fmtDateText } from "@/lib/dates";
 import { TIME_NEEDS_DATABASE_UPDATE, databaseHasTime, missingDbObject, timeOpsAllowed } from "@/lib/time-features";
@@ -120,7 +120,10 @@ export function DaySheet({ redesign = false }: { redesign?: boolean } = {}) {
       setJobs(startable);
     } catch (err) {
       if (missingDbObject(err as { code?: string; message?: string })) setNeedsUpdate(true);
-      else setError(friendlyError(err, "Couldn't load your hours."));
+      else if (err instanceof TimeDataTruncatedError) {
+        setData(null);
+        setError(err.message);
+      } else setError(friendlyError(err, "Couldn't load your hours."));
     }
   }, [date, personId]);
 

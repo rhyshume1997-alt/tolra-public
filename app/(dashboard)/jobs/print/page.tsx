@@ -1,6 +1,6 @@
 "use client";
 
-// Module 2 print entry: loads the selected jobs and their drawings for the existing workshop pack layouts. Layouts stay unchanged.
+// Module 2 print entry: loads the selected jobs with their drawings and registered customer PO references for the existing workshop pack layouts. Layouts stay unchanged.
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -9,6 +9,7 @@ import { Printer } from "lucide-react";
 import type { BasicPackSheet } from "@/components/job-worksheet-basic-print";
 import { PrintLayoutPicker, WorksheetPackInLayout } from "@/components/print-layout-picker";
 import { Button } from "@/components/ui/button";
+import { loadWorksheetCustomerPoNames } from "@/lib/job-files";
 import { listDrawings, loadWorksheet } from "@/lib/job-worksheet";
 import { printLayoutLabel, useCompanyPrintLayout } from "@/lib/print-layout";
 import { type PrintOverride, packLayoutOf, resolvePrintChoice } from "@/lib/worksheet-builder/print-choice";
@@ -46,8 +47,11 @@ function WorkshopPackSelection({ selection }: { selection: string }) {
         if (result.error !== undefined) return { kind: "worksheet-error" as const };
         const stored = result.demo ? [] : await listDrawings(id);
         if (stored === null) return { kind: "drawings-unavailable" as const };
+        const customerPos = result.demo ? [] : await loadWorksheetCustomerPoNames(id);
+        if (customerPos === null) return { kind: "customer-pos-unavailable" as const };
         const sheet: BasicPackSheet = {
           id,
+          customerPos,
           worksheet: result.worksheet,
           traceable: result.row?.traceable === true,
           drawings: stored.map((file) => (file.revision ? `${file.name} (Rev ${file.revision})` : file.name)),
@@ -62,6 +66,10 @@ function WorkshopPackSelection({ selection }: { selection: string }) {
       }
       if (loaded.some((result) => result.kind === "drawings-unavailable")) {
         setError("Drawings unavailable for one or more selected jobs. Check your connection and try again.");
+        return;
+      }
+      if (loaded.some((result) => result.kind === "customer-pos-unavailable")) {
+        setError("Customer PO attachments unavailable for one or more selected jobs. Check your connection and try again.");
         return;
       }
       setSheets(loaded.flatMap((result) => result.kind === "ready" ? [result.sheet] : []));

@@ -1,6 +1,6 @@
 "use client";
 
-// Module 2 print entry: loads one job and its drawings for the existing worksheet layouts. Layouts stay unchanged.
+// Module 2 print entry: loads one job, its drawings and registered customer PO references for the existing worksheet layouts. Layouts stay unchanged.
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -8,7 +8,7 @@ import { useParams } from "next/navigation";
 import { Printer, X } from "lucide-react";
 
 import { PrintLayoutPicker, WorksheetInLayout } from "@/components/print-layout-picker";
-import { listCustomerPos } from "@/lib/job-files";
+import { loadWorksheetCustomerPoNames } from "@/lib/job-files";
 import { Button } from "@/components/ui/button";
 import { DEMO_MODE } from "@/lib/demo";
 import { type JobWorksheet, type WorksheetJobInfo, listDrawings, loadWorksheet } from "@/lib/job-worksheet";
@@ -93,10 +93,14 @@ function JobSheet({ id }: { id: string }) {
         setError("Drawings unavailable. Check your connection and try again.");
         return;
       }
-      const pos = loaded.demo ? [] : await listCustomerPos(id).catch(() => []);
+      const pos = loaded.demo ? [] : await loadWorksheetCustomerPoNames(id);
       if (!active) return;
+      if (pos === null) {
+        setError("Customer PO attachments unavailable. Check your connection and try again.");
+        return;
+      }
       setDrawings(loaded.demo ? demo.drawings : stored.map((file) => (file.revision ? `${file.name} (Rev ${file.revision})` : file.name)));
-      setCustomerPos(pos.map((file) => file.file_name));
+      setCustomerPos(pos);
       setTraceable(loaded.row?.traceable === true);
       setCustomValues(parseCustomValues(loaded.row?.worksheet_custom));
       setWorksheet(loaded.worksheet);
