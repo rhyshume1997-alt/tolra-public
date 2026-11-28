@@ -45,7 +45,17 @@ import { linkedRecordId } from "@/lib/record-link";
 import { type SupplierStatus, supplierKey, supplierOrderNotice } from "@/lib/supplier-status";
 import { esc } from "@/lib/html";
 import { documentTotals, gbp } from "@/lib/money";
-import { updatePurchaseOrders } from "@/lib/purchase-order-update";
+import {
+  NON_RECEIVABLE_PO_STATUSES,
+  type UpdatePurchaseOrderOptions,
+  canEmailPurchaseOrder,
+  canReceivePurchaseOrder,
+  canRecordPurchaseOrderSent,
+  filterReceivablePurchaseOrders,
+  isCancelledPurchaseOrder,
+  isOpenPurchaseOrder,
+  updatePurchaseOrders,
+} from "@/lib/purchase-order-update";
 import { PO_TOTAL_LABEL, purchaseOrderTotalIncVat } from "@/lib/purchase-order-total";
 import { allocateNumber } from "@/lib/numbering";
 import { openPrintPack } from "@/lib/print-pack";
@@ -176,7 +186,7 @@ export default function PurchaseOrdersPage() {
   const stats = useMemo(() => {
     const today = toDateInput(new Date());
     const month = today.slice(0, 7);
-    const open = purchaseOrders.filter((po) => po.status !== "received");
+    const open = purchaseOrders.filter((po) => isOpenPurchaseOrder(po.status));
     return {
       open: open.length,
       overdue: open.filter((po) => po.delivery && po.delivery < today).length,
@@ -312,12 +322,12 @@ export default function PurchaseOrdersPage() {
   }, [has124, newOpen, newLink, newDescription]);
 
   /** Mirrors only confirmed database writes and local demo updates. */
-  async function persistPos(targets: PurchaseOrderRow[], columns: Record<string, unknown>, patch: Partial<PurchaseOrderRow>) {
+  async function persistPos(targets: PurchaseOrderRow[], columns: Record<string, unknown>, patch: Partial<PurchaseOrderRow>, options?: UpdatePurchaseOrderOptions) {
     const real = targets.filter((po) => !po.demo);
     let updatedIds: string[] = [];
     if (real.length) {
       if (!supabase) throw new Error("Supabase is not configured.");
-      updatedIds = await updatePurchaseOrders(supabase, real.map((po) => po.id), columns);
+      updatedIds = await updatePurchaseOrders(supabase, real.map((po) => po.id), columns, options);
     } else if (targets.length && !DEMO_MODE) {
       throw new Error("Supabase is not configured.");
     }
@@ -425,11 +435,21 @@ export default function PurchaseOrdersPage() {
     await run(async () => {
       try {
         if (action.kind === "issue") {
-          await persistPos([action.po], { status: "issued" }, { status: "issued" });
+          if (action.po.status !== "draft") {
+            toast.error("Only draft purchase orders can be issued.");
+            setPoAction(null);
+            return;
+          }
+          await persistPos([action.po], { status: "issued" }, { status: "issued" }, { excludeStatuses: ["issued", "sent", "confirmed", "partial_received", "received", "cancelled"] });
           toast.success(`${action.po.ref} issued: supplier, items and value are now fixed`);
         } else {
+          if (!canRecordPurchaseOrderSent(action.po.status)) {
+            toast.error("Cancelled, draft, or already received purchase orders cannot be recorded as sent.");
+            setPoAction(null);
+            return;
+          }
           const sentAt = nowIso();
-          await persistPos([action.po], { sent_at: sentAt }, { sentAt });
+          await persistPos([action.po], { sent_at: sentAt }, { sentAt }, { excludeStatuses: NON_RECEIVABLE_PO_STATUSES });
           void auditEvent({ action: "SEND", entityTable: "purchase_orders", entityId: action.po.id, newData: { sent_at: sentAt } });
           toast.success(`${action.po.ref} recorded as sent`);
         }
@@ -463,20 +483,25 @@ export default function PurchaseOrdersPage() {
   }
 
   async function markReceived(ids: string[]) {
-    // Drafts must be issued first; already received ones are skipped.
-    const targets = purchaseOrders.filter((po) => ids.includes(po.id) && po.status !== "received" && po.status !== "draft");
+    // Drafts must be issued first; already received and cancelled purchase orders cannot be received.
+    const targets = filterReceivablePurchaseOrders(purchaseOrders, ids);
     if (!ids.length) {
       toast.error("Select at least one purchase order first.");
       return;
     }
     if (!targets.length) {
-      toast.info("Selected purchase orders are already received or still drafts (issue them first).");
+      toast.info("Selected purchase orders are already received, cancelled, or still drafts (issue drafts first).");
       return;
     }
     await run(async () => {
       try {
         const receivedAt = nowIso();
-        const { ids: confirmed, updatedIds } = await persistPos(targets, { status: "received", received_at: receivedAt }, { status: "received", receivedAt });
+        const { ids: confirmed, updatedIds } = await persistPos(
+          targets,
+          { status: "received", received_at: receivedAt },
+          { status: "received", receivedAt },
+          { excludeStatuses: NON_RECEIVABLE_PO_STATUSES },
+        );
         if (updatedIds.length) {
           void auditEvent({ action: "MARK_RECEIVED", entityTable: "purchase_orders", metadata: { ids: updatedIds } });
         }
@@ -503,6 +528,7 @@ export default function PurchaseOrdersPage() {
   /** One-click send (E8) to the supplier's address on file, the PDF attached; once it has gone, the sent time is recorded. */
   async function emailPurchaseOrder(po: PurchaseOrderRow) {
     if (po.status === "draft") return void toast.error("Issue the purchase order before sending it.");
+    if (isCancelledPurchaseOrder(po.status)) return void toast.error("Cancelled purchase orders cannot be sent to suppliers.");
     if (po.id.startsWith("demo-") || DEMO_MODE || !supabase) return void toast.error("Sending isn't available in the demo. Download the PDF instead.");
     const { data: found } = await supabase.from("suppliers").select("email").eq("name", po.supplier).limit(1).maybeSingle();
     const to = typeof found?.email === "string" ? found.email : "";
@@ -636,8 +662,8 @@ export default function PurchaseOrdersPage() {
                   </div>
                   <Button variant="outline" size="sm" onClick={() => startEdit(po)}>Edit</Button>
                   {po.status === "draft" ? <Button size="sm" disabled={saving} className="bg-brand text-brand-ink" onClick={() => setPoAction({ po, kind: "issue" })}>Issue</Button> : null}
-                  {po.status !== "draft" && !po.sentAt && po.status !== "received" ? <Button variant="outline" size="sm" disabled={saving} onClick={() => setPoAction({ po, kind: "sent" })}>Record Sent</Button> : null}
-                  <Button variant="outline" size="sm" disabled={saving || po.status === "received" || po.status === "draft"} onClick={() => void markReceived([po.id])}>Mark Received</Button>
+                  {canRecordPurchaseOrderSent(po.status) && !po.sentAt ? <Button variant="outline" size="sm" disabled={saving} onClick={() => setPoAction({ po, kind: "sent" })}>Record Sent</Button> : null}
+                  <Button variant="outline" size="sm" disabled={saving || !canReceivePurchaseOrder(po.status)} onClick={() => void markReceived([po.id])}>Mark Received</Button>
                   <Button asChild size="sm" className="bg-brand text-brand-ink"><Link href={`/purchase-orders/${encodeURIComponent(po.id)}/print`}>Print PO</Link></Button>
                 </div></TableCell>
               </TableRow>
@@ -646,7 +672,7 @@ export default function PurchaseOrdersPage() {
   );
   const dialogs = (
       <>
-        <Dialog open={Boolean(viewing)} onOpenChange={(open) => !open && setViewing(null)}><DialogContent><DialogHeader><DialogTitle>{viewing?.ref}</DialogTitle><DialogDescription>Purchase order detail</DialogDescription></DialogHeader>{viewing ? <div className="space-y-3 text-sm"><p><strong>Supplier:</strong> {viewing.supplier}</p><p><strong>Order date:</strong> {fmtDate(viewing.date)}</p><p><strong>Expected delivery:</strong> {fmtDate(viewing.delivery) || "Not set"}</p><p><strong>Value:</strong> {currency(viewing.value)}</p><p><strong>Status:</strong> {viewing.status}</p>{viewing.link ? <p data-testid="po-view-link"><strong>For:</strong> {linkLabel(viewing.link)}{viewing.linkedNet !== null && viewing.linkedNet !== undefined ? ` (${currency(viewing.linkedNet)} of this order, ex VAT)` : ""}</p> : null}{viewing.receivedAt ? <p><strong>Received:</strong> {fmtDate(viewing.receivedAt)}</p> : null}{viewing.notes ? <p><strong>Notes:</strong> {viewing.notes}</p> : null}<div className="flex flex-wrap gap-2"><Button onClick={() => window.open(`/purchase-orders/${encodeURIComponent(viewing.id)}/print`, "_blank")} className="bg-brand text-brand-ink">Print</Button><Button variant="outline" onClick={() => void downloadPurchaseOrderPdf(viewing)}>Download PDF</Button>{viewing.status !== "draft" && !viewing.id.startsWith("demo-") ? <Button variant="outline" onClick={() => void emailPurchaseOrder(viewing)}>Email to supplier</Button> : null}</div>{viewing.id.startsWith("demo-") ? null : <DocumentAttachments parent={{ kind: "purchase_order", id: viewing.id }} canRemove />}</div> : null}<ActivityPanel table="purchase_orders" recordId={viewing?.id} className="mt-4" /></DialogContent></Dialog>
+        <Dialog open={Boolean(viewing)} onOpenChange={(open) => !open && setViewing(null)}><DialogContent><DialogHeader><DialogTitle>{viewing?.ref}</DialogTitle><DialogDescription>Purchase order detail</DialogDescription></DialogHeader>{viewing ? <div className="space-y-3 text-sm"><p><strong>Supplier:</strong> {viewing.supplier}</p><p><strong>Order date:</strong> {fmtDate(viewing.date)}</p><p><strong>Expected delivery:</strong> {fmtDate(viewing.delivery) || "Not set"}</p><p><strong>Value:</strong> {currency(viewing.value)}</p><p><strong>Status:</strong> {viewing.status}</p>{viewing.link ? <p data-testid="po-view-link"><strong>For:</strong> {linkLabel(viewing.link)}{viewing.linkedNet !== null && viewing.linkedNet !== undefined ? ` (${currency(viewing.linkedNet)} of this order, ex VAT)` : ""}</p> : null}{viewing.receivedAt ? <p><strong>Received:</strong> {fmtDate(viewing.receivedAt)}</p> : null}{viewing.notes ? <p><strong>Notes:</strong> {viewing.notes}</p> : null}<div className="flex flex-wrap gap-2"><Button onClick={() => window.open(`/purchase-orders/${encodeURIComponent(viewing.id)}/print`, "_blank")} className="bg-brand text-brand-ink">Print</Button><Button variant="outline" onClick={() => void downloadPurchaseOrderPdf(viewing)}>Download PDF</Button>{canEmailPurchaseOrder(viewing.status) && !viewing.id.startsWith("demo-") ? <Button variant="outline" onClick={() => void emailPurchaseOrder(viewing)}>Email to supplier</Button> : null}</div>{viewing.id.startsWith("demo-") ? null : <DocumentAttachments parent={{ kind: "purchase_order", id: viewing.id }} canRemove />}</div> : null}<ActivityPanel table="purchase_orders" recordId={viewing?.id} className="mt-4" /></DialogContent></Dialog>
         <Dialog open={Boolean(poAction)} onOpenChange={(open) => !open && setPoAction(null)}>
           <DialogContent>
             <DialogHeader>
