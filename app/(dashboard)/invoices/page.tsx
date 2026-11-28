@@ -83,7 +83,7 @@ import { isVoid, voidOffered } from "@/lib/invoice-void";
 import { type WriteOffMode, isWrittenOff, writeOffOffered } from "@/lib/invoice-write-off";
 import { deliveryAddressLines, optionalColumn } from "@/lib/invoice-fields";
 import { InvoiceFromDeliveryNotes } from "@/components/invoice-from-delivery-notes";
-import { deliveryNotesPrintedLine, fetchInvoiceNotes, type InvoiceNote } from "@/lib/invoice-delivery-notes";
+import { deliveryNotesPrintedLine, fetchInvoiceNotes } from "@/lib/invoice-delivery-notes";
 import { invoiceCustomerSignOff } from "@/lib/customer-signoff-print";
 import { UninvoicedDeliveryNotes } from "@/components/uninvoiced-delivery-notes";
 import { issuedBillTo } from "@/lib/document-snapshot";
@@ -1036,7 +1036,7 @@ export default function InvoicesPage() {
     if (problem) throw problem;
     const billTo = issuedBillTo(invoice.customerSnapshot, invoice.customer) ?? await resolveCustomerAddress(invoice.customer);
     // The notes on this invoice itself; a failed lookup leaves the line off rather than stopping the PDF.
-    const ownNotes = invoice.id && supabase ? await fetchInvoiceNotes(supabase, { id: invoice.id }).catch((): InvoiceNote[] => []) : [];
+    const ownNotes = invoice.id && supabase ? await fetchInvoiceNotes(supabase, { id: invoice.id }) : [];
     const deliveryNotes = deliveryNotesPrintedLine(ownNotes);
     // The customer sign-off (072) of the job those notes are on, when there is one; none (or 072 not applied) leaves the invoice as it was.
     const customerSignOff = supabase && ownNotes.length ? await invoiceCustomerSignOff(supabase, ownNotes) : undefined;

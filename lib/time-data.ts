@@ -8,6 +8,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { fetchAll } from "@/lib/fetch-all";
 import type { OutboxEntry } from "@/lib/offline/outbox";
 import { type AttendanceEvent, type LabourSession, type TimeSettings, EDGE_MARGIN_HOURS, addDays, localDateOf, settingsFromRow } from "@/lib/time-sheet";
 
@@ -31,6 +32,15 @@ export class TimeDataError extends Error {
   }
 }
 
+/** Refuses to calculate hours when the read reaches the paging safety cap. */
+export class TimeDataTruncatedError extends Error {
+  readonly truncated = true;
+  constructor() {
+    super("Timesheet records were truncated. Hours are unavailable for this selection.");
+    this.name = "TimeDataTruncatedError";
+  }
+}
+
 async function rows<T>(q: PromiseLike<{ data: unknown; error: { message: string; code?: string | null } | null }>): Promise<T[]> {
   const { data, error } = await q;
   if (error) throw new TimeDataError(error);
@@ -42,21 +52,29 @@ export async function loadTimeData(client: Client, opts: { userId: string | null
   const margin = EDGE_MARGIN_HOURS * 3_600_000;
   const lo = new Date(opts.from.getTime() - margin).toISOString();
   const hi = new Date(opts.to.getTime() + margin).toISOString();
-  let eventsQ = client.from("attendance_events").select(EVENT_COLUMNS).gte("at", lo).lt("at", hi);
-  const labourQ = (columns: string) => {
+  const readEvents = () => fetchAll<AttendanceEvent>((from, to) => {
+    const query = client.from("attendance_events").select(EVENT_COLUMNS).gte("at", lo).lt("at", hi);
+    return (opts.userId ? query.eq("user_id", opts.userId) : query).order("at").order("id").range(from, to);
+  });
+  const readLabour = (columns: string) => fetchAll<LabourSession>(async (from, to) => {
     const query = client.from("operator_sessions").select(columns).lt("started_at", hi).or(`ended_at.is.null,ended_at.gt."${lo}"`);
-    return (opts.userId ? query.eq("user_id", opts.userId) : query).order("started_at").limit(5000);
-  };
-  if (opts.userId) eventsQ = eventsQ.eq("user_id", opts.userId);
-  const [events, labour, settingsRow] = await Promise.all([
-    rows<AttendanceEvent>(eventsQ.order("at").limit(5000)),
-    rows<LabourSession>(labourQ(SESSION_END_COLUMNS)).catch((err: unknown) => {
-      // Before 092 the end_reason column isn't there (42703): the same read without who ended it and why.
-      if (err instanceof TimeDataError && err.code === "42703") return rows<LabourSession>(labourQ(SESSION_COLUMNS));
-      throw err;
+    const { data, error } = await (opts.userId ? query.eq("user_id", opts.userId) : query).order("started_at").order("id").range(from, to);
+    return { data: data as unknown as LabourSession[] | null, error };
+  });
+  const [eventPage, labourPage, settingsRow] = await Promise.all([
+    readEvents().catch((err: { message: string; code?: string }) => { throw new TimeDataError(err); }),
+    readLabour(SESSION_END_COLUMNS).catch((err: { message: string; code?: string }) => {
+      // Before 092 the end_reason column isn't there. Restart the read without the newer columns.
+      if (err.code === "42703") {
+        return readLabour(SESSION_COLUMNS).catch((fallback: { message: string; code?: string }) => { throw new TimeDataError(fallback); });
+      }
+      throw new TimeDataError(err);
     }),
     client.from("time_settings").select("*").maybeSingle(),
   ]);
+  if (eventPage.truncated || labourPage.truncated) throw new TimeDataTruncatedError();
+  const { rows: events } = eventPage;
+  const { rows: labour } = labourPage;
   if (settingsRow.error) throw new TimeDataError(settingsRow.error);
   const settings = settingsFromRow((settingsRow.data ?? null) as Record<string, unknown> | null);
   const dayLo = lo.slice(0, 10);
